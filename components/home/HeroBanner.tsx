@@ -10,7 +10,7 @@ export default function HeroBanner() {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800' }}
+        source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
         style={styles.background}
         imageStyle={styles.backgroundImage}
       >
