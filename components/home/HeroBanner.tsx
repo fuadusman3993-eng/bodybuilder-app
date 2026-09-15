@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 20,
     overflow: 'hidden',
-    height: 200,
+    minHeight: 240,
   },
   background: {
     width: '100%',
