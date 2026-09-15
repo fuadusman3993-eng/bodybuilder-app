@@ -20,6 +20,9 @@ export default function RootLayout() {
         await Font.loadAsync({
           // Add custom fonts here in future
         });
+        
+        // Artificial delay so you can see the Splash Screen (2.5 seconds)
+        await new Promise(resolve => setTimeout(resolve, 2500));
       } catch (e) {
         console.warn('Asset loading error:', e);
       } finally {
