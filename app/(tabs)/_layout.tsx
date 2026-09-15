@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 
 function CreateTabButton({ onPress }: { onPress?: () => void }) {
@@ -15,11 +16,15 @@ function CreateTabButton({ onPress }: { onPress?: () => void }) {
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  // Dynamically compute tab bar height: base + device bottom inset (home indicator on iPhone, etc.)
+  const tabBarHeight = 60 + insets.bottom;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { height: tabBarHeight, paddingBottom: insets.bottom + 6 }],
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -81,11 +86,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBar,
     borderTopColor: Colors.tabBarBorder,
     borderTopWidth: 1,
-    height: 85,
-    paddingBottom: 20,
     paddingTop: 8,
     position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     elevation: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   tabBarLabel: {
     fontSize: 10,
