@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -40,7 +40,15 @@ export default function RootLayout() {
   }, [appReady]);
 
   if (!appReady) {
-    return null; // Splash screen stays visible
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0A0E17', justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar style="light" backgroundColor="#0A0E17" />
+        <Image 
+          source={require('../assets/splash-icon.png')} 
+          style={{ width: 150, height: 150, resizeMode: 'contain' }} 
+        />
+      </View>
+    );
   }
 
   return (
