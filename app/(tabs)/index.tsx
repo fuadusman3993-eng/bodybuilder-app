@@ -26,8 +26,8 @@ export default function HomeScreen() {
         overScrollMode="always"
       >
         <Header />
-        <HeroBanner />
         <StoriesRow />
+        <HeroBanner />
         <QuickActions />
         <CommunityFeed />
       </ScrollView>
