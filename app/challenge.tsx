@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,44 @@ import {
   ImageBackground,
   TouchableOpacity,
   Dimensions,
-  Platform,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useUserStore, UserTier } from '../store/userStore';
+import PremiumUpgradeModal from '../components/modals/PremiumUpgradeModal';
 
 const { width } = Dimensions.get('window');
 
 const PREVIEW_DAYS = [
   { day: 1, title: 'Full Body', active: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200' },
-  { day: 2, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop&grayscale=true' },
-  { day: 3, title: 'Lower Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop&grayscale=true' },
-  { day: 4, title: 'Full Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop&grayscale=true' },
-  { day: 5, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop&grayscale=true' },
+  { day: 2, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
+  { day: 3, title: 'Lower Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
+  { day: 4, title: 'Full Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
+  { day: 5, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
 ];
 
 export default function ChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useUserStore();
+  const [premiumVisible, setPremiumVisible] = useState(false);
+
+  const handleJoin = () => {
+    if (user.tier === UserTier.PREMIUM) {
+      // Premium: full access, start the workout
+      router.push('/workout');
+    } else {
+      // Guest or Free: show Premium upsell
+      setPremiumVisible(true);
+    }
+  };
+
+  const handleUpgradePress = () => {
+    setPremiumVisible(false);
+    // After upgrading (simulated in PremiumUpgradeModal), user becomes PREMIUM
+  };
 
   return (
     <View style={styles.container}>
@@ -202,7 +220,7 @@ export default function ChallengeScreen() {
 
       {/* Fixed Bottom CTA */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity style={styles.joinBtn} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.joinBtn} activeOpacity={0.85} onPress={handleJoin}>
           <Text style={styles.joinBtnText}>Join Challenge</Text>
           <Ionicons name="arrow-forward" size={18} color="#000" />
         </TouchableOpacity>
@@ -211,9 +229,18 @@ export default function ChallengeScreen() {
           <Text style={styles.footerText}>Free to join  •  Upgrade for full access</Text>
         </View>
       </View>
+
+      {/* Premium Upgrade Modal */}
+      <PremiumUpgradeModal
+        visible={premiumVisible}
+        onClose={() => setPremiumVisible(false)}
+        featureTitle="Full 14-Day Challenge Access"
+        featureDescription="Get access to all 14 days of structured workouts, daily nutrition guides, progress tracking, and 1-on-1 coaching support throughout the challenge."
+      />
     </View>
   );
 }
+
 
 function CheckItem({ text }: { text: string }) {
   return (

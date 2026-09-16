@@ -21,8 +21,9 @@ interface UserState {
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
-  // Default to FREE for testing the modal logic. (In real app, starts as GUEST until logged in)
-  user: { tier: UserTier.FREE, name: 'Abebe' }, 
+  // Always starts as GUEST — Login page sets the correct tier
+  user: { tier: UserTier.GUEST, name: '' },
+
   setUser: (user) => set({ user }),
   isGuest: () => get().user.tier === UserTier.GUEST,
   isFree: () => get().user.tier === UserTier.FREE,
