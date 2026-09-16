@@ -15,14 +15,9 @@ export default function CommunityScreen() {
   const { user } = useUserStore();
 
   if (user.tier === UserTier.GUEST) {
-    return (
-      <GuestBlocker 
-        title="Join the Community"
-        description="Connect with other fitness enthusiasts, share your progress, and get inspired. Sign up to get started!"
-        icon="people-outline"
-      />
-    );
+    return <GuestBlocker feature="community" />;
   }
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

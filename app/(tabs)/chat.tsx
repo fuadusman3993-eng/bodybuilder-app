@@ -15,14 +15,9 @@ export default function ChatScreen() {
   const { user } = useUserStore();
 
   if (user.tier === UserTier.GUEST) {
-    return (
-      <GuestBlocker 
-        title="Members Only"
-        description="Sign up for a free account to chat with AI and real coaches, and join fitness community groups."
-        icon="chatbubbles-outline"
-      />
-    );
+    return <GuestBlocker feature="chat" />;
   }
+
 
   const renderAvatar = (chat: any) => {
     if (chat.isAI) {

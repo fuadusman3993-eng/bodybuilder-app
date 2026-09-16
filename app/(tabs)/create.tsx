@@ -12,14 +12,9 @@ export default function CreateScreen() {
   const { user } = useUserStore();
 
   if (user.tier === UserTier.GUEST) {
-    return (
-      <GuestBlocker 
-        title="Share Your Journey"
-        description="Sign up to post your progress, share workouts, and inspire others in the community."
-        icon="create-outline"
-      />
-    );
+    return <GuestBlocker feature="create" />;
   }
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import BottomSheet from '../ui/BottomSheet';
 import { Colors } from '../../constants/colors';
-
-const { height } = Dimensions.get('window');
 
 interface CoachSelectionModalProps {
   visible: boolean;
@@ -11,137 +10,134 @@ interface CoachSelectionModalProps {
   onSelect: (option: 'AI_COACH' | 'REAL_COACH') => void;
 }
 
+const OPTIONS = [
+  {
+    key: 'AI_COACH' as const,
+    icon: 'hardware-chip-outline' as const,
+    iconColor: Colors.primary,
+    iconBg: 'rgba(16,185,129,0.12)',
+    label: 'AI Coach',
+    tag: 'Free',
+    tagColor: Colors.primary,
+    description:
+      'Get instant, science-backed workout plans and 24/7 guidance from your AI coach. It learns your performance and adapts your plan every week.',
+    highlight: 'Best for: getting started fast with a smart plan.',
+  },
+  {
+    key: 'REAL_COACH' as const,
+    icon: 'person-outline' as const,
+    iconColor: '#D4AF37',
+    iconBg: 'rgba(212,175,55,0.12)',
+    label: 'Real Human Coach',
+    tag: 'Premium',
+    tagColor: '#D4AF37',
+    description:
+      'Work with a certified personal trainer who reviews your form, builds your program from scratch, and holds you accountable with weekly check-ins.',
+    highlight: 'Best for: serious athletes who want expert accountability.',
+  },
+];
+
 export default function CoachSelectionModal({ visible, onClose, onSelect }: CoachSelectionModalProps) {
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title="Choose Your Experience"
+      subtitle="Select how you want to reach your fitness goals. You can always switch later."
+      snapHeight={0.78}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        
-        <View style={styles.bottomSheet}>
-          <View style={styles.dragIndicator} />
-          
-          <Text style={styles.title}>Choose Your Experience</Text>
-          <Text style={styles.subtitle}>Select how you want to achieve your fitness goals today.</Text>
-          
-          <View style={styles.optionsContainer}>
-            {/* Option 1: AI Coach */}
-            <TouchableOpacity 
-              style={styles.optionCard} 
-              activeOpacity={0.8}
-              onPress={() => {
-                onClose();
-                onSelect('AI_COACH');
-              }}
-            >
-              <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-                <Ionicons name="hardware-chip-outline" size={24} color="#00E676" />
+      <View style={styles.container}>
+        {OPTIONS.map((opt) => (
+          <TouchableOpacity
+            key={opt.key}
+            style={styles.card}
+            activeOpacity={0.8}
+            onPress={() => {
+              onClose();
+              onSelect(opt.key);
+            }}
+          >
+            <View style={styles.cardTop}>
+              <View style={[styles.iconBox, { backgroundColor: opt.iconBg }]}>
+                <Ionicons name={opt.icon} size={26} color={opt.iconColor} />
               </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>AI Coach</Text>
-                <Text style={styles.optionSubtitle}>Instant personalized guidance & smart analytics.</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardLabel}>{opt.label}</Text>
+                <View style={[styles.tag, { backgroundColor: `${opt.tagColor}1A` }]}>
+                  <Text style={[styles.tagText, { color: opt.tagColor }]}>{opt.tag}</Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            {/* Option 2: Real Coach */}
-            <TouchableOpacity 
-              style={styles.optionCard} 
-              activeOpacity={0.8}
-              onPress={() => {
-                onClose();
-                onSelect('REAL_COACH');
-              }}
-            >
-              <View style={[styles.iconBox, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-                <Ionicons name="person-outline" size={24} color="#D4AF37" />
-              </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>Real Human Coach</Text>
-                <Text style={styles.optionSubtitle}>1-on-1 coaching with certified personal trainers.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </View>
+            <Text style={styles.cardDescription}>{opt.description}</Text>
+            <View style={styles.highlightRow}>
+              <Ionicons name="checkmark-circle" size={14} color={opt.iconColor} />
+              <Text style={[styles.highlightText, { color: opt.iconColor }]}>{opt.highlight}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  container: {
+    gap: 14,
+    paddingBottom: 8,
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
   },
-  bottomSheet: {
-    backgroundColor: '#0C0C0C', // Dark theme surface
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-    maxHeight: height * 0.8,
-  },
-  dragIndicator: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#444',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#AAA',
-    marginBottom: 24,
-  },
-  optionsContainer: {
-    gap: 12,
-  },
-  optionCard: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 16,
+    gap: 12,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
-  optionTextContainer: {
+  cardHeader: {
     flex: 1,
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  optionTitle: {
+  cardLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  optionSubtitle: {
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  highlightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  highlightText: {
     fontSize: 12,
-    color: '#AAA',
-    lineHeight: 16,
+    fontWeight: '600',
   },
 });

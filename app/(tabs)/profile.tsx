@@ -15,14 +15,9 @@ export default function ProfileScreen() {
   const { user } = useUserStore();
 
   if (user.tier === UserTier.GUEST) {
-    return (
-      <GuestBlocker 
-        title="Your Profile Awaits"
-        description="Sign up to track your workouts, earn achievements, and build your fitness portfolio."
-        icon="person-circle-outline"
-      />
-    );
+    return <GuestBlocker feature="profile" />;
   }
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
