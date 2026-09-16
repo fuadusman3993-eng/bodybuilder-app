@@ -41,11 +41,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80' }}
-      style={styles.background}
-    >
-      {/* Dark overlay */}
+    <View style={styles.root}>
+      {/* Fixed Background Image */}
+      <ImageBackground
+        source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80' }}
+        style={StyleSheet.absoluteFillObject}
+      >
+        {/* Dark overlay */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>
@@ -163,15 +165,14 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
+  root: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#000',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

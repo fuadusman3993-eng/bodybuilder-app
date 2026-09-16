@@ -17,8 +17,8 @@ function CreateTabButton({ onPress }: { onPress?: () => void }) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  // Dynamically compute tab bar height: base + device bottom inset (home indicator on iPhone, etc.)
-  const tabBarHeight = 60 + insets.bottom;
+  // Increase base height to 64 to ensure text isn't cut off
+  const tabBarHeight = 64 + insets.bottom;
 
   return (
     <Tabs
@@ -93,12 +93,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   tabBarLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 4,
   },
   tabBarItem: {
-    gap: 2,
+    justifyContent: 'center',
   },
   createButton: {
     top: -20,
