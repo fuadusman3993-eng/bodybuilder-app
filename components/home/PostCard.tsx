@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { Layout, useLayout } from '../../constants/layout';
 
 interface Post {
   id: string;
@@ -21,6 +22,10 @@ interface Post {
 }
 
 export default function PostCard({ post }: { post: Post }) {
+  const { width } = useWindowDimensions();
+  // Image height = square aspect ratio
+  const imageHeight = width;
+
   return (
     <View style={styles.container}>
       {/* Post Header */}
@@ -33,7 +38,7 @@ export default function PostCard({ post }: { post: Post }) {
           </View>
         </View>
         <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={20} color={Colors.textSecondary} />
+          <Ionicons name="ellipsis-horizontal" size={Layout.iconSizeSM} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -43,7 +48,7 @@ export default function PostCard({ post }: { post: Post }) {
       {/* Post Image */}
       {post.images.length > 0 && (
         <View style={styles.imageContainer}>
-          <Image source={{ uri: post.images[0] }} style={styles.postImage} />
+          <Image source={{ uri: post.images[0] }} style={[styles.postImage, { height: imageHeight }]} />
           {post.imageCount > 1 && (
             <View style={styles.imageCounter}>
               <Text style={styles.imageCounterText}>{post.currentImage}/{post.imageCount}</Text>
@@ -55,10 +60,10 @@ export default function PostCard({ post }: { post: Post }) {
       {/* Post Actions */}
       <View style={styles.actions}>
         <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
             <Ionicons
               name={post.isLiked ? 'heart' : 'heart-outline'}
-              size={22}
+              size={Layout.iconSize}
               color={post.isLiked ? Colors.danger : Colors.textPrimary}
             />
             <Text style={[styles.actionText, post.isLiked && { color: Colors.danger }]}>
@@ -66,18 +71,18 @@ export default function PostCard({ post }: { post: Post }) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={20} color={Colors.textPrimary} />
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <Ionicons name="chatbubble-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
             <Text style={styles.actionText}>{post.comments}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="paper-plane-outline" size={20} color={Colors.textPrimary} />
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <Ionicons name="paper-plane-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity>
-          <Ionicons name="bookmark-outline" size={22} color={Colors.textPrimary} />
+        <TouchableOpacity activeOpacity={0.7}>
+          <Ionicons name="bookmark-outline" size={Layout.iconSize} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -86,17 +91,16 @@ export default function PostCard({ post }: { post: Post }) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
+    backgroundColor: Colors.background, // changed to background to blend like IG
+    marginBottom: 20,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: Layout.contentPadding,
+    paddingVertical: 10,
   },
   userInfo: {
     flexDirection: 'row',
@@ -104,55 +108,57 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surfaceLight,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
   },
   userName: {
-    fontSize: 14,
+    fontSize: Layout.fontMD,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
   postMeta: {
-    fontSize: 11,
+    fontSize: Layout.fontSM,
     color: Colors.textSecondary,
     marginTop: 2,
   },
   content: {
-    fontSize: 14,
+    fontSize: Layout.fontMD,
     color: Colors.textPrimary,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: Layout.contentPadding,
+    paddingBottom: 12,
     lineHeight: 20,
   },
   imageContainer: {
     position: 'relative',
+    width: '100%',
   },
   postImage: {
     width: '100%',
-    height: 250,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surface,
+    resizeMode: 'cover',
   },
   imageCounter: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   imageCounterText: {
-    fontSize: 12,
-    color: Colors.textPrimary,
-    fontWeight: '500',
+    fontSize: Layout.fontSM,
+    color: '#FFF',
+    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    padding: Layout.contentPadding,
+    paddingTop: 10,
   },
   leftActions: {
     flexDirection: 'row',
@@ -162,10 +168,10 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   actionText: {
-    fontSize: 13,
+    fontSize: Layout.fontMD,
     color: Colors.textPrimary,
     fontWeight: '500',
   },

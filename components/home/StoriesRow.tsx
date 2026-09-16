@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { stories } from '../../constants/mockData';
@@ -12,13 +12,36 @@ interface Story {
 }
 
 function StoryItem({ item }: { item: Story }) {
+  const { width } = useWindowDimensions();
+  // Scale avatar size between 56px (small) and 64px (large)
+  const avatarOuter = width < 360 ? 56 : 64;
+  const avatarInner = avatarOuter - 8;
+
   return (
     <TouchableOpacity style={styles.storyItem} activeOpacity={0.7}>
-      <View style={[styles.storyRing, item.isOwn && styles.storyRingOwn]}>
-        <Image source={{ uri: item.image }} style={styles.storyImage} />
+      <View
+        style={[
+          styles.storyRing,
+          {
+            width: avatarOuter,
+            height: avatarOuter,
+            borderRadius: avatarOuter / 2,
+          },
+          item.isOwn && styles.storyRingOwn,
+        ]}
+      >
+        <Image
+          source={{ uri: item.image }}
+          style={{
+            width: avatarInner,
+            height: avatarInner,
+            borderRadius: avatarInner / 2,
+            backgroundColor: Colors.surface,
+          }}
+        />
         {item.isOwn && (
           <View style={styles.addBadge}>
-            <Ionicons name="add" size={14} color={Colors.textPrimary} />
+            <Ionicons name="add" size={12} color={Colors.textPrimary} />
           </View>
         )}
       </View>
@@ -46,20 +69,18 @@ export default function StoriesRow() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: 12,
   },
   listContent: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 14,
   },
   storyItem: {
     alignItems: 'center',
-    width: 68,
+    gap: 5,
+    maxWidth: 70,
   },
   storyRing: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     borderWidth: 2,
     borderColor: Colors.primary,
     padding: 2,
@@ -68,18 +89,11 @@ const styles = StyleSheet.create({
   },
   storyRingOwn: {
     borderColor: Colors.borderLight,
-    borderStyle: 'dashed',
-  },
-  storyImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.surface,
   },
   addBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -1,
+    right: -1,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -92,7 +106,7 @@ const styles = StyleSheet.create({
   storyName: {
     fontSize: 11,
     color: Colors.textSecondary,
-    marginTop: 4,
     textAlign: 'center',
+    width: '100%',
   },
 });

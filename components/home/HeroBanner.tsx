@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,20 +8,20 @@ import { useUserStore, UserTier } from '../../store/userStore';
 import CoachSelectionModal from '../modals/CoachSelectionModal';
 import PremiumUpgradeModal from '../modals/PremiumUpgradeModal';
 
-const { width } = Dimensions.get('window');
-
 export default function HeroBanner() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { width } = useWindowDimensions();
   const [coachModalVisible, setCoachModalVisible] = useState(false);
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
+  // Hero height: 55% of screen width gives a 16:10-ish portrait feel on all phones
+  const heroHeight = Math.round(width * 0.72);
+
   const handleStartToday = () => {
     if (user.tier === UserTier.GUEST || user.tier === UserTier.FREE) {
-      // Direct Guest and Free users to the new cinematic Challenge page
       router.push('/challenge');
-    } else if (user.tier === UserTier.PREMIUM) {
-      // Premium User -> Full Access
+    } else {
       router.push('/(tabs)/chat');
     }
   };
@@ -30,46 +30,53 @@ export default function HeroBanner() {
     if (option === 'AI_COACH') {
       router.push('/(tabs)/chat');
     } else {
-      // Show Premium Upgrade for Real Coach
       setPremiumModalVisible(true);
     }
   };
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { marginTop: 16 }]}>
         <ImageBackground
           source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
-          style={styles.background}
+          style={[styles.background, { height: heroHeight }]}
           imageStyle={styles.backgroundImage}
         >
           <LinearGradient
-            colors={['rgba(10, 14, 23, 0.3)', 'rgba(10, 14, 23, 0.85)']}
-            style={styles.gradient}
-          >
-            <View style={styles.content}>
-              <Text style={styles.title}>
-                Better{'\n'}Version{'\n'}of <Text style={styles.titleHighlight}>You</Text>
-              </Text>
-              <Text style={styles.subtitle}>
-                Your goals. Our support.{'\n'}Real results.
-              </Text>
-              <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8} onPress={handleStartToday}>
-                <Text style={styles.ctaText}>Start Today</Text>
-                <Ionicons name="arrow-forward" size={18} color={Colors.background} />
-              </TouchableOpacity>
+            colors={['rgba(10,14,23,0.15)', 'rgba(10,14,23,0.9)']}
+            style={StyleSheet.absoluteFill}
+          />
+
+          {/* Top tag */}
+          <View style={styles.topRow}>
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveBadgeText}>FEATURED</Text>
             </View>
-          </LinearGradient>
+          </View>
+
+          {/* Bottom content */}
+          <View style={styles.content}>
+            <Text style={styles.title} numberOfLines={3}>
+              Better{'\n'}Version{'\n'}of <Text style={styles.titleHighlight}>You</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              Your goals. Our support. Real results.
+            </Text>
+            <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8} onPress={handleStartToday}>
+              <Text style={styles.ctaText}>Start Today</Text>
+              <Ionicons name="arrow-forward" size={16} color={Colors.background} />
+            </TouchableOpacity>
+          </View>
         </ImageBackground>
       </View>
 
-      <CoachSelectionModal 
-        visible={coachModalVisible} 
-        onClose={() => setCoachModalVisible(false)} 
-        onSelect={handleCoachSelect} 
+      <CoachSelectionModal
+        visible={coachModalVisible}
+        onClose={() => setCoachModalVisible(false)}
+        onSelect={handleCoachSelect}
       />
-
-      <PremiumUpgradeModal 
+      <PremiumUpgradeModal
         visible={premiumModalVisible}
         onClose={() => setPremiumModalVisible(false)}
       />
@@ -79,55 +86,78 @@ export default function HeroBanner() {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-    minHeight: 240,
+    paddingHorizontal: 16,
   },
   background: {
     width: '100%',
-    height: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
   },
   backgroundImage: {
     borderRadius: 20,
   },
-  gradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 20,
+  topRow: {
+    padding: 16,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  liveBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   content: {
-    gap: 8,
+    padding: 20,
+    paddingBottom: 22,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.textPrimary,
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#FFF',
     lineHeight: 36,
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   titleHighlight: {
     color: Colors.primary,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.75)',
+    marginBottom: 18,
     lineHeight: 18,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     backgroundColor: Colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 30,
     alignSelf: 'flex-start',
-    marginTop: 4,
+    gap: 6,
   },
   ctaText: {
-    fontSize: 14,
-    fontWeight: '700',
     color: Colors.background,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

@@ -43,6 +43,6 @@ const styles = StyleSheet.create({
   seeAll: {
     fontSize: 13,
     color: Colors.primary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
