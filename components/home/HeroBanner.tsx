@@ -17,12 +17,9 @@ export default function HeroBanner() {
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
   const handleStartToday = () => {
-    if (user.tier === UserTier.GUEST) {
-      // Guest User -> Direct them to the free workout plan
-      router.push('/workout');
-    } else if (user.tier === UserTier.FREE) {
-      // Free User -> Choose Coach Modal
-      setCoachModalVisible(true);
+    if (user.tier === UserTier.GUEST || user.tier === UserTier.FREE) {
+      // Direct Guest and Free users to the new cinematic Challenge page
+      router.push('/challenge');
     } else if (user.tier === UserTier.PREMIUM) {
       // Premium User -> Full Access
       router.push('/(tabs)/chat');
