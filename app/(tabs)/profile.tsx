@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   profileInfo: {
     alignItems: 'center',

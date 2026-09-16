@@ -12,8 +12,6 @@ import CommunityFeed from '../../components/home/CommunityFeed';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  // Tab bar height: 60 base + device bottom inset + extra buffer
-  const bottomPadding = 60 + insets.bottom + 32;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -21,7 +19,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         bounces={true}
         overScrollMode="always"
       >

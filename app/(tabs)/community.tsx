@@ -92,6 +92,6 @@ const styles = StyleSheet.create({
     color: Colors.background,
   },
   feedContainer: {
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
 });

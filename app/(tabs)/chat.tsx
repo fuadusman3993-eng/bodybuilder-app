@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 100, // Space for bottom navigation
+    paddingBottom: 24,
   },
   chatCard: {
     flexDirection: 'row',
