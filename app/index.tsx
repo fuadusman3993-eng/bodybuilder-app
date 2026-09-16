@@ -1,144 +1,371 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '../constants/colors';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore, UserTier } from '../store/userStore';
+
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { setUser } = useUserStore();
 
   const handleLogin = () => {
-    // Basic auth logic -> Sets User to FREE
     setUser({ tier: UserTier.FREE, name: email.split('@')[0] || 'Athlete' });
     router.replace('/(tabs)');
   };
 
   const handleGuest = () => {
-    // Sets User to GUEST
     setUser({ tier: UserTier.GUEST, name: 'Guest' });
     router.replace('/(tabs)');
   };
 
+  const handleSignUp = () => {
+    // For now same as login (will be a separate screen later)
+    handleLogin();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
-        
-        <View style={styles.logoContainer}>
-          <Image source={require('../assets/icon.png')} style={styles.logo} />
-          <Text style={styles.title}>BodyBuilder</Text>
-          <Text style={styles.subtitle}>Stronger • Healthier • Together</Text>
-        </View>
+    <ImageBackground
+      source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80' }}
+      style={styles.background}
+    >
+      {/* Dark overlay */}
+      <View style={styles.overlay} />
 
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email address"
-            placeholderTextColor={Colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={Colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo & Branding */}
+            <View style={styles.brandingContainer}>
+              <View style={styles.logoRow}>
+                <View style={styles.logoBox}>
+                  <Ionicons name="barbell-outline" size={28} color="#10B981" />
+                </View>
+                <View>
+                  <Text style={styles.appName}>BodyBuilder</Text>
+                  <Text style={styles.appTagline}>Stronger • Healthier • Happier</Text>
+                </View>
+              </View>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} activeOpacity={0.8}>
-            <Text style={styles.loginButtonText}>Log In / Sign Up</Text>
-          </TouchableOpacity>
+              {/* Hero Text */}
+              <View style={styles.heroText}>
+                <Text style={styles.heroTitle}>Your Goal.{'\n'}Our Mission.</Text>
+                <Text style={styles.heroSubtitle}>
+                  Build your best version with{'\n'}the right support, tools and community.
+                </Text>
+                {/* Pagination dots */}
+                <View style={styles.dots}>
+                  <View style={[styles.dot, styles.dotActive]} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                </View>
+              </View>
+            </View>
 
-          <TouchableOpacity style={styles.guestButton} onPress={handleGuest} activeOpacity={0.8}>
-            <Text style={styles.guestButtonText}>Continue as Guest</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Form */}
+            <View style={styles.formContainer}>
+              {/* Email Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email or Phone Number"
+                  placeholderTextColor="#888"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
 
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#888"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                  <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#888" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password */}
+              <TouchableOpacity style={styles.forgotContainer}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              {/* Log In Button */}
+              <TouchableOpacity style={styles.loginButton} onPress={handleLogin} activeOpacity={0.85}>
+                <Text style={styles.loginButtonText}>Log In</Text>
+                <Ionicons name="arrow-forward" size={18} color="#000" />
+              </TouchableOpacity>
+
+              {/* OR Divider */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Social Buttons */}
+              <View style={styles.socialRow}>
+                <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleLogin}>
+                  <Text style={styles.socialIcon}>G</Text>
+                  <Text style={styles.socialText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleLogin}>
+                  <Ionicons name="logo-apple" size={20} color="#FFF" />
+                  <Text style={styles.socialText}>Continue with Apple</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Sign Up + Guest */}
+              <View style={styles.signupRow}>
+                <Text style={styles.signupText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={handleSignUp}>
+                  <Text style={styles.signupLink}>Sign Up →</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.guestButton} onPress={handleGuest} activeOpacity={0.7}>
+                <Text style={styles.guestText}>Continue as Guest</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    backgroundColor: Colors.background,
+    width: '100%',
+    height: '100%',
   },
-  content: {
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+  },
+  safeArea: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
+    paddingBottom: 32,
   },
-  logoContainer: {
+  brandingContainer: {
+    paddingTop: 24,
+    flex: 1,
+  },
+  logoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 48,
+    gap: 12,
+    marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-    marginBottom: 16,
+  logoBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
+  appName: {
+    fontSize: 20,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  appTagline: {
+    fontSize: 12,
+    color: '#AAA',
+    marginTop: 2,
+  },
+  heroText: {
+    marginTop: 16,
+  },
+  heroTitle: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#FFF',
+    lineHeight: 46,
+    letterSpacing: -0.5,
+    marginBottom: 14,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    color: '#CCC',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  dotActive: {
+    backgroundColor: '#10B981',
+    width: 20,
   },
   formContainer: {
-    gap: 16,
+    paddingTop: 24,
+    gap: 14,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    height: 56,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: Colors.surface,
-    height: 56,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flex: 1,
+    fontSize: 15,
+    color: '#FFF',
+    height: '100%',
+  },
+  eyeButton: {
+    padding: 4,
+  },
+  forgotContainer: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+  },
+  forgotText: {
+    color: '#CCC',
+    fontSize: 13,
+    fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FFF',
     height: 56,
-    borderRadius: 12,
+    borderRadius: 14,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    gap: 8,
+    marginTop: 4,
   },
   loginButtonText: {
-    color: Colors.background,
-    fontSize: 16,
+    color: '#000',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  dividerText: {
+    color: '#888',
+    fontSize: 13,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  socialButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    height: 52,
+    paddingHorizontal: 8,
+  },
+  socialIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  socialText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  signupRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  signupText: {
+    color: '#888',
+    fontSize: 14,
+  },
+  signupLink: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '700',
   },
   guestButton: {
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    alignSelf: 'center',
+    paddingVertical: 8,
   },
-  guestButtonText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
+  guestText: {
+    color: '#666',
+    fontSize: 13,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
 });

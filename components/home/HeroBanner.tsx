@@ -18,8 +18,8 @@ export default function HeroBanner() {
 
   const handleStartToday = () => {
     if (user.tier === UserTier.GUEST) {
-      // Guest User -> Doesn't have access to custom coaches, prompt signup or just alert
-      alert("Welcome Guest! Please sign up to choose a coach.");
+      // Guest User -> Direct them to the free workout plan
+      router.push('/workout');
     } else if (user.tier === UserTier.FREE) {
       // Free User -> Choose Coach Modal
       setCoachModalVisible(true);
