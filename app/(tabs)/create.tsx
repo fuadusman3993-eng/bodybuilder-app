@@ -4,9 +4,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { profileData } from '../../constants/mockData';
+import { useUserStore, UserTier } from '../../store/userStore';
+import GuestBlocker from '../../components/ui/GuestBlocker';
 
 export default function CreateScreen() {
   const [content, setContent] = useState('');
+  const { user } = useUserStore();
+
+  if (user.tier === UserTier.GUEST) {
+    return (
+      <GuestBlocker 
+        title="Share Your Journey"
+        description="Sign up to post your progress, share workouts, and inspire others in the community."
+        icon="create-outline"
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

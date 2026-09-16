@@ -3,14 +3,23 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvo
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { useUserStore, UserTier } from '../store/userStore';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const { setUser } = useUserStore();
 
   const handleLogin = () => {
-    // For now, bypass real authentication and go straight to the app
+    // Basic auth logic -> Sets User to FREE
+    setUser({ tier: UserTier.FREE, name: email.split('@')[0] || 'Athlete' });
+    router.replace('/(tabs)');
+  };
+
+  const handleGuest = () => {
+    // Sets User to GUEST
+    setUser({ tier: UserTier.GUEST, name: 'Guest' });
     router.replace('/(tabs)');
   };
 
@@ -44,7 +53,11 @@ export default function LoginScreen() {
           />
 
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin} activeOpacity={0.8}>
-            <Text style={styles.loginButtonText}>Login</Text>
+            <Text style={styles.loginButtonText}>Log In / Sign Up</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.guestButton} onPress={handleGuest} activeOpacity={0.8}>
+            <Text style={styles.guestButtonText}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
 
@@ -114,5 +127,18 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontSize: 16,
     fontWeight: '700',
+  },
+  guestButton: {
+    height: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  guestButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

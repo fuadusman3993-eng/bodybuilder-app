@@ -4,12 +4,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { chatList } from '../../constants/mockData';
+import { useUserStore, UserTier } from '../../store/userStore';
+import GuestBlocker from '../../components/ui/GuestBlocker';
 
 const filterTabs = ['All', 'Coaches', 'Clients', 'Groups'];
 
 export default function ChatScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('All');
+  const { user } = useUserStore();
+
+  if (user.tier === UserTier.GUEST) {
+    return (
+      <GuestBlocker 
+        title="Members Only"
+        description="Sign up for a free account to chat with AI and real coaches, and join fitness community groups."
+        icon="chatbubbles-outline"
+      />
+    );
+  }
 
   const renderAvatar = (chat: any) => {
     if (chat.isAI) {

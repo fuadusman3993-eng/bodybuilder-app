@@ -5,11 +5,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { communityPosts } from '../../constants/mockData';
 import PostCard from '../../components/home/PostCard';
+import { useUserStore, UserTier } from '../../store/userStore';
+import GuestBlocker from '../../components/ui/GuestBlocker';
 
 const tabs = ['For You', 'Following', 'Nearby'];
 
 export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState('For You');
+  const { user } = useUserStore();
+
+  if (user.tier === UserTier.GUEST) {
+    return (
+      <GuestBlocker 
+        title="Join the Community"
+        description="Connect with other fitness enthusiasts, share your progress, and get inspired. Sign up to get started!"
+        icon="people-outline"
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

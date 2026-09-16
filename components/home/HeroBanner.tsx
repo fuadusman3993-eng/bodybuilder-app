@@ -6,34 +6,35 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import CoachSelectionModal from '../modals/CoachSelectionModal';
+import PremiumUpgradeModal from '../modals/PremiumUpgradeModal';
 
 const { width } = Dimensions.get('window');
 
 export default function HeroBanner() {
   const router = useRouter();
   const { user } = useUserStore();
-  const [modalVisible, setModalVisible] = useState(false);
+  const [coachModalVisible, setCoachModalVisible] = useState(false);
+  const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
   const handleStartToday = () => {
     if (user.tier === UserTier.GUEST) {
-      // 1. Guest: Maybe show a login prompt or navigate to a guest explore mode
-      // For now, we stay on the screen or show an alert (we can build explore mode later)
-      alert("Welcome, Guest! Create an account to unlock more features.");
+      // Guest User -> Doesn't have access to custom coaches, prompt signup or just alert
+      alert("Welcome Guest! Please sign up to choose a coach.");
     } else if (user.tier === UserTier.FREE) {
-      // 2. Free User: Show Coach Selection Modal
-      setModalVisible(true);
+      // Free User -> Choose Coach Modal
+      setCoachModalVisible(true);
     } else if (user.tier === UserTier.PREMIUM) {
-      // 3. Premium User: Navigate directly to Premium Dashboard/Chat
+      // Premium User -> Full Access
       router.push('/(tabs)/chat');
     }
   };
 
   const handleCoachSelect = (option: 'AI_COACH' | 'REAL_COACH') => {
     if (option === 'AI_COACH') {
-      router.push('/(tabs)/chat'); // Simulating going to AI chat
+      router.push('/(tabs)/chat');
     } else {
-      // Simulated routing to trainers list, or premium upgrade prompt
-      alert("Redirecting to Premium Trainers list...");
+      // Show Premium Upgrade for Real Coach
+      setPremiumModalVisible(true);
     }
   };
 
@@ -66,9 +67,14 @@ export default function HeroBanner() {
       </View>
 
       <CoachSelectionModal 
-        visible={modalVisible} 
-        onClose={() => setModalVisible(false)} 
+        visible={coachModalVisible} 
+        onClose={() => setCoachModalVisible(false)} 
         onSelect={handleCoachSelect} 
+      />
+
+      <PremiumUpgradeModal 
+        visible={premiumModalVisible}
+        onClose={() => setPremiumModalVisible(false)}
       />
     </>
   );

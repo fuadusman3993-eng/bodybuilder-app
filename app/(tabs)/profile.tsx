@@ -4,12 +4,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { profileData } from '../../constants/mockData';
+import { useUserStore, UserTier } from '../../store/userStore';
+import GuestBlocker from '../../components/ui/GuestBlocker';
 
 const { width } = Dimensions.get('window');
-const GRID_ITEM_SIZE = (width - 32 - 16) / 3; // 3 columns, 16px padding on sides, 8px gap
+const GRID_ITEM_SIZE = (width - 32 - 16) / 3;
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Posts');
+  const { user } = useUserStore();
+
+  if (user.tier === UserTier.GUEST) {
+    return (
+      <GuestBlocker 
+        title="Your Profile Awaits"
+        description="Sign up to track your workouts, earn achievements, and build your fitness portfolio."
+        icon="person-circle-outline"
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
