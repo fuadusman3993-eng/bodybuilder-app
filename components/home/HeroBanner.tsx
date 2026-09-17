@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -37,11 +37,12 @@ export default function HeroBanner() {
   return (
     <>
       <View style={[styles.container, { marginTop: 16 }]}>
-        <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
-          style={[styles.background, { height: heroHeight }]}
-          imageStyle={styles.backgroundImage}
-        >
+        <View style={[styles.background, { height: heroHeight }]}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
+            style={[StyleSheet.absoluteFillObject, styles.backgroundImage]}
+            resizeMode="cover"
+          />
           <LinearGradient
             colors={['rgba(10,14,23,0.15)', 'rgba(10,14,23,0.9)']}
             style={StyleSheet.absoluteFill}
@@ -68,7 +69,7 @@ export default function HeroBanner() {
               <Ionicons name="arrow-forward" size={16} color={Colors.background} />
             </TouchableOpacity>
           </View>
-        </ImageBackground>
+        </View>
       </View>
 
       <CoachSelectionModal

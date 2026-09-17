@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,11 +43,12 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       {/* Fixed Background Image */}
-      <ImageBackground
+      <Image
         source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80' }}
         style={StyleSheet.absoluteFillObject}
-      >
-        {/* Dark overlay */}
+        resizeMode="cover"
+      />
+      {/* Dark overlay */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>

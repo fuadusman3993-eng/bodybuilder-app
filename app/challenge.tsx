@@ -7,6 +7,7 @@ import {
   ImageBackground,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,11 +51,12 @@ export default function ChallengeScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.scrollContent}>
         {/* HERO SECTION */}
-        <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1526506190296-65b50a14f9d6?q=80&w=800&auto=format&fit=crop&grayscale=true' }}
-          style={styles.heroBackground}
-          imageStyle={{ opacity: 0.8 }}
-        >
+        <View style={styles.heroBackground}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1526506190296-65b50a14f9d6?q=80&w=800&auto=format&fit=crop&grayscale=true' }}
+            style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
+            resizeMode="cover"
+          />
           <LinearGradient
             colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', '#000']}
             style={styles.heroGradient}
@@ -109,7 +111,7 @@ export default function ChallengeScreen() {
               </View>
             </View>
           </View>
-        </ImageBackground>
+        </View>
 
         <View style={styles.bodyContent}>
           {/* What You'll Get */}
@@ -187,11 +189,12 @@ export default function ChallengeScreen() {
 
           {/* Premium Promotion */}
           <TouchableOpacity style={styles.premiumBanner} activeOpacity={0.9}>
-            <ImageBackground
-              source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop&grayscale=true' }}
-              style={styles.premiumBg}
-              imageStyle={{ borderRadius: 16, opacity: 0.4 }}
-            >
+            <View style={styles.premiumBg}>
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop&grayscale=true' }}
+                style={[StyleSheet.absoluteFillObject, { opacity: 0.4, borderRadius: 16 }]}
+                resizeMode="cover"
+              />
               <LinearGradient
                 colors={['rgba(20,20,20,0.95)', 'rgba(0,0,0,0.6)']}
                 start={{ x: 0, y: 0 }}
@@ -213,7 +216,7 @@ export default function ChallengeScreen() {
                   <Ionicons name="arrow-forward" size={14} color="#000" />
                 </View>
               </View>
-            </ImageBackground>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
