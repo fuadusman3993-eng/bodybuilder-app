@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,8 +14,6 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore, UserTier } from '../store/userStore';
-
-const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -36,19 +33,17 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = () => {
-    // For now same as login (will be a separate screen later)
     handleLogin();
   };
 
   return (
     <View style={styles.root}>
-      {/* Fixed Background Image */}
+      {/* Fixed full-screen background */}
       <Image
         source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80' }}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
-      {/* Dark overlay */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>
@@ -67,19 +62,17 @@ export default function LoginScreen() {
                 <View style={styles.logoBox}>
                   <Ionicons name="barbell-outline" size={28} color="#10B981" />
                 </View>
-                <View>
+                <View style={styles.brandText}>
                   <Text style={styles.appName}>BodyBuilder</Text>
                   <Text style={styles.appTagline}>Stronger • Healthier • Happier</Text>
                 </View>
               </View>
 
-              {/* Hero Text */}
               <View style={styles.heroText}>
                 <Text style={styles.heroTitle}>Your Goal.{'\n'}Our Mission.</Text>
                 <Text style={styles.heroSubtitle}>
                   Build your best version with{'\n'}the right support, tools and community.
                 </Text>
-                {/* Pagination dots */}
                 <View style={styles.dots}>
                   <View style={[styles.dot, styles.dotActive]} />
                   <View style={styles.dot} />
@@ -90,7 +83,7 @@ export default function LoginScreen() {
 
             {/* Form */}
             <View style={styles.formContainer}>
-              {/* Email Input */}
+              {/* Email */}
               <View style={styles.inputWrapper}>
                 <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
                 <TextInput
@@ -104,7 +97,7 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Password Input */}
+              {/* Password */}
               <View style={styles.inputWrapper}>
                 <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
                 <TextInput
@@ -120,12 +113,11 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Forgot Password */}
               <TouchableOpacity style={styles.forgotContainer}>
                 <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              {/* Log In Button */}
+              {/* Log In */}
               <TouchableOpacity style={styles.loginButton} onPress={handleLogin} activeOpacity={0.85}>
                 <Text style={styles.loginButtonText}>Log In</Text>
                 <Ionicons name="arrow-forward" size={18} color="#000" />
@@ -142,16 +134,15 @@ export default function LoginScreen() {
               <View style={styles.socialRow}>
                 <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleLogin}>
                   <Text style={styles.socialIcon}>G</Text>
-                  <Text style={styles.socialText}>Continue with Google</Text>
+                  <Text style={styles.socialText} numberOfLines={1}>Continue with Google</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleLogin}>
                   <Ionicons name="logo-apple" size={20} color="#FFF" />
-                  <Text style={styles.socialText}>Continue with Apple</Text>
+                  <Text style={styles.socialText} numberOfLines={1}>Continue with Apple</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Sign Up + Guest */}
+              {/* Sign Up Row */}
               <View style={styles.signupRow}>
                 <Text style={styles.signupText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={handleSignUp}>
@@ -201,6 +192,9 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 40,
   },
+  brandText: {
+    flexShrink: 1,
+  },
   logoBox: {
     width: 52,
     height: 52,
@@ -210,6 +204,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16, 185, 129, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   appName: {
     fontSize: 20,
@@ -226,18 +221,20 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   heroTitle: {
-    fontSize: 38,
+    fontSize: 36,
     fontWeight: '800',
     color: '#FFF',
-    lineHeight: 46,
+    lineHeight: 44,
     letterSpacing: -0.5,
     marginBottom: 14,
+    flexShrink: 1,
   },
   heroSubtitle: {
     fontSize: 15,
     color: '#CCC',
     lineHeight: 22,
     marginBottom: 24,
+    flexShrink: 1,
   },
   dots: {
     flexDirection: 'row',
@@ -263,22 +260,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
-    height: 56,
+    minHeight: 56,
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
   },
   inputIcon: {
     marginRight: 12,
+    flexShrink: 0,
   },
   input: {
     flex: 1,
     fontSize: 15,
     color: '#FFF',
-    height: '100%',
+    paddingVertical: 14,
   },
   eyeButton: {
     padding: 4,
+    flexShrink: 0,
   },
   forgotContainer: {
     alignSelf: 'flex-end',
@@ -291,13 +290,14 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: '#FFF',
-    height: 56,
+    minHeight: 56,
     borderRadius: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     marginTop: 4,
+    paddingHorizontal: 24,
   },
   loginButtonText: {
     color: '#000',
@@ -327,29 +327,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     borderRadius: 14,
-    height: 52,
+    minHeight: 52,
     paddingHorizontal: 8,
+    overflow: 'hidden',
   },
   socialIcon: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFF',
+    flexShrink: 0,
   },
   socialText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
+    flexShrink: 1,
   },
   signupRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
     marginTop: 4,
+    gap: 2,
   },
   signupText: {
     color: '#888',
@@ -362,7 +367,8 @@ const styles = StyleSheet.create({
   },
   guestButton: {
     alignSelf: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   guestText: {
     color: '#666',

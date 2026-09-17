@@ -4,10 +4,9 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ImageBackground,
   TouchableOpacity,
-  Dimensions,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,8 +28,11 @@ const PREVIEW_DAYS = [
 export default function ChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user } = useUserStore();
   const [premiumVisible, setPremiumVisible] = useState(false);
+
+  const heroHeight = Math.round(width * 0.9);
 
   const handleJoin = () => {
     if (user.tier === UserTier.PREMIUM) {
@@ -51,7 +53,7 @@ export default function ChallengeScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.scrollContent}>
         {/* HERO SECTION */}
-        <View style={styles.heroBackground}>
+        <View style={[styles.heroBackground, { height: heroHeight }]}>
           <Image
             source={{ uri: 'https://images.unsplash.com/photo-1526506190296-65b50a14f9d6?q=80&w=800&auto=format&fit=crop&grayscale=true' }}
             style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
@@ -176,13 +178,14 @@ export default function ChallengeScreen() {
                   {day.active && <Ionicons name="checkmark-circle" size={18} color="#FFF" />}
                   {day.locked && <Ionicons name="lock-closed-outline" size={16} color="#888" />}
                 </View>
-                <ImageBackground 
-                  source={{ uri: day.image }} 
-                  style={styles.dayCardImg}
-                  imageStyle={styles.dayCardImgStyle}
-                >
+                <View style={styles.dayCardImg}>
+                  <Image
+                    source={{ uri: day.image }}
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 8 }]}
+                    resizeMode="cover"
+                  />
                   <View style={styles.dayCardImgOverlay} />
-                </ImageBackground>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -274,7 +277,9 @@ const styles = StyleSheet.create({
   },
   heroBackground: {
     width: '100%',
-    height: 480,
+    height: undefined, // height set inline from useWindowDimensions
+    minHeight: 380,
+    overflow: 'hidden',
   },
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -382,8 +387,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   cardLayout: {
-    flexDirection: width > 380 ? 'row' : 'column',
-    gap: 20,
+    flexDirection: 'column',
+    gap: 16,
   },
   cardDesc: {
     flex: 1,
@@ -461,6 +466,8 @@ const styles = StyleSheet.create({
   },
   previewScroll: {
     gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
   dayCard: {
     width: 130,
@@ -471,6 +478,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 12,
     gap: 12,
+    flexShrink: 0,
   },
   dayCardActive: {
     borderColor: '#FFF',
@@ -484,20 +492,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FFF',
+    flexShrink: 1,
   },
   dayCardSub: {
     fontSize: 11,
     color: '#888',
     marginTop: 2,
+    flexShrink: 1,
   },
   dayCardImg: {
     width: '100%',
     height: 70,
     borderRadius: 8,
     overflow: 'hidden',
-  },
-  dayCardImgStyle: {
-    borderRadius: 8,
   },
   dayCardImgOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -524,6 +531,7 @@ const styles = StyleSheet.create({
   },
   premiumTextCol: {
     flex: 1,
+    flexShrink: 1,
   },
   premiumHeader: {
     flexDirection: 'row',
@@ -535,11 +543,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFF',
+    flexShrink: 1,
   },
   premiumDesc: {
     fontSize: 12,
     color: '#888',
     lineHeight: 18,
+    flexShrink: 1,
   },
   upgradeBtn: {
     flexDirection: 'row',
@@ -549,6 +559,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     gap: 4,
+    flexShrink: 0,
   },
   upgradeBtnText: {
     color: '#000',
@@ -568,22 +579,25 @@ const styles = StyleSheet.create({
   },
   joinBtn: {
     backgroundColor: '#FFF',
-    height: 56,
+    minHeight: 56,
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 24,
   },
   joinBtnText: {
     color: '#000',
     fontSize: 16,
     fontWeight: '700',
+    flexShrink: 1,
   },
   footerNote: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 12,
   },
