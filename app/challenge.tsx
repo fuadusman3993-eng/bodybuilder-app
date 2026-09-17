@@ -7,45 +7,83 @@ import {
   TouchableOpacity,
   Image,
   useWindowDimensions,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useUserStore, UserTier } from '../store/userStore';
+import { useChallengeStore } from '../store/challengeStore';
+import { CHALLENGES } from '../constants/challenges';
 import PremiumUpgradeModal from '../components/modals/PremiumUpgradeModal';
 
-// Removed width since it's not used globally anymore
-const PREVIEW_DAYS = [
-  { day: 1, title: 'Full Body', active: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200' },
-  { day: 2, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
-  { day: 3, title: 'Lower Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
-  { day: 4, title: 'Full Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
-  { day: 5, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
-];
+const CHALLENGE_ID = '14-day-muscle';
+const challengeData = CHALLENGES[CHALLENGE_ID];
 
 export default function ChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { user } = useUserStore();
+  const { 
+    joinedChallengeId, 
+    bookmarkedChallenges, 
+    completedDays, 
+    joinChallenge, 
+    toggleBookmark,
+    currentDay
+  } = useChallengeStore();
+  
   const [premiumVisible, setPremiumVisible] = useState(false);
 
   const heroHeight = Math.round(width * 0.9);
+  
+  const isJoined = joinedChallengeId === CHALLENGE_ID;
+  const isBookmarked = bookmarkedChallenges.includes(CHALLENGE_ID);
+  
+  // Calculate progress
+  const totalDays = challengeData.days.length;
+  const progressPercent = Math.round((completedDays.length / totalDays) * 100);
 
-  const handleJoin = () => {
-    if (user.tier === UserTier.PREMIUM) {
-      // Premium: full access, start the workout
-      router.push('/workout');
-    } else {
-      // Guest or Free: show Premium upsell
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Join me in the ${challengeData.title} on BodyBuilder!`,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
+  };
+
+  const handleJoinOrContinue = () => {
+    if (!isJoined) {
+      if (user.tier === UserTier.GUEST) {
+        // Need to login first
+        router.push('/');
+        return;
+      }
+      joinChallenge(CHALLENGE_ID);
+      return;
+    }
+    
+    // Already joined, continue to current day
+    handleDayPress(challengeData.days[currentDay - 1]);
+  };
+
+  const handleDayPress = (dayData: any) => {
+    if (dayData.isPremium && user.tier !== UserTier.PREMIUM) {
       setPremiumVisible(true);
+      return;
+    }
+    if (dayData.workoutId) {
+      router.push(`/workout/${dayData.day}`);
     }
   };
 
   const handleUpgradePress = () => {
     setPremiumVisible(false);
-    // After upgrading (simulated in PremiumUpgradeModal), user becomes PREMIUM
+    // Real flow would upgrade the user here
   };
 
   return (
@@ -69,11 +107,11 @@ export default function ChallengeScreen() {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Start Challenge</Text>
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.headerBtn}>
+              <TouchableOpacity style={styles.headerBtn} onPress={handleShare}>
                 <Ionicons name="share-outline" size={22} color="#FFF" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerBtn}>
-                <Ionicons name="bookmark-outline" size={22} color="#FFF" />
+              <TouchableOpacity style={styles.headerBtn} onPress={() => toggleBookmark(CHALLENGE_ID)}>
+                <Ionicons name={isBookmarked ? "bookmark" : "bookmark-outline"} size={22} color="#FFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -155,8 +193,10 @@ export default function ChallengeScreen() {
           {/* Daily Plan Preview */}
           <View style={[styles.sectionHeader, { marginTop: 32 }]}>
             <Text style={styles.sectionTitle}>Daily Plan Preview</Text>
-            <View style={styles.dayBadge}>
-              <Text style={styles.dayBadgeText}>Day 1 of 14</Text>
+            <View style={[styles.dayBadge, isJoined && { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Text style={[styles.dayBadgeText, isJoined && { color: '#10B981' }]}>
+                {isJoined ? `${completedDays.length} / ${totalDays} Days (${progressPercent}%)` : '14 Days'}
+              </Text>
             </View>
           </View>
 
@@ -167,72 +207,91 @@ export default function ChallengeScreen() {
             snapToInterval={140}
             decelerationRate="fast"
           >
-            {PREVIEW_DAYS.map((day) => (
-              <TouchableOpacity key={day.day} style={[styles.dayCard, day.active && styles.dayCardActive]} activeOpacity={0.9}>
-                <View style={styles.dayCardHeader}>
-                  <View>
-                    <Text style={styles.dayCardTitle}>Day {day.day}</Text>
-                    <Text style={styles.dayCardSub}>{day.title}</Text>
+            {challengeData.days.map((day) => {
+              const isCompleted = completedDays.includes(day.day);
+              const isLocked = day.isPremium && user.tier !== UserTier.PREMIUM;
+              
+              return (
+                <TouchableOpacity 
+                  key={day.day} 
+                  style={[styles.dayCard, (isCompleted || day.day === currentDay) && styles.dayCardActive]} 
+                  activeOpacity={0.9}
+                  onPress={() => handleDayPress(day)}
+                >
+                  <View style={styles.dayCardHeader}>
+                    <View>
+                      <Text style={styles.dayCardTitle}>Day {day.day}</Text>
+                      <Text style={styles.dayCardSub}>{day.title}</Text>
+                    </View>
+                    {isCompleted && <Ionicons name="checkmark-circle" size={18} color="#FFF" />}
+                    {!isCompleted && isLocked && <Ionicons name="lock-closed-outline" size={16} color="#888" />}
                   </View>
-                  {day.active && <Ionicons name="checkmark-circle" size={18} color="#FFF" />}
-                  {day.locked && <Ionicons name="lock-closed-outline" size={16} color="#888" />}
-                </View>
-                <View style={styles.dayCardImg}>
-                  <Image
-                    source={{ uri: day.image }}
-                    style={[StyleSheet.absoluteFillObject, { borderRadius: 8 }]}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.dayCardImgOverlay} />
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.dayCardImg}>
+                    <Image
+                      source={{ uri: day.image }}
+                      style={[StyleSheet.absoluteFillObject, { borderRadius: 8 }]}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.dayCardImgOverlay} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {/* Premium Promotion */}
-          <TouchableOpacity style={styles.premiumBanner} activeOpacity={0.9}>
-            <View style={styles.premiumBg}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop&grayscale=true' }}
-                style={[StyleSheet.absoluteFillObject, { opacity: 0.4, borderRadius: 16 }]}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={['rgba(20,20,20,0.95)', 'rgba(0,0,0,0.6)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.premiumGradient}
-              />
-              <View style={styles.premiumContent}>
-                <View style={styles.premiumTextCol}>
-                  <View style={styles.premiumHeader}>
-                    <Ionicons name="star" size={14} color="#FFF" />
-                    <Text style={styles.premiumTitle}>Go Premium for More</Text>
+          {user.tier !== UserTier.PREMIUM && (
+            <TouchableOpacity style={styles.premiumBanner} activeOpacity={0.9} onPress={() => setPremiumVisible(true)}>
+              <View style={styles.premiumBg}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop&grayscale=true' }}
+                  style={[StyleSheet.absoluteFillObject, { opacity: 0.4, borderRadius: 16 }]}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['rgba(20,20,20,0.95)', 'rgba(0,0,0,0.6)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.premiumGradient}
+                />
+                <View style={styles.premiumContent}>
+                  <View style={styles.premiumTextCol}>
+                    <View style={styles.premiumHeader}>
+                      <Ionicons name="star" size={14} color="#FFF" />
+                      <Text style={styles.premiumTitle}>Go Premium for More</Text>
+                    </View>
+                    <Text style={styles.premiumDesc}>
+                      Unlock personalized coaching, advanced tracking and exclusive challenges.
+                    </Text>
                   </View>
-                  <Text style={styles.premiumDesc}>
-                    Unlock personalized coaching, advanced tracking and exclusive challenges.
-                  </Text>
-                </View>
-                <View style={styles.upgradeBtn}>
-                  <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#000" />
+                  <View style={styles.upgradeBtn}>
+                    <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#000" />
+                  </View>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
       {/* Fixed Bottom CTA */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity style={styles.joinBtn} activeOpacity={0.85} onPress={handleJoin}>
-          <Text style={styles.joinBtnText}>Join Challenge</Text>
-          <Ionicons name="arrow-forward" size={18} color="#000" />
+        <TouchableOpacity style={styles.joinBtn} activeOpacity={0.85} onPress={handleJoinOrContinue}>
+          <Text style={styles.joinBtnText}>
+            {!isJoined ? 'Join Challenge' : 
+             (completedDays.length >= totalDays ? 'Challenge Completed ✓' : `Continue Day ${currentDay}`)}
+          </Text>
+          {completedDays.length < totalDays && (
+            <Ionicons name="arrow-forward" size={18} color="#000" />
+          )}
         </TouchableOpacity>
-        <View style={styles.footerNote}>
-          <Ionicons name="lock-closed-outline" size={10} color="#888" />
-          <Text style={styles.footerText}>Free to join  •  Upgrade for full access</Text>
-        </View>
+        {!isJoined && (
+          <View style={styles.footerNote}>
+            <Ionicons name="lock-closed-outline" size={10} color="#888" />
+            <Text style={styles.footerText}>Free to join  •  Upgrade for full access</Text>
+          </View>
+        )}
       </View>
 
       {/* Premium Upgrade Modal */}

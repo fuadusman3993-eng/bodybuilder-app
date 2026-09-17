@@ -115,3 +115,28 @@ export const profileData = {
     'https://images.unsplash.com/photo-1526506190301-3829280b1e36?w=300',
   ]
 };
+
+export const challengeWorkouts = {
+  1: {
+    title: 'Full Body',
+    duration: '45 min',
+    exercises: [
+      { id: '1', name: 'Barbell Squats', sets: 4, reps: 10, weight: '40kg' },
+      { id: '2', name: 'Bench Press', sets: 4, reps: 8, weight: '50kg' },
+      { id: '3', name: 'Bent-Over Rows', sets: 3, reps: 12, weight: '30kg' },
+      { id: '4', name: 'Overhead Press', sets: 3, reps: 10, weight: '20kg' },
+      { id: '5', name: 'Plank', sets: 3, reps: '60s', weight: 'BW' },
+    ]
+  },
+  2: {
+    title: 'Upper Body',
+    duration: '50 min',
+    exercises: [
+      { id: '1', name: 'Incline Dumbbell Press', sets: 4, reps: 10, weight: '20kg' },
+      { id: '2', name: 'Lat Pulldowns', sets: 4, reps: 12, weight: '45kg' },
+      { id: '3', name: 'Lateral Raises', sets: 3, reps: 15, weight: '8kg' },
+      { id: '4', name: 'Tricep Pushdowns', sets: 3, reps: 12, weight: '25kg' },
+      { id: '5', name: 'Bicep Curls', sets: 3, reps: 12, weight: '12kg' },
+    ]
+  }
+};

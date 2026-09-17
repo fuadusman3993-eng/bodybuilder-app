@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 
-function CreateTabButton({ onPress }: { onPress?: () => void }) {
+function CreateTabButton({ onPress }: { onPress?: any }) {
   return (
     <TouchableOpacity style={styles.createButton} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.createButtonInner}>
