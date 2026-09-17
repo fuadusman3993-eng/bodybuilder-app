@@ -30,7 +30,7 @@ export default function ExerciseExecutionScreen() {
   // State for Rest Timer
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const [isResting, setIsResting] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
 
   // State for Camera Form Record
   const [showCamera, setShowCamera] = useState(false);
