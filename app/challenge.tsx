@@ -93,7 +93,7 @@ export default function ChallengeScreen() {
         <View style={[styles.heroBackground, { height: heroHeight }]}>
           <Image
             source={{ uri: 'https://images.unsplash.com/photo-1526506190296-65b50a14f9d6?q=80&w=800&auto=format&fit=crop&grayscale=true' }}
-            style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
+            style={[StyleSheet.absoluteFillObject, { opacity: 0.8, width: '100%', height: '100%' }]}
             resizeMode="cover"
           />
           <LinearGradient
@@ -229,10 +229,12 @@ export default function ChallengeScreen() {
                   <View style={styles.dayCardImg}>
                     <Image
                       source={{ uri: day.image }}
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 8 }]}
+                      style={{ width: '100%', height: '100%', borderRadius: 8 }}
                       resizeMode="cover"
                     />
-                    <View style={styles.dayCardImgOverlay} />
+                    <View style={styles.dayCardImgOverlay}>
+                      <Ionicons name="play-circle-outline" size={24} color="#FFF" style={{ opacity: 0.8 }} />
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
@@ -242,12 +244,13 @@ export default function ChallengeScreen() {
           {/* Premium Promotion */}
           {user.tier !== UserTier.PREMIUM && (
             <TouchableOpacity style={styles.premiumBanner} activeOpacity={0.9} onPress={() => setPremiumVisible(true)}>
-              <View style={styles.premiumBg}>
+              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
                 <Image
                   source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop&grayscale=true' }}
-                  style={[StyleSheet.absoluteFillObject, { opacity: 0.4, borderRadius: 16 }]}
+                  style={{ width: '100%', height: '100%', opacity: 0.4 }}
                   resizeMode="cover"
                 />
+              </View>
                 <LinearGradient
                   colors={['rgba(20,20,20,0.95)', 'rgba(0,0,0,0.6)']}
                   start={{ x: 0, y: 0 }}
@@ -269,8 +272,7 @@ export default function ChallengeScreen() {
                     <Ionicons name="arrow-forward" size={14} color="#000" />
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
           )}
         </View>
       </ScrollView>
@@ -560,13 +562,15 @@ const styles = StyleSheet.create({
   },
   dayCardImg: {
     width: '100%',
-    height: 70,
+    height: 80,
     borderRadius: 8,
     overflow: 'hidden',
   },
   dayCardImgOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   premiumBanner: {
     marginTop: 32,

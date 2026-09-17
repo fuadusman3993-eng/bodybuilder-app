@@ -40,7 +40,7 @@ export default function HeroBanner() {
         <View style={[styles.background, { minHeight: Math.max(heroHeight, 280) }]}>
           <Image
             source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
-            style={[StyleSheet.absoluteFillObject, styles.backgroundImage]}
+            style={[StyleSheet.absoluteFillObject, styles.backgroundImage, { width: '100%', height: '100%' }]}
             resizeMode="cover"
           />
           <LinearGradient
