@@ -37,7 +37,7 @@ export default function HeroBanner() {
   return (
     <>
       <View style={[styles.container, { marginTop: 16 }]}>
-        <View style={[styles.background, { height: heroHeight }]}>
+        <View style={[styles.background, { minHeight: Math.max(heroHeight, 280) }]}>
           <Image
             source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
             style={[StyleSheet.absoluteFillObject, styles.backgroundImage]}

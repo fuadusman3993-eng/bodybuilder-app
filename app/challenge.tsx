@@ -15,8 +15,7 @@ import { useRouter } from 'expo-router';
 import { useUserStore, UserTier } from '../store/userStore';
 import PremiumUpgradeModal from '../components/modals/PremiumUpgradeModal';
 
-const { width } = Dimensions.get('window');
-
+// Removed width since it's not used globally anymore
 const PREVIEW_DAYS = [
   { day: 1, title: 'Full Body', active: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200' },
   { day: 2, title: 'Upper Body', locked: true, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=200&auto=format&fit=crop' },
