@@ -38,6 +38,7 @@ function StoryItem({ item }: { item: Story }) {
             borderRadius: avatarInner / 2,
             backgroundColor: Colors.surface,
           }}
+          resizeMode="cover"
         />
         {item.isOwn && (
           <View style={styles.addBadge}>

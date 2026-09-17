@@ -48,7 +48,11 @@ export default function PostCard({ post }: { post: Post }) {
       {/* Post Image */}
       {post.images.length > 0 && (
         <View style={styles.imageContainer}>
-          <Image source={{ uri: post.images[0] }} style={[styles.postImage, { height: imageHeight }]} />
+          <Image 
+            source={{ uri: post.images[0] }} 
+            style={styles.postImage} 
+            resizeMode="cover"
+          />
           {post.imageCount > 1 && (
             <View style={styles.imageCounter}>
               <Text style={styles.imageCounterText}>{post.currentImage}/{post.imageCount}</Text>
@@ -112,6 +116,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: Colors.surface,
+    overflow: 'hidden',
   },
   userName: {
     fontSize: Layout.fontMD,
@@ -136,8 +141,8 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: '100%',
+    aspectRatio: 4 / 5,
     backgroundColor: Colors.surface,
-    resizeMode: 'cover',
   },
   imageCounter: {
     position: 'absolute',

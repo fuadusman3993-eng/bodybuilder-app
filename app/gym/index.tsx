@@ -123,16 +123,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 20,
     paddingHorizontal: 16,
-    height: 50,
+    minHeight: 50,
+    flexShrink: 1,
   },
   searchIcon: {
     marginRight: 10,
+    flexShrink: 0,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     color: Colors.textPrimary,
-    height: '100%',
+    paddingVertical: 14,
   },
   tabsContainer: {
     flexDirection: 'row',

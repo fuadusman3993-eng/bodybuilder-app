@@ -158,16 +158,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 20,
     paddingHorizontal: 16,
-    height: 46,
+    minHeight: 46,
+    flexShrink: 1,
   },
   searchIcon: {
     marginRight: 10,
+    flexShrink: 0,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     color: Colors.textPrimary,
-    height: '100%',
+    paddingVertical: 12,
   },
   filterButton: {
     width: 46,
