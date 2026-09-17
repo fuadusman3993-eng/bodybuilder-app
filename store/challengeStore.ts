@@ -1,6 +1,30 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+// Web-safe storage: use localStorage on web, AsyncStorage on native
+// This prevents the "Cannot use import.meta outside a module" crash on Vercel
+const getStorage = () => {
+  if (Platform.OS === 'web') {
+    return {
+      getItem: (key: string) => {
+        try { return Promise.resolve(localStorage.getItem(key)); } 
+        catch { return Promise.resolve(null); }
+      },
+      setItem: (key: string, value: string) => {
+        try { localStorage.setItem(key, value); } catch {}
+        return Promise.resolve();
+      },
+      removeItem: (key: string) => {
+        try { localStorage.removeItem(key); } catch {}
+        return Promise.resolve();
+      },
+    };
+  }
+  // Native: lazy-load AsyncStorage to avoid affecting web build
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  return AsyncStorage;
+};
 
 export interface SetRecord {
   reps: number;
@@ -92,7 +116,7 @@ export const useChallengeStore = create<ChallengeState>()(
     }),
     {
       name: 'bodybuilder-challenge-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => getStorage()),
     }
   )
 );

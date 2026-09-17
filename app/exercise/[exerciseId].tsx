@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Colors } from '../../constants/colors';
 import { EXERCISES } from '../../constants/exercises';
 import { WORKOUTS } from '../../constants/workouts';
 import { CHALLENGES } from '../../constants/challenges';
 import { useChallengeStore } from '../../store/challengeStore';
+import FormCameraRecorder from '../../components/workout/FormCameraRecorder';
 
 export default function ExerciseExecutionScreen() {
   const { exerciseId, day, index } = useLocalSearchParams();
@@ -34,7 +34,6 @@ export default function ExerciseExecutionScreen() {
 
   // State for Camera Form Record
   const [showCamera, setShowCamera] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
 
   useEffect(() => {
     if (isResting && restTimeRemaining > 0) {
@@ -76,14 +75,7 @@ export default function ExerciseExecutionScreen() {
     }
   };
 
-  const openCamera = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        Alert.alert('Permission required', 'Camera permission is needed to record your form.');
-        return;
-      }
-    }
+  const openCamera = () => {
     setShowCamera(true);
   };
 
@@ -179,22 +171,8 @@ export default function ExerciseExecutionScreen() {
         </View>
       )}
 
-      {/* Camera Modal */}
-      <Modal visible={showCamera} animationType="slide" presentationStyle="fullScreen">
-        <View style={styles.cameraContainer}>
-          <CameraView style={StyleSheet.absoluteFillObject} facing="front" />
-          <SafeAreaView style={styles.cameraOverlay}>
-            <TouchableOpacity style={styles.cameraClose} onPress={() => setShowCamera(false)}>
-              <Ionicons name="close" size={32} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.cameraBottom}>
-              <TouchableOpacity style={styles.recordBtn}>
-                <View style={styles.recordBtnInner} />
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </View>
-      </Modal>
+      {/* Camera Form Recorder */}
+      <FormCameraRecorder visible={showCamera} onClose={() => setShowCamera(false)} />
     </SafeAreaView>
   );
 }
@@ -275,10 +253,4 @@ const styles = StyleSheet.create({
   restSub: { color: '#888', fontSize: 16, marginTop: -10, marginBottom: 40 },
   skipRestBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30, borderWidth: 1, borderColor: '#444' },
   skipRestText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
-  cameraContainer: { flex: 1, backgroundColor: '#000' },
-  cameraOverlay: { flex: 1, justifyContent: 'space-between' },
-  cameraClose: { alignSelf: 'flex-start', padding: 20 },
-  cameraBottom: { padding: 40, alignItems: 'center' },
-  recordBtn: { width: 72, height: 72, borderRadius: 36, borderWidth: 4, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
-  recordBtnInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#EF4444' },
 });
