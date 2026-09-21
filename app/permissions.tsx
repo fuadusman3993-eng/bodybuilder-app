@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -52,17 +52,17 @@ export default function PermissionsScreen() {
 
       <View style={styles.cardsContainer}>
         <PermissionCard 
-          icon="notifications-outline" 
+          icon="notifications" 
           title="Notifications" 
           description="Get workout reminders, updates and more." 
         />
         <PermissionCard 
-          icon="camera-outline" 
+          icon="camera" 
           title="Camera" 
           description="Track your progress and capture your workouts." 
         />
         <PermissionCard 
-          icon="location-outline" 
+          icon="location" 
           title="Location" 
           description="Find nearby gyms and personal trainers." 
         />
@@ -84,44 +84,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
   },
   header: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleHighlight: {
     color: Colors.primary,
   },
   subtitle: {
     color: '#AAAAAA',
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     paddingHorizontal: 20,
   },
   cardsContainer: {
     flex: 1,
   },
   footer: {
-    paddingBottom: 20,
+    paddingBottom: 24,
+    paddingTop: 16,
     alignItems: 'center',
   },
   primaryBtn: {
-    backgroundColor: '#FACC15', // Yellowish color from the screenshot
+    backgroundColor: '#FACC15',
     width: '100%',
-    height: 56,
+    height: 52,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

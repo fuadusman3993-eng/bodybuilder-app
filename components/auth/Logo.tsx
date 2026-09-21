@@ -11,12 +11,12 @@ export default function Logo({ size = 'large' }: LogoProps) {
   
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        {/* Custom FitPulse "F" logo approximation */}
+      <View style={[styles.iconContainer, isLarge ? styles.iconContainerLarge : styles.iconContainerSmall]}>
+        {/* Sleeker FitPulse "F" logo approximation */}
         <View style={styles.iconF}>
-          <View style={styles.iconFLine1} />
-          <View style={styles.iconFLine2} />
-          <View style={styles.iconFLine3} />
+          <View style={[styles.iconFLine1, isLarge ? styles.line1Large : styles.line1Small]} />
+          <View style={[styles.iconFLine2, isLarge ? styles.line2Large : styles.line2Small]} />
+          <View style={[styles.iconFLine3, isLarge ? styles.line3Large : styles.line3Small]} />
         </View>
       </View>
       <Text style={[styles.textFit, isLarge ? styles.textLarge : styles.textSmall]}>
@@ -32,66 +32,65 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    marginBottom: 16,
-    width: 64,
-    height: 64,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconContainerLarge: {
+    marginBottom: 12,
+    height: 48,
+  },
+  iconContainerSmall: {
+    marginBottom: 8,
+    height: 32,
+  },
   iconF: {
-    width: 44,
-    height: 52,
     position: 'relative',
+    height: '100%',
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   iconFLine1: {
     position: 'absolute',
-    top: 0,
-    left: 8,
-    width: 36,
-    height: 12,
     backgroundColor: Colors.primary,
-    borderTopRightRadius: 8,
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
+    borderRadius: 4,
     transform: [{ skewX: '-15deg' }],
   },
   iconFLine2: {
     position: 'absolute',
-    top: 18,
-    left: 4,
-    width: 28,
-    height: 12,
     backgroundColor: Colors.primary,
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 4,
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
+    borderRadius: 4,
     transform: [{ skewX: '-15deg' }],
   },
   iconFLine3: {
     position: 'absolute',
-    top: 0,
-    left: 4,
-    width: 14,
-    height: 52,
     backgroundColor: Colors.primary,
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 4,
+    borderRadius: 4,
     transform: [{ skewX: '-15deg' }],
   },
+  
+  // Large Logo Variants
+  line1Large: { top: 0, left: 6, width: 26, height: 10 },
+  line2Large: { top: 16, left: 2, width: 18, height: 10 },
+  line3Large: { top: 0, left: 2, width: 10, height: 44 },
+  
+  // Small Logo Variants
+  line1Small: { top: 0, left: 4, width: 18, height: 7 },
+  line2Small: { top: 11, left: 1, width: 12, height: 7 },
+  line3Small: { top: 0, left: 1, width: 7, height: 30 },
+
   textFit: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   textPulse: {
     color: Colors.primary,
   },
   textLarge: {
-    fontSize: 48,
+    fontSize: 34,
   },
   textSmall: {
-    fontSize: 32,
+    fontSize: 24,
   },
 });

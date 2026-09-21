@@ -20,9 +20,7 @@ export default function RootLayout() {
         await Font.loadAsync({
           // Add custom fonts here in future
         });
-        
-        // Artificial delay so you can see the Splash Screen (2.5 seconds)
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        // No artificial delay here; app/index.tsx handles the visual splash screen
       } catch (e) {
         console.warn('Asset loading error:', e);
       } finally {
@@ -34,27 +32,18 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appReady) {
-      // Hide splash screen only after app is ready and layout is complete
       await SplashScreen.hideAsync();
     }
   }, [appReady]);
 
   if (!appReady) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0A0E17', justifyContent: 'center', alignItems: 'center' }}>
-        <StatusBar style="light" backgroundColor="#0A0E17" />
-        <Image 
-          source={require('../assets/splash-icon.png')} 
-          style={{ width: 150, height: 150, resizeMode: 'contain' }} 
-        />
-      </View>
-    );
+    return null;
   }
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: Colors.background }} onLayout={onLayoutRootView}>
-        <StatusBar style="light" backgroundColor={Colors.background} />
+      <View style={{ flex: 1, backgroundColor: '#000000' }} onLayout={onLayoutRootView}>
+        <StatusBar style="light" backgroundColor="#000000" />
         <Stack
           screenOptions={{
             headerShown: false,

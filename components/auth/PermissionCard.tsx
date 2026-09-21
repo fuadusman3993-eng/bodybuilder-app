@@ -13,7 +13,7 @@ export default function PermissionCard({ icon, title, description }: PermissionC
   return (
     <View style={styles.card}>
       <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={28} color={Colors.primary} />
+        <Ionicons name={icon} size={24} color={Colors.primary} />
       </View>
       <View style={styles.textContainer}>
         <Text style={styles.title}>{title}</Text>

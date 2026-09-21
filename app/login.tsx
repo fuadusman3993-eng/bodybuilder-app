@@ -164,35 +164,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    backgroundColor: '#000000',
   },
   header: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleHighlight: {
     color: Colors.primary,
   },
   subtitle: {
     color: '#AAAAAA',
-    fontSize: 15,
+    fontSize: 14,
   },
   formContainer: {
     marginBottom: 32,
@@ -214,7 +217,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: '#000000',
-    height: 56,
+    height: 52,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.primary,
@@ -246,13 +249,13 @@ const styles = StyleSheet.create({
   },
   socialContainer: {
     gap: 16,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   socialBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
+    height: 52,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
@@ -271,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 'auto',
-    paddingBottom: 20,
+    paddingTop: 16,
   },
   footerText: {
     color: '#888',
