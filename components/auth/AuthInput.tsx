@@ -39,6 +39,7 @@ export default function AuthInput({ icon, isPassword, error, ...props }: AuthInp
 const styles = StyleSheet.create({
   wrapper: {
     marginBottom: 16,
+    width: '100%',
   },
   container: {
     flexDirection: 'row',
