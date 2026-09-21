@@ -31,10 +31,21 @@ export default function LoginScreen() {
   const [mainError, setMainError] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
+  const [showGoogleMock, setShowGoogleMock] = useState(false);
 
   const validateEmail = (text: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(text);
+  };
+
+  const handleGoogleAccountSelect = (selectedEmail: string) => {
+    setShowGoogleMock(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setUser({ tier: UserTier.FREE, name: selectedEmail.split('@')[0] });
+      router.replace('/(tabs)');
+    }, 1000);
   };
 
   const handleSignIn = () => {
@@ -81,7 +92,11 @@ export default function LoginScreen() {
   };
 
   const handleSocialLogin = (provider: 'Apple' | 'Google') => {
-    Alert.alert(`${provider} Login`, `Continue with ${provider} is not configured yet.`);
+    if (provider === 'Google') {
+      setShowGoogleMock(true);
+    } else {
+      Alert.alert('Apple Login', 'Apple Sign In is not configured yet.');
+    }
   };
 
   return (
@@ -186,6 +201,37 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Mock Google Account Picker Modal */}
+      {showGoogleMock && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Choose an account</Text>
+            <Text style={styles.modalSubtitle}>to continue to FitPulse</Text>
+            
+            <TouchableOpacity style={styles.accountRow} onPress={() => handleGoogleAccountSelect('user@example.com')}>
+              <View style={styles.avatar}><Text style={styles.avatarText}>U</Text></View>
+              <View>
+                <Text style={styles.accountName}>User Account</Text>
+                <Text style={styles.accountEmail}>user@example.com</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.accountRow} onPress={() => handleGoogleAccountSelect('pro@example.com')}>
+              <View style={[styles.avatar, { backgroundColor: Colors.primary }]}><Text style={styles.avatarText}>P</Text></View>
+              <View>
+                <Text style={styles.accountName}>Pro Member</Text>
+                <Text style={styles.accountEmail}>pro@example.com</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowGoogleMock(false)}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -319,4 +365,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Modal styles for mock Google picker
+  modalOverlay: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    color: '#888',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 14,
+    backgroundColor: '#111',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    backgroundColor: '#555',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  accountName: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  accountEmail: { color: '#888', fontSize: 12, marginTop: 2 },
+  cancelBtn: {
+    marginTop: 8,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: { color: '#888', fontSize: 15 },
 });

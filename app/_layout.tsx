@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Image } from 'react-native';
+import { View, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+
+if (Platform.OS === 'web') {
+  // Force body and html background to black on web to prevent white scroll lag/gaps
+  if (typeof document !== 'undefined') {
+    document.body.style.backgroundColor = '#000000';
+    document.documentElement.style.backgroundColor = '#000000';
+  }
+}
 
 // Keep the splash screen visible until assets are fully loaded
 SplashScreen.preventAutoHideAsync();
