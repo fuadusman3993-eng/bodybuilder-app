@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,101 +16,77 @@ import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
+import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { setUser } = useUserStore();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // Field-specific errors
+
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [mainError, setMainError] = useState('');
-  
+
   const [isLoading, setIsLoading] = useState(false);
-  const [showGoogleMock, setShowGoogleMock] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const validateEmail = (text: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(text);
-  };
+  const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
 
-  const handleGoogleAccountSelect = (selectedEmail: string) => {
-    setShowGoogleMock(false);
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setUser({ tier: UserTier.FREE, name: selectedEmail.split('@')[0] });
-      router.replace('/(tabs)');
-    }, 1000);
-  };
-
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     setEmailError('');
     setPasswordError('');
     setMainError('');
-    
-    let isValid = true;
 
-    if (!email) {
-      setEmailError('Email is required.');
-      isValid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email address.');
-      isValid = false;
-    }
-
-    if (!password) {
-      setPasswordError('Password is required.');
-      isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
-      isValid = false;
-    }
-
-    if (!isValid) return;
+    let valid = true;
+    if (!email) { setEmailError('Email is required.'); valid = false; }
+    else if (!validateEmail(email)) { setEmailError('Please enter a valid email address.'); valid = false; }
+    if (!password) { setPasswordError('Password is required.'); valid = false; }
+    else if (password.length < 6) { setPasswordError('Password must be at least 6 characters.'); valid = false; }
+    if (!valid) return;
 
     setIsLoading(true);
-
-    // Mock API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Simulate fake authentication failure for testing if password is "wrongpass"
-      if (password === 'wrongpass') {
-        setMainError('Invalid email or password.');
-        return;
-      }
-      
-      // Mock login success
-      setUser({ tier: UserTier.FREE, name: 'User' });
+    try {
+      const user = await loginWithEmail(email, password);
+      setUser({ tier: UserTier.FREE, name: user.displayName || user.email || 'User' });
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (err: any) {
+      setMainError(firebaseErrorMessage(err?.code || ''));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSocialLogin = (provider: 'Apple' | 'Google') => {
-    if (provider === 'Google') {
-      setShowGoogleMock(true);
-    } else {
-      Alert.alert('Apple Login', 'Apple Sign In is not configured yet.');
+  const handleGoogleSignIn = async () => {
+    setMainError('');
+    setIsGoogleLoading(true);
+    try {
+      const user = await loginWithGoogle();
+      setUser({ tier: UserTier.FREE, name: user.displayName || user.email || 'User' });
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        setMainError(firebaseErrorMessage(err?.code || ''));
+      }
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.contentWrapper}>
-            
+
             <View style={styles.header}>
               <Logo size="small" />
             </View>
@@ -120,9 +95,7 @@ export default function LoginScreen() {
               <Text style={styles.title}>
                 Welcome <Text style={styles.titleHighlight}>Back</Text>
               </Text>
-              <Text style={styles.subtitle}>
-                Sign in to continue your fitness journey.
-              </Text>
+              <Text style={styles.subtitle}>Sign in to continue your fitness journey.</Text>
             </View>
 
             <View style={styles.formContainer}>
@@ -133,22 +106,16 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 value={email}
                 error={emailError}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (emailError) setEmailError('');
-                }}
+                onChangeText={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
               />
-              
+
               <AuthInput
                 icon="lock-closed-outline"
                 placeholder="Password"
                 isPassword
                 value={password}
                 error={passwordError}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (passwordError) setPasswordError('');
-                }}
+                onChangeText={(t) => { setPassword(t); if (passwordError) setPasswordError(''); }}
               />
 
               <View style={styles.forgotPasswordContainer}>
@@ -159,17 +126,15 @@ export default function LoginScreen() {
 
               {mainError ? <Text style={styles.mainErrorText}>{mainError}</Text> : null}
 
-              <TouchableOpacity 
-                style={[styles.primaryBtn, isLoading && styles.primaryBtnDisabled]} 
+              <TouchableOpacity
+                style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
                 onPress={handleSignIn}
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
                 activeOpacity={0.8}
               >
-                {isLoading ? (
-                  <ActivityIndicator color={Colors.primary} />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Sign In</Text>
-                )}
+                {isLoading
+                  ? <ActivityIndicator color={Colors.primary} />
+                  : <Text style={styles.primaryBtnText}>Sign In</Text>}
               </TouchableOpacity>
             </View>
 
@@ -180,14 +145,31 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.socialContainer}>
-              <TouchableOpacity style={styles.socialBtn} onPress={() => handleSocialLogin('Apple')} activeOpacity={0.7}>
+              {/* Apple — placeholder until native SDK is added */}
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => setMainError('Apple Sign In is not configured yet.')}
+                activeOpacity={0.7}
+              >
                 <Ionicons name="logo-apple" size={20} color="#FFF" style={styles.socialIcon} />
                 <Text style={styles.socialBtnText}>Continue with Apple</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.socialBtn} onPress={() => handleSocialLogin('Google')} activeOpacity={0.7}>
-                <Ionicons name="logo-google" size={20} color="#FFF" style={styles.socialIcon} />
-                <Text style={styles.socialBtnText}>Continue with Google</Text>
+
+              {/* Google — real Firebase popup */}
+              <TouchableOpacity
+                style={[styles.socialBtn, isGoogleLoading && styles.btnDisabled]}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading || isGoogleLoading}
+                activeOpacity={0.7}
+              >
+                {isGoogleLoading
+                  ? <ActivityIndicator color="#FFF" />
+                  : (
+                    <>
+                      <Ionicons name="logo-google" size={20} color="#FFF" style={styles.socialIcon} />
+                      <Text style={styles.socialBtnText}>Continue with Google</Text>
+                    </>
+                  )}
               </TouchableOpacity>
             </View>
 
@@ -201,100 +183,32 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Mock Google Account Picker Modal */}
-      {showGoogleMock && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Choose an account</Text>
-            <Text style={styles.modalSubtitle}>to continue to FitPulse</Text>
-            
-            <TouchableOpacity style={styles.accountRow} onPress={() => handleGoogleAccountSelect('user@example.com')}>
-              <View style={styles.avatar}><Text style={styles.avatarText}>U</Text></View>
-              <View>
-                <Text style={styles.accountName}>User Account</Text>
-                <Text style={styles.accountEmail}>user@example.com</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.accountRow} onPress={() => handleGoogleAccountSelect('pro@example.com')}>
-              <View style={[styles.avatar, { backgroundColor: Colors.primary }]}><Text style={styles.avatarText}>P</Text></View>
-              <View>
-                <Text style={styles.accountName}>Pro Member</Text>
-                <Text style={styles.accountEmail}>pro@example.com</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowGoogleMock(false)}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  container: { flex: 1, backgroundColor: '#000000' },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   contentWrapper: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'android' ? 40 : 24,
     paddingBottom: 24,
     width: '100%',
-    maxWidth: 480, // Responsive constraint for large screens/web
+    maxWidth: 480,
     alignSelf: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  titleHighlight: {
-    color: Colors.primary,
-  },
-  subtitle: {
-    color: '#AAAAAA',
-    fontSize: 14,
-  },
-  formContainer: {
-    marginBottom: 32,
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  mainErrorText: {
-    color: '#EF4444',
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
+  header: { alignItems: 'center', marginBottom: 32 },
+  titleContainer: { alignItems: 'center', marginBottom: 32 },
+  title: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginBottom: 8 },
+  titleHighlight: { color: Colors.primary },
+  subtitle: { color: '#AAAAAA', fontSize: 14 },
+  formContainer: { marginBottom: 32 },
+  forgotPasswordContainer: { alignItems: 'flex-end', marginBottom: 24 },
+  forgotPasswordText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
+  mainErrorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginBottom: 16 },
   primaryBtn: {
     backgroundColor: '#000000',
     height: 52,
@@ -304,33 +218,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  primaryBtnDisabled: {
-    opacity: 0.6,
-  },
-  primaryBtnText: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#333',
-  },
-  dividerText: {
-    color: '#888',
-    paddingHorizontal: 16,
-    fontSize: 12,
-  },
-  socialContainer: {
-    gap: 16,
-    marginBottom: 32,
-  },
+  btnDisabled: { opacity: 0.6 },
+  primaryBtnText: { color: Colors.primary, fontSize: 16, fontWeight: '700' },
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#333' },
+  dividerText: { color: '#888', paddingHorizontal: 16, fontSize: 12 },
+  socialContainer: { gap: 16, marginBottom: 32 },
   socialBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -341,81 +234,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
     backgroundColor: '#0A0A0A',
   },
-  socialIcon: {
-    marginRight: 12,
-  },
-  socialBtnText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 'auto',
-    paddingTop: 16,
-  },
-  footerText: {
-    color: '#888',
-    fontSize: 14,
-  },
-  footerLink: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  // Modal styles for mock Google picker
-  modalOverlay: {
-    position: 'absolute',
-    top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    color: '#888',
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 14,
-    backgroundColor: '#111',
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 40, height: 40,
-    borderRadius: 20,
-    backgroundColor: '#555',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  accountName: { color: '#FFF', fontSize: 14, fontWeight: '600' },
-  accountEmail: { color: '#888', fontSize: 12, marginTop: 2 },
-  cancelBtn: {
-    marginTop: 8,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelBtnText: { color: '#888', fontSize: 15 },
+  socialIcon: { marginRight: 12 },
+  socialBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 'auto', paddingTop: 16 },
+  footerText: { color: '#888', fontSize: 14 },
+  footerLink: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
 });

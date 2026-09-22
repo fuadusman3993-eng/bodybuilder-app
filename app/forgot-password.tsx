@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  Alert
+  View, Text, StyleSheet, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
+import { resetPassword, firebaseErrorMessage } from '../lib/authService';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -42,12 +36,14 @@ export default function ForgotPasswordScreen() {
     }
 
     setIsLoading(true);
-
-    // Mock API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await resetPassword(email);
       setIsSent(true);
-    }, 1500);
+    } catch (err: any) {
+      setEmailError(firebaseErrorMessage(err?.code || ''));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

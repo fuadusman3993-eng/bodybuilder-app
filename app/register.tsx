@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  Alert
+  View, Text, StyleSheet, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +10,7 @@ import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
+import { registerWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -68,13 +62,15 @@ export default function RegisterScreen() {
     if (!isValid) return;
 
     setIsLoading(true);
-
-    // Mock API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setUser({ tier: UserTier.FREE, name: name.trim() });
+    try {
+      const user = await registerWithEmail(name.trim(), email, password);
+      setUser({ tier: UserTier.FREE, name: user.displayName || name.trim() });
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (err: any) {
+      setPasswordError(firebaseErrorMessage(err?.code || ''));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: 'Apple' | 'Google') => {
