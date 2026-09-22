@@ -52,7 +52,7 @@ export default function RegisterScreen() {
       setUser({ tier: UserTier.FREE, name: user.displayName || name.trim(), role: user.role, uid: user.uid });
       
       if (user.role === 'coach') {
-        router.replace('/(coach-tabs)');
+        router.replace('/coach-onboarding');
       } else {
         router.replace('/(tabs)');
       }
