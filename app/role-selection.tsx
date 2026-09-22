@@ -12,7 +12,11 @@ export default function RoleSelectionScreen() {
   const router = useRouter();
 
   const handleSelectRole = (role: 'user' | 'coach') => {
-    router.push({ pathname: '/register', params: { role } });
+    if (role === 'user') {
+      router.push('/register-trainee');
+    } else {
+      router.push('/register-coach');
+    }
   };
 
   return (
