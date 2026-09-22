@@ -24,7 +24,7 @@ export default function ForgotPasswordScreen() {
     return regex.test(text);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setEmailError('');
     
     if (!email) {
