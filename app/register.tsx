@@ -57,7 +57,9 @@ export default function RegisterScreen() {
         router.replace('/(tabs)');
       }
     } catch (err: any) {
-      setPasswordError(firebaseErrorMessage(err?.code || ''));
+      const msg = firebaseErrorMessage(err?.code || '');
+      setPasswordError(msg);
+      console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +68,7 @@ export default function RegisterScreen() {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     try {
-      await loginWithGoogle(selectedRole); // Saves pending role and redirects
+      await loginWithGoogle(selectedRole);
     } catch (err: any) {
       setIsGoogleLoading(false);
       Alert.alert('Google Sign Up Error', firebaseErrorMessage(err?.code || ''));

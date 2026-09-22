@@ -10,7 +10,9 @@ export type UserRole = 'user' | 'coach';
 
 export interface UserModel {
   id?: string;
+  uid?: string;
   name?: string;
+  email?: string;
   tier: UserTier;
   role?: UserRole;
 }
