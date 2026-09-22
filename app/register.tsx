@@ -31,7 +31,7 @@ export default function RegisterScreen() {
     return regex.test(text);
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     setNameError('');
     setEmailError('');
     setPasswordError('');
