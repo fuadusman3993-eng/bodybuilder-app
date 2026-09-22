@@ -3,17 +3,20 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
-import { useUserStore, UserTier } from '../store/userStore';
+import { useUserStore, UserTier, UserRole } from '../store/userStore';
 import { registerWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const selectedRole = (params.role as UserRole) || 'user';
+  
   const { setUser } = useUserStore();
   
   const [name, setName] = useState('');
@@ -25,11 +28,9 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const validateEmail = (text: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(text);
-  };
+  const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
 
   const handleSignUp = async () => {
     setNameError('');
@@ -37,39 +38,38 @@ export default function RegisterScreen() {
     setPasswordError('');
     
     let isValid = true;
-
-    if (!name.trim()) {
-      setNameError('Full name is required.');
-      isValid = false;
-    }
-
-    if (!email) {
-      setEmailError('Email is required.');
-      isValid = false;
-    } else if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email address.');
-      isValid = false;
-    }
-
-    if (!password) {
-      setPasswordError('Password is required.');
-      isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
-      isValid = false;
-    }
+    if (!name.trim()) { setNameError('Full name is required.'); isValid = false; }
+    if (!email) { setEmailError('Email is required.'); isValid = false; }
+    else if (!validateEmail(email)) { setEmailError('Please enter a valid email address.'); isValid = false; }
+    if (!password) { setPasswordError('Password is required.'); isValid = false; }
+    else if (password.length < 6) { setPasswordError('Password must be at least 6 characters.'); isValid = false; }
 
     if (!isValid) return;
 
     setIsLoading(true);
     try {
-      const user = await registerWithEmail(name.trim(), email, password);
-      setUser({ tier: UserTier.FREE, name: user.displayName || name.trim() });
-      router.replace('/(tabs)');
+      const user = await registerWithEmail(name.trim(), email, password, selectedRole);
+      setUser({ tier: UserTier.FREE, name: user.displayName || name.trim(), role: user.role, uid: user.uid });
+      
+      if (user.role === 'coach') {
+        router.replace('/(coach-tabs)');
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setPasswordError(firebaseErrorMessage(err?.code || ''));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await loginWithGoogle(selectedRole); // Saves pending role and redirects
+    } catch (err: any) {
+      setIsGoogleLoading(false);
+      Alert.alert('Google Sign Up Error', firebaseErrorMessage(err?.code || ''));
     }
   };
 
@@ -99,7 +99,7 @@ export default function RegisterScreen() {
                 Create <Text style={styles.titleHighlight}>Account</Text>
               </Text>
               <Text style={styles.subtitle}>
-                Join the ultimate fitness revolution.
+                {selectedRole === 'coach' ? 'Join as a Coach and grow your business.' : 'Join the ultimate fitness revolution.'}
               </Text>
             </View>
 

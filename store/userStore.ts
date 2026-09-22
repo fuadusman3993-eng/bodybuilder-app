@@ -6,10 +6,13 @@ export enum UserTier {
   PREMIUM = 'premium',
 }
 
+export type UserRole = 'user' | 'coach';
+
 export interface UserModel {
   id?: string;
   name?: string;
   tier: UserTier;
+  role?: UserRole;
 }
 
 interface UserState {
