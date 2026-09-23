@@ -61,10 +61,18 @@ export default function TraineeRegisterScreen() {
       setUser({ tier: UserTier.FREE, name: user.displayName || name.trim(), role: 'user', uid: user.uid });
 
       // Generate and send OTP
-      const otp = generateOTP();
-      await sendOTPEmail(email, name.trim(), otp);
+      try {
+        const otp = generateOTP();
+        await sendOTPEmail(email, name.trim(), otp);
+        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'user' } });
+      } catch (emailErr) {
+        console.error('EmailJS error:', emailErr);
+        // Account created but email failed — still navigate with a fallback OTP
+        const otp = generateOTP();
+        setMainError('Account created! Email delivery failed — use this code: ' + otp);
+        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'user' } });
+      }
 
-      router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'user' } });
     } catch (err: any) {
       setMainError(firebaseErrorMessage(err?.code || ''));
     } finally {

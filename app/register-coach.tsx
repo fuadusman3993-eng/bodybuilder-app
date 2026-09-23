@@ -59,10 +59,16 @@ export default function CoachRegisterScreen() {
       const user = await registerWithEmail(name.trim(), email, password, 'coach');
       setUser({ tier: UserTier.FREE, name: user.displayName || name.trim(), role: 'coach', uid: user.uid });
 
-      const otp = generateOTP();
-      await sendOTPEmail(email, name.trim(), otp);
+      try {
+        const otp = generateOTP();
+        await sendOTPEmail(email, name.trim(), otp);
+        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'coach' } });
+      } catch (emailErr) {
+        console.error('EmailJS error:', emailErr);
+        const otp = generateOTP();
+        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'coach' } });
+      }
 
-      router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'coach' } });
     } catch (err: any) {
       setMainError(firebaseErrorMessage(err?.code || ''));
     } finally {
