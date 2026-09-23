@@ -1,5 +1,5 @@
 const SERVICE_ID  = 'service_blxp235';
-const TEMPLATE_ID = 'template_siko4mj';
+const TEMPLATE_ID = 'template_qxiehi9';
 const PUBLIC_KEY  = '4UXLXQLgVE519hR3N';
 
 /** Generate a random 6-digit OTP */
