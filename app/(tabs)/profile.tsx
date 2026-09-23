@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { profileData } from '../../constants/mockData';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
 
@@ -47,28 +46,30 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Info */}
         <View style={styles.profileInfo}>
-          <Image source={{ uri: profileData.avatar }} style={styles.avatar} />
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarInitial}>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</Text>
+          </View>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{profileData.name}</Text>
+            <Text style={styles.name}>{user.name}</Text>
             <Ionicons name="checkmark-circle" size={20} color={Colors.info} />
           </View>
-          <Text style={styles.title}>{profileData.title}</Text>
+          <Text style={styles.title}>{user.role === 'coach' ? 'Pro Coach' : 'Fitness Enthusiast'}</Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profileData.stats.workouts}</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Workouts</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profileData.stats.weeksStreak}</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Weeks Streak</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profileData.stats.followers}</Text>
+            <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </View>
         </View>
@@ -132,6 +133,21 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 3,
     borderColor: Colors.surfaceLight,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.surfaceLight,
+  },
+  avatarInitial: {
+    color: '#000',
+    fontSize: 36,
+    fontWeight: '800',
   },
   nameRow: {
     flexDirection: 'row',
