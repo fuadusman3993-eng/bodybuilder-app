@@ -38,7 +38,17 @@ export default function VerifyEmailScreen() {
 
   const handleInput = (text: string, index: number) => {
     setError('');
-    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+
+    // Handle paste: if 6+ digits entered at once, distribute across all boxes
+    const digits = text.replace(/[^0-9]/g, '');
+    if (digits.length >= 6) {
+      const newCode = digits.slice(0, 6).split('');
+      setCode(newCode);
+      inputRefs.current[5]?.focus();
+      return;
+    }
+
+    const digit = digits.slice(-1);
     const newCode = [...code];
     newCode[index] = digit;
     setCode(newCode);
@@ -139,9 +149,10 @@ export default function VerifyEmailScreen() {
                 value={digit}
                 onChangeText={(t) => handleInput(t, i)}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={i === 0 ? 6 : 1}
                 selectTextOnFocus
                 caretHidden
+                autoComplete={i === 0 ? 'one-time-code' : 'off'}
               />
             ))}
           </View>
