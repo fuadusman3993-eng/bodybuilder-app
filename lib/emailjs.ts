@@ -1,29 +1,35 @@
-import emailjs from '@emailjs/browser';
-
 const SERVICE_ID  = 'service_blxp235';
 const TEMPLATE_ID = 'template_siko4mj';
 const PUBLIC_KEY  = '4UXLXQLgVE519hR3N';
 
-// Initialize EmailJS once
-emailjs.init({ publicKey: PUBLIC_KEY });
-
-/** Generate a cryptographically random 6-digit OTP */
+/** Generate a random 6-digit OTP */
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-/** Send OTP to the given email address */
+/** Send OTP via EmailJS REST API directly (more reliable on web) */
 export async function sendOTPEmail(toEmail: string, toName: string, otp: string): Promise<void> {
-  const result = await emailjs.send(
-    SERVICE_ID,
-    TEMPLATE_ID,
-    {
-      email:    toEmail,      // matches {{email}} in Template "To Email" field
-      to_name:  toName || 'User',
-      passcode: otp,
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
     },
-  );
-  if (result.status !== 200) {
-    throw new Error(`EmailJS failed: ${result.text}`);
+    body: JSON.stringify({
+      service_id: SERVICE_ID,
+      template_id: TEMPLATE_ID,
+      user_id: PUBLIC_KEY,
+      template_params: {
+        email:    toEmail,
+        to_name:  toName || 'User',
+        passcode: otp,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('EmailJS REST error:', response.status, errText);
+    throw new Error(`Email failed: ${errText}`);
   }
 }
+
