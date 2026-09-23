@@ -6,29 +6,28 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { useUserStore, UserTier } from '../store/userStore';
 
 if (Platform.OS === 'web') {
-  // Force body and html background to black on web to prevent white scroll lag/gaps
   if (typeof document !== 'undefined') {
     document.body.style.backgroundColor = '#000000';
     document.documentElement.style.backgroundColor = '#000000';
   }
 }
 
-// Keep the splash screen visible until assets are fully loaded
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+  const { setUser } = useUserStore();
 
   useEffect(() => {
     async function loadAssetsAsync() {
       try {
-        // Pre-load fonts or other heavy assets here if needed
-        await Font.loadAsync({
-          // Add custom fonts here in future
-        });
-        // No artificial delay here; app/index.tsx handles the visual splash screen
+        await Font.loadAsync({});
       } catch (e) {
         console.warn('Asset loading error:', e);
       } finally {
@@ -36,6 +35,32 @@ export default function RootLayout() {
       }
     }
     loadAssetsAsync();
+  }, []);
+
+  // Restore user session from Firebase on every app load/refresh
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          const role = docSnap.exists() ? (docSnap.data().role ?? 'user') : 'user';
+          setUser({
+            tier: UserTier.FREE,
+            name: firebaseUser.displayName || docSnap.data()?.username || 'User',
+            role,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || undefined,
+          });
+        } catch (e) {
+          console.warn('Could not restore user session:', e);
+          setUser({ tier: UserTier.FREE, name: firebaseUser.displayName || 'User', uid: firebaseUser.uid });
+        }
+      } else {
+        // No user logged in — keep as GUEST
+        setUser({ tier: UserTier.GUEST });
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
@@ -64,7 +89,6 @@ export default function RootLayout() {
           <Stack.Screen name="challenge" options={{ headerShown: false }} />
           <Stack.Screen name="workout/index" options={{ headerShown: false }} />
           <Stack.Screen name="gym/index" options={{ headerShown: false }} />
-
         </Stack>
       </View>
     </SafeAreaProvider>
