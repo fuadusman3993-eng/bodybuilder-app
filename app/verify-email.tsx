@@ -80,11 +80,7 @@ export default function VerifyEmailScreen() {
       }
 
       // 3. Proceed to next screen
-      if (role === 'coach') {
-        router.replace('/coach-onboarding');
-      } else {
-        router.replace('/(tabs)');
-      }
+      router.replace('/create-profile');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Verification failed. Please try again.');

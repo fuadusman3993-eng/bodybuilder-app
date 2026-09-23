@@ -1,0 +1,98 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { doc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { Colors } from '../constants/colors';
+import { useUserStore } from '../store/userStore';
+
+export default function CreateProfileScreen() {
+  const router = useRouter();
+  const { user, setUser } = useUserStore();
+  
+  const [username, setUsername] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleComplete = async () => {
+    if (!username.trim()) {
+      setError('Please choose a username.');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const uid = auth.currentUser?.uid || user.uid;
+      if (uid) {
+        await updateDoc(doc(db, 'users', uid), {
+          username: username.trim(),
+        });
+      }
+      
+      setUser({ ...user, name: username.trim() });
+      
+      if (user.role === 'coach') {
+        router.replace('/coach-onboarding');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError('Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={s.container}>
+          
+          <View style={s.iconWrap}>
+            <Ionicons name="person-circle-outline" size={64} color={Colors.primary} />
+          </View>
+          
+          <Text style={s.title}>Choose a Username</Text>
+          <Text style={s.subtitle}>This is how you will appear to other users in FitPulse.</Text>
+          
+          <View style={[s.inputWrap, error ? s.inputError : null]}>
+            <Text style={s.atSymbol}>@</Text>
+            <TextInput
+              style={s.input}
+              placeholder="username"
+              placeholderTextColor="#666"
+              value={username}
+              onChangeText={(t) => { setUsername(t); setError(''); }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          {error ? <Text style={s.errorText}>{error}</Text> : null}
+          
+          <TouchableOpacity style={s.btn} onPress={handleComplete} disabled={isLoading}>
+            {isLoading ? <ActivityIndicator color="#000" /> : <Text style={s.btnText}>Complete Profile</Text>}
+          </TouchableOpacity>
+          
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, paddingHorizontal: 28, paddingTop: 40, maxWidth: 480, width: '100%', alignSelf: 'center' },
+  iconWrap: { alignItems: 'center', marginBottom: 24 },
+  title: { color: '#FFF', fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
+  subtitle: { color: '#888', fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0D0D0D', borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, paddingHorizontal: 16, height: 56, marginBottom: 12 },
+  inputError: { borderColor: '#EF4444' },
+  atSymbol: { color: Colors.primary, fontSize: 18, fontWeight: '700', marginRight: 8 },
+  input: { flex: 1, color: '#FFF', fontSize: 16 },
+  errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginBottom: 20 },
+  btn: { backgroundColor: Colors.primary, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 12 },
+  btnText: { color: '#000', fontSize: 16, fontWeight: '700' }
+});

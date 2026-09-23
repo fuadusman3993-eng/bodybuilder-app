@@ -7,17 +7,30 @@ import { profileData } from '../../constants/mockData';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
 
+import { useRouter } from 'expo-router';
+import { signOut } from '../../lib/authService';
+
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 32 - 16) / 3;
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('Posts');
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
 
   if (user.tier === UserTier.GUEST) {
     return <GuestBlocker feature="profile" />;
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUser({ tier: UserTier.GUEST });
+      router.replace('/login');
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -26,8 +39,8 @@ export default function ProfileScreen() {
         <TouchableOpacity>
           <Ionicons name="settings-outline" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="share-social-outline" size={24} color={Colors.textPrimary} />
+        <TouchableOpacity onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={26} color="#EF4444" />
         </TouchableOpacity>
       </View>
 
