@@ -18,7 +18,7 @@ export async function sendOTPEmail(toEmail: string, toName: string, otp: string)
     SERVICE_ID,
     TEMPLATE_ID,
     {
-      to_email: toEmail,
+      email:    toEmail,      // matches {{email}} in Template "To Email" field
       to_name:  toName || 'User',
       passcode: otp,
     },
