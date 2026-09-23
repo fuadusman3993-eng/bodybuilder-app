@@ -10,11 +10,12 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { sendOTPEmail } from '../lib/emailjs';
 import { Colors } from '../constants/colors';
+import { useUserStore, UserTier } from '../store/userStore';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const { email, name, otp: initialOtp, role } = useLocalSearchParams<{
-    email: string; name: string; otp: string; role: string;
+  const { email, name, password, otp: initialOtp, role } = useLocalSearchParams<{
+    email: string; name: string; password: string; otp: string; role: 'user'|'coach';
   }>();
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -23,6 +24,8 @@ export default function VerifyEmailScreen() {
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [currentOtp, setCurrentOtp] = useState(initialOtp || '');
+
+  const { setUser } = useUserStore();
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -63,22 +66,28 @@ export default function VerifyEmailScreen() {
 
     setIsVerifying(true);
     try {
-      const uid = auth.currentUser?.uid;
-      if (uid) {
-        await updateDoc(doc(db, 'users', uid), {
+      // 1. OTP is correct, NOW we register the user in Firebase
+      const { registerWithEmail } = await import('../lib/authService');
+      const user = await registerWithEmail(name, email, password, role);
+      setUser({ tier: UserTier.FREE, name: user.displayName || name, role, uid: user.uid });
+
+      // 2. Mark as verified in Firestore
+      if (user.uid) {
+        await updateDoc(doc(db, 'users', user.uid), {
           emailVerified: true,
           verifiedAt: serverTimestamp(),
         });
       }
 
+      // 3. Proceed to next screen
       if (role === 'coach') {
         router.replace('/coach-onboarding');
       } else {
         router.replace('/(tabs)');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Verification failed. Please try again.');
+      setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setIsVerifying(false);
     }

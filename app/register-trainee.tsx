@@ -57,24 +57,19 @@ export default function TraineeRegisterScreen() {
 
     setIsLoading(true);
     try {
-      const user = await registerWithEmail(name.trim(), email, password, 'user');
-      setUser({ tier: UserTier.FREE, name: user.displayName || name.trim(), role: 'user', uid: user.uid });
+      // 1. Generate OTP and send via EmailJS FIRST
+      const otp = generateOTP();
+      await sendOTPEmail(email, name.trim(), otp);
 
-      // Generate and send OTP
-      try {
-        const otp = generateOTP();
-        await sendOTPEmail(email, name.trim(), otp);
-        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'user' } });
-      } catch (emailErr) {
-        console.error('EmailJS error:', emailErr);
-        // Account created but email failed — still navigate with a fallback OTP
-        const otp = generateOTP();
-        setMainError('Account created! Email delivery failed — use this code: ' + otp);
-        router.push({ pathname: '/verify-email', params: { email, name: name.trim(), otp, role: 'user' } });
-      }
-
+      // 2. If successful, route to verification page (pass password so we can register later)
+      router.push({
+        pathname: '/verify-email',
+        params: { email, name: name.trim(), password, otp, role: 'user' }
+      });
     } catch (err: any) {
-      setMainError(firebaseErrorMessage(err?.code || ''));
+      // If EmailJS fails, show the exact error and STOP. Do not create account.
+      console.error('Registration/Email Error:', err);
+      setMainError(err.message || 'Failed to send verification email.');
     } finally {
       setIsLoading(false);
     }
