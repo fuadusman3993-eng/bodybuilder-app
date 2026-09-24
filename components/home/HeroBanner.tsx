@@ -1,164 +1,160 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
-import { useUserStore, UserTier } from '../../store/userStore';
-import CoachSelectionModal from '../modals/CoachSelectionModal';
-import PremiumUpgradeModal from '../modals/PremiumUpgradeModal';
+
+const BANNERS = [
+  {
+    id: '1',
+    tag: 'NEW CHALLENGE',
+    title: '30 Days',
+    titleAccent: 'Better You',
+    subtitle: 'Build healthy habits. See real results.',
+    quote: 'Discipline\nBuilds\nFreedom',
+    image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=900&q=80',
+    route: '/challenge',
+  },
+  {
+    id: '2',
+    tag: 'TRENDING',
+    title: 'Find Your',
+    titleAccent: 'Coach',
+    subtitle: 'Train with certified professionals.',
+    quote: 'Stronger\nEvery\nDay',
+    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=900&q=80',
+    route: '/(tabs)/chat',
+  },
+];
 
 export default function HeroBanner() {
   const router = useRouter();
-  const { user } = useUserStore();
   const { width } = useWindowDimensions();
-  const [coachModalVisible, setCoachModalVisible] = useState(false);
-  const [premiumModalVisible, setPremiumModalVisible] = useState(false);
-
-  // Hero height: 55% of screen width gives a 16:10-ish portrait feel on all phones
-  const heroHeight = Math.round(width * 0.72);
-
-  const handleStartToday = () => {
-    if (user.tier === UserTier.GUEST || user.tier === UserTier.FREE) {
-      router.push('/challenge');
-    } else {
-      router.push('/(tabs)/chat');
-    }
-  };
-
-  const handleCoachSelect = (option: 'AI_COACH' | 'REAL_COACH') => {
-    if (option === 'AI_COACH') {
-      router.push('/(tabs)/chat');
-    } else {
-      setPremiumModalVisible(true);
-    }
-  };
+  const [activeIndex, setActiveIndex] = useState(0);
+  const heroHeight = Math.round(width * 0.62);
+  const current = BANNERS[activeIndex];
 
   return (
-    <>
-      <View style={[styles.container, { marginTop: 16 }]}>
-        <View style={[styles.background, { minHeight: Math.max(heroHeight, 280) }]}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80' }}
-            style={[StyleSheet.absoluteFillObject, styles.backgroundImage, { width: '100%', height: '100%' }]}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={['rgba(10,14,23,0.15)', 'rgba(10,14,23,0.9)']}
-            style={StyleSheet.absoluteFill}
-          />
+    <View style={[styles.container, { marginTop: 16 }]}>
+      <View style={[styles.banner, { height: Math.max(heroHeight, 200) }]}>
+        {/* Background Photo */}
+        <Image
+          source={{ uri: current.image }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+        {/* Dark gradient overlay */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.75)']}
+          style={StyleSheet.absoluteFill}
+        />
 
-          {/* Top tag */}
-          <View style={styles.topRow}>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveBadgeText}>FEATURED</Text>
-            </View>
-          </View>
-
-          {/* Bottom content */}
-          <View style={styles.content}>
-            <Text style={styles.title} numberOfLines={3}>
-              Better{'\n'}Version{'\n'}of <Text style={styles.titleHighlight}>You</Text>
-            </Text>
-            <Text style={styles.subtitle}>
-              Your goals. Our support. Real results.
-            </Text>
-            <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8} onPress={handleStartToday}>
-              <Text style={styles.ctaText}>Start Today</Text>
-              <Ionicons name="arrow-forward" size={16} color={Colors.background} />
-            </TouchableOpacity>
+        {/* Top: tag badge */}
+        <View style={styles.topRow}>
+          <View style={styles.tagBadge}>
+            <View style={styles.tagDot} />
+            <Text style={styles.tagText}>{current.tag}</Text>
           </View>
         </View>
-      </View>
 
-      <CoachSelectionModal
-        visible={coachModalVisible}
-        onClose={() => setCoachModalVisible(false)}
-        onSelect={handleCoachSelect}
-      />
-      <PremiumUpgradeModal
-        visible={premiumModalVisible}
-        onClose={() => setPremiumModalVisible(false)}
-      />
-    </>
+        {/* Motivational quote — top right */}
+        <View style={styles.quoteWrap}>
+          <Text style={styles.quoteText}>{current.quote}</Text>
+        </View>
+
+        {/* Bottom content */}
+        <View style={styles.bottomContent}>
+          <Text style={styles.title}>
+            {current.title}{'\n'}
+            <Text style={styles.titleAccent}>{current.titleAccent}</Text>
+          </Text>
+          <Text style={styles.subtitle}>{current.subtitle}</Text>
+          <TouchableOpacity
+            style={styles.joinBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push(current.route as any)}
+          >
+            <Text style={styles.joinBtnText}>Join Now  →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Dots indicator */}
+        <View style={styles.dots}>
+          {BANNERS.map((_, i) => (
+            <TouchableOpacity key={i} onPress={() => setActiveIndex(i)}>
+              <View style={[styles.dot, i === activeIndex && styles.dotActive]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-  },
-  background: {
+  container: { paddingHorizontal: 16 },
+  banner: {
     width: '100%',
     borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'space-between',
   },
-  backgroundImage: {
-    borderRadius: 20,
-  },
-  topRow: {
-    padding: 16,
-  },
-  liveBadge: {
+  topRow: { padding: 14 },
+  tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 20,
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
+  tagDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary },
+  tagText: { color: '#FFF', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  quoteWrap: {
+    position: 'absolute',
+    top: 14,
+    right: 18,
+    alignItems: 'flex-end',
   },
-  liveBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
+  quoteText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: '800',
+    fontStyle: 'italic',
+    textAlign: 'right',
+    lineHeight: 22,
+    letterSpacing: -0.3,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 22,
-  },
+  bottomContent: { paddingHorizontal: 18, paddingBottom: 40 },
   title: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '900',
     color: '#FFF',
-    lineHeight: 36,
+    lineHeight: 38,
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  titleHighlight: {
-    color: Colors.primary,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    marginBottom: 18,
-    lineHeight: 18,
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  titleAccent: { color: Colors.primary },
+  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 16 },
+  joinBtn: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
     borderRadius: 30,
     alignSelf: 'flex-start',
-    gap: 6,
   },
-  ctaText: {
-    color: Colors.background,
-    fontWeight: '700',
-    fontSize: 14,
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  dots: {
+    position: 'absolute',
+    bottom: 14,
+    right: 18,
+    flexDirection: 'row',
+    gap: 5,
   },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  dotActive: { width: 18, backgroundColor: Colors.primary },
 });

@@ -10,18 +10,18 @@ export default function Header() {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <View style={styles.logoContainer}>
-          <Ionicons name="fitness" size={isCompact ? 22 : 26} color={Colors.primary} />
-        </View>
-        <View>
-          <Text style={[styles.appName, isCompact && styles.appNameSm]}>BodyBuilder</Text>
+        <Ionicons name="pulse" size={isCompact ? 28 : 34} color={Colors.primary} style={styles.logoIcon} />
+        <View style={styles.textStack}>
+          <Text style={[styles.appName, isCompact && styles.appNameSm]}>FitPulse</Text>
           <Text style={styles.tagline}>Stronger • Healthier • Together</Text>
         </View>
       </View>
       <View style={styles.right}>
         <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
-          <View style={styles.notificationBadge} />
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>3</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -34,59 +34,62 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 52,
+    paddingTop: 12,
+    paddingBottom: 8,
     backgroundColor: Colors.background,
   },
   left: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flex: 1,
   },
-  logoContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: Colors.surface,
+  logoIcon: {
+    marginRight: 4,
+  },
+  textStack: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
   appName: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: Colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   appNameSm: {
-    fontSize: 16,
+    fontSize: 20,
   },
   tagline: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginTop: 1,
+    fontWeight: '500',
   },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.surface,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
-    borderWidth: 1.5,
+    top: 4,
+    right: 4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
     borderColor: Colors.background,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
 });

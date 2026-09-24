@@ -1,114 +1,78 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
-import { quickActions } from '../../constants/mockData';
 
-const ITEMS_PER_ROW = 4;
-const H_PADDING = 16;
-const ITEM_GAP = 10;
-
-interface QuickAction {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  color: string;
-  route: string;
-}
-
-function QuickActionItem({ item, itemWidth }: { item: QuickAction; itemWidth: number }) {
-  const router = useRouter();
-  const iconSize = Math.min(52, Math.max(40, itemWidth * 0.72));
-  const titleFont = itemWidth < 72 ? 9.5 : 11;
-  const subtitleFont = itemWidth < 72 ? 8 : 9.5;
-
-  return (
-    <TouchableOpacity
-      style={[styles.actionItem, { width: itemWidth }]}
-      activeOpacity={0.7}
-      onPress={() => item.route && router.push(item.route as any)}
-    >
-      <View
-        style={[
-          styles.iconContainer,
-          {
-            backgroundColor: item.color + '20',
-            width: iconSize,
-            height: iconSize,
-            borderRadius: iconSize * 0.28,
-          },
-        ]}
-      >
-        <Ionicons name={item.icon as any} size={iconSize * 0.44} color={item.color} />
-      </View>
-      <Text
-        style={[styles.actionTitle, { fontSize: titleFont }]}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-      >
-        {item.title}
-      </Text>
-      <Text style={[styles.actionSubtitle, { fontSize: subtitleFont }]} numberOfLines={1}>
-        {item.subtitle}
-      </Text>
-    </TouchableOpacity>
-  );
-}
+const ACTIONS = [
+  { id: '1', title: 'My Workout', subtitle: 'Track & improve', icon: 'barbell-outline', color: '#3B82F6', route: '/workout' },
+  { id: '2', title: 'AI Assistant', subtitle: 'Ask anything', icon: 'hardware-chip-outline', color: '#8B5CF6', route: '/(tabs)/chat' },
+  { id: '3', title: 'Find Gym', subtitle: 'Near you', icon: 'location-outline', color: '#F59E0B', route: '/gym' },
+  { id: '4', title: 'Market Place', subtitle: 'Sport gear & more', icon: 'cart-outline', color: '#EF4444', route: '/gym' },
+];
 
 export default function QuickActions() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
-  const itemWidth = (width - H_PADDING * 2 - ITEM_GAP * (ITEMS_PER_ROW - 1)) / ITEMS_PER_ROW;
+  const cardW = (width - 32 - 30) / 4; // 4 cards, 16px each side padding, 10px gaps
 
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <TouchableOpacity>
+          <Text style={styles.seeAll}>See all →</Text>
+        </TouchableOpacity>
       </View>
-      <View style={styles.grid}>
-        {quickActions.map((action) => (
-          <QuickActionItem key={action.id} item={action} itemWidth={itemWidth} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        {ACTIONS.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[styles.card, { width: cardW + 10 }]}
+            activeOpacity={0.75}
+            onPress={() => router.push(item.route as any)}
+          >
+            <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
+              <Ionicons name={item.icon as any} size={26} color={item.color} />
+            </View>
+            <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={styles.cardSub} numberOfLines={1}>{item.subtitle}</Text>
+          </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 20,
-    paddingHorizontal: H_PADDING,
-  },
+  container: { marginTop: 22, paddingHorizontal: 16 },
   sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 14,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  seeAll: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+  row: { gap: 10 },
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ITEM_GAP,
-  },
-  actionItem: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  iconContainer: {
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 2,
   },
-  actionTitle: {
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  actionSubtitle: {
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, lineHeight: 17 },
+  cardSub: { fontSize: 11, color: Colors.textSecondary },
 });
