@@ -12,7 +12,7 @@ const BANNERS = [
     titleAccent: 'Better You',
     subtitle: 'Build healthy habits. See real results.',
     quote: 'Discipline\nBuilds\nFreedom',
-    image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80',
     route: '/challenge',
   },
   {
