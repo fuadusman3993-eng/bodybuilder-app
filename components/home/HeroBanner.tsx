@@ -12,7 +12,7 @@ const BANNERS = [
     titleAccent: 'Better You',
     subtitle: 'Build healthy habits. See real results.',
     quote: 'Discipline\nBuilds\nFreedom',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1000&q=80',
     route: '/challenge',
   },
   {
@@ -22,7 +22,7 @@ const BANNERS = [
     titleAccent: 'Coach',
     subtitle: 'Train with certified professionals.',
     quote: 'Stronger\nEvery\nDay',
-    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1000&q=80',
     route: '/(tabs)/chat',
   },
 ];
@@ -43,9 +43,9 @@ export default function HeroBanner() {
           style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
         />
-        {/* Dark gradient overlay */}
+        {/* Dark gradient overlay for text readability */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)']}
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
           style={StyleSheet.absoluteFill}
         />
 
