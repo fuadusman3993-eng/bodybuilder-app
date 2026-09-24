@@ -14,7 +14,7 @@ const ACTIONS = [
 export default function QuickActions() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const cardW = (width - 32 - 30) / 4; // 4 cards, 16px each side padding, 10px gaps
+  const cardW = 120; // Fixed width to prevent text truncation
 
   return (
     <View style={styles.container}>

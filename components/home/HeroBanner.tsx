@@ -45,7 +45,7 @@ export default function HeroBanner() {
         />
         {/* Dark gradient overlay */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.75)']}
+          colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)']}
           style={StyleSheet.absoluteFill}
         />
 
@@ -137,9 +137,19 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     letterSpacing: -0.5,
     marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   titleAccent: { color: Colors.primary },
-  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 16 },
+  subtitle: { 
+    fontSize: 13, 
+    color: 'rgba(255,255,255,0.95)', 
+    marginBottom: 16,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   joinBtn: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 22,

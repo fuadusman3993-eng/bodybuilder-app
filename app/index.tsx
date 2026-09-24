@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Logo from '../components/auth/Logo';
 import { Colors } from '../constants/colors';
+import { auth } from '../lib/firebase';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -17,9 +18,13 @@ export default function SplashScreen() {
       useNativeDriver: false,
     }).start();
 
-    // Navigate to permissions after 2.5 seconds
+    // Navigate to tabs if logged in, else permissions, after 2.5 seconds
     const timer = setTimeout(() => {
-      router.replace('/permissions');
+      if (auth.currentUser) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/permissions');
+      }
     }, 2500);
 
     return () => clearTimeout(timer);

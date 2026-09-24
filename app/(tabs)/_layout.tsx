@@ -24,7 +24,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: [styles.tabBar, { minHeight: 60 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8) }],
+        tabBarStyle: [styles.tabBar, { minHeight: 65 + insets.bottom, paddingBottom: Math.max(insets.bottom, 12) }],
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     fontSize: 11,
     fontWeight: '600',
+    marginBottom: 4,
   },
   createButton: {
     top: -20,
