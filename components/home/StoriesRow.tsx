@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
@@ -35,9 +35,11 @@ export default function StoriesRow() {
   const [loading, setLoading] = useState(true);
   const [viewedIds, setViewedIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchStories();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchStories();
+    }, [user.uid])
+  );
 
   const fetchStories = async () => {
     try {
