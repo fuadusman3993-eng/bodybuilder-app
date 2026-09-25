@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,23 +11,39 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+type Step = 'source' | 'editor' | 'uploading' | 'done';
+
+const TEXT_COLORS = ['#FFFFFF', '#000000', '#22C55E', '#3B82F6', '#8B5CF6', '#EF4444', '#F59E0B', '#EC4899'];
+
 export default function AddStory() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [caption, setCaption] = useState('');
-  const [uploading, setUploading] = useState(false);
 
-  const pickImage = async () => {
+  const [step, setStep] = useState<Step>('source');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [overlayText, setOverlayText] = useState('');
+  const [textColor, setTextColor] = useState('#FFFFFF');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSteps, setUploadSteps] = useState({ image: false, db: false, record: false });
+
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // ─── Pick from Gallery ───────────────────────────────────────────────
+  const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please allow access to your photos.');
@@ -37,14 +53,15 @@ export default function AddStory() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.8,
-      base64: true,
+      quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
+      setStep('editor');
     }
   };
 
+  // ─── Take a Photo ────────────────────────────────────────────────────
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -54,31 +71,29 @@ export default function AddStory() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.8,
-      base64: true,
+      quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
+      setStep('editor');
     }
   };
 
+  // ─── Upload Story ────────────────────────────────────────────────────
   const uploadStory = async () => {
-    if (!imageUri) {
-      Alert.alert('No image', 'Please select a photo first.');
-      return;
-    }
-    if (!user.uid) {
-      Alert.alert('Not logged in', 'Please log in first.');
-      return;
-    }
+    if (!imageUri || !user.uid) return;
+    setStep('uploading');
+    setUploadProgress(0);
+    setUploadSteps({ image: false, db: false, record: false });
 
-    setUploading(true);
     try {
-      // Convert to blob and upload
+      // Animate to 40%
+      animateTo(40);
+
       const response = await fetch(imageUri);
       const blob = await response.blob();
       const ext = imageUri.split('.').pop() || 'jpg';
-      const fileName = `story_${user.uid}_${Date.now()}.${ext}`;
+      const fileName = `${user.uid}_${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('stories')
@@ -86,112 +101,228 @@ export default function AddStory() {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('stories')
-        .getPublicUrl(fileName);
+      setUploadSteps(s => ({ ...s, image: true }));
+      animateTo(70);
 
-      // Get avatar url from Supabase avatars bucket
+      const { data: urlData } = supabase.storage.from('stories').getPublicUrl(fileName);
+      setUploadSteps(s => ({ ...s, db: true }));
+      animateTo(85);
+
       const avatarUrl = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
-      // Save to stories table
       const { error: dbError } = await supabase.from('stories').insert({
         uid: user.uid,
         username: user.name || 'User',
         avatar_url: avatarUrl,
         image_url: urlData.publicUrl,
-        caption: caption.trim() || null,
+        caption: overlayText.trim() || null,
         created_at: new Date().toISOString(),
       });
 
       if (dbError) throw dbError;
 
-      Alert.alert('✅ Story posted!', 'Your story is now live for 24 hours.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      setUploadSteps(s => ({ ...s, record: true }));
+      animateTo(100);
+
+      setTimeout(() => setStep('done'), 600);
     } catch (e: any) {
-      console.error(e);
       Alert.alert('Upload failed', e.message || 'Something went wrong.');
-    } finally {
-      setUploading(false);
+      setStep('editor');
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  const animateTo = (value: number) => {
+    setUploadProgress(value);
+    Animated.timing(progressAnim, {
+      toValue: value / 100,
+      duration: 600,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  // ─── Render: Choose Source ───────────────────────────────────────────
+  if (step === 'source') {
+    return (
+      <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <Ionicons name="close" size={26} color={Colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Story</Text>
-          <TouchableOpacity
-            style={[styles.postBtn, uploading && { opacity: 0.6 }]}
-            onPress={uploadStory}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <Text style={styles.postBtnText}>Post</Text>
-            )}
+          <View style={{ width: 26 }} />
+        </View>
+
+        <View style={styles.sourceBody}>
+          <Text style={styles.sourceHint}>Choose how to add your story</Text>
+
+          <TouchableOpacity style={styles.sourceCard} onPress={takePhoto} activeOpacity={0.8}>
+            <View style={[styles.sourceIconBox, { backgroundColor: 'rgba(34,197,94,0.15)' }]}>
+              <Ionicons name="camera" size={30} color={Colors.primary} />
+            </View>
+            <View style={styles.sourceTextCol}>
+              <Text style={styles.sourceCardTitle}>Camera</Text>
+              <Text style={styles.sourceCardSub}>Take a new photo or video</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sourceCard} onPress={pickFromGallery} activeOpacity={0.8}>
+            <View style={[styles.sourceIconBox, { backgroundColor: 'rgba(59,130,246,0.15)' }]}>
+              <Ionicons name="images" size={30} color="#3B82F6" />
+            </View>
+            <View style={styles.sourceTextCol}>
+              <Text style={styles.sourceCardTitle}>Gallery</Text>
+              <Text style={styles.sourceCardSub}>Choose from your photos</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Image Preview */}
-          <TouchableOpacity style={styles.imagePicker} onPress={pickImage} activeOpacity={0.8}>
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
-            ) : (
-              <View style={styles.placeholder}>
-                <Ionicons name="image-outline" size={60} color={Colors.textMuted} />
-                <Text style={styles.placeholderText}>Tap to select a photo</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.actionBtn} onPress={pickImage}>
-              <Ionicons name="images-outline" size={22} color={Colors.primary} />
-              <Text style={styles.actionText}>Gallery</Text>
+  // ─── Render: Editor ──────────────────────────────────────────────────
+  if (step === 'editor') {
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => setStep('source')}>
+              <Ionicons name="close" size={26} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity style={styles.actionBtn} onPress={takePhoto}>
-              <Ionicons name="camera-outline" size={22} color={Colors.primary} />
-              <Text style={styles.actionText}>Camera</Text>
+            <Text style={styles.headerTitle}>Add Text</Text>
+            <TouchableOpacity style={styles.nextBtn} onPress={uploadStory}>
+              <Text style={styles.nextBtnText}>Post</Text>
             </TouchableOpacity>
           </View>
+        </SafeAreaView>
 
-          {/* Caption */}
-          <View style={styles.captionContainer}>
-            <Text style={styles.captionLabel}>Caption (optional)</Text>
-            <TextInput
-              style={styles.captionInput}
-              placeholder="Write something motivating..."
-              placeholderTextColor={Colors.textMuted}
-              value={caption}
-              onChangeText={setCaption}
-              multiline
-              maxLength={200}
-            />
-            <Text style={styles.charCount}>{caption.length}/200</Text>
-          </View>
+        {/* Photo Preview with Text Overlay */}
+        <View style={styles.editorPreview}>
+          {imageUri && (
+            <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          )}
+          <View style={styles.editorDimOverlay} />
+          {overlayText.length > 0 && (
+            <View style={styles.overlayTextWrap}>
+              <Text style={[styles.overlayTextDisplay, { color: textColor }]}>{overlayText}</Text>
+            </View>
+          )}
+        </View>
 
-          {/* Info */}
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.infoText}>Stories disappear after 24 hours</Text>
-          </View>
-        </ScrollView>
+        {/* Text Input */}
+        <View style={[styles.editorBottom, { paddingBottom: insets.bottom + 8 }]}>
+          <TextInput
+            style={[styles.overlayInput]}
+            placeholder="Write something..."
+            placeholderTextColor={Colors.textMuted}
+            value={overlayText}
+            onChangeText={setOverlayText}
+            maxLength={80}
+          />
+          {/* Color Picker */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorRow}>
+            {TEXT_COLORS.map((c) => (
+              <TouchableOpacity
+                key={c}
+                onPress={() => setTextColor(c)}
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: c },
+                  textColor === c && styles.colorDotSelected,
+                ]}
+              />
+            ))}
+          </ScrollView>
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    );
+  }
+
+  // ─── Render: Uploading ───────────────────────────────────────────────
+  if (step === 'uploading') {
+    const circumference = 2 * Math.PI * 44;
+    const strokeDashoffset = progressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [circumference, 0],
+    });
+
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text style={styles.uploadingTitle}>Uploading Story...</Text>
+
+        {/* Circular Progress */}
+        <View style={styles.circleWrap}>
+          <Text style={styles.progressPercent}>{uploadProgress}%</Text>
+          {/* Simple animated ring using border */}
+          <View style={styles.circleTrack}>
+            <View
+              style={[
+                styles.circleFill,
+                { transform: [{ rotate: `${(uploadProgress / 100) * 360}deg` }] },
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Steps */}
+        <View style={styles.stepsList}>
+          <StepRow label="Uploading image" done={uploadSteps.image} />
+          <StepRow label="Saving to Supabase" done={uploadSteps.db} />
+          <StepRow label="Creating story record" done={uploadSteps.record} />
+        </View>
+        <Text style={styles.pleaseWait}>Please wait...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Render: Done ────────────────────────────────────────────────────
+  if (step === 'done') {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <View style={styles.successCircle}>
+          <Ionicons name="checkmark" size={50} color={Colors.primary} />
+        </View>
+        <Text style={styles.successTitle}>Story Posted!</Text>
+        <Text style={styles.successSub}>Your story is now live for 24 hours.</Text>
+        <TouchableOpacity
+          style={styles.viewStoryBtn}
+          onPress={() => router.replace('/(tabs)')}
+        >
+          <Text style={styles.viewStoryBtnText}>View Story</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return null;
+}
+
+function StepRow({ label, done }: { label: string; done: boolean }) {
+  return (
+    <View style={styles.stepRow}>
+      <View style={[styles.stepDot, done && styles.stepDotDone]}>
+        {done && <Ionicons name="checkmark" size={12} color="#000" />}
+      </View>
+      <Text style={[styles.stepLabel, done && styles.stepLabelDone]}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  centered: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+
+  // ── Header ──
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -202,65 +333,157 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  postBtn: {
+
+  // ── Source ──
+  sourceBody: { flex: 1, padding: 20, gap: 14 },
+  sourceHint: { color: Colors.textMuted, fontSize: 13, marginBottom: 6 },
+  sourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sourceIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sourceTextCol: { flex: 1 },
+  sourceCardTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  sourceCardSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  cancelBtn: {
+    margin: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cancelText: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
+
+  // ── Editor ──
+  nextBtn: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
-    minWidth: 70,
+  },
+  nextBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  editorPreview: {
+    flex: 1,
+    backgroundColor: '#111',
+    position: 'relative',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  postBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
-  imagePicker: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    height: 380,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  editorDimOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  preview: { width: '100%', height: '100%' },
-  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  placeholderText: { color: Colors.textMuted, fontSize: 14 },
-  actions: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
+  overlayTextWrap: {
+    position: 'absolute',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 10,
   },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
-  actionText: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  divider: { width: 1, backgroundColor: Colors.border },
-  captionContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
+  overlayTextDisplay: { fontSize: 28, fontWeight: '800', textAlign: 'center' },
+  editorBottom: {
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: 12,
   },
-  captionLabel: { color: Colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 8 },
-  captionInput: {
+  overlayInput: {
     color: Colors.textPrimary,
-    fontSize: 15,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    fontSize: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingBottom: 10,
   },
-  charCount: { color: Colors.textMuted, fontSize: 11, textAlign: 'right', marginTop: 6 },
-  infoBox: {
-    flexDirection: 'row',
+  colorRow: { flexDirection: 'row' },
+  colorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorDotSelected: { borderColor: Colors.primary, transform: [{ scale: 1.2 }] },
+
+  // ── Uploading ──
+  uploadingTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 32, textAlign: 'center' },
+  circleWrap: {
+    width: 110,
+    height: 110,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 30,
+    marginBottom: 32,
   },
-  infoText: { color: Colors.textMuted, fontSize: 12 },
+  circleTrack: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 8,
+    borderColor: 'rgba(34,197,94,0.2)',
+  },
+  circleFill: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 8,
+    borderColor: Colors.primary,
+    borderTopColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  progressPercent: { fontSize: 24, fontWeight: '900', color: Colors.primary },
+  stepsList: { gap: 14, width: '100%', marginBottom: 24 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepDotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepLabel: { color: Colors.textMuted, fontSize: 14 },
+  stepLabelDone: { color: Colors.textPrimary, fontWeight: '600' },
+  pleaseWait: { color: Colors.textMuted, fontSize: 13, marginTop: 4 },
+
+  // ── Done ──
+  successCircle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
+    backgroundColor: 'rgba(34,197,94,0.1)',
+  },
+  successTitle: { fontSize: 28, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10 },
+  successSub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginBottom: 36 },
+  viewStoryBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 30,
+  },
+  viewStoryBtnText: { color: '#000', fontWeight: '800', fontSize: 16 },
 });
