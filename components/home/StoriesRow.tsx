@@ -110,10 +110,10 @@ export default function StoriesRow() {
   };
 
   const handleStoryPress = (group: StoryGroup) => {
-    if (group.isOwn) {
+    if (group.isOwn && !group.hasStory) {
       router.push('/add-story');
     } else if (group.hasStory) {
-      setViewedIds(prev => [...prev, group.uid]);
+      if (!group.isOwn) setViewedIds(prev => [...prev, group.uid]);
       router.push({ pathname: '/story-viewer', params: { uid: group.uid } });
     }
   };
