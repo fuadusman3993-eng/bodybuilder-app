@@ -109,13 +109,29 @@ export default function StoriesRow() {
 
   const handleStoryPress = (group: StoryGroup) => {
     if (group.isOwn) {
-      // Open add story page
       router.push('/add-story');
     } else if (group.hasStory) {
-      // Mark as viewed locally
       setViewedIds(prev => [...prev, group.uid]);
       router.push({ pathname: '/story-viewer', params: { uid: group.uid } });
     }
+  };
+
+  const StoryAvatar = ({ url }: { url: string }) => {
+    const [error, setError] = useState(false);
+    const fallback = 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150';
+    return (
+      <Image
+        source={{ uri: error ? fallback : url }}
+        onError={() => setError(true)}
+        style={{
+          width: avatarInner,
+          height: avatarInner,
+          borderRadius: avatarInner / 2,
+          backgroundColor: Colors.surface,
+        }}
+        resizeMode="cover"
+      />
+    );
   };
 
   const renderItem = ({ item }: { item: StoryGroup }) => {
@@ -135,16 +151,7 @@ export default function StoriesRow() {
             item.isOwn && !item.hasStory && styles.storyRingOwn,
           ]}
         >
-          <Image
-            source={{ uri: item.avatar_url }}
-            style={{
-              width: avatarInner,
-              height: avatarInner,
-              borderRadius: avatarInner / 2,
-              backgroundColor: Colors.surface,
-            }}
-            resizeMode="cover"
-          />
+          <StoryAvatar url={item.avatar_url} />
           {item.isOwn && (
             <View style={styles.addBadge}>
               <Ionicons name="add" size={12} color={Colors.textPrimary} />

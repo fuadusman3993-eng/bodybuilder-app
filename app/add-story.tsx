@@ -28,7 +28,7 @@ type Step = 'source' | 'editor' | 'uploading' | 'done';
 
 const TEXT_COLORS = ['#FFFFFF', '#000000', '#22C55E', '#3B82F6', '#8B5CF6', '#EF4444', '#F59E0B', '#EC4899'];
 
-export default function AddStory() {
+function AddStory() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
@@ -479,11 +479,37 @@ const styles = StyleSheet.create({
   },
   successTitle: { fontSize: 28, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10 },
   successSub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginBottom: 36 },
-  viewStoryBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-  },
   viewStoryBtnText: { color: '#000', fontWeight: '800', fontSize: 16 },
 });
+
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 20 }}>
+          <Text style={{ color: '#EF4444', fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Something went wrong</Text>
+          <Text style={{ color: '#FFF', textAlign: 'center' }}>{String(this.state.error)}</Text>
+          <TouchableOpacity onPress={() => this.setState({hasError: false})} style={{ marginTop: 20, padding: 10, backgroundColor: '#333', borderRadius: 8 }}>
+            <Text style={{ color: '#FFF' }}>Try Again</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function AddStoryWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <AddStory />
+    </ErrorBoundary>
+  );
+}
