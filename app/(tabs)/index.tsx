@@ -9,9 +9,21 @@ import HeroBanner from '../../components/home/HeroBanner';
 import StoriesRow from '../../components/home/StoriesRow';
 import QuickActions from '../../components/home/QuickActions';
 import CommunityFeed from '../../components/home/CommunityFeed';
+import CoachHome from '../../components/home/CoachHome';
+import { useUserStore } from '../../store/userStore';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useUserStore();
+
+  if (user.role === 'coach') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar style="light" />
+        <CoachHome />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -34,14 +46,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    // paddingBottom is set dynamically via insets above
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scrollView: { flex: 1 },
+  scrollContent: {},
 });
