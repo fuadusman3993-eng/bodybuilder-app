@@ -138,7 +138,34 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.editButton} activeOpacity={0.8} onPress={() => router.push('/edit-profile')}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
-        
+
+        {/* Coach / Trainee Quick Actions */}
+        <View style={styles.quickActionsRow}>
+          {isCoach ? (
+            <>
+              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/coach-dashboard')}>
+                <Ionicons name="grid" size={18} color={Colors.primary} />
+                <Text style={styles.quickActionText}>Dashboard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/create-plan')}>
+                <Ionicons name="add-circle" size={18} color={Colors.primary} />
+                <Text style={styles.quickActionText}>New Plan</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/coaches')}>
+                <Ionicons name="search" size={18} color={Colors.primary} />
+                <Text style={styles.quickActionText}>Find Coach</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/my-coach')}>
+                <Ionicons name="person" size={18} color={Colors.primary} />
+                <Text style={styles.quickActionText}>My Coach</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
         <Text style={styles.bio}>{bio}</Text>
 
         {/* Profile Tabs */}
@@ -195,4 +222,11 @@ const styles = StyleSheet.create({
   activeTabText: { color: Colors.textPrimary },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingTop: 16, gap: 8 },
   gridImage: { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE, borderRadius: 8, backgroundColor: Colors.surface },
+  quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 12 },
+  quickActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 12,
+    backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 1, borderColor: Colors.primary,
+  },
+  quickActionText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
 });

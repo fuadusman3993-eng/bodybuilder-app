@@ -91,6 +91,11 @@ export default function RootLayout() {
           <Stack.Screen name="gym/index" options={{ headerShown: false }} />
           <Stack.Screen name="story-viewer" options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="add-story" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="coaches" options={{ headerShown: false }} />
+          <Stack.Screen name="coach-profile" options={{ headerShown: false }} />
+          <Stack.Screen name="coach-dashboard" options={{ headerShown: false }} />
+          <Stack.Screen name="my-coach" options={{ headerShown: false }} />
+          <Stack.Screen name="create-plan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         </Stack>
       </View>
     </SafeAreaProvider>
