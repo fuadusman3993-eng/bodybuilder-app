@@ -42,42 +42,86 @@ function AddStory() {
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  // ─── Pick from Gallery ───────────────────────────────────────────────
+  // ─── Pick from Gallery (Web + Native) ───────────────────────────────
   const pickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photos.');
+    if (Platform.OS === 'web') {
+      // Web: use hidden <input type="file">
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          setImageUri(url);
+          setStep('editor');
+        }
+      };
+      input.click();
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [9, 16],
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setStep('editor');
+    // Native
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to your photos.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+        setStep('editor');
+      }
+    } catch (e) {
+      console.warn('Gallery error:', e);
     }
   };
 
-  // ─── Take a Photo ────────────────────────────────────────────────────
+  // ─── Take a Photo (Web + Native) ─────────────────────────────────────
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow camera access.');
+    if (Platform.OS === 'web') {
+      // Web: use file input with capture attribute
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('capture', 'environment');
+      input.onchange = (e: any) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          setImageUri(url);
+          setStep('editor');
+        }
+      };
+      input.click();
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [9, 16],
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setStep('editor');
+    // Native
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow camera access.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [9, 16],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+        setStep('editor');
+      }
+    } catch (e) {
+      console.warn('Camera error:', e);
     }
   };
+
 
   // ─── Upload Story ────────────────────────────────────────────────────
   const uploadStory = async () => {
@@ -92,12 +136,13 @@ function AddStory() {
 
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      const ext = imageUri.split('.').pop() || 'jpg';
+      const mimeType = blob.type || 'image/jpeg';
+      const ext = mimeType.split('/')[1]?.split('+')[0] || 'jpg';
       const fileName = `${user.uid}_${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('stories')
-        .upload(fileName, blob, { contentType: `image/${ext}` });
+        .upload(fileName, blob, { contentType: mimeType, upsert: false });
 
       if (uploadError) throw uploadError;
 
