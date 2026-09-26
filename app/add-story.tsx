@@ -146,12 +146,15 @@ function AddStory() {
       const { data: urlData } = supabase.storage.from('stories').getPublicUrl(fileName);
       const avatarUrl = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
+      // The new expires_at is handled by Postgres default value (now() + 24 hours)
+      // We just need to pass the user's city
       const { error: dbError } = await supabase.from('stories').insert({
         uid: user.uid,
         username: user.name || 'User',
         avatar_url: avatarUrl,
         image_url: urlData.publicUrl,
         caption: overlayText.trim() || null,
+        city: user.city || null,
         created_at: new Date().toISOString(),
       });
 
