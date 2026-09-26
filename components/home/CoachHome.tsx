@@ -190,12 +190,17 @@ export default function CoachHome() {
 
       {/* Bottom Banner */}
       <View style={styles.bottomBanner}>
-        <ImageBackground source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80' }} style={styles.bbBg} imageStyle={{ borderRadius: 16 }}>
+        <View style={styles.bbBg}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80' }}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+            resizeMode="cover"
+          />
           <LinearGradient colors={['rgba(0,0,0,0.9)', 'rgba(0,0,0,0.6)']} style={styles.bbGradient}>
             <Text style={styles.bbTitle}>Good Coaches{'\n'}<Text style={{color: Colors.primary}}>Change Lives</Text></Text>
             <Text style={styles.bbSub}>Be the reason someone gets stronger.</Text>
           </LinearGradient>
-        </ImageBackground>
+        </View>
       </View>
 
       <View style={{height: 40}} />
