@@ -57,7 +57,7 @@ export default function CreateProfileScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={s.container}>
+        <ScrollView contentContainerStyle={s.container}>
           
           <View style={s.iconWrap}>
             <Ionicons name="person-circle-outline" size={64} color={Colors.primary} />
