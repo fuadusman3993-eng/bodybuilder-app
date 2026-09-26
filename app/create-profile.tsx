@@ -16,6 +16,7 @@ export default function CreateProfileScreen() {
   
   const [username, setUsername] = useState('');
   const [city, setCity] = useState('');
+  const [customCity, setCustomCity] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,17 +30,23 @@ export default function CreateProfileScreen() {
       return;
     }
     
+    const finalCity = city === 'Other' ? customCity.trim() : city;
+    if (city === 'Other' && !finalCity) {
+      setError('Please type your city name.');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const uid = auth.currentUser?.uid || user.uid;
       if (uid) {
         await updateDoc(doc(db, 'users', uid), {
           username: username.trim(),
-          city: city,
+          city: finalCity,
         });
       }
       
-      setUser({ ...user, name: username.trim(), city: city });
+      setUser({ ...user, name: username.trim(), city: finalCity });
       
       if (user.role === 'coach') {
         router.replace('/coach-onboarding');
@@ -91,6 +98,19 @@ export default function CreateProfileScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          {city === 'Other' && (
+            <View style={[s.inputWrap, { marginTop: 12 }, error ? s.inputError : null]}>
+              <TextInput
+                style={s.input}
+                placeholder="Type your city name"
+                placeholderTextColor="#666"
+                value={customCity}
+                onChangeText={(t) => { setCustomCity(t); setError(''); }}
+                autoCapitalize="words"
+              />
+            </View>
+          )}
 
           {error ? <Text style={s.errorText}>{error}</Text> : null}
           
