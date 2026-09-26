@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
+import StoriesRow from './StoriesRow';
 
 export default function CoachHome() {
   const router = useRouter();
@@ -81,6 +82,9 @@ export default function CoachHome() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Stories Row — Coach can also post and see trainees' stories */}
+      <StoriesRow />
 
       {/* Hero Banner */}
       <View style={styles.bannerContainer}>
