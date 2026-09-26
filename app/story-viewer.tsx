@@ -53,10 +53,12 @@ export default function StoryViewer() {
   const loadStories = async () => {
     try {
       setLoading(true);
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('stories')
         .select('*')
         .eq('uid', uid)
+        .gt('expires_at', now)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -67,6 +69,16 @@ export default function StoryViewer() {
       setLoading(false);
     }
   };
+
+  // Record view when story changes
+  useEffect(() => {
+    if (userStories.length > 0 && userStories[storyIndex] && user.uid) {
+      supabase.from('story_views').insert({
+        story_id: userStories[storyIndex].id,
+        viewer_uid: user.uid,
+      }).catch(() => {}); // ignore conflicts if already viewed
+    }
+  }, [storyIndex, userStories]);
 
   // Start progress animation
   const startProgress = useCallback(() => {

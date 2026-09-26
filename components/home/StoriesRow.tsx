@@ -44,19 +44,70 @@ export default function StoriesRow() {
   const fetchStories = async () => {
     try {
       setLoading(true);
-      // Get stories from last 24 hours
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
+      const now = new Date().toISOString();
+
+      let fetchedStories: any[] = [];
+
+      // 1. Fetch user's own stories
+      const { data: myData } = await supabase
         .from('stories')
-        .select('uid, username, avatar_url, created_at')
-        .gte('created_at', cutoff)
-        .order('created_at', { ascending: false });
+        .select('id, uid, username, avatar_url, created_at')
+        .eq('uid', user.uid)
+        .gt('expires_at', now);
+      
+      if (myData) fetchedStories = [...myData];
 
-      if (error) throw error;
+      // 2. Role-based Fetching
+      if (user.role === 'coach') {
+        // Coach sees: Trainees they train
+        const { data: trainees } = await supabase
+          .from('coach_requests')
+          .select('trainee_uid')
+          .eq('coach_uid', user.uid)
+          .eq('status', 'accepted');
+        
+        const traineeUids = (trainees || []).map(t => t.trainee_uid);
+        if (traineeUids.length > 0) {
+          const { data: tStories } = await supabase
+            .from('stories')
+            .select('id, uid, username, avatar_url, created_at')
+            .in('uid', traineeUids)
+            .gt('expires_at', now);
+          if (tStories) fetchedStories = [...fetchedStories, ...tStories];
+        }
+      } else {
+        // Trainee sees: Coaches in their city (Max 20)
+        const { data: coaches } = await supabase.from('coach_profiles').select('uid');
+        const coachUids = (coaches || []).map(c => c.uid);
+        
+        if (coachUids.length > 0) {
+          const userCity = user.city || 'Addis Ababa';
+          const { data: cStories } = await supabase
+            .from('stories')
+            .select('id, uid, username, avatar_url, created_at')
+            .in('uid', coachUids)
+            .eq('city', userCity)
+            .gt('expires_at', now)
+            .order('created_at', { ascending: false })
+            .limit(20); // 20 latest stories from local coaches
+          if (cStories) fetchedStories = [...fetchedStories, ...cStories];
+        }
+      }
 
-      // Group by uid
-      const groupMap: { [uid: string]: StoryGroup } = {};
-      (data || []).forEach((s: any) => {
+      // 3. Fetch Views
+      const { data: views } = await supabase
+        .from('story_views')
+        .select('story_id')
+        .eq('viewer_uid', user.uid);
+      const viewedSet = new Set((views || []).map(v => v.story_id));
+
+      // 4. Group by User
+      const groupMap: { [uid: string]: StoryGroup & { allViewed: boolean } } = {};
+      
+      // Sort stories old to new, so the "latest" dictates the ring status
+      fetchedStories.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      fetchedStories.forEach((s: any) => {
         if (!groupMap[s.uid]) {
           groupMap[s.uid] = {
             uid: s.uid,
@@ -64,16 +115,21 @@ export default function StoriesRow() {
             avatar_url: s.avatar_url,
             isOwn: s.uid === user.uid,
             hasStory: true,
-            viewed: false,
+            viewed: false, // We will evaluate this below
+            allViewed: true,
           };
+        }
+        // If even one story is NOT viewed, the whole ring is NOT viewed
+        if (!viewedSet.has(s.id)) {
+          groupMap[s.uid].allViewed = false;
         }
       });
 
-      // Put own story first
+      // 5. Build Final List
       const groups: StoryGroup[] = [];
-      
-      // Always show "Your Story" bubble
       const ownExists = user.uid && groupMap[user.uid];
+      
+      // Always show "Your Story" first
       groups.push({
         uid: user.uid || 'own',
         username: user.name || 'You',
@@ -82,18 +138,19 @@ export default function StoriesRow() {
           : 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150',
         isOwn: true,
         hasStory: !!ownExists,
-        viewed: false,
+        viewed: ownExists ? groupMap[user.uid].allViewed : false,
       });
 
       // Add others
       Object.values(groupMap).forEach((g) => {
-        if (!g.isOwn) groups.push(g);
+        if (!g.isOwn) {
+          groups.push({ ...g, viewed: g.allViewed });
+        }
       });
 
       setStoryGroups(groups);
     } catch (e) {
       console.warn('Stories fetch error:', e);
-      // Fallback to mock data look
       setStoryGroups([
         {
           uid: user.uid || 'own',
