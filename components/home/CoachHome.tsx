@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -84,12 +84,13 @@ export default function CoachHome() {
 
       {/* Hero Banner */}
       <View style={styles.bannerContainer}>
-        <ImageBackground 
-          source={{ uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80' }} 
-          style={styles.bannerBg}
-          imageStyle={{ borderRadius: 20 }}
-        >
-          <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent', 'rgba(0,0,0,0.8)']} style={styles.bannerGradient}>
+        <View style={styles.bannerBg}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80' }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+          <LinearGradient colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={styles.bannerGradient}>
             <View style={styles.bannerTag}><Text style={styles.bannerTagText}>MAKE AN IMPACT</Text></View>
             <Text style={styles.bannerTitle}>Stronger People{'\n'}Build a Healthier World</Text>
             <Text style={styles.bannerSub}>Train  •  Guide  •  Transform</Text>
@@ -98,7 +99,7 @@ export default function CoachHome() {
               <Ionicons name="arrow-forward" size={16} color="#000" />
             </TouchableOpacity>
           </LinearGradient>
-        </ImageBackground>
+        </View>
       </View>
 
       {/* Stats Row */}
