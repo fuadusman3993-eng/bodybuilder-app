@@ -181,8 +181,29 @@ function AddStory() {
     }).start();
   };
 
-  // ─── Render: Camera ───────────────────────────────────────────
+  // ─── Render: Camera/Source Picker ─────────────────────────────
   if (step === 'camera') {
+    // On web — camera doesn't work, show a nice picker UI instead
+    if (Platform.OS === 'web') {
+      return (
+        <SafeAreaView style={[styles.container, styles.center]}>
+          <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', top: 50, left: 20 }}>
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+          <Ionicons name="images" size={80} color={Colors.primary} />
+          <Text style={{ color: '#FFF', fontSize: 22, fontWeight: '800', marginTop: 20, marginBottom: 8 }}>Add Story</Text>
+          <Text style={{ color: '#888', fontSize: 15, marginBottom: 40 }}>Pick a photo from your device</Text>
+          <TouchableOpacity
+            style={{ backgroundColor: Colors.primary, paddingHorizontal: 40, paddingVertical: 16, borderRadius: 30 }}
+            onPress={pickFromGallery}
+          >
+            <Text style={{ color: '#000', fontWeight: '800', fontSize: 16 }}>Choose Photo</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      );
+    }
+
+    // On Native — show full camera
     if (!permission?.granted) {
       return (
         <SafeAreaView style={[styles.container, styles.center]}>

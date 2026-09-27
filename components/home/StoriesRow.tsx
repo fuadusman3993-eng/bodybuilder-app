@@ -48,12 +48,12 @@ export default function StoriesRow() {
 
       let fetchedStories: any[] = [];
 
-      // 1. Fetch user's own stories
+      // 1. Fetch user's own stories (include null expires_at for old stories)
       const { data: myData } = await supabase
         .from('stories')
         .select('id, uid, username, avatar_url, created_at')
         .eq('uid', user.uid)
-        .gt('expires_at', now);
+        .or(`expires_at.gt.${now},expires_at.is.null`);
       
       if (myData) fetchedStories = [...myData];
 
@@ -72,24 +72,31 @@ export default function StoriesRow() {
             .from('stories')
             .select('id, uid, username, avatar_url, created_at')
             .in('uid', traineeUids)
-            .gt('expires_at', now);
+            .or(`expires_at.gt.${now},expires_at.is.null`);
           if (tStories) fetchedStories = [...fetchedStories, ...tStories];
         }
       } else {
         // Trainee sees: Coaches in their city (Max 20)
+        // Also includes coaches with null city (old accounts not yet updated)
         const { data: coaches } = await supabase.from('coach_profiles').select('uid');
         const coachUids = (coaches || []).map(c => c.uid);
         
         if (coachUids.length > 0) {
-          const userCity = user.city || 'Addis Ababa';
-          const { data: cStories } = await supabase
+          const userCity = user.city || null;
+          let query = supabase
             .from('stories')
             .select('id, uid, username, avatar_url, created_at')
             .in('uid', coachUids)
-            .eq('city', userCity)
-            .gt('expires_at', now)
+            .or(`expires_at.gt.${now},expires_at.is.null`)
             .order('created_at', { ascending: false })
-            .limit(20); // 20 latest stories from local coaches
+            .limit(20);
+
+          // If user has a city, show coaches from same city OR coaches with no city set
+          if (userCity) {
+            query = query.or(`city.eq.${userCity},city.is.null`);
+          }
+
+          const { data: cStories } = await query;
           if (cStories) fetchedStories = [...fetchedStories, ...cStories];
         }
       }
