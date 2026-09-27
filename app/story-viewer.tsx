@@ -58,7 +58,7 @@ export default function StoryViewer() {
         .from('stories')
         .select('*')
         .eq('uid', uid)
-        .gt('expires_at', now)
+        .or(`expires_at.gt.${now},expires_at.is.null`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -143,9 +143,20 @@ export default function StoryViewer() {
     );
   }
 
+  // Empty state — show proper UI instead of silent router.back()
   if (userStories.length === 0) {
-    router.back();
-    return null;
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }]}>
+        <Ionicons name="images-outline" size={60} color="#444" />
+        <Text style={{ color: '#888', fontSize: 16, marginTop: 16 }}>No stories yet</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ marginTop: 30, backgroundColor: Colors.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 }}
+        >
+          <Text style={{ color: '#000', fontWeight: '700' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const current = userStories[storyIndex];
