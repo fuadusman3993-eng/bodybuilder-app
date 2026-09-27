@@ -72,12 +72,19 @@ export default function StoryViewer() {
 
   // Record view when story changes
   useEffect(() => {
-    if (userStories.length > 0 && userStories[storyIndex] && user.uid) {
-      supabase.from('story_views').insert({
-        story_id: userStories[storyIndex].id,
-        viewer_uid: user.uid,
-      }).catch(() => {}); // ignore conflicts if already viewed
-    }
+    const recordView = async () => {
+      if (userStories.length > 0 && userStories[storyIndex] && user.uid) {
+        try {
+          await supabase.from('story_views').insert({
+            story_id: userStories[storyIndex].id,
+            viewer_uid: user.uid,
+          });
+        } catch (e) {
+          // ignore conflicts if already viewed
+        }
+      }
+    };
+    recordView();
   }, [storyIndex, userStories]);
 
   // Start progress animation
