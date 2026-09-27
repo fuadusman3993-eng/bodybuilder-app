@@ -162,7 +162,11 @@ export default function CoachDashboard() {
             </View>
           ) : (
             trainees.map((t) => (
-              <View key={t.id} style={styles.traineeCard}>
+              <TouchableOpacity 
+                key={t.id} 
+                style={styles.traineeCard}
+                onPress={() => router.push({ pathname: '/trainee-profile', params: { uid: t.trainee_uid } })}
+              >
                 <Image
                   source={{ uri: t.trainee_avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
                   style={styles.avatar}
@@ -176,7 +180,7 @@ export default function CoachDashboard() {
                 <TouchableOpacity style={styles.planBtn} onPress={() => router.push('/create-plan')}>
                   <Text style={styles.planBtnText}>+ Plan</Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))
           )
         ) : (
@@ -188,7 +192,11 @@ export default function CoachDashboard() {
             </View>
           ) : (
             requests.map((req) => (
-              <View key={req.id} style={styles.requestCard}>
+              <TouchableOpacity 
+                key={req.id} 
+                style={styles.requestCard}
+                onPress={() => router.push({ pathname: '/trainee-profile', params: { uid: req.trainee_uid } })}
+              >
                 <Image
                   source={{ uri: req.trainee_avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
                   style={styles.avatar}

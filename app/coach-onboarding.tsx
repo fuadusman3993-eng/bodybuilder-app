@@ -98,6 +98,7 @@ export default function CoachOnboardingScreen() {
     try {
       const uid = auth.currentUser?.uid;
       if (uid) {
+        // Save to Firebase
         await updateDoc(doc(db, 'users', uid), {
           fullName: fullName.trim(),
           phone: phone.trim(),
@@ -108,9 +109,24 @@ export default function CoachOnboardingScreen() {
           onboardingComplete: true,
           updatedAt: serverTimestamp(),
         });
+
+        // Save to Supabase coach_profiles
+        const { supabase } = await import('../lib/supabase');
+        await supabase.from('coach_profiles').upsert({
+          uid: uid,
+          name: fullName.trim(),
+          avatar_url: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
+          bio: about.trim(),
+          specialty: [specialization],
+          experience_years: parseInt(yearsExp.replace(/\D/g, '')) || 0,
+          price_per_month: 0,
+          rating: 5.0,
+          total_trainees: 0,
+          is_verified: true,
+        });
       }
       setUser({ ...user!, role: 'coach', name: fullName.trim() });
-      router.replace('/(tabs)'); // Replace with /(coach-tabs) when ready
+      router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Error', 'Could not save your profile. Please try again.');
       console.error(err);
