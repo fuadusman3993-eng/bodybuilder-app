@@ -219,7 +219,7 @@ export default function CoachDashboard() {
                     <Ionicons name="close" size={18} color="#FFF" />
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )
         )}
