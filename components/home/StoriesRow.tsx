@@ -45,7 +45,6 @@ export default function StoriesRow() {
   const fetchStories = async () => {
     try {
       setLoading(true);
-      setErrorMsg(null);
       const now = new Date().toISOString();
 
       let fetchedStories: any[] = [];
@@ -58,7 +57,7 @@ export default function StoriesRow() {
         
       if (myError) {
         console.warn('myError', myError);
-        setErrorMsg('DB Error (own): ' + myError.message);
+        setErrorMsg(prev => (prev ? prev + '\n' : '') + 'DB Error (own): ' + myError.message);
       }
       
       if (myData) {
@@ -86,7 +85,7 @@ export default function StoriesRow() {
             .select('id, uid, username, avatar_url, created_at, expires_at')
             .in('uid', traineeUids);
             
-          if (tError) setErrorMsg('DB Error (tStories): ' + tError.message);
+          if (tError) setErrorMsg(prev => (prev ? prev + '\n' : '') + 'DB Error (tStories): ' + tError.message);
             
           if (tStories) {
             const nowTime = new Date().getTime();
@@ -113,7 +112,7 @@ export default function StoriesRow() {
             .order('created_at', { ascending: false })
             .limit(50);
             
-          if (cError) setErrorMsg('DB Error (cStories): ' + cError.message);
+          if (cError) setErrorMsg(prev => (prev ? prev + '\n' : '') + 'DB Error (cStories): ' + cError.message);
             
           if (cStories) {
             const nowTime = new Date().getTime();
@@ -276,11 +275,6 @@ export default function StoriesRow() {
           {errorMsg && (
              <Text style={{color: 'red', fontSize: 12, paddingLeft: 10, paddingRight: 10, marginBottom: 10}}>
                {errorMsg}
-             </Text>
-          )}
-          {storyGroups.length === 1 && !storyGroups[0].hasStory && (
-             <Text style={{color: 'red', fontSize: 10, paddingLeft: 10}}>
-               Debug: Error caught. Check alert.
              </Text>
           )}
           <FlatList
