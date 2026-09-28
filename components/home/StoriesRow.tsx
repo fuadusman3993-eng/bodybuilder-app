@@ -48,14 +48,20 @@ export default function StoriesRow() {
 
       let fetchedStories: any[] = [];
 
-      // 1. Fetch user's own stories (include null expires_at for old stories)
+      // 1. Fetch user's own stories and filter expiration in JS safely
       const { data: myData } = await supabase
         .from('stories')
-        .select('id, uid, username, avatar_url, created_at')
-        .eq('uid', user.uid)
-        .or(`expires_at.gt.${now},expires_at.is.null`);
+        .select('id, uid, username, avatar_url, created_at, expires_at')
+        .eq('uid', user.uid);
       
-      if (myData) fetchedStories = [...myData];
+      if (myData) {
+        const nowTime = new Date().getTime();
+        const validMyStories = myData.filter(s => {
+          if (!s.expires_at) return true;
+          return new Date(s.expires_at).getTime() > nowTime;
+        });
+        fetchedStories = [...validMyStories];
+      }
 
       // 2. Role-based Fetching
       if (user.role === 'coach') {
@@ -70,10 +76,17 @@ export default function StoriesRow() {
         if (traineeUids.length > 0) {
           const { data: tStories } = await supabase
             .from('stories')
-            .select('id, uid, username, avatar_url, created_at')
-            .in('uid', traineeUids)
-            .or(`expires_at.gt.${now},expires_at.is.null`);
-          if (tStories) fetchedStories = [...fetchedStories, ...tStories];
+            .select('id, uid, username, avatar_url, created_at, expires_at')
+            .in('uid', traineeUids);
+            
+          if (tStories) {
+            const nowTime = new Date().getTime();
+            const validTStories = tStories.filter(s => {
+              if (!s.expires_at) return true;
+              return new Date(s.expires_at).getTime() > nowTime;
+            });
+            fetchedStories = [...fetchedStories, ...validTStories];
+          }
         }
       } else {
         // Trainee sees: Coaches in their city (Max 20)
