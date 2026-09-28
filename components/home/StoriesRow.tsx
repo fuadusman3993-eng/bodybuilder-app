@@ -280,10 +280,11 @@ export default function StoriesRow() {
             data={storyGroups}
             renderItem={renderItem}
             keyExtractor={(item) => item.uid}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-        />
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+          />
+        </>
       )}
     </View>
   );
