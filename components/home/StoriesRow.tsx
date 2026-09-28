@@ -187,7 +187,8 @@ export default function StoriesRow() {
       });
 
       setStoryGroups(groups);
-    } catch (e) {
+    } catch (e: any) {
+      alert('Top level fetch error: ' + (e.message || e.toString()));
       console.warn('Stories fetch error:', e);
       setStoryGroups([
         {
@@ -269,10 +270,16 @@ export default function StoriesRow() {
           <ActivityIndicator size="small" color={Colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={storyGroups}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.uid}
+        <>
+          {storyGroups.length === 1 && !storyGroups[0].hasStory && (
+             <Text style={{color: 'red', fontSize: 10, paddingLeft: 10}}>
+               Debug: Error caught. Check alert.
+             </Text>
+          )}
+          <FlatList
+            data={storyGroups}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.uid}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
