@@ -272,6 +272,7 @@ export default function StoriesRow() {
           <ActivityIndicator size="small" color={Colors.primary} />
         </View>
       ) : (
+        <>
           {errorMsg && (
              <Text style={{color: 'red', fontSize: 12, paddingLeft: 10, paddingRight: 10, marginBottom: 10}}>
                {errorMsg}
