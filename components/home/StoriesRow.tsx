@@ -49,10 +49,15 @@ export default function StoriesRow() {
       let fetchedStories: any[] = [];
 
       // 1. Fetch user's own stories and filter expiration in JS safely
-      const { data: myData } = await supabase
+      const { data: myData, error: myError } = await supabase
         .from('stories')
         .select('id, uid, username, avatar_url, created_at, expires_at')
         .eq('uid', user.uid);
+        
+      if (myError) {
+        console.warn('myError', myError);
+        alert('DB Error fetching own stories: ' + myError.message);
+      }
       
       if (myData) {
         const nowTime = new Date().getTime();
@@ -74,10 +79,12 @@ export default function StoriesRow() {
         
         const traineeUids = (trainees || []).map(t => t.trainee_uid);
         if (traineeUids.length > 0) {
-          const { data: tStories } = await supabase
+          const { data: tStories, error: tError } = await supabase
             .from('stories')
             .select('id, uid, username, avatar_url, created_at, expires_at')
             .in('uid', traineeUids);
+            
+          if (tError) alert('DB Error tStories: ' + tError.message);
             
           if (tStories) {
             const nowTime = new Date().getTime();
@@ -97,12 +104,14 @@ export default function StoriesRow() {
           const userCity = user.city || null;
           
           // Fetch recent stories from coaches (up to 50 to allow for filtering)
-          const { data: cStories } = await supabase
+          const { data: cStories, error: cError } = await supabase
             .from('stories')
             .select('id, uid, username, avatar_url, created_at, city, expires_at')
             .in('uid', coachUids)
             .order('created_at', { ascending: false })
             .limit(50);
+            
+          if (cError) alert('DB Error cStories: ' + cError.message);
             
           if (cStories) {
             const nowTime = new Date().getTime();
