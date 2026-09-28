@@ -34,6 +34,7 @@ export default function StoriesRow() {
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewedIds, setViewedIds] = useState<string[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -44,6 +45,7 @@ export default function StoriesRow() {
   const fetchStories = async () => {
     try {
       setLoading(true);
+      setErrorMsg(null);
       const now = new Date().toISOString();
 
       let fetchedStories: any[] = [];
@@ -56,7 +58,7 @@ export default function StoriesRow() {
         
       if (myError) {
         console.warn('myError', myError);
-        alert('DB Error fetching own stories: ' + myError.message);
+        setErrorMsg('DB Error (own): ' + myError.message);
       }
       
       if (myData) {
@@ -84,7 +86,7 @@ export default function StoriesRow() {
             .select('id, uid, username, avatar_url, created_at, expires_at')
             .in('uid', traineeUids);
             
-          if (tError) alert('DB Error tStories: ' + tError.message);
+          if (tError) setErrorMsg('DB Error (tStories): ' + tError.message);
             
           if (tStories) {
             const nowTime = new Date().getTime();
@@ -111,7 +113,7 @@ export default function StoriesRow() {
             .order('created_at', { ascending: false })
             .limit(50);
             
-          if (cError) alert('DB Error cStories: ' + cError.message);
+          if (cError) setErrorMsg('DB Error (cStories): ' + cError.message);
             
           if (cStories) {
             const nowTime = new Date().getTime();
@@ -188,7 +190,7 @@ export default function StoriesRow() {
 
       setStoryGroups(groups);
     } catch (e: any) {
-      alert('Top level fetch error: ' + (e.message || e.toString()));
+      setErrorMsg('Top level error: ' + (e.message || e.toString()));
       console.warn('Stories fetch error:', e);
       setStoryGroups([
         {
@@ -270,7 +272,11 @@ export default function StoriesRow() {
           <ActivityIndicator size="small" color={Colors.primary} />
         </View>
       ) : (
-        <>
+          {errorMsg && (
+             <Text style={{color: 'red', fontSize: 12, paddingLeft: 10, paddingRight: 10, marginBottom: 10}}>
+               {errorMsg}
+             </Text>
+          )}
           {storyGroups.length === 1 && !storyGroups[0].hasStory && (
              <Text style={{color: 'red', fontSize: 10, paddingLeft: 10}}>
                Debug: Error caught. Check alert.
