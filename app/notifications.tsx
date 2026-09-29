@@ -58,7 +58,9 @@ export default function NotificationsScreen() {
   };
 
   const handlePress = (item: any) => {
-    if (item.sender_uid) {
+    if (item.type === 'request') {
+      router.push('/coach-dashboard');
+    } else if (item.sender_uid) {
       router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } });
     }
   };

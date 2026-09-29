@@ -123,14 +123,22 @@ export default function CoachDashboard() {
 
       {/* Summary Cards */}
       <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
+        <TouchableOpacity 
+          style={styles.summaryCard} 
+          onPress={() => setActiveTab('trainees')}
+          activeOpacity={0.8}
+        >
           <Text style={styles.summaryValue}>{trainees.length}</Text>
           <Text style={styles.summaryLabel}>Trainees</Text>
-        </View>
-        <View style={[styles.summaryCard, requests.length > 0 && styles.summaryCardAlert]}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.summaryCard, requests.length > 0 && styles.summaryCardAlert]}
+          onPress={() => setActiveTab('requests')}
+          activeOpacity={0.8}
+        >
           <Text style={styles.summaryValue}>{requests.length}</Text>
           <Text style={styles.summaryLabel}>Requests</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}

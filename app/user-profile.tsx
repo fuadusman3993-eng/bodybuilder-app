@@ -145,6 +145,13 @@ export default function UserProfilePage() {
         Alert.alert('Error', error.message);
       } else {
         setRequestSent(true);
+        // Add notification for coach
+        await supabase.from('notifications').insert({
+          user_uid: uid,
+          sender_uid: currentUser.uid,
+          type: 'request',
+          message: `${currentUser.name || 'A user'} wants you to be their coach.`,
+        });
         Alert.alert('✅ Request Sent!', 'The coach will review your request.');
       }
     } catch (e: any) {

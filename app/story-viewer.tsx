@@ -177,19 +177,8 @@ export default function StoryViewer() {
         .eq('story_id', story.id)
         .order('created_at', { ascending: false });
         
-      // 2. Fetch Likers UIDs
-      const { data: likeData } = await supabase
-        .from('story_likes')
-        .select('uid')
-        .eq('story_id', story.id);
-        
-      const likerUids = likeData?.map(row => row.uid) || [];
-      setLikersList(likerUids);
-
       const viewerUids = viewData?.map(row => row.viewer_uid) || [];
-      
-      // Combine unique UIDs (likers who haven't viewed? usually impossible but safe to merge)
-      const allUidsToFetch = Array.from(new Set([...viewerUids, ...likerUids]));
+      const allUidsToFetch = Array.from(new Set([...viewerUids]));
 
       if (allUidsToFetch.length === 0) {
         setViewersList([]);
@@ -208,6 +197,13 @@ export default function StoryViewer() {
             name: d.name || 'Unknown',
             username: d.username || 'user',
             avatar: d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
+          });
+        } else {
+          fetchedUsers.push({
+            uid,
+            name: 'User',
+            username: 'user',
+            avatar: `https://ui-avatars.com/api/?name=User&background=10B981&color=fff`,
           });
         }
       }
@@ -392,10 +388,6 @@ export default function StoryViewer() {
                   <Ionicons name="eye-outline" size={24} color="#FFF" />
                   <Text style={styles.ownerStatText}>{views}</Text>
                 </View>
-                <View style={styles.ownerStat}>
-                  <Ionicons name="heart" size={24} color="#EF4444" />
-                  <Text style={styles.ownerStatText}>{likes}</Text>
-                </View>
                 <View style={{ flex: 1 }} />
                 <Ionicons name="chevron-up" size={24} color="#FFF" />
               </TouchableOpacity>
@@ -410,10 +402,6 @@ export default function StoryViewer() {
                     <Ionicons name="eye-outline" size={26} color="#FFF" />
                     <Text style={styles.viewerStatText}>{views}</Text>
                   </View>
-                  <TouchableOpacity onPress={handleLike} style={styles.viewerStatItem}>
-                    <Ionicons name={isLiked ? "heart" : "heart-outline"} size={26} color={isLiked ? "#EF4444" : "#FFF"} />
-                    <Text style={styles.viewerStatText}>{likes}</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -455,9 +443,6 @@ export default function StoryViewer() {
                       <Text style={styles.viewerName}>{viewer.name}</Text>
                       <Text style={styles.viewerUsername}>@{viewer.username}</Text>
                     </View>
-                    {likersList.includes(viewer.uid) && (
-                      <Ionicons name="heart" size={20} color="#EF4444" />
-                    )}
                   </TouchableOpacity>
                 ))}
               </ScrollView>
