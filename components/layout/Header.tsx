@@ -1,11 +1,30 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import { useUserStore } from '../../store/userStore';
 
 export default function Header() {
   const { width } = useWindowDimensions();
   const isCompact = width < 360;
+  const router = useRouter();
+  const { user } = useUserStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.uid) {
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_uid', user.uid)
+          .eq('is_read', false)
+          .then(({ count }) => setUnreadCount(count || 0));
+      }
+    }, [user?.uid])
+  );
 
   return (
     <View style={styles.container}>
@@ -17,11 +36,17 @@ export default function Header() {
         </View>
       </View>
       <View style={styles.right}>
-        <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.iconButton} 
+          activeOpacity={0.7}
+          onPress={() => router.push('/notifications')}
+        >
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
