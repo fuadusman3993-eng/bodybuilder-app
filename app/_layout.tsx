@@ -9,6 +9,7 @@ import { Colors } from '../constants/colors';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useUserStore, UserTier } from '../store/userStore';
 
 if (Platform.OS === 'web') {
@@ -44,13 +45,26 @@ export default function RootLayout() {
         try {
           const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
           const role = docSnap.exists() ? (docSnap.data().role ?? 'user') : 'user';
+          const name = firebaseUser.displayName || docSnap.data()?.username || 'User';
+          
           setUser({
             tier: UserTier.FREE,
-            name: firebaseUser.displayName || docSnap.data()?.username || 'User',
+            name,
             role,
             uid: firebaseUser.uid,
             email: firebaseUser.email || undefined,
           });
+
+          // AUTO-SYNC: If user is a coach in Firebase, ensure they exist in Supabase `coach_profiles`
+          // This fixes issues if a coach was added manually via SQL with a typo in the UID
+          if (role === 'coach') {
+            await supabase.from('coach_profiles').upsert({
+              uid: firebaseUser.uid,
+              name: name,
+              // Other fields will just be defaults or remain unchanged
+            }, { onConflict: 'uid' });
+          }
+
         } catch (e) {
           console.warn('Could not restore user session:', e);
           setUser({ tier: UserTier.FREE, name: firebaseUser.displayName || 'User', uid: firebaseUser.uid });
