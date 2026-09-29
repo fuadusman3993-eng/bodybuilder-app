@@ -61,6 +61,8 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0].uri) {
+        // Show locally immediately so it doesn't look like it "forgot"
+        setAvatar(result.assets[0].uri);
         await uploadToSupabase(result.assets[0].uri);
       }
     } catch (e) {
