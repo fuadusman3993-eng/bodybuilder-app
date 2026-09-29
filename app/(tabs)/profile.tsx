@@ -110,7 +110,9 @@ export default function ProfileScreen() {
   const bio = profileData?.bio || (isCoach ? 'Ready to train you to the next level.' : 'Fitness is not just a goal, it\'s a lifestyle.');
   const goal = profileData?.goal || 'Build a Stronger Me';
   const city = user.city || profileData?.city || 'Addis Ababa';
-  const avatarUri = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
+  
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff&size=150`;
+  const avatarUri = profileData?.avatar || user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
   const stat1Label = 'Posts';
   const stat1Value = posts.length;
@@ -167,7 +169,6 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {/* ── Top row: avatar | name+badge | edit ── */}
         {/* ── Top row: Avatar & Stats ── */}
         <View style={styles.topRow}>
           {/* Avatar */}
@@ -176,10 +177,10 @@ export default function ProfileScreen() {
               <Image
                 source={{ uri: avatarUri }}
                 style={styles.avatar}
-                defaultSource={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+                defaultSource={{ uri: defaultAvatar }}
               />
             </View>
-            <TouchableOpacity style={styles.addStoryBtn} onPress={() => router.push('/create-post')}>
+            <TouchableOpacity style={styles.addStoryBtn} onPress={() => router.push('/add-story')}>
               <Ionicons name="add" size={14} color="#000" />
             </TouchableOpacity>
           </View>

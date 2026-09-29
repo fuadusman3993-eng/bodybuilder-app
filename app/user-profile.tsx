@@ -167,7 +167,8 @@ export default function UserProfilePage() {
   const goal = profile?.goal || '';
   const city = profile?.city || '';
   const isCoach = profile?.role === 'coach';
-  const avatarUri = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff&size=150`;
+  const avatarUri = profile?.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -187,7 +188,7 @@ export default function UserProfilePage() {
             <Image
               source={{ uri: avatarUri }}
               style={styles.avatar}
-              defaultSource={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+              defaultSource={{ uri: defaultAvatar }}
             />
           </View>
 
