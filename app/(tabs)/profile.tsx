@@ -5,13 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { signOut } from '../../lib/authService';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
+import { supabase } from '../../lib/supabase';
 
 const { width } = Dimensions.get('window');
-const GRID_ITEM_SIZE = (width - 32 - 16) / 3;
+const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
 const BG = '#0A0F1A';
 const CARD_BG = 'rgba(30, 41, 59, 0.5)';
 const BORDER = 'rgba(255,255,255,0.06)';
@@ -22,16 +24,25 @@ export default function ProfileScreen() {
 
   const isCoach = user.role === 'coach';
   const defaultTabs = isCoach
-    ? ['Programs', 'Clients', 'Reviews']
-    : ['My Plan', 'Progress', 'Saved'];
+    ? ['Posts', 'Clients', 'Reviews']
+    : ['Posts', 'Progress', 'Saved'];
 
-  const [activeTab, setActiveTab] = useState(defaultTabs[0]);
+  const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [followers, setFollowers] = useState(0);
+  const [following, setFollowing] = useState(0);
 
-  useEffect(() => {
-    if (user.tier !== UserTier.GUEST) fetchProfile();
-  }, [user.tier]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user.tier !== UserTier.GUEST) loadAll();
+    }, [user.uid])
+  );
+
+  const loadAll = async () => {
+    await Promise.all([fetchProfile(), fetchSupabaseStats()]);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -44,9 +55,40 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchSupabaseStats = async () => {
+    try {
+      const uid = user.uid;
+      if (!uid) return;
+
+      // Real posts
+      const { data: postsData } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('uid', uid)
+        .order('created_at', { ascending: false });
+      setPosts(postsData || []);
+
+      // Followers
+      const { count: fCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_uid', uid);
+      setFollowers(fCount || 0);
+
+      // Following
+      const { count: fgCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_uid', uid);
+      setFollowing(fgCount || 0);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchProfile();
+    await loadAll();
     setRefreshing(false);
   };
 
@@ -70,21 +112,14 @@ export default function ProfileScreen() {
   const city = user.city || profileData?.city || 'Addis Ababa';
   const avatarUri = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
-  const stat1Label = isCoach ? 'Clients' : 'Workouts';
-  const stat1Value = isCoach ? (profileData?.total_trainees ?? 0) : (profileData?.workouts ?? 0);
-  const stat2Label = isCoach ? 'Requests' : 'Streak';
-  const stat2Value = isCoach ? (profileData?.pending_requests ?? 0) : (profileData?.streak ?? 0);
-  const stat3Label = isCoach ? 'Rating' : 'Weight';
-  const stat3Value = isCoach ? (profileData?.rating ?? '5.0') : (profileData?.weight ? `${profileData.weight} kg` : '--');
+  const stat1Label = 'Posts';
+  const stat1Value = posts.length;
+  const stat2Label = 'Followers';
+  const stat2Value = followers;
+  const stat3Label = 'Following';
+  const stat3Value = following;
 
-  const gridImages = [
-    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300',
-    'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=300',
-    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=300',
-    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300',
-    'https://images.unsplash.com/photo-1526506190301-3d6a9e88b488?w=300',
-    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300',
-  ];
+
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -122,7 +157,7 @@ export default function ProfileScreen() {
                 defaultSource={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
               />
             </View>
-            <TouchableOpacity style={styles.addStoryBtn} onPress={() => router.push('/add-story')}>
+            <TouchableOpacity style={styles.addStoryBtn} onPress={() => router.push('/create-post')}>
               <Ionicons name="add" size={14} color="#000" />
             </TouchableOpacity>
           </View>
@@ -213,7 +248,7 @@ export default function ProfileScreen() {
         <View style={styles.tabsWrap}>
           {defaultTabs.map((tab) => {
             const active = activeTab === tab;
-            const icon: any = tab.includes('Plan') || tab.includes('Programs')
+            const icon: any = tab === 'Posts'
               ? 'grid-outline'
               : tab.includes('Clients') || tab.includes('Progress')
               ? 'stats-chart-outline'
@@ -231,17 +266,35 @@ export default function ProfileScreen() {
           })}
         </View>
 
-        {/* ── Grid ── */}
-        <View style={styles.grid}>
-          {gridImages.map((uri, i) => (
-            <TouchableOpacity key={i} style={styles.gridItem} activeOpacity={0.85}>
-              <Image source={{ uri }} style={styles.gridImg} />
-              <View style={styles.gridOverlay}>
-                <Ionicons name="images-outline" size={14} color="rgba(255,255,255,0.7)" />
-              </View>
+        {/* ── Grid (real posts) ── */}
+        {activeTab === 'Posts' && (
+          posts.length === 0 ? (
+            <TouchableOpacity style={styles.emptyPosts} onPress={() => router.push('/create-post')}>
+              <Ionicons name="add-circle-outline" size={48} color={Colors.primary} />
+              <Text style={styles.emptyTitle}>Share your first post</Text>
+              <Text style={styles.emptySubtitle}>Tap to upload a photo</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          ) : (
+            <View style={styles.grid}>
+              {posts.map((post) => (
+                <TouchableOpacity key={post.id} style={styles.gridItem} activeOpacity={0.85}>
+                  <Image source={{ uri: post.image_url }} style={styles.gridImg} />
+                  <View style={styles.gridOverlay}>
+                    <Ionicons name="heart" size={12} color="#FFF" />
+                    <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
+        )}
+
+        {activeTab !== 'Posts' && (
+          <View style={styles.emptyPosts}>
+            <Ionicons name="construct-outline" size={40} color={Colors.textMuted} />
+            <Text style={styles.emptySubtitle}>Coming soon</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -311,5 +364,11 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 8 },
   gridItem: { width: (width - 28 - 16) / 3, height: (width - 28 - 16) / 3 * 1.15, borderRadius: 12, overflow: 'hidden' },
   gridImg: { width: '100%', height: '100%' },
-  gridOverlay: { position: 'absolute', top: 7, right: 7 },
+  gridOverlay: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  gridLikesText: { color: '#FFF', fontSize: 11, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+
+  // Empty state
+  emptyPosts: { alignItems: 'center', paddingVertical: 50, gap: 10 },
+  emptyTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  emptySubtitle: { color: Colors.textMuted, fontSize: 13 },
 });

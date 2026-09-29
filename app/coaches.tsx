@@ -64,7 +64,7 @@ export default function CoachesPage() {
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.8}
-      onPress={() => router.push({ pathname: '/coach-profile', params: { uid: item.uid } })}
+      onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
     >
       <Image
         source={{ uri: item.avatar_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' }}
