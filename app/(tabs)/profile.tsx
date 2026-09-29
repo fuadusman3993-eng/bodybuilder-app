@@ -131,9 +131,9 @@ export default function ProfileScreen() {
           <Text style={styles.brandText}>FitPulse</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-            <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>3</Text></View>
+            <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>!</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
             <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
