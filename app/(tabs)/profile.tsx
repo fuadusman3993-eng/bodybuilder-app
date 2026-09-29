@@ -121,6 +121,23 @@ export default function ProfileScreen() {
 
 
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (user.uid) {
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_uid', user.uid)
+          .eq('is_read', false)
+          .then(({ count }) => {
+            setUnreadCount(count || 0);
+          });
+      }
+    }, [user.uid])
+  );
+
   // ── Render ────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -133,7 +150,11 @@ export default function ProfileScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-            <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>!</Text></View>
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
             <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />

@@ -297,11 +297,11 @@ export default function StoryViewer() {
             // Owner view
             <View style={styles.ownerStatsRow}>
               <View style={styles.ownerStat}>
-                <Ionicons name="eye-outline" size={20} color="#FFF" />
+                <Ionicons name="eye-outline" size={24} color="#FFF" />
                 <Text style={styles.ownerStatText}>{views}</Text>
               </View>
               <View style={styles.ownerStat}>
-                <Ionicons name="heart" size={20} color="#EF4444" />
+                <Ionicons name="heart" size={24} color="#EF4444" />
                 <Text style={styles.ownerStatText}>{likes}</Text>
               </View>
             </View>
@@ -311,10 +311,16 @@ export default function StoryViewer() {
               <View style={styles.viewerInputMock}>
                 <Text style={styles.viewerInputText}>Send message...</Text>
               </View>
-              <TouchableOpacity onPress={handleLike} style={styles.likeBtn}>
-                <Ionicons name={isLiked ? "heart" : "heart-outline"} size={30} color={isLiked ? "#EF4444" : "#FFF"} />
-                {likes > 0 && <Text style={styles.likeCountText}>{likes}</Text>}
-              </TouchableOpacity>
+              <View style={styles.viewerStats}>
+                <View style={styles.viewerStatItem}>
+                  <Ionicons name="eye-outline" size={26} color="#FFF" />
+                  <Text style={styles.viewerStatText}>{views}</Text>
+                </View>
+                <TouchableOpacity onPress={handleLike} style={styles.viewerStatItem}>
+                  <Ionicons name={isLiked ? "heart" : "heart-outline"} size={26} color={isLiked ? "#EF4444" : "#FFF"} />
+                  <Text style={styles.viewerStatText}>{likes}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </SafeAreaView>
@@ -346,15 +352,17 @@ const styles = StyleSheet.create({
   footerContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20 },
   captionWrap: { paddingHorizontal: 16, paddingBottom: 16 },
   caption: { color: '#FFF', fontSize: 15, lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  actionArea: { paddingHorizontal: 16, paddingBottom: Platform.OS === 'ios' ? 10 : 20, paddingTop: 10, backgroundColor: 'rgba(0,0,0,0.3)' },
+  actionArea: { paddingHorizontal: 16, paddingBottom: Platform.OS === 'ios' ? 10 : 20, paddingTop: 10, backgroundColor: 'rgba(0,0,0,0.4)' },
   
-  ownerStatsRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 24 },
+  ownerStatsRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 24, paddingVertical: 6 },
   ownerStat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ownerStatText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  ownerStatText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  viewerActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  viewerActionRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   viewerInputMock: { flex: 1, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 16, justifyContent: 'center' },
   viewerInputText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
-  likeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 },
-  likeCountText: { color: '#FFF', fontSize: 14, fontWeight: '600', width: 20 },
+  
+  viewerStats: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  viewerStatItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewerStatText: { color: '#FFF', fontSize: 14, fontWeight: '700', minWidth: 14 },
 });
