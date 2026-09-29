@@ -308,8 +308,9 @@ export default function StoryViewer() {
   const current = userStories[storyIndex];
 
   return (
-    <View style={styles.container}>
-      <StatusBar hidden />
+    <>
+      <View style={styles.container}>
+        <StatusBar hidden />
 
       {/* Background image */}
       <Image
