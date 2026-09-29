@@ -111,9 +111,14 @@ export default function CoachDashboard() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Coach Dashboard</Text>
-        <TouchableOpacity onPress={() => router.push('/create-plan')}>
-          <Ionicons name="add-circle" size={28} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 15 }}>
+          <TouchableOpacity onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications" size={26} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/create-plan')}>
+            <Ionicons name="add-circle" size={28} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Summary Cards */}

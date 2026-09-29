@@ -16,8 +16,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import { Modal, ScrollView } from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds per story
@@ -32,6 +35,13 @@ interface Story {
   created_at: string;
 }
 
+interface ViewerInfo {
+  uid: string;
+  name: string;
+  username: string;
+  avatar: string;
+}
+
 export default function StoryViewer() {
   const router = useRouter();
   const { uid, allUids } = useLocalSearchParams<{ uid: string; allUids: string }>();
@@ -41,6 +51,11 @@ export default function StoryViewer() {
   const [storyIndex, setStoryIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
+
+  const [showViewers, setShowViewers] = useState(false);
+  const [viewersList, setViewersList] = useState<ViewerInfo[]>([]);
+  const [likersList, setLikersList] = useState<string[]>([]); // Store UIDs of likers to show heart icon
+  const [loadingViewers, setLoadingViewers] = useState(false);
 
   const progress = useRef(new Animated.Value(0)).current;
   const animation = useRef<Animated.CompositeAnimation | null>(null);
@@ -143,6 +158,72 @@ export default function StoryViewer() {
         });
       }
     }
+  };
+
+  const openViewersModal = async () => {
+    if (userStories.length === 0 || storyIndex >= userStories.length) return;
+    const story = userStories[storyIndex];
+    
+    setPaused(true);
+    animation.current?.stop();
+    setShowViewers(true);
+    setLoadingViewers(true);
+
+    try {
+      // 1. Fetch Viewers UIDs
+      const { data: viewData } = await supabase
+        .from('story_views')
+        .select('viewer_uid')
+        .eq('story_id', story.id)
+        .order('created_at', { ascending: false });
+        
+      // 2. Fetch Likers UIDs
+      const { data: likeData } = await supabase
+        .from('story_likes')
+        .select('uid')
+        .eq('story_id', story.id);
+        
+      const likerUids = likeData?.map(row => row.uid) || [];
+      setLikersList(likerUids);
+
+      const viewerUids = viewData?.map(row => row.viewer_uid) || [];
+      
+      // Combine unique UIDs (likers who haven't viewed? usually impossible but safe to merge)
+      const allUidsToFetch = Array.from(new Set([...viewerUids, ...likerUids]));
+
+      if (allUidsToFetch.length === 0) {
+        setViewersList([]);
+        setLoadingViewers(false);
+        return;
+      }
+
+      // Fetch from Firebase
+      const fetchedUsers: ViewerInfo[] = [];
+      for (const uid of allUidsToFetch) {
+        const docSnap = await getDoc(doc(db, 'users', uid));
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          fetchedUsers.push({
+            uid,
+            name: d.name || 'Unknown',
+            username: d.username || 'user',
+            avatar: d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
+          });
+        }
+      }
+      
+      setViewersList(fetchedUsers);
+    } catch (e) {
+      console.warn('Error fetching viewers', e);
+    } finally {
+      setLoadingViewers(false);
+    }
+  };
+
+  const closeViewersModal = () => {
+    setShowViewers(false);
+    setPaused(false);
+    startProgress();
   };
 
   // Start progress animation
@@ -283,49 +364,107 @@ export default function StoryViewer() {
         </View>
       </SafeAreaView>
 
-      {/* Footer Details (Caption & Interaction) */}
-      <View style={styles.footerContainer}>
-        {current.caption ? (
-          <View style={styles.captionWrap}>
-            <Text style={styles.caption}>{current.caption}</Text>
-          </View>
-        ) : <View style={styles.captionWrap} />}
+        {/* Touch zones */}
+        <View style={styles.touchZones}>
+          <TouchableWithoutFeedback onPress={goPrev} onLongPress={handleLongPress} onPressOut={handlePressOut}>
+            <View style={styles.touchLeft} />
+          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback onPress={goNext} onLongPress={handleLongPress} onPressOut={handlePressOut}>
+            <View style={styles.touchRight} />
+          </TouchableWithoutFeedback>
+        </View>
 
-        {/* Stats & Actions */}
-        <SafeAreaView edges={['bottom']} style={styles.actionArea}>
-          {current.uid === user.uid ? (
-            // Owner view
-            <View style={styles.ownerStatsRow}>
-              <View style={styles.ownerStat}>
-                <Ionicons name="eye-outline" size={24} color="#FFF" />
-                <Text style={styles.ownerStatText}>{views}</Text>
-              </View>
-              <View style={styles.ownerStat}>
-                <Ionicons name="heart" size={24} color="#EF4444" />
-                <Text style={styles.ownerStatText}>{likes}</Text>
-              </View>
+        {/* Footer Details (Caption & Interaction) */}
+        <View style={styles.footerContainer}>
+          {current.caption ? (
+            <View style={styles.captionWrap}>
+              <Text style={styles.caption}>{current.caption}</Text>
             </View>
-          ) : (
-            // Viewer view
-            <View style={styles.viewerActionRow}>
-              <View style={styles.viewerInputMock}>
-                <Text style={styles.viewerInputText}>Send message...</Text>
-              </View>
-              <View style={styles.viewerStats}>
-                <View style={styles.viewerStatItem}>
-                  <Ionicons name="eye-outline" size={26} color="#FFF" />
-                  <Text style={styles.viewerStatText}>{views}</Text>
+          ) : <View style={styles.captionWrap} />}
+
+          {/* Stats & Actions */}
+          <SafeAreaView edges={['bottom']} style={styles.actionArea}>
+            {current.uid === user.uid ? (
+              // Owner view
+              <TouchableOpacity style={styles.ownerStatsRow} onPress={openViewersModal} activeOpacity={0.8}>
+                <View style={styles.ownerStat}>
+                  <Ionicons name="eye-outline" size={24} color="#FFF" />
+                  <Text style={styles.ownerStatText}>{views}</Text>
                 </View>
-                <TouchableOpacity onPress={handleLike} style={styles.viewerStatItem}>
-                  <Ionicons name={isLiked ? "heart" : "heart-outline"} size={26} color={isLiked ? "#EF4444" : "#FFF"} />
-                  <Text style={styles.viewerStatText}>{likes}</Text>
-                </TouchableOpacity>
+                <View style={styles.ownerStat}>
+                  <Ionicons name="heart" size={24} color="#EF4444" />
+                  <Text style={styles.ownerStatText}>{likes}</Text>
+                </View>
+                <View style={{ flex: 1 }} />
+                <Ionicons name="chevron-up" size={24} color="#FFF" />
+              </TouchableOpacity>
+            ) : (
+              // Viewer view
+              <View style={styles.viewerActionRow}>
+                <View style={styles.viewerInputMock}>
+                  <Text style={styles.viewerInputText}>Send message...</Text>
+                </View>
+                <View style={styles.viewerStats}>
+                  <View style={styles.viewerStatItem}>
+                    <Ionicons name="eye-outline" size={26} color="#FFF" />
+                    <Text style={styles.viewerStatText}>{views}</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleLike} style={styles.viewerStatItem}>
+                    <Ionicons name={isLiked ? "heart" : "heart-outline"} size={26} color={isLiked ? "#EF4444" : "#FFF"} />
+                    <Text style={styles.viewerStatText}>{likes}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
-        </SafeAreaView>
+            )}
+          </SafeAreaView>
+        </View>
       </View>
-    </View>
+
+      {/* Viewers Modal */}
+      <Modal visible={showViewers} animationType="slide" transparent={true} onRequestClose={closeViewersModal}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Story Views</Text>
+              <TouchableOpacity onPress={closeViewersModal} style={styles.modalClose}>
+                <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            
+            {loadingViewers ? (
+              <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 50 }} />
+            ) : viewersList.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Ionicons name="eye-off-outline" size={50} color={Colors.textMuted} />
+                <Text style={styles.modalEmptyText}>No views yet</Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={styles.modalList}>
+                {viewersList.map((viewer) => (
+                  <TouchableOpacity 
+                    key={viewer.uid} 
+                    style={styles.viewerRow}
+                    onPress={() => {
+                      closeViewersModal();
+                      router.push({ pathname: '/user-profile', params: { uid: viewer.uid } });
+                    }}
+                  >
+                    <Image source={{ uri: viewer.avatar }} style={styles.viewerAvatar} />
+                    <View style={styles.viewerInfo}>
+                      <Text style={styles.viewerName}>{viewer.name}</Text>
+                      <Text style={styles.viewerUsername}>@{viewer.username}</Text>
+                    </View>
+                    {likersList.includes(viewer.uid) && (
+                      <Ionicons name="heart" size={20} color="#EF4444" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -365,4 +504,19 @@ const styles = StyleSheet.create({
   viewerStats: { flexDirection: 'row', gap: 16, alignItems: 'center' },
   viewerStatItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   viewerStatText: { color: '#FFF', fontSize: 14, fontWeight: '700', minWidth: 14 },
+
+  // Modal UI
+  modalBg: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { backgroundColor: '#1E293B', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_H * 0.7, paddingBottom: 40 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  modalTitle: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  modalClose: { position: 'absolute', right: 16 },
+  modalEmpty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 10 },
+  modalEmptyText: { color: Colors.textMuted, fontSize: 15 },
+  modalList: { padding: 16 },
+  viewerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  viewerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#333' },
+  viewerInfo: { flex: 1, marginLeft: 12 },
+  viewerName: { color: '#FFF', fontSize: 15, fontWeight: '600' },
+  viewerUsername: { color: Colors.textMuted, fontSize: 13, marginTop: 2 },
 });
