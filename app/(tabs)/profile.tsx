@@ -162,6 +162,10 @@ export default function ProfileScreen() {
                 <Ionicons name="person" size={18} color={Colors.primary} />
                 <Text style={styles.quickActionText}>My Coach</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/coach-onboarding')}>
+                <Ionicons name="briefcase" size={18} color={Colors.primary} />
+                <Text style={styles.quickActionText}>Become Coach</Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
