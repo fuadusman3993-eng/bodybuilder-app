@@ -52,27 +52,31 @@ export default function EditProfileScreen() {
   };
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0].base64) {
-      await uploadToSupabase(result.assets[0].base64);
+      if (!result.canceled && result.assets[0].uri) {
+        await uploadToSupabase(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn(e);
+      setIsUploading(false);
     }
   };
 
-  const uploadToSupabase = async (base64Img: string) => {
+  const uploadToSupabase = async (uri: string) => {
     setIsUploading(true);
     try {
       const uid = auth.currentUser?.uid || user.uid;
-      const fileName = `${uid}-${Date.now()}.jpg`;
+      const fileName = `${uid}.jpg`;
 
-      // Decode base64 to Blob
-      const res = await fetch(`data:image/jpeg;base64,${base64Img}`);
+      // Convert local URI to Blob
+      const res = await fetch(uri);
       const blob = await res.blob();
 
       const { data, error } = await supabase.storage
@@ -84,14 +88,15 @@ export default function EditProfileScreen() {
 
       if (error) throw error;
 
+      // Add timestamp to bypass local caching immediately in UI
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      setAvatar(publicUrl);
+      setAvatar(`${publicUrl}?t=${Date.now()}`);
     } catch (error: any) {
       console.error('Upload Error:', error);
-      Alert.alert('Upload Failed', 'Make sure you created the "avatars" bucket in Supabase and made it public.');
+      Alert.alert('Upload Failed', error.message || 'Make sure the "avatars" bucket exists and is public.');
     } finally {
       setIsUploading(false);
     }

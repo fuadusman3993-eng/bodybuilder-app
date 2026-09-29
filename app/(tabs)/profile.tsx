@@ -147,6 +147,7 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* ── Top row: avatar | name+badge | edit ── */}
+        {/* ── Top row: Avatar & Stats ── */}
         <View style={styles.topRow}>
           {/* Avatar */}
           <View style={styles.avatarWrap}>
@@ -162,83 +163,60 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Name / username / status */}
-          <View style={styles.nameBlock}>
-            <View style={styles.nameRow}>
-              <Text style={styles.nameText}>{name}</Text>
-              {isCoach && <Ionicons name="checkmark-circle" size={15} color={Colors.textPrimary} style={{ marginLeft: 4 }} />}
-            </View>
-            <Text style={styles.usernameText}>@{username}</Text>
-            <View style={styles.activePill}>
-              <View style={styles.activeDot} />
-              <Text style={styles.activePillText}>Active Now</Text>
-            </View>
-          </View>
-
-          {/* Edit button */}
-          <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/edit-profile')}>
-            <Ionicons name="person-outline" size={12} color={Colors.primary} />
-            <Text style={styles.editBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Stats ── */}
-        <View style={styles.statsRow}>
-          {[
-            { label: stat1Label, value: stat1Value },
-            { label: stat2Label, value: stat2Value },
-            { label: stat3Label, value: stat3Value },
-          ].map((s, i) => (
-            <React.Fragment key={s.label}>
-              {i > 0 && <View style={styles.statDivider} />}
-              <View style={styles.statItem}>
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            {[
+              { label: stat1Label, value: stat1Value },
+              { label: stat2Label, value: stat2Value },
+              { label: stat3Label, value: stat3Value },
+            ].map((s, i) => (
+              <View key={s.label} style={styles.statItem}>
                 <Text style={styles.statValue}>{s.value}</Text>
                 <Text style={styles.statLabel}>{s.label}</Text>
               </View>
-            </React.Fragment>
-          ))}
+            ))}
+          </View>
         </View>
 
-        {/* ── Bio card ── */}
-        <View style={styles.bioCard}>
-          <Text style={styles.bioQuote}>"Better Every Day"</Text>
+        {/* ── Name & Bio ── */}
+        <View style={styles.nameBlock}>
+          <View style={styles.nameRow}>
+            <Text style={styles.nameText}>{name}</Text>
+            {isCoach && <Ionicons name="checkmark-circle" size={15} color={Colors.textPrimary} style={{ marginLeft: 4 }} />}
+          </View>
           <Text style={styles.bioText}>{bio}</Text>
+          
           <View style={styles.badgesRow}>
-            <View style={styles.infoBadge}>
-              <Ionicons name="location-outline" size={11} color={Colors.primary} />
-              <Text style={styles.infoBadgeText}>{city}</Text>
-            </View>
-            <View style={styles.infoBadge}>
-              <Ionicons name="calendar-outline" size={11} color={Colors.primary} />
-              <Text style={styles.infoBadgeText}>Joined Jan 2026</Text>
-            </View>
+            {city ? (
+              <View style={styles.infoBadge}>
+                <Ionicons name="location-outline" size={11} color={Colors.primary} />
+                <Text style={styles.infoBadgeText}>{city}</Text>
+              </View>
+            ) : null}
             <View style={styles.infoBadge}>
               <Ionicons name="trophy-outline" size={11} color={Colors.primary} />
-              <Text style={styles.infoBadgeText}>Goal: {goal}</Text>
+              <Text style={styles.infoBadgeText}>{goal}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Action pills ── */}
         <View style={styles.pillRow}>
+          <TouchableOpacity style={styles.pill} onPress={() => router.push('/edit-profile')}>
+            <Text style={styles.pillText}>Edit Profile</Text>
+          </TouchableOpacity>
+          
           {isCoach ? (
-            <TouchableOpacity style={styles.pill} onPress={() => router.push('/coach-dashboard')}>
-              <Ionicons name="grid-outline" size={15} color={Colors.primary} />
-              <Text style={styles.pillText}>Dashboard</Text>
+            <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coach-dashboard')}>
+              <Text style={styles.pillTextOutline}>Dashboard</Text>
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity style={styles.pill} onPress={() => router.push('/coaches')}>
-                <Ionicons name="search-outline" size={15} color={Colors.primary} />
-                <Text style={styles.pillText}>Find Coach</Text>
+              <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coaches')}>
+                <Text style={styles.pillTextOutline}>Find Coach</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.pill} onPress={() => router.push('/my-coach')}>
-                <Ionicons name="person-outline" size={15} color={Colors.primary} />
-                <Text style={styles.pillText}>My Coach</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.pill} onPress={() => router.push('/coach-onboarding')}>
-                <Ionicons name="briefcase-outline" size={15} color={Colors.primary} />
-                <Text style={styles.pillText}>Become Coach</Text>
+              <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coach-onboarding')}>
+                <Text style={styles.pillTextOutline}>Become Coach</Text>
               </TouchableOpacity>
             </>
           )}
@@ -322,36 +300,26 @@ const styles = StyleSheet.create({
   avatar: { width: 74, height: 74, borderRadius: 37 },
   addStoryBtn: { position: 'absolute', bottom: 1, right: 1, backgroundColor: Colors.primary, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG },
 
-  nameBlock: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-  nameText: { color: Colors.textPrimary, fontSize: 17, fontWeight: '700' },
-  usernameText: { color: Colors.textMuted, fontSize: 12, marginBottom: 6 },
-  activePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.12)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, alignSelf: 'flex-start' },
-  activeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#10B981', marginRight: 4 },
-  activePillText: { color: '#10B981', fontSize: 10, fontWeight: '600' },
-
-  editBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 18, gap: 4 },
-  editBtnText: { color: Colors.primary, fontSize: 11, fontWeight: '600' },
-
-  // Stats
-  statsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 22, marginHorizontal: 24, gap: 0 },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { color: Colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 3 },
-  statLabel: { color: Colors.textMuted, fontSize: 11 },
-  statDivider: { width: 1, height: 32, backgroundColor: BORDER },
-
-  // Bio card
-  bioCard: { backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER, borderRadius: 16, margin: 16, marginTop: 20, padding: 16 },
-  bioQuote: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700', marginBottom: 6 },
-  bioText: { color: Colors.textMuted, fontSize: 13, lineHeight: 20, marginBottom: 12 },
-  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  infoBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, gap: 4 },
+  nameBlock: { paddingHorizontal: 16, marginTop: 12, marginBottom: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  nameText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  bioText: { color: Colors.textPrimary, fontSize: 13, lineHeight: 18, marginBottom: 8 },
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  infoBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
   infoBadgeText: { color: Colors.textMuted, fontSize: 11 },
 
+  // Stats
+  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingLeft: 10 },
+  statItem: { alignItems: 'center' },
+  statValue: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 2 },
+  statLabel: { color: Colors.textMuted, fontSize: 12 },
+
   // Action pills
-  pillRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 10 },
-  pill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: Colors.primary, backgroundColor: 'rgba(16,185,129,0.08)', paddingVertical: 10, borderRadius: 14 },
-  pillText: { color: Colors.primary, fontWeight: '700', fontSize: 12 },
+  pillRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 8 },
+  pill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 8, borderRadius: 8 },
+  pillText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 13 },
+  pillOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.primary, paddingVertical: 8, borderRadius: 8 },
+  pillTextOutline: { color: '#000', fontWeight: '600', fontSize: 13 },
 
   // Tabs
   tabsWrap: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 14, backgroundColor: CARD_BG, borderRadius: 30, borderWidth: 1, borderColor: BORDER, padding: 4 },
