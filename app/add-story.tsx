@@ -325,7 +325,7 @@ function AddStory() {
       <TouchableOpacity
         style={styles.viewStoryBtn}
         onPress={() => {
-          router.back();
+          router.replace('/');
         }}
       >
         <Text style={styles.viewStoryBtnText}>Return to Home</Text>

@@ -206,11 +206,19 @@ export default function StoryViewer() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Image source={{ uri: current.avatar_url }} style={styles.avatar} />
-          <View style={styles.headerInfo}>
-            <Text style={styles.username}>{current.username}</Text>
-            <Text style={styles.timeAgo}>{formatTime(current.created_at)}</Text>
-          </View>
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center' }}
+            onPress={() => {
+              animation.current?.stop();
+              router.push({ pathname: '/user-profile', params: { uid: current.uid } });
+            }}
+          >
+            <Image source={{ uri: current.avatar_url }} style={styles.avatar} />
+            <View style={styles.headerInfo}>
+              <Text style={styles.username}>{current.username}</Text>
+              <Text style={styles.timeAgo}>{formatTime(current.created_at)}</Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
             <Ionicons name="close" size={26} color="#FFF" />
           </TouchableOpacity>
