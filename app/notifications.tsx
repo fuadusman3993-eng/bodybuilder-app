@@ -167,15 +167,8 @@ export default function NotificationsScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.row}
-      activeOpacity={0.7}
-      onPress={() => {
-        if (item.type === 'request') router.push('/coach-dashboard');
-        else if (item.sender_uid) router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } });
-      }}
-    >
-      {/* Avatar */}
+    <View style={styles.row}>
+      {/* Avatar — tappable to go to profile */}
       <TouchableOpacity
         onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
       >
@@ -215,9 +208,13 @@ export default function NotificationsScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        !item.is_read && <View style={styles.unreadDot} />
+        <TouchableOpacity
+          onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
+        >
+          {!item.is_read && <View style={styles.unreadDot} />}
+        </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
   );
 
   return (
