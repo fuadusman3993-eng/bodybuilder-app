@@ -177,7 +177,7 @@ export default function StoryViewer() {
         .eq('story_id', story.id)
         .order('created_at', { ascending: false });
         
-      const viewerUids = viewData?.map(row => row.viewer_uid) || [];
+      const viewerUids = viewData?.map(row => row.viewer_uid).filter(Boolean) || [];
       const allUidsToFetch = Array.from(new Set([...viewerUids]));
 
       if (allUidsToFetch.length === 0) {
@@ -189,16 +189,28 @@ export default function StoryViewer() {
       // Fetch from Firebase
       const fetchedUsers: ViewerInfo[] = [];
       for (const uid of allUidsToFetch) {
-        const docSnap = await getDoc(doc(db, 'users', uid));
-        if (docSnap.exists()) {
-          const d = docSnap.data();
-          fetchedUsers.push({
-            uid,
-            name: d.name || 'Unknown',
-            username: d.username || 'user',
-            avatar: d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
-          });
-        } else {
+        try {
+          if (!uid || typeof uid !== 'string') continue;
+          const docSnap = await getDoc(doc(db, 'users', uid));
+          if (docSnap.exists()) {
+            const d = docSnap.data();
+            fetchedUsers.push({
+              uid,
+              name: d.name || 'Unknown',
+              username: d.username || 'user',
+              avatar: d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
+            });
+          } else {
+            fetchedUsers.push({
+              uid,
+              name: 'User',
+              username: 'user',
+              avatar: `https://ui-avatars.com/api/?name=User&background=10B981&color=fff`,
+            });
+          }
+        } catch (err) {
+          console.warn('Skipped fetching user', uid, err);
+          // Fallback if network or Firebase fails for this specific UID
           fetchedUsers.push({
             uid,
             name: 'User',
