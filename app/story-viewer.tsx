@@ -95,15 +95,15 @@ export default function StoryViewer() {
       if (userStories.length > 0 && userStories[storyIndex]) {
         const story = userStories[storyIndex];
         
-        if (user.uid) {
-          // Record view
+        if (user.uid && story.uid !== user.uid) {
+          // Record view — skip if owner views their own story
           try {
             await supabase.from('story_views').insert({
               story_id: story.id,
               viewer_uid: user.uid,
             });
           } catch (e) {
-            // ignore conflicts
+            // ignore conflicts (duplicate view)
           }
         }
 
