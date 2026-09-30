@@ -291,26 +291,35 @@ export default function UserProfilePage() {
               style={[styles.actionBtn, styles.actionBtnOutline]}
               onPress={async () => {
                 if (!currentUser.uid || !uid) return;
-                // Find or create conversation
-                const u1 = currentUser.uid < uid ? currentUser.uid : uid;
-                const u2 = currentUser.uid < uid ? uid : currentUser.uid;
-                const { data: existing } = await supabase
-                  .from('conversations')
-                  .select('id')
-                  .eq('user1_uid', u1)
-                  .eq('user2_uid', u2)
-                  .single();
-                let convId = existing?.id;
-                if (!convId) {
-                  const { data: created } = await supabase
+                try {
+                  const u1 = currentUser.uid < uid ? currentUser.uid : uid;
+                  const u2 = currentUser.uid < uid ? uid : currentUser.uid;
+                  
+                  const { data: existing, error: err1 } = await supabase
                     .from('conversations')
-                    .insert({ user1_uid: u1, user2_uid: u2 })
                     .select('id')
+                    .eq('user1_uid', u1)
+                    .eq('user2_uid', u2)
                     .single();
-                  convId = created?.id;
-                }
-                if (convId) {
-                  router.push({ pathname: '/chat-room', params: { conversationId: convId, otherUserUid: uid } });
+                    
+                  let convId = existing?.id;
+                  
+                  if (!convId) {
+                    const { data: created, error: err2 } = await supabase
+                      .from('conversations')
+                      .insert({ user1_uid: u1, user2_uid: u2 })
+                      .select('id')
+                      .single();
+                      
+                    if (err2) throw new Error(err2.message);
+                    convId = created?.id;
+                  }
+                  
+                  if (convId) {
+                    router.push({ pathname: '/chat-room', params: { conversationId: convId, otherUserUid: uid } });
+                  }
+                } catch (e: any) {
+                  Alert.alert('Chat Error', e.message);
                 }
               }}
             >
