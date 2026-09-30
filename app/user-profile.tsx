@@ -287,7 +287,33 @@ export default function UserProfilePage() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline]}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, styles.actionBtnOutline]}
+              onPress={async () => {
+                if (!currentUser.uid || !uid) return;
+                // Find or create conversation
+                const u1 = currentUser.uid < uid ? currentUser.uid : uid;
+                const u2 = currentUser.uid < uid ? uid : currentUser.uid;
+                const { data: existing } = await supabase
+                  .from('conversations')
+                  .select('id')
+                  .eq('user1_uid', u1)
+                  .eq('user2_uid', u2)
+                  .single();
+                let convId = existing?.id;
+                if (!convId) {
+                  const { data: created } = await supabase
+                    .from('conversations')
+                    .insert({ user1_uid: u1, user2_uid: u2 })
+                    .select('id')
+                    .single();
+                  convId = created?.id;
+                }
+                if (convId) {
+                  router.push({ pathname: '/chat-room', params: { conversationId: convId, otherUserUid: uid } });
+                }
+              }}
+            >
               <Ionicons name="chatbubble-outline" size={16} color={Colors.primary} />
             </TouchableOpacity>
           </View>

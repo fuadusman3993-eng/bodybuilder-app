@@ -1,301 +1,208 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, FlatList,
+  StyleSheet, Image, ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
-import { chatList } from '../../constants/mockData';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
+import { Colors } from '../../constants/colors';
 
-const filterTabs = ['All', 'Coaches', 'Clients', 'Groups'];
+const BG = '#0A0F1A';
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  return `${Math.floor(d / 7)}w`;
+}
+
+interface ConvItem {
+  id: string;
+  otherUid: string;
+  otherName: string;
+  otherAvatar: string;
+  lastMessage: string;
+  lastAt: string;
+}
 
 export default function ChatScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('All');
+  const router = useRouter();
   const { user } = useUserStore();
+  const [conversations, setConversations] = useState<ConvItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   if (user.tier === UserTier.GUEST) {
     return <GuestBlocker feature="chat" />;
   }
 
+  const fetchConversations = async () => {
+    if (!user.uid) return;
+    try {
+      const { data } = await supabase
+        .from('conversations')
+        .select('*')
+        .or(`user1_uid.eq.${user.uid},user2_uid.eq.${user.uid}`)
+        .order('last_message_at', { ascending: false });
 
-  const renderAvatar = (chat: any) => {
-    if (chat.isAI) {
-      return (
-        <View style={[styles.avatar, styles.aiAvatar]}>
-          <Ionicons name="hardware-chip" size={24} color={Colors.textPrimary} />
-        </View>
-      );
+      if (!data) { setLoading(false); return; }
+
+      const enriched: ConvItem[] = [];
+      for (const conv of data) {
+        const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
+        let name = 'User';
+        let avatar = '';
+        try {
+          const snap = await getDoc(doc(db, 'users', otherUid));
+          if (snap.exists()) {
+            const d = snap.data();
+            name = d.name || d.displayName || d.username || 'User';
+            avatar = d.avatar || d.photoURL || '';
+          }
+        } catch (_) {}
+
+        enriched.push({
+          id: conv.id,
+          otherUid,
+          otherName: name,
+          otherAvatar: avatar,
+          lastMessage: conv.last_message || '',
+          lastAt: conv.last_message_at || conv.created_at,
+        });
+      }
+
+      setConversations(enriched);
+    } catch (e) {
+      console.warn(e);
     }
-    if (chat.isGroup) {
-      return (
-        <View style={[styles.avatar, styles.groupAvatar]}>
-          <Ionicons name="people" size={24} color={Colors.textPrimary} />
-        </View>
-      );
-    }
-    if (chat.isGym) {
-      return (
-        <View style={[styles.avatar, styles.gymAvatar]}>
-          <Ionicons name="barbell" size={24} color={Colors.textPrimary} />
-        </View>
-      );
-    }
-    return <Image source={{ uri: chat.avatar }} style={styles.avatar} />;
+    setLoading(false);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations();
+    }, [user.uid])
+  );
+
+  const filtered = conversations.filter(c =>
+    c.otherName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const renderItem = ({ item }: { item: ConvItem }) => (
+    <TouchableOpacity
+      style={styles.convRow}
+      onPress={() => router.push({ pathname: '/chat-room', params: { conversationId: item.id, otherUserUid: item.otherUid } })}
+      activeOpacity={0.7}
+    >
+      {item.otherAvatar
+        ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
+        : <View style={styles.avatarInitialWrap}>
+            <Text style={styles.avatarInitialText}>{item.otherName[0]?.toUpperCase()}</Text>
+          </View>}
+      <View style={styles.convInfo}>
+        <View style={styles.convTop}>
+          <Text style={styles.convName}>{item.otherName}</Text>
+          <Text style={styles.convTime}>{timeAgo(item.lastAt)}</Text>
+        </View>
+        <Text style={styles.convLast} numberOfLines={1}>
+          {item.lastMessage || 'Start a conversation...'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chat</Text>
-        <TouchableOpacity>
-          <Ionicons name="create-outline" size={26} color={Colors.textPrimary} />
+        <Text style={styles.headerTitle}>Messages</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/community')}>
+          <Ionicons name="create-outline" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            placeholderTextColor={Colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+      {/* Search */}
+      <View style={styles.searchWrap}>
+        <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search conversations..."
+          placeholderTextColor={Colors.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 60 }} />
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="chatbubbles-outline" size={64} color={Colors.textMuted} />
+          <Text style={styles.emptyTitle}>No conversations yet</Text>
+          <Text style={styles.emptyText}>
+            Visit someone's profile and tap{'\n'}"Message" to start chatting
+          </Text>
         </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="options-outline" size={24} color={Colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {filterTabs.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Chat List */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContainer}>
-        {chatList.map((chat) => (
-          <TouchableOpacity key={chat.id} style={styles.chatCard} activeOpacity={0.8}>
-            {renderAvatar(chat)}
-            
-            <View style={styles.chatDetails}>
-              <View style={styles.chatHeaderRow}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.chatName} numberOfLines={1}>{chat.name}</Text>
-                  {chat.isVerified && (
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.info} style={styles.verifiedIcon} />
-                  )}
-                </View>
-                <Text style={[styles.timeText, chat.unread > 0 && styles.timeTextUnread]}>
-                  {chat.time}
-                </Text>
-              </View>
-              
-              <View style={styles.chatFooterRow}>
-                <Text style={[styles.lastMessage, chat.unread > 0 && styles.lastMessageUnread]} numberOfLines={1}>
-                  {chat.lastMessage}
-                </Text>
-                {chat.unread > 0 ? (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{chat.unread}</Text>
-                  </View>
-                ) : (
-                  <Ionicons name="checkmark-done" size={16} color={Colors.textSecondary} />
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: BG },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.textPrimary,
+  headerTitle: { color: Colors.textPrimary, fontSize: 22, fontWeight: '800' },
+
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(30,41,59,0.6)',
+    marginHorizontal: 16, marginVertical: 10,
+    borderRadius: 12, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
   },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginTop: 8,
-    gap: 12,
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, paddingVertical: 10, color: Colors.textPrimary, fontSize: 15 },
+
+  convRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
   },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    minHeight: 46,
-    flexShrink: 1,
+  avatar: { width: 52, height: 52, borderRadius: 26 },
+  avatarInitialWrap: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
   },
-  searchIcon: {
-    marginRight: 10,
-    flexShrink: 0,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    paddingVertical: 12,
-  },
-  filterButton: {
-    width: 46,
-    height: 46,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tabsContainer: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  tabsScroll: {
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  activeTab: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.textSecondary,
-  },
-  activeTabText: {
-    color: Colors.background,
-    fontWeight: '600',
-  },
-  listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  chatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.surfaceLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  aiAvatar: {
-    backgroundColor: Colors.info,
-  },
-  groupAvatar: {
-    backgroundColor: '#059669', // Teal color for groups
-  },
-  gymAvatar: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  chatDetails: {
-    flex: 1,
-    marginLeft: 14,
-    justifyContent: 'center',
-  },
-  chatHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  timeText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  timeTextUnread: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  chatFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    flex: 1,
-    marginRight: 16,
-  },
-  lastMessageUnread: {
-    color: Colors.textPrimary,
-    fontWeight: '500',
-  },
-  unreadBadge: {
-    backgroundColor: Colors.primary,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    color: Colors.background,
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  avatarInitialText: { color: '#000', fontWeight: '800', fontSize: 20 },
+
+  convInfo: { flex: 1 },
+  convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  convName: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  convTime: { color: Colors.textMuted, fontSize: 12 },
+  convLast: { color: Colors.textMuted, fontSize: 13, marginTop: 3 },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 40 },
+  emptyTitle: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  emptyText: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22 },
 });
