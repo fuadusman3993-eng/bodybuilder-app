@@ -175,7 +175,7 @@ export default function StoryViewer() {
         .from('story_views')
         .select('viewer_uid')
         .eq('story_id', story.id)
-        .order('created_at', { ascending: false });
+        .order('viewed_at', { ascending: false });
         
       const viewerUids = viewData?.map(row => row.viewer_uid).filter(Boolean) || [];
       const allUidsToFetch = Array.from(new Set([...viewerUids]));
