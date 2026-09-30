@@ -70,8 +70,9 @@ export default function ChatRoom() {
   // Realtime subscription
   useEffect(() => {
     if (!conversationId) return;
+    const channelId = `messages_${conversationId}_${Date.now()}`;
     const channel = supabase
-      .channel(`messages_${conversationId}`)
+      .channel(channelId)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
