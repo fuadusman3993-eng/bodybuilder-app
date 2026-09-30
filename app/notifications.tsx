@@ -148,18 +148,23 @@ export default function NotificationsScreen() {
     setActionLoading(itemId);
     try {
       await supabase.from('coach_requests').update({ status: action }).eq('id', requestId);
+      
       if (action === 'accepted') {
         await supabase.rpc('increment_trainees', { coach_uid_param: user.uid }).catch(() => {});
-        
-        // Find the trainee_uid from the sections list to create conversation
         const traineeUid = sections.flatMap(s => s.data).find(i => i.id === itemId)?.sender_uid;
         if (traineeUid) {
           const u1 = user.uid < traineeUid ? user.uid : traineeUid;
           const u2 = user.uid < traineeUid ? traineeUid : user.uid;
-          await supabase.from('conversations').insert({ user1_uid: u1, user2_uid: u2 }).select('id').single().catch(() => {});
+          await supabase.from('conversations').insert({ user1_uid: u1, user2_uid: u2 }).catch(() => {});
         }
       }
-      await fetchNotifications();
+      
+      // Update UI immediately
+      setSections(prev => prev.map(section => ({
+        ...section,
+        data: section.data.map(item => item.id === itemId ? { ...item, status: action } : item)
+      })));
+      
     } catch (e) { console.warn(e); }
     setActionLoading(null);
   };
