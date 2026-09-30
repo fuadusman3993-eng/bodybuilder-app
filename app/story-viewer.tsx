@@ -403,16 +403,10 @@ export default function StoryViewer() {
                 <Ionicons name="chevron-up" size={24} color="#FFF" />
               </TouchableOpacity>
             ) : (
-              // Viewer view
+              // Viewer view — only send message bar, no stats
               <View style={styles.viewerActionRow}>
                 <View style={styles.viewerInputMock}>
                   <Text style={styles.viewerInputText}>Send message...</Text>
-                </View>
-                <View style={styles.viewerStats}>
-                  <View style={styles.viewerStatItem}>
-                    <Ionicons name="eye-outline" size={26} color="#FFF" />
-                    <Text style={styles.viewerStatText}>{views}</Text>
-                  </View>
                 </View>
               </View>
             )}
