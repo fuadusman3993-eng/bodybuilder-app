@@ -72,7 +72,7 @@ export default function CoachHome() {
           <Text style={styles.headerSub}>Coach Dashboard</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn}>
+          <TouchableOpacity style={styles.bellBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#FFF" />
             {stats.requests > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{stats.requests}</Text></View>}
           </TouchableOpacity>
