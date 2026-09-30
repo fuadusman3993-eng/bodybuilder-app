@@ -194,12 +194,11 @@ export default function StoryViewer() {
           const docSnap = await getDoc(doc(db, 'users', uid));
           if (docSnap.exists()) {
             const d = docSnap.data();
-            fetchedUsers.push({
-              uid,
-              name: d.name || 'Unknown',
-              username: d.username || 'user',
-              avatar: d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
-            });
+            const name = d.name || d.displayName || d.username || 'Unknown';
+            const username = d.username || d.name || uid.slice(-8);
+            const avatar = d.avatar || d.photoURL || d.profilePhoto
+              || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff`;
+            fetchedUsers.push({ uid, name, username, avatar });
           } else {
             fetchedUsers.push({
               uid,

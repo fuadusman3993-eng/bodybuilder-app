@@ -14,9 +14,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
-import { Colors } from '../constants/colors';
-import { useUserStore, UserTier } from '../store/userStore';
+import { Colors } from '../constants/colors';\nimport { useUserStore, UserTier } from '../store/userStore';
 import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+// Save user profile to Firestore (merge so existing data stays)
+const saveUserToFirestore = async (uid: string, name: string, email: string) => {
+  try {
+    await setDoc(doc(db, 'users', uid), {
+      name,
+      username: email.split('@')[0],
+      email,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Firestore save failed', e);
+  }
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -49,7 +64,9 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const user = await loginWithEmail(email, password);
-      setUser({ tier: UserTier.FREE, name: user.displayName || user.email || 'User' });
+      const name = user.displayName || user.email?.split('@')[0] || 'User';
+      await saveUserToFirestore(user.uid, name, user.email || '');
+      setUser({ uid: user.uid, tier: UserTier.FREE, name });
       router.replace('/(tabs)');
     } catch (err: any) {
       setMainError(firebaseErrorMessage(err?.code || ''));
@@ -63,7 +80,9 @@ export default function LoginScreen() {
     setIsGoogleLoading(true);
     try {
       const user = await loginWithGoogle();
-      setUser({ tier: UserTier.FREE, name: user.displayName || user.email || 'User' });
+      const name = user.displayName || user.email?.split('@')[0] || 'User';
+      await saveUserToFirestore(user.uid, name, user.email || '');
+      setUser({ uid: user.uid, tier: UserTier.FREE, name });
       router.replace('/(tabs)');
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
