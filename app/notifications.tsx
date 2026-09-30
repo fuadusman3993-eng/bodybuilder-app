@@ -68,13 +68,13 @@ export default function NotificationsScreen() {
     try {
       const items: any[] = [];
 
-      // 1. Coach: fetch pending requests from coach_requests
+      // 1. Coach: fetch requests from coach_requests
       if (user.role === 'coach') {
         const { data: reqs } = await supabase
           .from('coach_requests')
           .select('*')
           .eq('coach_uid', user.uid)
-          .eq('status', 'pending')
+          .neq('status', 'rejected') // Show pending and accepted
           .order('created_at', { ascending: false });
 
         if (reqs) {
@@ -150,6 +150,14 @@ export default function NotificationsScreen() {
       await supabase.from('coach_requests').update({ status: action }).eq('id', requestId);
       if (action === 'accepted') {
         await supabase.rpc('increment_trainees', { coach_uid_param: user.uid }).catch(() => {});
+        
+        // Find the trainee_uid from the sections list to create conversation
+        const traineeUid = sections.flatMap(s => s.data).find(i => i.id === itemId)?.sender_uid;
+        if (traineeUid) {
+          const u1 = user.uid < traineeUid ? user.uid : traineeUid;
+          const u2 = user.uid < traineeUid ? traineeUid : user.uid;
+          await supabase.from('conversations').insert({ user1_uid: u1, user2_uid: u2 }).select('id').single().catch(() => {});
+        }
       }
       await fetchNotifications();
     } catch (e) { console.warn(e); }
@@ -189,24 +197,30 @@ export default function NotificationsScreen() {
 
       {/* Right side: request buttons OR unread dot */}
       {item.type === 'request' ? (
-        <View style={styles.requestBtns}>
-          <TouchableOpacity
-            style={styles.confirmBtn}
-            disabled={actionLoading === item.id}
-            onPress={() => handleRequest(item.request_id, item.id, 'accepted')}
-          >
-            {actionLoading === item.id
-              ? <ActivityIndicator size="small" color="#000" />
-              : <Text style={styles.confirmText}>Confirm</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            disabled={!!actionLoading}
-            onPress={() => handleRequest(item.request_id, item.id, 'rejected')}
-          >
-            <Text style={styles.deleteText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
+        item.status === 'accepted' ? (
+          <View style={styles.acceptedBadge}>
+            <Text style={styles.acceptedText}>Accepted</Text>
+          </View>
+        ) : (
+          <View style={styles.requestBtns}>
+            <TouchableOpacity
+              style={styles.confirmBtn}
+              disabled={actionLoading === item.id}
+              onPress={() => handleRequest(item.request_id, item.id, 'accepted')}
+            >
+              {actionLoading === item.id
+                ? <ActivityIndicator size="small" color="#000" />
+                : <Text style={styles.confirmText}>Confirm</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              disabled={!!actionLoading}
+              onPress={() => handleRequest(item.request_id, item.id, 'rejected')}
+            >
+              <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )
       ) : (
         <TouchableOpacity
           onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
