@@ -34,6 +34,7 @@ interface ConvItem {
   otherAvatar: string;
   lastMessage: string;
   lastAt: string;
+  unreadCount?: number;
 }
 
 export default function ChatScreen() {
@@ -72,6 +73,18 @@ export default function ChatScreen() {
           }
         } catch (_) {}
 
+        // Fetch unread count
+        let unreadCount = 0;
+        try {
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .eq('is_read', false)
+            .neq('sender_uid', user.uid);
+          unreadCount = count || 0;
+        } catch (_) {}
+
         enriched.push({
           id: conv.id,
           otherUid,
@@ -79,6 +92,7 @@ export default function ChatScreen() {
           otherAvatar: avatar,
           lastMessage: conv.last_message || '',
           lastAt: conv.last_message_at || conv.created_at,
+          unreadCount,
         });
       }
 
@@ -112,13 +126,18 @@ export default function ChatScreen() {
           </View>}
       <View style={styles.convInfo}>
         <View style={styles.convTop}>
-          <Text style={styles.convName}>{item.otherName}</Text>
+          <Text style={[styles.convName, item.unreadCount ? { color: Colors.primary } : {}]}>{item.otherName}</Text>
           <Text style={styles.convTime}>{timeAgo(item.lastAt)}</Text>
         </View>
-        <Text style={styles.convLast} numberOfLines={1}>
+        <Text style={[styles.convLast, item.unreadCount ? { color: Colors.textPrimary, fontWeight: '600' } : {}]} numberOfLines={1}>
           {item.lastMessage || 'Start a conversation...'}
         </Text>
       </View>
+      {!!item.unreadCount && (
+        <View style={styles.unreadBadge}>
+          <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -205,4 +224,12 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 40 },
   emptyTitle: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700' },
   emptyText: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22 },
+
+  unreadBadge: {
+    backgroundColor: Colors.primary,
+    minWidth: 22, height: 22, borderRadius: 11,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: { color: '#000', fontSize: 12, fontWeight: '800' },
 });
