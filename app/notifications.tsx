@@ -100,6 +100,7 @@ export default function NotificationsScreen() {
               is_read: false,
               created_at: req.created_at,
               request_id: req.id,
+              status: req.status,
             });
           }
         }
