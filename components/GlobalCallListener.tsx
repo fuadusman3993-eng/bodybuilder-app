@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { doc, getDoc } from 'firebase/firestore';
@@ -10,6 +10,8 @@ import { db } from '../lib/firebase';
 export default function GlobalCallListener() {
   const { user } = useUserStore();
   const router = useRouter();
+  const segments = useSegments();
+  const currentRoute = segments[segments.length - 1];
 
   const [incomingCall, setIncomingCall] = useState<{
     callerUid: string;
@@ -24,8 +26,14 @@ export default function GlobalCallListener() {
 
     const ch = supabase.channel(`user_calls_${user.uid}`)
       .on('broadcast', { event: 'incoming_call' }, async ({ payload }) => {
+        // Prevent self-call bug (if testing on same account)
+        if (payload.callerUid === user.uid) return;
+        
+        // If already on the call screen, ignore the modal
+        if (currentRoute === 'voice-call') return;
+
         // Fetch caller name from Firebase
-        let callerName = 'Unknown';
+        let callerName = 'User';
         try {
           const snap = await getDoc(doc(db, 'users', payload.callerUid));
           if (snap.exists()) {
@@ -52,18 +60,18 @@ export default function GlobalCallListener() {
 
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
-  }, [user?.uid]);
+  }, [user?.uid, currentRoute]);
 
   const handleAccept = () => {
     if (!incomingCall) return;
     const { channelId, callerUid } = incomingCall;
-    setIncomingCall(null); // close modal FIRST
+    setIncomingCall(null);
     setTimeout(() => {
       router.push({
         pathname: '/voice-call',
         params: { channelId, otherUserUid: callerUid, isIncoming: 'true' },
       });
-    }, 50);
+    }, 100);
   };
 
   const handleReject = () => {

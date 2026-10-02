@@ -155,11 +155,11 @@ export default function VoiceCallScreen() {
     }
   };
 
-  const cleanup = (notify: boolean) => {
+  const cleanup = async (notify: boolean) => {
     clearInterval(timerRef.current);
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     if (notify && channelRef.current) {
-      channelRef.current.send({
+      await channelRef.current.send({
         type: 'broadcast',
         event: 'call_ended',
         payload: { from: user.uid }
@@ -170,37 +170,39 @@ export default function VoiceCallScreen() {
 
   const endCall = async (fromRemote = false) => {
     const finalDuration = durationRef.current;
-    cleanup(!fromRemote);
+    await cleanup(!fromRemote);
 
     if (channelId) {
       if (finalDuration > 0) {
         const callLog = `📞 Voice call (${fmt(finalDuration)})`;
-        await supabase.from('messages').insert({
-          conversation_id: channelId,
-          sender_uid: user.uid,
-          text: callLog,
-          is_read: false,
-          type: 'text',
-        }).catch(() => {});
-        await supabase.from('conversations')
-          .update({ last_message: callLog, last_message_at: new Date().toISOString() })
-          .eq('id', channelId).catch(() => {});
+        await Promise.all([
+          supabase.from('messages').insert({
+            conversation_id: channelId,
+            sender_uid: user.uid,
+            text: callLog,
+            is_read: false,
+            type: 'text',
+          }),
+          supabase.from('conversations')
+            .update({ last_message: callLog, last_message_at: new Date().toISOString() })
+            .eq('id', channelId)
+        ]);
       } else if (!incoming && callState === 'calling') {
-        // Only caller logs missed call
         const missedLog = `📞 Missed voice call`;
-        await supabase.from('messages').insert({
-          conversation_id: channelId,
-          sender_uid: user.uid,
-          text: missedLog,
-          is_read: false,
-          type: 'text',
-        }).catch(() => {});
-        await supabase.from('conversations')
-          .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
-          .eq('id', channelId).catch(() => {});
+        await Promise.all([
+          supabase.from('messages').insert({
+            conversation_id: channelId,
+            sender_uid: user.uid,
+            text: missedLog,
+            is_read: false,
+            type: 'text',
+          }),
+          supabase.from('conversations')
+            .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
+            .eq('id', channelId)
+        ]);
       }
     }
-
     router.back();
   };
 
