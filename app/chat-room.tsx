@@ -156,10 +156,19 @@ export default function ChatRoom() {
   const startRecordingWeb = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/ogg')
+        ? 'audio/ogg'
+        : '';
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunksRef.current = [];
-      mr.ondataavailable = e => audioChunksRef.current.push(e.data);
-      mr.start();
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      mr.start(100); // timeslice 100ms — critical for Android Chrome
       mediaRecorderRef.current = mr;
       setIsRecording(true);
       setRecordingSecs(0);
@@ -177,14 +186,17 @@ export default function ChatRoom() {
     setIsRecording(false);
     setSending(true);
 
+    const recordedMime = mr.mimeType || 'audio/webm';
+    const ext = recordedMime.includes('ogg') ? 'ogg' : 'webm';
+
     // Set handler BEFORE calling stop() to avoid race condition
     mr.onstop = async () => {
       try {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const fileName = `voice_${user.uid}_${Date.now()}.webm`;
+        const blob = new Blob(audioChunksRef.current, { type: recordedMime });
+        const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('voice-messages')
-          .upload(fileName, blob, { contentType: 'audio/webm', upsert: true });
+          .upload(fileName, blob, { contentType: recordedMime, upsert: true });
         if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName);
         await supabase.from('messages').insert({
