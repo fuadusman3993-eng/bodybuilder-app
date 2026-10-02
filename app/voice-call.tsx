@@ -132,20 +132,23 @@ export default function VoiceCallScreen() {
       await sig.subscribe();
 
       if (!incoming) {
-        // CALLER: send offer + ring receiver
+        // CALLER: send offer
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         await sig.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer, from: user.uid } });
 
-        // Ring the other user globally
+        // Ring the other user globally (wait for SUBSCRIBED status)
         const ringChannel = supabase.channel(`user_calls_${otherUserUid}_${Date.now()}`);
-        await ringChannel.subscribe();
-        ringChannel.send({
-          type: 'broadcast',
-          event: 'incoming_call',
-          payload: { callerUid: user.uid, channelId, conversationId: channelId }
+        ringChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            ringChannel.send({
+              type: 'broadcast',
+              event: 'incoming_call',
+              payload: { callerUid: user.uid, channelId, conversationId: channelId }
+            });
+            setTimeout(() => supabase.removeChannel(ringChannel), 3000);
+          }
         });
-        setTimeout(() => supabase.removeChannel(ringChannel), 3000);
       }
       // RECEIVER: just wait for offer (subscribed above)
 
@@ -175,32 +178,29 @@ export default function VoiceCallScreen() {
     if (channelId) {
       if (finalDuration > 0) {
         const callLog = `📞 Voice call (${fmt(finalDuration)})`;
-        await Promise.all([
-          supabase.from('messages').insert({
-            conversation_id: channelId,
-            sender_uid: user.uid,
-            text: callLog,
-            is_read: false,
-            type: 'text',
-          }),
-          supabase.from('conversations')
-            .update({ last_message: callLog, last_message_at: new Date().toISOString() })
-            .eq('id', channelId)
-        ]);
+        // Ensure both inserts finish before routing back
+        await supabase.from('messages').insert({
+          conversation_id: channelId,
+          sender_uid: user.uid,
+          text: callLog,
+          is_read: false,
+          type: 'text',
+        }).select(); 
+        await supabase.from('conversations')
+          .update({ last_message: callLog, last_message_at: new Date().toISOString() })
+          .eq('id', channelId);
       } else if (!incoming && callState === 'calling') {
         const missedLog = `📞 Missed voice call`;
-        await Promise.all([
-          supabase.from('messages').insert({
-            conversation_id: channelId,
-            sender_uid: user.uid,
-            text: missedLog,
-            is_read: false,
-            type: 'text',
-          }),
-          supabase.from('conversations')
-            .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
-            .eq('id', channelId)
-        ]);
+        await supabase.from('messages').insert({
+          conversation_id: channelId,
+          sender_uid: user.uid,
+          text: missedLog,
+          is_read: false,
+          type: 'text',
+        }).select();
+        await supabase.from('conversations')
+          .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
+          .eq('id', channelId);
       }
     }
     router.back();
