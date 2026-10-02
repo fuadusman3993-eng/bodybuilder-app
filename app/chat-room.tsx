@@ -212,7 +212,8 @@ export default function ChatRoom() {
           .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
           .eq('id', conversationId);
       } catch (e: any) {
-        Alert.alert('Error', e.message || 'Could not send voice message');
+        Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
+        console.error('Voice message upload error:', e);
       }
       setSending(false);
     };
