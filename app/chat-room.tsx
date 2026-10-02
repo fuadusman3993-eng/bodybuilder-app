@@ -144,7 +144,9 @@ export default function ChatRoom() {
       is_read: false,
       type: 'text',
     });
-    if (!error) {
+    if (error) {
+      Alert.alert('Send Error', error.message);
+    } else {
       await supabase.from('conversations')
         .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
