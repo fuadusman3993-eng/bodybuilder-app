@@ -46,13 +46,39 @@ export default function CoachesPage() {
 
   const fetchCoaches = async () => {
     try {
+      // Fetch coaches from Supabase
       const { data, error } = await supabase
         .from('coach_profiles')
-        .select('*')
-        .order('rating', { ascending: false });
+        .select('*');
       if (error) throw error;
-      setCoaches(data || []);
-      setFiltered(data || []);
+      
+      const coachesList = data || [];
+      const enriched: Coach[] = [];
+
+      // Fetch real names and avatars from Firebase
+      for (const coach of coachesList) {
+        let name = coach.name || 'Coach';
+        let avatar = '';
+        try {
+          const { getDoc, doc } = await import('firebase/firestore');
+          const { db } = await import('../lib/firebase');
+          const snap = await getDoc(doc(db, 'users', coach.uid));
+          if (snap.exists()) {
+            const d = snap.data();
+            name = d.name || d.username || name;
+            avatar = d.avatar || d.photoURL || '';
+          }
+        } catch (_) {}
+
+        enriched.push({
+          ...coach,
+          name,
+          avatar_url: avatar,
+        });
+      }
+
+      setCoaches(enriched);
+      setFiltered(enriched);
     } catch (e) {
       console.warn(e);
     } finally {
@@ -61,61 +87,66 @@ export default function CoachesPage() {
   };
 
   const renderCoach = ({ item }: { item: Coach }) => (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.8}
-      onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
-    >
-      <Image
-        source={{ uri: item.avatar_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' }}
-        style={styles.avatar}
-      />
-      <View style={styles.cardBody}>
+    <View style={styles.listRow}>
+      {/* Avatar */}
+      <TouchableOpacity
+        onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
+      >
+        {item.avatar_url ? (
+          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarInitialWrap}>
+            <Text style={styles.avatarInitialText}>{item.name?.[0]?.toUpperCase() || 'C'}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Center Info */}
+      <TouchableOpacity 
+        style={styles.infoCol}
+        onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
+      >
         <View style={styles.nameRow}>
-          <Text style={styles.name}>{item.name || 'Coach'}</Text>
-          {item.is_verified && (
-            <Ionicons name="checkmark-circle" size={16} color={Colors.info} />
-          )}
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          {item.is_verified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
         </View>
         <Text style={styles.specialty} numberOfLines={1}>
           {item.specialty?.join(' · ') || 'Fitness Coach'}
         </Text>
         <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text style={styles.statText}>{item.rating?.toFixed(1) || '5.0'}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="people" size={12} color={Colors.primary} />
-            <Text style={styles.statText}>{item.total_trainees || 0} trainees</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="time" size={12} color={Colors.textMuted} />
-            <Text style={styles.statText}>{item.experience_years || 0} yrs</Text>
-          </View>
+          {item.total_trainees > 0 && (
+            <Text style={styles.statText}>{item.total_trainees} trainees • </Text>
+          )}
+          <Text style={styles.priceText}>
+            {item.price_per_month > 0 ? `$${item.price_per_month}/mo` : 'Free'}
+          </Text>
         </View>
-        <Text style={styles.price}>
-          {item.price_per_month > 0 ? `$${item.price_per_month}/mo` : 'Free'}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      {/* Action Button */}
+      <TouchableOpacity 
+        style={styles.viewBtn}
+        onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
+      >
+        <Text style={styles.viewBtnText}>View</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Find a Coach</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Search */}
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color={Colors.textMuted} />
+        <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon}/>
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name or specialty..."
@@ -136,7 +167,7 @@ export default function CoachesPage() {
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="people-outline" size={60} color={Colors.textMuted} />
+          <Ionicons name="search-outline" size={60} color={Colors.textMuted} />
           <Text style={styles.emptyText}>No coaches found</Text>
         </View>
       ) : (
@@ -159,29 +190,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    margin: 16, backgroundColor: Colors.surface, borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+    margin: 16, backgroundColor: Colors.surface, borderRadius: 12,
+    paddingHorizontal: 14,
     borderWidth: 1, borderColor: Colors.border,
   },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: 15 },
-  list: { paddingHorizontal: 16, paddingBottom: 30, gap: 12 },
-  card: {
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: 15, paddingVertical: 12 },
+  list: { paddingHorizontal: 16, paddingBottom: 30, gap: 16 },
+  
+  listRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: Colors.border,
   },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.surfaceLight },
-  cardBody: { flex: 1, gap: 3 },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.surfaceLight },
+  avatarInitialWrap: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.surfaceLight,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarInitialText: { color: Colors.textMuted, fontSize: 24, fontWeight: 'bold' },
+  
+  infoCol: { flex: 1, justifyContent: 'center' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  specialty: { fontSize: 12, color: Colors.primary },
-  statsRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  name: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  specialty: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   statText: { fontSize: 12, color: Colors.textMuted },
-  price: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 4 },
+  priceText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  
+  viewBtn: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 8,
+  },
+  viewBtnText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
+  
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
   emptyText: { color: Colors.textMuted, fontSize: 15 },
 });
