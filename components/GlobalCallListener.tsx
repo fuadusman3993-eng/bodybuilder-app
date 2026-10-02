@@ -1,90 +1,73 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Image } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Audio } from 'expo-av';
 
 export default function GlobalCallListener() {
   const { user } = useUserStore();
   const router = useRouter();
-  
+
   const [incomingCall, setIncomingCall] = useState<{
     callerUid: string;
     channelId: string;
     callerName: string;
   } | null>(null);
 
-  const ringtoneRef = React.useRef<Audio.Sound | null>(null);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!user.uid) return;
+    if (!user?.uid) return;
 
-    // Listen to ALL calls matching this user's uid as recipient
-    const channel = supabase.channel(`user_calls_${user.uid}`)
+    const ch = supabase.channel(`user_calls_${user.uid}`)
       .on('broadcast', { event: 'incoming_call' }, async ({ payload }) => {
-        // Someone is calling ME!
-        const callerName = await fetchCallerName(payload.callerUid);
+        // Fetch caller name from Firebase
+        let callerName = 'Unknown';
+        try {
+          const snap = await getDoc(doc(db, 'users', payload.callerUid));
+          if (snap.exists()) {
+            const d = snap.data();
+            callerName = d.name || d.displayName || d.username || 'User';
+          }
+        } catch (_) {}
+
         setIncomingCall({
           callerUid: payload.callerUid,
-          channelId: payload.channelId,
-          callerName
+          channelId: payload.channelId || payload.conversationId,
+          callerName,
         });
-        playRingtone();
       })
       .on('broadcast', { event: 'cancel_call' }, ({ payload }) => {
-        // Caller hung up before we answered
-        if (incomingCall?.callerUid === payload.callerUid) {
-          stopRingtone();
-          setIncomingCall(null);
-        }
+        setIncomingCall(prev =>
+          prev?.callerUid === payload.callerUid ? null : prev
+        );
+      })
+      .on('broadcast', { event: 'call_ended' }, () => {
+        setIncomingCall(null);
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-      stopRingtone();
-    };
-  }, [user.uid, incomingCall]);
-
-  const fetchCallerName = async (uid: string) => {
-    try {
-      const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) return snap.data().name || 'User';
-    } catch (_) {}
-    return 'Someone';
-  };
-
-  const playRingtone = async () => {
-    // Basic beep for ringtone (you can add a real mp3 later)
-    try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    } catch(e) {}
-  };
-
-  const stopRingtone = async () => {
-    // stop sound if we had one
-  };
+    channelRef.current = ch;
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.uid]);
 
   const handleAccept = () => {
-    stopRingtone();
-    const callData = incomingCall;
-    setIncomingCall(null);
-    if (callData) {
+    if (!incomingCall) return;
+    const { channelId, callerUid } = incomingCall;
+    setIncomingCall(null); // close modal FIRST
+    setTimeout(() => {
       router.push({
         pathname: '/voice-call',
-        params: { channelId: callData.channelId, otherUserUid: callData.callerUid, isIncoming: 'true' }
+        params: { channelId, otherUserUid: callerUid, isIncoming: 'true' },
       });
-    }
+    }, 50);
   };
 
   const handleReject = () => {
-    stopRingtone();
     setIncomingCall(null);
-    // Could send a 'call_rejected' broadcast back if we want
   };
 
   if (!incomingCall) return null;
@@ -96,16 +79,17 @@ export default function GlobalCallListener() {
           <View style={styles.avatarWrap}>
             <Ionicons name="person" size={40} color="#fff" />
           </View>
-          <Text style={styles.title}>Incoming Call</Text>
-          <Text style={styles.name}>{incomingCall.callerName}</Text>
-          
+          <Text style={styles.subTitle}>Incoming Call</Text>
+          <Text style={styles.callerName}>{incomingCall.callerName}</Text>
+
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={handleReject}>
               <Ionicons name="close" size={32} color="#fff" />
+              <Text style={styles.btnLabel}>Decline</Text>
             </TouchableOpacity>
-            
             <TouchableOpacity style={[styles.btn, styles.acceptBtn]} onPress={handleAccept}>
               <Ionicons name="call" size={32} color="#fff" />
+              <Text style={styles.btnLabel}>Answer</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -116,22 +100,22 @@ export default function GlobalCallListener() {
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center', alignItems: 'center',
   },
   card: {
-    backgroundColor: '#1E293B', width: '85%', borderRadius: 24,
-    padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000',
-    shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }
+    backgroundColor: '#1E293B', width: '80%', borderRadius: 24,
+    padding: 32, alignItems: 'center',
   },
   avatarWrap: {
     width: 80, height: 80, borderRadius: 40, backgroundColor: '#334155',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 16
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  title: { color: '#94A3B8', fontSize: 14, marginBottom: 4 },
-  name: { color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 30 },
-  actions: { flexDirection: 'row', gap: 40 },
-  btn: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+  subTitle: { color: '#94A3B8', fontSize: 14, marginBottom: 4 },
+  callerName: { color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 36 },
+  actions: { flexDirection: 'row', gap: 36 },
+  btn: { alignItems: 'center', gap: 6, padding: 16, borderRadius: 50, minWidth: 70 },
   rejectBtn: { backgroundColor: '#ef4444' },
-  acceptBtn: { backgroundColor: '#10b981' }
+  acceptBtn: { backgroundColor: '#10b981' },
+  btnLabel: { color: '#fff', fontSize: 12, fontWeight: '600' },
 });
