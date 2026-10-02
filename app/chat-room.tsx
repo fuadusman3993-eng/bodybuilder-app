@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, KeyboardAvoidingView, Platform, Image, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, Alert, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string }>({ name: '...', avatar: '' });
+  const [showSettings, setShowSettings] = useState(false);
   const flatRef = useRef<FlatList>(null);
 
   // Fetch other user info from Firebase
@@ -55,7 +57,7 @@ export default function ChatRoom() {
       .order('created_at', { ascending: true });
     setMessages(data || []);
     setLoading(false);
-    // Mark as read
+    // Mark all incoming as read
     supabase.from('messages')
       .update({ is_read: true })
       .eq('conversation_id', conversationId)
@@ -63,9 +65,7 @@ export default function ChatRoom() {
       .then();
   }, [conversationId, user.uid]);
 
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+  useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
   // Realtime subscription
   useEffect(() => {
@@ -81,6 +81,18 @@ export default function ChatRoom() {
       }, (payload) => {
         setMessages(prev => [...prev, payload.new]);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+        // Mark as read if it's from the other person
+        if (payload.new.sender_uid !== user.uid) {
+          supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
       })
       .subscribe();
 
@@ -104,10 +116,10 @@ export default function ChatRoom() {
       conversation_id: conversationId,
       sender_uid: user.uid,
       text: trimmed,
+      is_read: false,
     });
 
     if (!error) {
-      // Update conversation last message
       await supabase.from('conversations').update({
         last_message: trimmed,
         last_message_at: new Date().toISOString(),
@@ -117,8 +129,45 @@ export default function ChatRoom() {
     setSending(false);
   };
 
-  const renderMessage = ({ item }: { item: any }) => {
+  const handleDeleteConversation = () => {
+    Alert.alert(
+      'Delete Conversation',
+      'This will permanently delete all messages. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setShowSettings(false);
+            await supabase.from('messages').delete().eq('conversation_id', conversationId);
+            await supabase.from('conversations').delete().eq('id', conversationId);
+            router.back();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleVoiceCall = () => {
+    Alert.alert('Voice Call', `Calling ${otherUser.name}...`, [
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleViewProfile = () => {
+    setShowSettings(false);
+    router.push({ pathname: '/user-profile', params: { uid: otherUserUid } });
+  };
+
+  // Seen status for last my message
+  const lastMyMsgIdx = [...messages].reverse().findIndex(m => m.sender_uid === user.uid);
+  const lastMyMsg = lastMyMsgIdx >= 0 ? [...messages].reverse()[lastMyMsgIdx] : null;
+
+  const renderMessage = ({ item, index }: { item: any; index: number }) => {
     const isMe = item.sender_uid === user.uid;
+    const isLastMyMsg = lastMyMsg && item.id === lastMyMsg.id;
+
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMe && (
@@ -128,11 +177,21 @@ export default function ChatRoom() {
               : <Text style={styles.avatarInitial}>{otherUser.name[0]?.toUpperCase()}</Text>}
           </View>
         )}
-        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-          <Text style={[styles.bubbleText, isMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
-            {item.text}
-          </Text>
-          <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
+        <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+          <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+            <Text style={[styles.bubbleText, isMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
+              {item.text}
+            </Text>
+          </View>
+          {/* Time + Seen */}
+          <View style={[styles.metaRow, isMe ? { flexDirection: 'row-reverse' } : {}]}>
+            <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
+            {isMe && (
+              <Text style={[styles.seenTick, item.is_read ? styles.seenTickRead : styles.seenTickSent]}>
+                {item.is_read ? ' ✓✓' : ' ✓'}
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -145,15 +204,30 @@ export default function ChatRoom() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <View style={styles.headerUser}>
+
+        <TouchableOpacity
+          style={styles.headerUser}
+          onPress={handleViewProfile}
+          activeOpacity={0.8}
+        >
           {otherUser.avatar
             ? <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
             : <View style={styles.headerAvatarInitial}>
                 <Text style={styles.headerInitialText}>{otherUser.name[0]?.toUpperCase()}</Text>
               </View>}
           <Text style={styles.headerName}>{otherUser.name}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          {/* Voice Call */}
+          <TouchableOpacity style={styles.headerActionBtn} onPress={handleVoiceCall}>
+            <Ionicons name="call-outline" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          {/* Settings */}
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
+            <Ionicons name="ellipsis-vertical" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
         </View>
-        <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
@@ -184,10 +258,9 @@ export default function ChatRoom() {
               style={styles.input}
               value={text}
               onChangeText={setText}
-              placeholder="Type a message..."
+              placeholder="Message..."
               placeholderTextColor={Colors.textMuted}
               multiline
-              onSubmitEditing={handleSend}
             />
             <TouchableOpacity
               style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
@@ -201,19 +274,55 @@ export default function ChatRoom() {
           </View>
         </KeyboardAvoidingView>
       )}
+
+      {/* Settings Modal */}
+      <Modal
+        visible={showSettings}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+
+            <TouchableOpacity style={styles.modalOption} onPress={handleViewProfile}>
+              <Ionicons name="person-outline" size={22} color={Colors.textPrimary} />
+              <Text style={styles.modalOptionText}>View Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalOption} onPress={handleVoiceCall}>
+              <Ionicons name="call-outline" size={22} color={Colors.textPrimary} />
+              <Text style={styles.modalOptionText}>Voice Call</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider} />
+
+            <TouchableOpacity style={styles.modalOption} onPress={handleDeleteConversation}>
+              <Ionicons name="trash-outline" size={22} color="#ef4444" />
+              <Text style={[styles.modalOptionText, { color: '#ef4444' }]}>Delete Conversation</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.modalOption, { marginTop: 4 }]} onPress={() => setShowSettings(false)}>
+              <Text style={[styles.modalOptionText, { textAlign: 'center', width: '100%', color: Colors.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
+
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingVertical: 12,
+    paddingHorizontal: 8, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerUser: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerUser: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   headerAvatar: { width: 38, height: 38, borderRadius: 19 },
   headerAvatarInitial: {
     width: 38, height: 38, borderRadius: 19,
@@ -221,6 +330,8 @@ const styles = StyleSheet.create({
   },
   headerInitialText: { color: '#000', fontWeight: '700', fontSize: 16 },
   headerName: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerActionBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
 
   messagesList: { padding: 16, paddingBottom: 8, flexGrow: 1 },
 
@@ -245,7 +356,12 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 15, lineHeight: 21 },
   bubbleTextMe: { color: '#000' },
   bubbleTextThem: { color: Colors.textPrimary },
-  timeLabel: { fontSize: 10, color: 'rgba(0,0,0,0.4)', marginTop: 4, textAlign: 'right' },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, paddingHorizontal: 4 },
+  timeLabel: { fontSize: 10, color: Colors.textMuted },
+  seenTick: { fontSize: 11, fontWeight: '700' },
+  seenTickSent: { color: Colors.textMuted },
+  seenTickRead: { color: Colors.primary },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textMuted, fontSize: 15 },
@@ -267,4 +383,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
+
+  // Settings Modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#1E293B', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 16, paddingBottom: 34, paddingTop: 12,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center', marginBottom: 16,
+  },
+  modalOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 16, paddingHorizontal: 4,
+  },
+  modalOptionText: { color: Colors.textPrimary, fontSize: 16 },
+  modalDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
 });
