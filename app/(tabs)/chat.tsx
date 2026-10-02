@@ -44,12 +44,8 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  if (user.tier === UserTier.GUEST) {
-    return <GuestBlocker feature="chat" />;
-  }
-
   const fetchConversations = async () => {
-    if (!user.uid) return;
+    if (!user.uid || user.tier === UserTier.GUEST) return;
     try {
       const { data } = await supabase
         .from('conversations')
@@ -73,7 +69,6 @@ export default function ChatScreen() {
           }
         } catch (_) {}
 
-        // Fetch unread count
         let unreadCount = 0;
         try {
           const { count } = await supabase
@@ -108,6 +103,11 @@ export default function ChatScreen() {
       fetchConversations();
     }, [user.uid])
   );
+
+  // Guest check AFTER hooks (React rules)
+  if (user.tier === UserTier.GUEST) {
+    return <GuestBlocker feature="chat" />;
+  }
 
   const filtered = conversations.filter(c =>
     c.otherName.toLowerCase().includes(search.toLowerCase())
