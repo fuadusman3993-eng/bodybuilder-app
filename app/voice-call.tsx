@@ -102,6 +102,13 @@ export default function VoiceCallScreen() {
       await pc.setLocalDescription(offer);
       await sig.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer, from: user.uid } });
 
+      // ** NEW: Ring the other user's app globally **
+      supabase.channel(`user_calls_${otherUserUid}`).send({
+        type: 'broadcast',
+        event: 'incoming_call',
+        payload: { callerUid: user.uid, channelId }
+      });
+
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not start voice call');
       router.back();
@@ -113,6 +120,15 @@ export default function VoiceCallScreen() {
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
     if (channel.current) supabase.removeChannel(channel.current);
+
+    // Cancel call if ringing
+    if (callState === 'calling') {
+      supabase.channel(`user_calls_${otherUserUid}`).send({
+        type: 'broadcast',
+        event: 'cancel_call',
+        payload: { callerUid: user.uid }
+      });
+    }
   };
 
   const endCall = () => {

@@ -94,8 +94,9 @@ export default function ChatScreen() {
       setConversations(enriched);
     } catch (e) {
       console.warn(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useFocusEffect(
