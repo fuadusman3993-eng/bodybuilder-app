@@ -131,8 +131,37 @@ export default function VoiceCallScreen() {
     }
   };
 
-  const endCall = () => {
+  const endCall = async () => {
     cleanup();
+    
+    // Log call duration to chat if it was connected
+    if (duration > 0 && channelId) {
+      const callLog = `📞 Voice call (${fmt(duration)})`;
+      await supabase.from('messages').insert({
+        conversation_id: channelId,
+        sender_uid: user.uid,
+        text: callLog,
+        is_read: false,
+        type: 'text'
+      });
+      await supabase.from('conversations')
+        .update({ last_message: callLog, last_message_at: new Date().toISOString() })
+        .eq('id', channelId);
+    } else if (callState === 'calling' && channelId) {
+      // Log missed call
+      const missedLog = `📞 Missed voice call`;
+      await supabase.from('messages').insert({
+        conversation_id: channelId,
+        sender_uid: user.uid,
+        text: missedLog,
+        is_read: false,
+        type: 'text'
+      });
+      await supabase.from('conversations')
+        .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
+        .eq('id', channelId);
+    }
+    
     router.back();
   };
 
