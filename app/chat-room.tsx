@@ -176,9 +176,8 @@ export default function ChatRoom() {
     const dur = recordingSecs;
     setIsRecording(false);
     setSending(true);
-    mr.stop();
-    mr.stream.getTracks().forEach(t => t.stop());
 
+    // Set handler BEFORE calling stop() to avoid race condition
     mr.onstop = async () => {
       try {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
@@ -205,6 +204,9 @@ export default function ChatRoom() {
       }
       setSending(false);
     };
+
+    mr.stop();
+    mr.stream.getTracks().forEach(t => t.stop());
   };
 
   const cancelRecordingWeb = () => {
