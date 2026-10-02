@@ -265,6 +265,15 @@ export default function ChatRoom() {
           <Text style={styles.headerName}>{otherUser.name}</Text>
         </TouchableOpacity>
         <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerActionBtn} 
+            onPress={() => {
+              setShowSettings(false);
+              router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } });
+            }}
+          >
+            <Ionicons name="call-outline" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
             <Ionicons name="ellipsis-vertical" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
