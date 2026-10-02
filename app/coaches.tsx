@@ -57,24 +57,24 @@ export default function CoachesPage() {
 
       // Fetch real names and avatars from Firebase
       for (const coach of coachesList) {
-        let name = coach.name || 'Coach';
-        let avatar = '';
         try {
           const { getDoc, doc } = await import('firebase/firestore');
           const { db } = await import('../lib/firebase');
           const snap = await getDoc(doc(db, 'users', coach.uid));
+          
           if (snap.exists()) {
             const d = snap.data();
-            name = d.name || d.username || name;
-            avatar = d.avatar || d.photoURL || '';
+            const name = d.name || d.username || coach.name || 'Coach';
+            const avatar = d.avatar || d.photoURL || '';
+            
+            enriched.push({
+              ...coach,
+              name,
+              avatar_url: avatar,
+            });
           }
+          // If snap.exists() is false, we DO NOT push it to the list (filters out Foziya/ghosts)
         } catch (_) {}
-
-        enriched.push({
-          ...coach,
-          name,
-          avatar_url: avatar,
-        });
       }
 
       setCoaches(enriched);
@@ -108,19 +108,12 @@ export default function CoachesPage() {
       >
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          {item.is_verified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
+          {item.is_verified && <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />}
         </View>
         <Text style={styles.specialty} numberOfLines={1}>
           {item.specialty?.join(' · ') || 'Fitness Coach'}
+          {item.price_per_month > 0 ? ` · $${item.price_per_month}/mo` : ' · Free'}
         </Text>
-        <View style={styles.statsRow}>
-          {item.total_trainees > 0 && (
-            <Text style={styles.statText}>{item.total_trainees} trainees • </Text>
-          )}
-          <Text style={styles.priceText}>
-            {item.price_per_month > 0 ? `$${item.price_per_month}/mo` : 'Free'}
-          </Text>
-        </View>
       </TouchableOpacity>
 
       {/* Action Button */}
@@ -140,25 +133,14 @@ export default function CoachesPage() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Find a Coach</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon}/>
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or specialty..."
+          style={styles.headerSearch}
+          placeholder="Search"
           placeholderTextColor={Colors.textMuted}
           value={search}
           onChangeText={setSearch}
         />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
-        )}
+        <View style={{ width: 24 }} />
       </View>
 
       {loading ? (
@@ -177,6 +159,9 @@ export default function CoachesPage() {
           keyExtractor={(item) => item.uid}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={() => (
+            <Text style={styles.sectionTitle}>Suggested for you</Text>
+          )}
         />
       )}
     </SafeAreaView>
@@ -184,48 +169,43 @@ export default function CoachesPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: '#000' }, // Pitch black like IG
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  searchWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    margin: 16, backgroundColor: Colors.surface, borderRadius: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1, borderColor: Colors.border,
+  headerSearch: { 
+    flex: 1, backgroundColor: '#262626', 
+    color: '#fff', fontSize: 16, 
+    paddingVertical: 8, paddingHorizontal: 16, 
+    borderRadius: 10, marginRight: 16
   },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: 15, paddingVertical: 12 },
-  list: { paddingHorizontal: 16, paddingBottom: 30, gap: 16 },
+  
+  list: { paddingHorizontal: 16, paddingBottom: 30, paddingTop: 10 },
+  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 16 },
   
   listRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 16,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.surfaceLight },
+  avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#262626' },
   avatarInitialWrap: {
-    width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.surfaceLight,
+    width: 54, height: 54, borderRadius: 27, backgroundColor: '#262626',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitialText: { color: Colors.textMuted, fontSize: 24, fontWeight: 'bold' },
+  avatarInitialText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   
-  infoCol: { flex: 1, justifyContent: 'center' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  name: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  specialty: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  statText: { fontSize: 12, color: Colors.textMuted },
-  priceText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  infoCol: { flex: 1, justifyContent: 'center', marginLeft: 12, marginRight: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  name: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  specialty: { fontSize: 13, color: '#A8A8A8', marginTop: 2 },
   
   viewBtn: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 8,
+    backgroundColor: '#3b82f6', // Instagram Blue
+    paddingHorizontal: 20, paddingVertical: 7, borderRadius: 8,
   },
-  viewBtnText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
+  viewBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
-  emptyText: { color: Colors.textMuted, fontSize: 15 },
+  emptyText: { color: '#A8A8A8', fontSize: 15 },
 });
