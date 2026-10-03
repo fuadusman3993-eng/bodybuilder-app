@@ -41,6 +41,7 @@ export default function ChatRoom() {
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
+  const [isOnline, setIsOnline] = useState(false); // <--- Real Presence State
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -56,6 +57,7 @@ export default function ChatRoom() {
 
   // Playback
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [playbackPosition, setPlaybackPosition] = useState<number>(0); // <--- Live Timer State
   const nativeSoundRef = useRef<any>(null);
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -74,6 +76,24 @@ export default function ChatRoom() {
         });
       }
     }).catch(() => {});
+  }, [otherUserUid]);
+
+  // Track Real Online Presence
+  useEffect(() => {
+    if (!otherUserUid) return;
+    const presenceChannel = supabase.channel('global_presence');
+    
+    presenceChannel.on('presence', { event: 'sync' }, () => {
+      const state = presenceChannel.presenceState();
+      const otherUserPresence = state[otherUserUid];
+      setIsOnline(!!(otherUserPresence && otherUserPresence.length > 0));
+    });
+
+    presenceChannel.subscribe();
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
   }, [otherUserUid]);
 
   // Fetch messages
@@ -304,20 +324,33 @@ export default function ChatRoom() {
         webAudioRef.current?.pause();
         webAudioRef.current = null;
         setPlayingId(null);
+        setPlaybackPosition(0);
         return;
       }
       webAudioRef.current?.pause();
       const audio = new window.Audio(audioUrl);
       webAudioRef.current = audio;
       setPlayingId(id);
+      setPlaybackPosition(0);
       audio.play();
-      audio.onended = () => { setPlayingId(null); webAudioRef.current = null; };
+      
+      // Update timer live
+      audio.ontimeupdate = () => {
+        setPlaybackPosition(audio.currentTime);
+      };
+      
+      audio.onended = () => { 
+        setPlayingId(null); 
+        setPlaybackPosition(0);
+        webAudioRef.current = null; 
+      };
     } else {
       if (playingId === id) {
         await nativeSoundRef.current?.stopAsync();
         await nativeSoundRef.current?.unloadAsync();
         nativeSoundRef.current = null;
         setPlayingId(null);
+        setPlaybackPosition(0);
         return;
       }
       if (nativeSoundRef.current) {
@@ -326,13 +359,19 @@ export default function ChatRoom() {
         nativeSoundRef.current = null;
       }
       setPlayingId(id);
-      const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: true });
+      setPlaybackPosition(0);
+      const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: true, progressUpdateIntervalMillis: 100 });
       nativeSoundRef.current = sound;
+      
       sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setPlayingId(null);
-          sound.unloadAsync();
-          nativeSoundRef.current = null;
+        if (status.isLoaded) {
+          setPlaybackPosition(status.positionMillis / 1000);
+          if (status.didJustFinish) {
+            setPlayingId(null);
+            setPlaybackPosition(0);
+            sound.unloadAsync();
+            nativeSoundRef.current = null;
+          }
         }
       });
     }
@@ -353,6 +392,9 @@ export default function ChatRoom() {
   const renderMessage = ({ item }: { item: any }) => {
     const isMe = item.sender_uid === user.uid;
     const isAudio = item.type === 'audio' && item.audio_url;
+    const isPlaying = playingId === item.id;
+    const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
+    const progressRatio = isPlaying && item.audio_duration ? playbackPosition / item.audio_duration : 0;
 
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
@@ -363,28 +405,30 @@ export default function ChatRoom() {
               : <Text style={styles.avatarInitial}>{otherUser.name[0]?.toUpperCase()}</Text>}
           </View>
         )}
-        <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+        <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
           <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
             {isAudio ? (
               <View>
                 <View style={styles.audioRow}>
                   <TouchableOpacity style={styles.playIconWrap} onPress={() => togglePlay(item.id, item.audio_url)}>
-                    <Ionicons name={playingId === item.id ? 'pause' : 'play'} size={18} color="#000" />
+                    <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color="#000" />
                   </TouchableOpacity>
                   <View style={styles.audioWave}>
-                    {[...Array(20)].map((_, i) => (
-                      <View
-                        key={i}
-                        style={[styles.audioBar, {
-                          height: 6 + Math.abs(Math.sin(i * 0.9 + 1) * 12),
-                          backgroundColor: '#00E676',
-                          opacity: playingId === item.id ? 1 : 0.6
-                        }]}
-                      />
-                    ))}
+                    {[...Array(20)].map((_, i) => {
+                      const isPlayed = (i / 20) <= progressRatio;
+                      return (
+                        <View
+                          key={i}
+                          style={[styles.audioBar, {
+                            height: 6 + Math.abs(Math.sin(i * 0.9 + 1) * 12),
+                            backgroundColor: isPlayed ? (isMe ? '#FFF' : '#00E676') : (isMe ? 'rgba(255,255,255,0.3)' : 'rgba(0,230,118,0.3)')
+                          }]}
+                        />
+                      );
+                    })}
                   </View>
                 </View>
-                <Text style={styles.audioDurMe}>{fmtSecs(item.audio_duration || 0)}</Text>
+                <Text style={styles.audioDurMe}>{fmtSecs(displayDuration)}</Text>
               </View>
             ) : (
               <Text style={styles.bubbleText}>
@@ -429,8 +473,10 @@ export default function ChatRoom() {
               {otherUser.isCoach && <Ionicons name="checkmark-circle" size={14} color="#00E676" />}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
+              <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#00E676' : '#666' }]} />
+              <Text style={[styles.onlineText, { color: isOnline ? '#00E676' : '#A0A0A0' }]}>
+                {isOnline ? 'Online' : 'Offline'}
+              </Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -567,16 +613,16 @@ const styles = StyleSheet.create({
 
   headerActions: { flexDirection: 'row', gap: 2 },
 
-  messagesList: { padding: 16, paddingBottom: 24, flexGrow: 1 },
+  messagesList: { padding: 12, paddingRight: 18, paddingBottom: 24, flexGrow: 1 }, // Added paddingRight to fix overflow
 
-  msgRow: { flexDirection: 'row', marginBottom: 16, alignItems: 'flex-end' },
-  msgRowRight: { justifyContent: 'flex-end' },
+  msgRow: { flexDirection: 'row', marginBottom: 16, alignItems: 'flex-end', width: '100%' },
+  msgRowRight: { justifyContent: 'flex-end', paddingRight: 4 },
   msgRowLeft: { justifyContent: 'flex-start' },
   avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   avatarImg: { width: 28, height: 28, borderRadius: 14 },
   avatarInitial: { color: '#000', fontWeight: '700', fontSize: 12 },
 
-  bubble: { maxWidth: '78%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
+  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
   bubbleMe: { backgroundColor: '#0a1f12', borderWidth: 1, borderColor: '#00E676', borderBottomRightRadius: 4 },
   bubbleThem: { backgroundColor: '#1C1C1E', borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 15, lineHeight: 22, color: '#FFF' },

@@ -12,6 +12,7 @@ import { auth, db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
 import { useUserStore, UserTier } from '../store/userStore';
 import GlobalCallListener from '../components/GlobalCallListener';
+import GlobalPresence from '../components/GlobalPresence';
 
 if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
@@ -92,6 +93,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: '#000000' }} onLayout={onLayoutRootView}>
         <StatusBar style="light" backgroundColor="#000000" />
+        <GlobalCallListener />
+        <GlobalPresence />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -112,7 +115,6 @@ export default function RootLayout() {
           <Stack.Screen name="my-coach" options={{ headerShown: false }} />
           <Stack.Screen name="create-plan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         </Stack>
-        <GlobalCallListener />
       </View>
     </SafeAreaProvider>
   );
