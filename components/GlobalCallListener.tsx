@@ -13,6 +13,13 @@ export default function GlobalCallListener() {
   const segments = useSegments();
   const currentRoute = segments[segments.length - 1];
 
+  // Use a ref so we can always read the latest route inside the channel callback
+  // WITHOUT re-creating the channel subscription every time the route changes
+  const currentRouteRef = useRef(currentRoute);
+  useEffect(() => {
+    currentRouteRef.current = currentRoute;
+  }, [currentRoute]);
+
   const [incomingCall, setIncomingCall] = useState<{
     callerUid: string;
     channelId: string;
@@ -21,16 +28,16 @@ export default function GlobalCallListener() {
 
   const channelRef = useRef<any>(null);
 
+  // Channel opens ONCE per user session — not on every navigation
   useEffect(() => {
     if (!user?.uid) return;
 
     const ch = supabase.channel(`user_calls_${user.uid}`)
       .on('broadcast', { event: 'incoming_call' }, async ({ payload }) => {
-        // Prevent self-call bug (if testing on same account)
+        // Prevent self-call
         if (payload.callerUid === user.uid) return;
-        
-        // If already on the call screen, ignore the modal
-        if (currentRoute === 'voice-call') return;
+        // If already on the call screen, ignore
+        if (currentRouteRef.current === 'voice-call') return;
 
         // Fetch caller name from Firebase
         let callerName = 'User';
@@ -60,7 +67,7 @@ export default function GlobalCallListener() {
 
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
-  }, [user?.uid, currentRoute]);
+  }, [user?.uid]); // ✅ currentRoute ሲቀየር channel አይዘጋም
 
   const handleAccept = () => {
     if (!incomingCall) return;

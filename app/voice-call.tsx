@@ -192,8 +192,8 @@ export default function VoiceCallScreen() {
 
     silentCleanup();
 
-    // Save call log to chat database
-    if (channelId) {
+    // Save call log to chat database — ONLY CALLER logs (to prevent duplicate messages)
+    if (channelId && !incoming) {
       try {
         if (finalDuration > 0) {
           const callLog = `📞 Voice call (${fmt(finalDuration)})`;
@@ -207,8 +207,8 @@ export default function VoiceCallScreen() {
           await supabase.from('conversations')
             .update({ last_message: callLog, last_message_at: new Date().toISOString() })
             .eq('id', channelId);
-        } else if (!incoming && finalState === 'calling') {
-          // Only the caller logs a missed call
+        } else if (finalState === 'calling') {
+          // Caller logs missed call (receiver didn't pick up)
           const missedLog = `📞 Missed voice call`;
           await supabase.from('messages').insert({
             conversation_id: channelId,
