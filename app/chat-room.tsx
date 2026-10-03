@@ -39,8 +39,7 @@ export default function ChatRoom() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string }>({ name: '...', avatar: '' });
-  const [showSettings, setShowSettings] = useState(false);
+  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -67,7 +66,11 @@ export default function ChatRoom() {
     getDoc(doc(db, 'users', otherUserUid)).then(snap => {
       if (snap.exists()) {
         const d = snap.data();
-        setOtherUser({ name: d.name || d.displayName || d.username || 'User', avatar: d.avatar || d.photoURL || '' });
+        setOtherUser({ 
+          name: d.name || d.displayName || d.username || 'User', 
+          avatar: d.avatar || d.photoURL || '',
+          isCoach: d.role === 'coach'
+        });
       }
     }).catch(() => {});
   }, [otherUserUid]);
@@ -82,7 +85,6 @@ export default function ChatRoom() {
       .order('created_at', { ascending: true });
     setMessages(data || []);
     setLoading(false);
-    // Mark as read
     if (user.uid) {
       supabase.from('messages').update({ is_read: true })
         .eq('conversation_id', conversationId)
@@ -92,7 +94,6 @@ export default function ChatRoom() {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-  // Realtime subscription
   useEffect(() => {
     if (!conversationId) return;
     const channel = supabase.channel(`messages_${conversationId}_${Date.now()}`)
@@ -116,7 +117,6 @@ export default function ChatRoom() {
     }
   }, [loading]);
 
-  // Pulse animation for recording dot
   useEffect(() => {
     if (isRecording) {
       Animated.loop(
@@ -131,7 +131,6 @@ export default function ChatRoom() {
     }
   }, [isRecording]);
 
-  // Send text message
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending || !conversationId) return;
@@ -154,7 +153,6 @@ export default function ChatRoom() {
     setSending(false);
   };
 
-  // ─── Recording (Web) ───────────────────────────────
   const startRecordingWeb = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -170,7 +168,7 @@ export default function ChatRoom() {
       mr.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      mr.start(100); // timeslice 100ms — critical for Android Chrome
+      mr.start(100);
       mediaRecorderRef.current = mr;
       setIsRecording(true);
       setRecordingSecs(0);
@@ -191,7 +189,6 @@ export default function ChatRoom() {
     const recordedMime = mr.mimeType || 'audio/webm';
     const ext = recordedMime.includes('ogg') ? 'ogg' : 'webm';
 
-    // Set handler BEFORE calling stop() to avoid race condition
     mr.onstop = async () => {
       try {
         const blob = new Blob(audioChunksRef.current, { type: recordedMime });
@@ -215,7 +212,6 @@ export default function ChatRoom() {
           .eq('id', conversationId);
       } catch (e: any) {
         Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
-        console.error('Voice message upload error:', e);
       }
       setSending(false);
     };
@@ -235,7 +231,6 @@ export default function ChatRoom() {
     setRecordingSecs(0);
   };
 
-  // ─── Recording (Native) ────────────────────────────
   const startRecordingNative = async () => {
     try {
       await Audio.requestPermissionsAsync();
@@ -302,7 +297,6 @@ export default function ChatRoom() {
   const stopAndSend = Platform.OS === 'web' ? stopAndSendWeb : stopAndSendNative;
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
-  // ─── Playback ──────────────────────────────────────
   const togglePlay = async (id: string, audioUrl: string) => {
     if (Platform.OS === 'web') {
       if (playingId === id) {
@@ -355,8 +349,6 @@ export default function ChatRoom() {
     ]);
   };
 
-  const lastMyMsg = [...messages].reverse().find(m => m.sender_uid === user.uid);
-
   const renderMessage = ({ item }: { item: any }) => {
     const isMe = item.sender_uid === user.uid;
     const isAudio = item.type === 'audio' && item.audio_url;
@@ -373,27 +365,28 @@ export default function ChatRoom() {
         <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start' }}>
           <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
             {isAudio ? (
-              <TouchableOpacity style={styles.audioRow} onPress={() => togglePlay(item.id, item.audio_url)}>
-                <View style={[styles.playIconWrap, { backgroundColor: isMe ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)' }]}>
-                  <Ionicons name={playingId === item.id ? 'pause' : 'play'} size={18} color={isMe ? '#000' : '#fff'} />
+              <View>
+                <View style={styles.audioRow}>
+                  <TouchableOpacity style={styles.playIconWrap} onPress={() => togglePlay(item.id, item.audio_url)}>
+                    <Ionicons name={playingId === item.id ? 'pause' : 'play'} size={18} color="#000" />
+                  </TouchableOpacity>
+                  <View style={styles.audioWave}>
+                    {[...Array(20)].map((_, i) => (
+                      <View
+                        key={i}
+                        style={[styles.audioBar, {
+                          height: 6 + Math.abs(Math.sin(i * 0.9 + 1) * 12),
+                          backgroundColor: '#00E676',
+                          opacity: playingId === item.id ? 1 : 0.6
+                        }]}
+                      />
+                    ))}
+                  </View>
                 </View>
-                <View style={styles.audioWave}>
-                  {[...Array(20)].map((_, i) => (
-                    <View
-                      key={i}
-                      style={[styles.audioBar, {
-                        height: 4 + Math.abs(Math.sin(i * 0.9 + 1) * 10),
-                        backgroundColor: isMe ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)',
-                      }]}
-                    />
-                  ))}
-                </View>
-                <Text style={[styles.audioDur, { color: isMe ? '#000' : Colors.textMuted }]}>
-                  {fmtSecs(item.audio_duration || 0)}
-                </Text>
-              </TouchableOpacity>
+                <Text style={styles.audioDurMe}>{fmtSecs(item.audio_duration || 0)}</Text>
+              </View>
             ) : (
-              <Text style={[styles.bubbleText, isMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
+              <Text style={styles.bubbleText}>
                 {item.text}
               </Text>
             )}
@@ -402,7 +395,7 @@ export default function ChatRoom() {
             <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
             {isMe && (
               <Text style={[styles.seenTick, item.is_read ? styles.seenRead : styles.seenSent]}>
-                {item.is_read ? ' ✓✓' : ' ✓'}
+                {item.is_read ? '✓✓' : '✓'}
               </Text>
             )}
           </View>
@@ -416,33 +409,49 @@ export default function ChatRoom() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="chevron-back" size={28} color="#FFF" />
         </TouchableOpacity>
+        
         <TouchableOpacity
           style={styles.headerUser}
           onPress={() => router.push({ pathname: '/user-profile', params: { uid: otherUserUid } })}
           activeOpacity={0.8}
         >
-          {otherUser.avatar
-            ? <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
-            : <View style={styles.headerAvatarPlaceholder}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
-          <Text style={styles.headerName}>{otherUser.name}</Text>
+          <View style={styles.headerAvatarWrap}>
+            {otherUser.avatar
+              ? <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
+              : <View style={styles.headerAvatarPlaceholder}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
+          </View>
+          <View style={styles.headerNameCol}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.headerName}>{otherUser.name}</Text>
+              {otherUser.isCoach && <Ionicons name="checkmark-circle" size={14} color="#00E676" />}
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.onlineText}>Online</Text>
+            </View>
+          </View>
         </TouchableOpacity>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } })}
           >
-            <Ionicons name="call-outline" size={22} color={Colors.textPrimary} />
+            <Ionicons name="call" size={20} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerBtn}>
+            <Ionicons name="videocam" size={22} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setShowSettings(true)}>
-            <Ionicons name="ellipsis-vertical" size={22} color={Colors.textPrimary} />
+            <Ionicons name="ellipsis-vertical" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="large" color="#00E676" style={{ marginTop: 60 }} />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -456,57 +465,57 @@ export default function ChatRoom() {
             contentContainerStyle={styles.messagesList}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="chatbubbles-outline" size={60} color={Colors.textMuted} />
+                <Ionicons name="chatbubbles-outline" size={60} color="#333" />
                 <Text style={styles.emptyText}>No messages yet. Say hi! 👋</Text>
               </View>
             }
           />
 
-          {/* ─── Input / Recording Bar ─── */}
+          {/* Input / Recording Bar */}
           {isRecording ? (
-            <View style={styles.recordingBar}>
-              <TouchableOpacity onPress={cancelRecording} style={styles.recCancelBtn}>
-                <Ionicons name="trash-outline" size={22} color="#ef4444" />
-              </TouchableOpacity>
-
-              <View style={styles.recCenter}>
-                <Animated.View style={[styles.recDot, { opacity: recDotAnim }]} />
-                {/* Fake wave bars for visual */}
-                {[...Array(14)].map((_, i) => (
-                  <View key={i} style={[styles.recWaveBar, { height: 6 + Math.abs(Math.sin(i * 0.7) * 14) }]} />
-                ))}
-                <Text style={styles.recTimer}>{fmtSecs(recordingSecs)}</Text>
-              </View>
-
-              <TouchableOpacity onPress={stopAndSend} style={styles.recSendBtn}>
-                {sending
-                  ? <ActivityIndicator size="small" color="#000" />
-                  : <Ionicons name="send" size={20} color="#000" />}
-              </TouchableOpacity>
+            <View style={styles.recordingOverlay}>
+               <View style={styles.recordingCard}>
+                 <Text style={styles.recTimerBig}>{fmtSecs(recordingSecs)}</Text>
+                 <View style={styles.recWaveBig}>
+                    {[...Array(30)].map((_, i) => (
+                      <View key={i} style={[styles.audioBar, { height: 10 + Math.abs(Math.sin(i * 0.5) * 20), backgroundColor: '#00E676' }]} />
+                    ))}
+                 </View>
+                 <Text style={styles.slideCancelText}>Slide to cancel ◄</Text>
+                 <View style={styles.recActionsRow}>
+                   <TouchableOpacity onPress={cancelRecording} style={styles.recActionBtn}>
+                     <Ionicons name="trash-outline" size={24} color="#A0A0A0" />
+                   </TouchableOpacity>
+                   <TouchableOpacity onPress={stopAndSend} style={styles.recSendBigBtn}>
+                     {sending ? <ActivityIndicator size="small" color="#000" /> : <Ionicons name="arrow-up" size={24} color="#000" />}
+                   </TouchableOpacity>
+                 </View>
+               </View>
             </View>
           ) : (
             <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                value={text}
-                onChangeText={setText}
-                placeholder="Message..."
-                placeholderTextColor={Colors.textMuted}
-                multiline
-              />
+              <TouchableOpacity style={styles.attachBtn}>
+                <Ionicons name="add" size={26} color="#FFF" />
+              </TouchableOpacity>
+              
+              <View style={styles.inputWrap}>
+                <TextInput
+                  style={styles.input}
+                  value={text}
+                  onChangeText={setText}
+                  placeholder="Type a message..."
+                  placeholderTextColor="#A0A0A0"
+                  multiline
+                />
+              </View>
+
               {text.trim() ? (
-                <TouchableOpacity
-                  style={[styles.sendBtn, sending && styles.sendBtnDisabled]}
-                  onPress={handleSend}
-                  disabled={sending}
-                >
-                  {sending
-                    ? <ActivityIndicator size="small" color="#000" />
-                    : <Ionicons name="send" size={20} color="#000" />}
+                <TouchableOpacity style={styles.sendBtnSolid} onPress={handleSend} disabled={sending}>
+                  {sending ? <ActivityIndicator size="small" color="#000" /> : <Ionicons name="send" size={16} color="#000" />}
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.micBtn} onPress={startRecording}>
-                  <Ionicons name="mic" size={22} color={Colors.primary} />
+                <TouchableOpacity style={styles.sendBtnSolid} onPress={startRecording}>
+                  <Ionicons name="mic" size={20} color="#000" />
                 </TouchableOpacity>
               )}
             </View>
@@ -519,11 +528,8 @@ export default function ChatRoom() {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => { setShowSettings(false); router.push({ pathname: '/user-profile', params: { uid: otherUserUid } }); }}
-            >
-              <Ionicons name="person-outline" size={22} color={Colors.textPrimary} />
+            <TouchableOpacity style={styles.modalOption} onPress={() => { setShowSettings(false); router.push({ pathname: '/user-profile', params: { uid: otherUserUid } }); }}>
+              <Ionicons name="person-outline" size={22} color="#FFF" />
               <Text style={styles.modalOptionText}>View Profile</Text>
             </TouchableOpacity>
             <View style={styles.modalDivider} />
@@ -539,87 +545,100 @@ export default function ChatRoom() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 4, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
-  headerBtn: { width: 42, height: 42, justifyContent: 'center', alignItems: 'center' },
-  headerUser: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  headerAvatar: { width: 38, height: 38, borderRadius: 19 },
-  headerAvatarPlaceholder: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  headerInitial: { color: '#000', fontWeight: '700', fontSize: 16 },
-  headerName: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  headerActions: { flexDirection: 'row' },
+  headerBtn: { padding: 8, justifyContent: 'center', alignItems: 'center' },
+  headerUser: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingLeft: 4 },
+  headerAvatarWrap: { position: 'relative' },
+  headerAvatar: { width: 44, height: 44, borderRadius: 22 },
+  headerAvatarPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
+  headerInitial: { color: '#000', fontWeight: '800', fontSize: 18 },
+  headerNameCol: { justifyContent: 'center' },
+  headerName: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00E676' },
+  onlineText: { color: '#00E676', fontSize: 12, fontWeight: '500' },
 
-  messagesList: { padding: 16, paddingBottom: 8, flexGrow: 1 },
+  headerActions: { flexDirection: 'row', gap: 2 },
 
-  msgRow: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end' },
+  messagesList: { padding: 16, paddingBottom: 24, flexGrow: 1 },
+
+  msgRow: { flexDirection: 'row', marginBottom: 16, alignItems: 'flex-end' },
   msgRowRight: { justifyContent: 'flex-end' },
   msgRowLeft: { justifyContent: 'flex-start' },
-  avatarSmall: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  avatarImg: { width: 30, height: 30, borderRadius: 15 },
+  avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  avatarImg: { width: 28, height: 28, borderRadius: 14 },
   avatarInitial: { color: '#000', fontWeight: '700', fontSize: 12 },
 
-  bubble: { maxWidth: '75%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
-  bubbleMe: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
-  bubbleThem: { backgroundColor: 'rgba(30,41,59,0.9)', borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 15, lineHeight: 21 },
-  bubbleTextMe: { color: '#000' },
-  bubbleTextThem: { color: Colors.textPrimary },
+  bubble: { maxWidth: '78%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
+  bubbleMe: { backgroundColor: '#0a1f12', borderWidth: 1, borderColor: '#00E676', borderBottomRightRadius: 4 },
+  bubbleThem: { backgroundColor: '#1C1C1E', borderBottomLeftRadius: 4 },
+  bubbleText: { fontSize: 15, lineHeight: 22, color: '#FFF' },
 
-  audioRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 170 },
-  playIconWrap: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  audioWave: { flexDirection: 'row', alignItems: 'center', gap: 2, flex: 1 },
-  audioBar: { width: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
-  audioDur: { fontSize: 12, fontWeight: '600' },
+  audioRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 180, marginBottom: 8 },
+  playIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
+  audioWave: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1 },
+  audioBar: { width: 2.5, borderRadius: 2 },
+  audioDurMe: { fontSize: 11, fontWeight: '600', color: '#A0A0A0', alignSelf: 'flex-end' },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, paddingHorizontal: 4 },
-  timeLabel: { fontSize: 10, color: Colors.textMuted },
-  seenTick: { fontSize: 11, fontWeight: '700' },
-  seenSent: { color: Colors.textMuted },
-  seenRead: { color: Colors.primary },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 4 },
+  timeLabel: { fontSize: 11, color: '#666', fontWeight: '500' },
+  seenTick: { fontSize: 11, fontWeight: '700', marginLeft: 4 },
+  seenSent: { color: '#666' },
+  seenRead: { color: '#00E676' },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { color: Colors.textMuted, fontSize: 15 },
+  emptyText: { color: '#666', fontSize: 15 },
 
-  // Input
+  // Input Row
   inputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', backgroundColor: BG,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#0a0a0a',
+  },
+  attachBtn: { paddingBottom: 10 },
+  inputWrap: {
+    flex: 1, backgroundColor: '#121212', borderRadius: 24,
+    minHeight: 44, justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
   },
   input: {
-    flex: 1, backgroundColor: 'rgba(30,41,59,0.8)', borderRadius: 22,
-    paddingHorizontal: 16, paddingVertical: 10,
-    color: Colors.textPrimary, fontSize: 15, maxHeight: 100,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
+    color: '#FFF', fontSize: 15, maxHeight: 120,
   },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  sendBtnDisabled: { opacity: 0.4 },
-  micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16,185,129,0.12)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.primary },
+  sendBtnSolid: { 
+    width: 44, height: 44, borderRadius: 22, 
+    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
+    marginBottom: 2
+  },
 
-  // Recording bar
-  recordingBar: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', backgroundColor: BG,
-    gap: 8,
+  // Recording UI
+  recordingOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#0a0a0a', padding: 16, paddingBottom: 32,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
   },
-  recCancelBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  recCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3 },
-  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 6 },
-  recWaveBar: { width: 3, borderRadius: 2, backgroundColor: Colors.primary, opacity: 0.7 },
-  recTimer: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600', marginLeft: 6, minWidth: 38 },
-  recSendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  recordingCard: {
+    backgroundColor: '#121212', borderRadius: 24, padding: 24,
+    alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+  },
+  recWaveBig: { flexDirection: 'row', gap: 4, marginVertical: 20, alignItems: 'center', height: 40 },
+  recTimerBig: { color: '#FFF', fontSize: 24, fontWeight: '700' },
+  slideCancelText: { color: '#A0A0A0', fontSize: 13, marginBottom: 20 },
+  recActionsRow: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
+  recActionBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
+  recSendBigBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#1E293B', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 40, paddingTop: 12 },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 16 },
-  modalOption: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 4 },
-  modalOptionText: { color: Colors.textPrimary, fontSize: 16 },
-  modalDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#121212', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: 40, paddingTop: 16 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 24 },
+  modalOption: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16 },
+  modalOptionText: { color: '#FFF', fontSize: 16, fontWeight: '500' },
+  modalDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginVertical: 8 },
 });
