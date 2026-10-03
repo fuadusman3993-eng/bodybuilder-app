@@ -49,6 +49,8 @@ export default function ChatRoom() {
   const [recordingSecs, setRecordingSecs] = useState(0);
   const recordingTimerRef = useRef<any>(null);
   const recDotAnim = useRef(new Animated.Value(1)).current;
+  // Animated waveform bars for recording UI
+  const waveAnims = useRef(Array.from({ length: 28 }, () => new Animated.Value(8))).current;
 
   // Native: expo-av
   const nativeRecordingRef = useRef<any>(null);
@@ -58,7 +60,8 @@ export default function ChatRoom() {
 
   // Playback
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const [playbackPosition, setPlaybackPosition] = useState<number>(0); // <--- Live Timer State
+  const [playbackPosition, setPlaybackPosition] = useState<number>(0);
+  const [playbackRate, setPlaybackRate] = useState<1 | 1.5 | 2>(1); // <--- Speed toggle
   const nativeSoundRef = useRef<any>(null);
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -123,13 +126,25 @@ export default function ChatRoom() {
 
   useEffect(() => {
     if (isRecording) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(recDotAnim, { toValue: 0.2, duration: 600, useNativeDriver: true }),
-          Animated.timing(recDotAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      ).start();
+      const animations = waveAnims.map((anim, i) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, {
+              toValue: 6 + Math.abs(Math.sin(i * 0.8)) * 22,
+              duration: 280 + (i % 5) * 60,
+              useNativeDriver: false,
+            }),
+            Animated.timing(anim, {
+              toValue: 4,
+              duration: 280 + (i % 5) * 60,
+              useNativeDriver: false,
+            }),
+          ])
+        )
+      );
+      Animated.parallel(animations).start();
     } else {
+      waveAnims.forEach(a => { a.stopAnimation(); a.setValue(8); });
       recDotAnim.stopAnimation();
       recDotAnim.setValue(1);
     }
@@ -301,6 +316,13 @@ export default function ChatRoom() {
   const stopAndSend = Platform.OS === 'web' ? stopAndSendWeb : stopAndSendNative;
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
+  const togglePlaybackRate = () => {
+    const next: 1 | 1.5 | 2 = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+    setPlaybackRate(next);
+    if (webAudioRef.current) webAudioRef.current.playbackRate = next;
+    if (nativeSoundRef.current) nativeSoundRef.current.setRateAsync?.(next, true);
+  };
+
   const togglePlay = async (id: string, audioUrl: string) => {
     if (Platform.OS === 'web') {
       if (playingId === id) {
@@ -312,6 +334,7 @@ export default function ChatRoom() {
       }
       webAudioRef.current?.pause();
       const audio = new window.Audio(audioUrl);
+      audio.playbackRate = playbackRate;
       webAudioRef.current = audio;
       setPlayingId(id);
       setPlaybackPosition(0);
@@ -411,7 +434,14 @@ export default function ChatRoom() {
                     })}
                   </View>
                 </View>
-                <Text style={styles.audioDurMe}>{fmtSecs(displayDuration)}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                  <Text style={styles.audioDurMe}>{fmtSecs(displayDuration)}</Text>
+                  {isPlaying && (
+                    <TouchableOpacity onPress={togglePlaybackRate} style={styles.speedBtn}>
+                      <Text style={styles.speedBtnText}>{playbackRate}x</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ) : (
               <Text style={styles.bubbleText}>
@@ -503,24 +533,29 @@ export default function ChatRoom() {
 
           {/* Input / Recording Bar */}
           {isRecording ? (
-            <View style={styles.recordingOverlay}>
-               <View style={styles.recordingCard}>
-                 <Text style={styles.recTimerBig}>{fmtSecs(recordingSecs)}</Text>
-                 <View style={styles.recWaveBig}>
-                    {[...Array(30)].map((_, i) => (
-                      <View key={i} style={[styles.audioBar, { height: 10 + Math.abs(Math.sin(i * 0.5) * 20), backgroundColor: '#00E676' }]} />
-                    ))}
-                 </View>
-                 <Text style={styles.slideCancelText}>Slide to cancel ◄</Text>
-                 <View style={styles.recActionsRow}>
-                   <TouchableOpacity onPress={cancelRecording} style={styles.recActionBtn}>
-                     <Ionicons name="trash-outline" size={24} color="#A0A0A0" />
-                   </TouchableOpacity>
-                   <TouchableOpacity onPress={stopAndSend} style={styles.recSendBigBtn}>
-                     {sending ? <ActivityIndicator size="small" color="#000" /> : <Ionicons name="arrow-up" size={24} color="#000" />}
-                   </TouchableOpacity>
-                 </View>
-               </View>
+            <View style={styles.recBar}>
+              <TouchableOpacity onPress={cancelRecording} style={styles.recTrashBtn}>
+                <Ionicons name="trash-outline" size={22} color="#A0A0A0" />
+              </TouchableOpacity>
+
+              <View style={styles.recCenter}>
+                <Text style={styles.recTimerInline}>{fmtSecs(recordingSecs)}</Text>
+                <View style={styles.recWaveInline}>
+                  {waveAnims.map((anim, i) => (
+                    <Animated.View
+                      key={i}
+                      style={[styles.recWaveBar, { height: anim }]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.slideCancelText}>Slide to cancel ◄</Text>
+              </View>
+
+              <TouchableOpacity onPress={stopAndSend} style={styles.recSendBigBtn} disabled={sending}>
+                {sending
+                  ? <ActivityIndicator size="small" color="#000" />
+                  : <Ionicons name="arrow-up" size={22} color="#000" />}
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.inputRow}>
@@ -647,22 +682,48 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
 
-  // Recording UI
-  recordingOverlay: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#0a0a0a', padding: 16, paddingBottom: 32,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+  // Inline Recording Bar (Telegram-style)
+  recBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#0a0a0a',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    gap: 10,
   },
-  recordingCard: {
-    backgroundColor: '#121212', borderRadius: 24, padding: 24,
-    alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+  recTrashBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
   },
-  recWaveBig: { flexDirection: 'row', gap: 4, marginVertical: 20, alignItems: 'center', height: 40 },
-  recTimerBig: { color: '#FFF', fontSize: 24, fontWeight: '700' },
-  slideCancelText: { color: '#A0A0A0', fontSize: 13, marginBottom: 20 },
-  recActionsRow: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
-  recActionBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
-  recSendBigBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
+  recCenter: {
+    flex: 1, alignItems: 'center', gap: 2,
+  },
+  recTimerInline: {
+    color: '#FFF', fontSize: 18, fontWeight: '700',
+  },
+  recWaveInline: {
+    flexDirection: 'row', alignItems: 'center', gap: 3, height: 36,
+  },
+  recWaveBar: {
+    width: 2.5, borderRadius: 2, backgroundColor: '#00E676',
+  },
+  slideCancelText: { color: '#A0A0A0', fontSize: 12 },
+  recSendBigBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Speed button (1x / 1.5x / 2x)
+  speedBtn: {
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 10,
+  },
+  speedBtnText: {
+    color: '#FFF', fontSize: 12, fontWeight: '700',
+  },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
