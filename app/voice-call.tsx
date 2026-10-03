@@ -107,6 +107,16 @@ export default function VoiceCallScreen() {
       const sig = supabase.channel(`call_${channelId}`);
       channelRef.current = sig;
 
+      // CALLER: hears receiver is ready, sends offer
+      sig.on('broadcast', { event: 'receiver_ready' }, async ({ payload }) => {
+        if (payload.from === user.uid) return;
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await sig.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer, from: user.uid } });
+        } catch (_) {}
+      });
+
       // RECEIVER: gets offer → sends answer → start timer immediately
       sig.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
@@ -140,28 +150,27 @@ export default function VoiceCallScreen() {
         endCall(true);
       });
 
-      await sig.subscribe();
-
-      if (!incoming) {
-        // CALLER: send offer then ring the other person
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sig.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer, from: user.uid } });
-
-        // Ring the receiver (wait until SUBSCRIBED)
-        const ringCh = supabase.channel(`user_calls_${otherUserUid}`);
-        ringCh.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            ringCh.send({
-              type: 'broadcast',
-              event: 'incoming_call',
-              payload: { callerUid: user.uid, channelId, conversationId: channelId }
+      sig.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          if (!incoming) {
+            // CALLER: ring the receiver
+            const ringCh = supabase.channel(`user_calls_${otherUserUid}`);
+            ringCh.subscribe((rStatus) => {
+              if (rStatus === 'SUBSCRIBED') {
+                ringCh.send({
+                  type: 'broadcast',
+                  event: 'incoming_call',
+                  payload: { callerUid: user.uid, channelId, conversationId: channelId }
+                });
+                setTimeout(() => supabase.removeChannel(ringCh), 3000);
+              }
             });
-            setTimeout(() => supabase.removeChannel(ringCh), 5000);
+          } else {
+            // RECEIVER: tell caller we are ready for the offer
+            await sig.send({ type: 'broadcast', event: 'receiver_ready', payload: { from: user.uid } });
           }
-        });
-      }
-      // RECEIVER: already subscribed above, waiting for offer
+        }
+      });
 
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not start voice call');
