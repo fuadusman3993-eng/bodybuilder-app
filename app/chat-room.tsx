@@ -20,6 +20,12 @@ if (Platform.OS !== 'web') {
   Audio = require('expo-av').Audio;
 }
 
+// expo-image-picker only imported on native
+let ImagePicker: any = null;
+if (Platform.OS !== 'web') {
+  ImagePicker = require('expo-image-picker');
+}
+
 const BG = '#0A0F1A';
 
 function timeStr(dateStr: string) {
@@ -42,7 +48,9 @@ export default function ChatRoom() {
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
-  const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false; // <--- Real Presence State
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
+  const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false;
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -316,6 +324,69 @@ export default function ChatRoom() {
   const stopAndSend = Platform.OS === 'web' ? stopAndSendWeb : stopAndSendNative;
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
+  // ─── Media Upload ───────────────────────────────────────────
+  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string) => {
+    setShowAttachMenu(false);
+    setSending(true);
+    try {
+      const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
+      const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
+      const blob = await fetch(uri).then(r => r.blob());
+      const { error: upErr } = await supabase.storage
+        .from('chat-media')
+        .upload(fileName, blob, { contentType: mimeType, upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_uid: user.uid,
+        text: type === 'image' ? '📷 Photo' : '🎥 Video',
+        media_url: urlData.publicUrl,
+        is_read: false,
+        type,
+      });
+      await supabase.from('conversations')
+        .update({ last_message: type === 'image' ? '📷 Photo' : '🎥 Video', last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    } catch (e: any) {
+      Alert.alert('Upload Error', e.message || 'Could not upload file');
+    }
+    setSending(false);
+  };
+
+  // Web: trigger hidden file input
+  const pickMediaWeb = (accept: string, type: 'image' | 'video') => {
+    setShowAttachMenu(false);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.onchange = async (e: any) => {
+      const file: File = e.target.files[0];
+      if (!file) return;
+      const uri = URL.createObjectURL(file);
+      await sendMedia(uri, type, file.type);
+      URL.revokeObjectURL(uri);
+    };
+    input.click();
+  };
+
+  // Native: expo-image-picker
+  const pickMediaNative = async (type: 'image' | 'video') => {
+    setShowAttachMenu(false);
+    if (!ImagePicker) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    await sendMedia(asset.uri, type, asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4'));
+  };
+
+  const pickImage = () => Platform.OS === 'web' ? pickMediaWeb('image/*', 'image') : pickMediaNative('image');
+  const pickVideo = () => Platform.OS === 'web' ? pickMediaWeb('video/*', 'video') : pickMediaNative('video');
+  // ────────────────────────────────────────────────────────────
+
   const togglePlaybackRate = () => {
     const next: 1 | 1.5 | 2 = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
     setPlaybackRate(next);
@@ -398,6 +469,8 @@ export default function ChatRoom() {
   const renderMessage = ({ item }: { item: any }) => {
     const isMe = item.sender_uid === user.uid;
     const isAudio = item.type === 'audio' && item.audio_url;
+    const isImage = item.type === 'image' && item.media_url;
+    const isVideo = item.type === 'video' && item.media_url;
     const isPlaying = playingId === item.id;
     const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
     const progressRatio = isPlaying && item.audio_duration ? playbackPosition / item.audio_duration : 0;
@@ -442,6 +515,19 @@ export default function ChatRoom() {
                     </TouchableOpacity>
                   )}
                 </View>
+              </View>
+            ) : isImage ? (
+              <TouchableOpacity onPress={() => setFullscreenImg(item.media_url)} activeOpacity={0.9}>
+                <Image
+                  source={{ uri: item.media_url }}
+                  style={styles.mediaBubble}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : isVideo ? (
+              <View style={styles.videoBubbleWrap}>
+                <Ionicons name="play-circle" size={52} color="#00E676" />
+                <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Video</Text>
               </View>
             ) : (
               <Text style={styles.bubbleText}>
@@ -559,7 +645,7 @@ export default function ChatRoom() {
             </View>
           ) : (
             <View style={styles.inputRow}>
-              <TouchableOpacity style={styles.attachBtn}>
+              <TouchableOpacity style={styles.attachBtn} onPress={() => setShowAttachMenu(true)}>
                 <Ionicons name="add" size={26} color="#FFF" />
               </TouchableOpacity>
               
@@ -605,6 +691,42 @@ export default function ChatRoom() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Attach Menu Modal */}
+      <Modal visible={showAttachMenu} transparent animationType="fade" onRequestClose={() => setShowAttachMenu(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAttachMenu(false)}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalOptionText, { fontSize: 14, color: '#A0A0A0', paddingBottom: 8 }]}>Attach</Text>
+            <TouchableOpacity style={styles.modalOption} onPress={pickImage}>
+              <View style={[styles.attachIconWrap, { backgroundColor: '#00E676' }]}>
+                <Ionicons name="image-outline" size={22} color="#000" />
+              </View>
+              <Text style={styles.modalOptionText}>Photo</Text>
+            </TouchableOpacity>
+            <View style={styles.modalDivider} />
+            <TouchableOpacity style={styles.modalOption} onPress={pickVideo}>
+              <View style={[styles.attachIconWrap, { backgroundColor: '#7C3AED' }]}>
+                <Ionicons name="videocam-outline" size={22} color="#FFF" />
+              </View>
+              <Text style={styles.modalOptionText}>Video</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Fullscreen Image Viewer */}
+      <Modal visible={!!fullscreenImg} transparent={false} animationType="fade" onRequestClose={() => setFullscreenImg(null)}>
+        <View style={styles.fullscreenBg}>
+          <TouchableOpacity style={styles.fullscreenClose} onPress={() => setFullscreenImg(null)}>
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+          {fullscreenImg && (
+            <Image source={{ uri: fullscreenImg }} style={styles.fullscreenImg} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -723,6 +845,33 @@ const styles = StyleSheet.create({
   },
   speedBtnText: {
     color: '#FFF', fontSize: 12, fontWeight: '700',
+  },
+
+  // Media bubbles
+  mediaBubble: {
+    width: 220, height: 200, borderRadius: 16,
+  },
+  videoBubbleWrap: {
+    width: 160, height: 100, borderRadius: 16,
+    backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Attach icon
+  attachIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Fullscreen image viewer
+  fullscreenBg: {
+    flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center',
+  },
+  fullscreenClose: {
+    position: 'absolute', top: 50, right: 20, zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 8,
+  },
+  fullscreenImg: {
+    width: '100%', height: '80%',
   },
 
   // Modal
