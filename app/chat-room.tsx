@@ -20,11 +20,7 @@ if (Platform.OS !== 'web') {
   Audio = require('expo-av').Audio;
 }
 
-// expo-image-picker only imported on native
-let ImagePicker: any = null;
-if (Platform.OS !== 'web') {
-  ImagePicker = require('expo-image-picker');
-}
+import * as ImagePicker from 'expo-image-picker';
 
 const BG = '#0A0F1A';
 
@@ -325,16 +321,24 @@ export default function ChatRoom() {
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
   // ─── Media Upload ───────────────────────────────────────────
-  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string) => {
+  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: any) => {
     setShowAttachMenu(false);
     setSending(true);
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
       const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
-      const blob = await fetch(uri).then(r => r.blob());
+      
+      let blobToUpload;
+      if (Platform.OS === 'web' && fileObj) {
+        blobToUpload = fileObj;
+      } else {
+        const response = await fetch(uri);
+        blobToUpload = await response.blob();
+      }
+
       const { error: upErr } = await supabase.storage
         .from('chat-media')
-        .upload(fileName, blob, { contentType: mimeType, upsert: true });
+        .upload(fileName, blobToUpload, { contentType: mimeType, upsert: true });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
       await supabase.from('messages').insert({
@@ -354,37 +358,30 @@ export default function ChatRoom() {
     setSending(false);
   };
 
-  // Web: trigger hidden file input
-  const pickMediaWeb = (accept: string, type: 'image' | 'video') => {
+  const pickMedia = async (type: 'image' | 'video') => {
     setShowAttachMenu(false);
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = accept;
-    input.onchange = async (e: any) => {
-      const file: File = e.target.files[0];
-      if (!file) return;
-      const uri = URL.createObjectURL(file);
-      await sendMedia(uri, type, file.type);
-      URL.revokeObjectURL(uri);
-    };
-    input.click();
+    try {
+      if (!ImagePicker) throw new Error('ImagePicker not loaded');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+      
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
+      
+      await sendMedia(asset.uri, type, mimeType, asset.file);
+    } catch (e: any) {
+      console.error('Picker error:', e);
+      Alert.alert('Error', e.message || 'Could not pick media');
+    }
   };
 
-  // Native: expo-image-picker
-  const pickMediaNative = async (type: 'image' | 'video') => {
-    setShowAttachMenu(false);
-    if (!ImagePicker) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    await sendMedia(asset.uri, type, asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4'));
-  };
-
-  const pickImage = () => Platform.OS === 'web' ? pickMediaWeb('image/*', 'image') : pickMediaNative('image');
-  const pickVideo = () => Platform.OS === 'web' ? pickMediaWeb('video/*', 'video') : pickMediaNative('video');
+  const pickImage = () => pickMedia('image');
+  const pickVideo = () => pickMedia('video');
   // ────────────────────────────────────────────────────────────
 
   const togglePlaybackRate = () => {
