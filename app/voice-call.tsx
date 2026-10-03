@@ -18,10 +18,11 @@ export default function VoiceCallScreen() {
   const { user } = useUserStore();
   const incoming = isIncoming === 'true';
 
-  const [otherName, setOtherName] = useState('...');
+  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [callState, setCallState] = useState<'calling' | 'connected' | 'ended'>('calling');
   const callStateRef = useRef<'calling' | 'connected' | 'ended'>('calling'); // fix stale closure
   const [micMuted, setMicMuted] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(false);
   const [duration, setDuration] = useState(0);
   const durationRef = useRef(0);
 
@@ -49,7 +50,11 @@ export default function VoiceCallScreen() {
       getDoc(doc(db, 'users', otherUserUid)).then(snap => {
         if (snap.exists()) {
           const d = snap.data();
-          setOtherName(d.name || d.displayName || d.username || 'User');
+          setOtherUser({ 
+            name: d.name || d.displayName || d.username || 'User',
+            avatar: d.avatar || d.photoURL || '',
+            isCoach: d.role === 'coach'
+          });
         }
       }).catch(() => {});
     }
@@ -238,45 +243,149 @@ export default function VoiceCallScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topSection}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name="person" size={60} color="#fff" />
+    <View style={styles.container}>
+      {/* Background overlay (Mock shows dark gym bg, we use dark green gradient approx) */}
+      <View style={styles.bgOverlay} />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Top Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => endCall(false)}>
+            <Ionicons name="chevron-down" size={32} color="#FFF" />
+          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <Ionicons name="shield-checkmark" size={18} color="#00E676" />
+            <Text style={styles.headerTitle}>Video Call</Text>
+          </View>
+          {callState === 'connected' && (
+            <Text style={styles.headerTime}>{fmt(duration)}</Text>
+          )}
         </View>
-        <Text style={styles.name}>{otherName}</Text>
-        <Text style={styles.status}>
-          {callState === 'calling'
-            ? (incoming ? 'Connecting...' : 'Calling...')
-            : callState === 'connected'
-            ? fmt(duration)
-            : 'Call Ended'}
-        </Text>
-      </View>
 
-      <View style={styles.controls}>
-        <TouchableOpacity style={[styles.btn, micMuted && styles.btnMuted]} onPress={toggleMic}>
-          <Ionicons name={micMuted ? 'mic-off' : 'mic'} size={28} color="#fff" />
-          <Text style={styles.btnLabel}>{micMuted ? 'Unmute' : 'Mute'}</Text>
-        </TouchableOpacity>
+        {/* Center Content */}
+        <View style={styles.centerSection}>
+          <View style={styles.avatarRing}>
+            {otherUser.avatar ? (
+              <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="person" size={60} color="#333" />
+              </View>
+            )}
+            <View style={styles.logoBadge}>
+               <Text style={styles.logoBadgeText}>F</Text>
+            </View>
+          </View>
 
-        <TouchableOpacity style={[styles.btn, styles.endBtn]} onPress={() => endCall(false)}>
-          <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-          <Text style={styles.btnLabel}>End</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <Text style={styles.name}>{otherUser.name}</Text>
+          <Text style={styles.status}>
+            {callState === 'calling'
+              ? (incoming ? 'Connecting...' : 'Calling...')
+              : callState === 'connected'
+              ? 'Connected'
+              : 'Call Ended'}
+          </Text>
+
+          <View style={styles.badgesRow}>
+            {otherUser.isCoach && (
+              <View style={styles.badge}>
+                <Ionicons name="shield-checkmark" size={12} color="#FBBF24" />
+                <Text style={styles.badgeText}>Coach</Text>
+              </View>
+            )}
+            <View style={styles.badge}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.badgeText}>Online</Text>
+            </View>
+            {otherUser.isCoach && (
+              <View style={styles.badge}>
+                <Ionicons name="star" size={12} color="#FBBF24" />
+                <Text style={styles.badgeText}>Certified</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Bottom Controls */}
+        <View style={styles.controlsArea}>
+          <View style={styles.controlsRow}>
+            <TouchableOpacity style={styles.iconBtn} onPress={toggleMic}>
+              <Ionicons name={micMuted ? 'mic-off' : 'mic'} size={26} color="#FFF" />
+              <Text style={styles.iconLabel}>{micMuted ? 'Muted' : 'Mic'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setSpeakerOn(!speakerOn)}>
+              <Ionicons name={speakerOn ? 'volume-high' : 'volume-medium'} size={26} color="#FFF" />
+              <Text style={styles.iconLabel}>Speaker</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.iconBtn}>
+              <Ionicons name="videocam" size={26} color="#FFF" />
+              <Text style={styles.iconLabel}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)}>
+            <Ionicons name="call" size={32} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
+          </TouchableOpacity>
+
+          <Text style={styles.footerText}>Better Coaching. Better You.</Text>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'space-between' },
-  topSection: { alignItems: 'center', marginTop: 120, gap: 16 },
-  avatarCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#1c1c1e', justifyContent: 'center', alignItems: 'center' },
-  name: { fontSize: 26, fontWeight: '700', color: '#fff' },
-  status: { fontSize: 16, color: '#888' },
-  controls: { flexDirection: 'row', justifyContent: 'center', gap: 40, paddingBottom: 70 },
-  btn: { alignItems: 'center', gap: 8, backgroundColor: '#262626', padding: 20, borderRadius: 50 },
-  btnMuted: { backgroundColor: '#3b82f6' },
-  endBtn: { backgroundColor: '#ef4444' },
-  btnLabel: { color: '#fff', fontSize: 12 },
+  container: { flex: 1, backgroundColor: '#050a07' },
+  bgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0a1a10',
+    opacity: 0.6,
+  },
+  safeArea: { flex: 1, justifyContent: 'space-between' },
+
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerTitle: { color: '#FFF', fontSize: 16, fontWeight: '500' },
+  headerTime: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+
+  centerSection: { alignItems: 'center', marginTop: 40 },
+  avatarRing: {
+    width: 150, height: 150, borderRadius: 75,
+    borderWidth: 3, borderColor: '#00E676',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 20, position: 'relative'
+  },
+  avatar: { width: 140, height: 140, borderRadius: 70 },
+  logoBadge: {
+    position: 'absolute', top: -10, right: 10,
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#050a07'
+  },
+  logoBadgeText: { color: '#000', fontWeight: '900', fontSize: 16, fontStyle: 'italic' },
+  
+  name: { fontSize: 28, fontWeight: '700', color: '#FFF', marginBottom: 8 },
+  status: { fontSize: 18, color: '#A0A0A0', marginBottom: 20 },
+
+  badgesRow: { flexDirection: 'row', gap: 12 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeText: { color: '#E2E8F0', fontSize: 12, fontWeight: '500' },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00E676' },
+
+  controlsArea: { alignItems: 'center', paddingBottom: 30 },
+  controlsRow: { flexDirection: 'row', justifyContent: 'space-evenly', width: '100%', marginBottom: 40, paddingHorizontal: 20 },
+  iconBtn: { alignItems: 'center', gap: 10 },
+  iconLabel: { color: '#FFF', fontSize: 13, fontWeight: '500' },
+  
+  endCallBtn: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 40,
+    elevation: 5, shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8
+  },
+
+  footerText: { color: '#F59E0B', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
 });
