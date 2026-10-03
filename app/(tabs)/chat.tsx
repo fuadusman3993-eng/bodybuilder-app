@@ -1,29 +1,39 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, Image, ActivityIndicator,
+  StyleSheet, Image, ActivityIndicator, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
-import { Colors } from '../../constants/colors';
 
-const BG = '#0A0F1A';
+const BG = '#0a0a0a';
+const PRIMARY = '#00E676';
+const SURFACE = '#121212';
+const TEXT = '#FFFFFF';
+const MUTED = '#A0A0A0';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
+  if (m < 1) return 'Now';
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
+  if (h < 24) {
+    const d = new Date(dateStr);
+    return `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() >= 12 ? 'PM' : 'AM'}`;
+  }
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
+  if (d === 1) return 'Yesterday';
+  if (d < 7) {
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return days[new Date(dateStr).getDay()];
+  }
   return `${Math.floor(d / 7)}w`;
 }
 
@@ -35,6 +45,8 @@ interface ConvItem {
   lastMessage: string;
   lastAt: string;
   unreadCount?: number;
+  isGroup?: boolean;
+  isCoach?: boolean;
 }
 
 export default function ChatScreen() {
@@ -43,6 +55,8 @@ export default function ChatScreen() {
   const [conversations, setConversations] = useState<ConvItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Coaches' | 'Groups'>('All');
 
   const fetchConversations = async () => {
     if (!user.uid || user.tier === UserTier.GUEST) return;
@@ -60,12 +74,14 @@ export default function ChatScreen() {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
         let name = 'User';
         let avatar = '';
+        let isCoach = false;
         try {
           const snap = await getDoc(doc(db, 'users', otherUid));
           if (snap.exists()) {
             const d = snap.data();
             name = d.name || d.displayName || d.username || 'User';
             avatar = d.avatar || d.photoURL || '';
+            isCoach = d.role === 'coach';
           }
         } catch (_) {}
 
@@ -88,9 +104,10 @@ export default function ChatScreen() {
           lastMessage: conv.last_message || '',
           lastAt: conv.last_message_at || conv.created_at,
           unreadCount,
+          isCoach,
+          isGroup: false, // Future proofing
         });
       }
-
       setConversations(enriched);
     } catch (e) {
       console.warn(e);
@@ -105,14 +122,15 @@ export default function ChatScreen() {
     }, [user.uid])
   );
 
-  // Guest check AFTER hooks (React rules)
   if (user.tier === UserTier.GUEST) {
     return <GuestBlocker feature="chat" />;
   }
 
-  const filtered = conversations.filter(c =>
+  let filtered = conversations.filter(c =>
     c.otherName.toLowerCase().includes(search.toLowerCase())
   );
+  if (activeFilter === 'Coaches') filtered = filtered.filter(c => c.isCoach);
+  if (activeFilter === 'Groups') filtered = filtered.filter(c => c.isGroup);
 
   const renderItem = ({ item }: { item: ConvItem }) => (
     <TouchableOpacity
@@ -120,66 +138,102 @@ export default function ChatScreen() {
       onPress={() => router.push({ pathname: '/chat-room', params: { conversationId: item.id, otherUserUid: item.otherUid } })}
       activeOpacity={0.7}
     >
-      {item.otherAvatar
-        ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
-        : <View style={styles.avatarInitialWrap}>
-            <Text style={styles.avatarInitialText}>{item.otherName[0]?.toUpperCase()}</Text>
-          </View>}
+      <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: PRIMARY, borderWidth: 2 } : {}]}>
+        {item.otherAvatar
+          ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
+          : <View style={styles.avatarInitialWrap}>
+              <Text style={styles.avatarInitialText}>{item.otherName[0]?.toUpperCase()}</Text>
+            </View>}
+        {item.unreadCount ? <View style={styles.onlineDot} /> : null}
+      </View>
+      
       <View style={styles.convInfo}>
         <View style={styles.convTop}>
-          <Text style={[styles.convName, item.unreadCount ? { color: Colors.primary } : {}]}>{item.otherName}</Text>
-          <Text style={styles.convTime}>{timeAgo(item.lastAt)}</Text>
+          <Text style={styles.convName}>{item.otherName}</Text>
+          <Text style={[styles.convTime, item.unreadCount ? { color: PRIMARY } : {}]}>{timeAgo(item.lastAt)}</Text>
         </View>
-        <Text style={[styles.convLast, item.unreadCount ? { color: Colors.textPrimary, fontWeight: '600' } : {}]} numberOfLines={1}>
-          {item.lastMessage || 'Start a conversation...'}
-        </Text>
+        <View style={styles.convBottom}>
+          <Text style={[styles.convLast, item.unreadCount ? { color: TEXT, fontWeight: '500' } : {}]} numberOfLines={1}>
+            {item.lastMessage || 'Start a conversation...'}
+          </Text>
+          {!!item.unreadCount && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </View>
-      {!!item.unreadCount && (
-        <View style={styles.unreadBadge}>
-          <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
-        </View>
-      )}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* App Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/community')}>
-          <Ionicons name="create-outline" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.logoWrap}>
+          <MaterialCommunityIcons name="lightning-bolt" size={28} color={PRIMARY} />
+          <View>
+            <Text style={styles.logoTitle}>FitPulse</Text>
+            <Text style={styles.logoSub}>Stronger Together</Text>
+          </View>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.iconBtn}>
+            <Ionicons name="search" size={22} color={TEXT} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/community')} style={styles.iconBtn}>
+            <Ionicons name="create-outline" size={22} color={TEXT} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search conversations..."
-          placeholderTextColor={Colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
+      {/* Search Input (Collapsible) */}
+      {showSearch && (
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={18} color={MUTED} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search..."
+            placeholderTextColor={MUTED}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+          />
+        </View>
+      )}
+
+      {/* Filters */}
+      <View style={styles.filtersWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
+          {['All', 'Coaches', 'Groups'].map(filter => (
+            <TouchableOpacity 
+              key={filter} 
+              style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+              onPress={() => setActiveFilter(filter as any)}
+            >
+              <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 60 }} />
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="chatbubbles-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No conversations yet</Text>
-          <Text style={styles.emptyText}>
-            Visit someone's profile and tap{'\n'}"Message" to start chatting
-          </Text>
+          <Ionicons name="chatbubble-ellipses-outline" size={64} color={SURFACE} />
+          <Text style={styles.emptyTitle}>No messages</Text>
+          <Text style={styles.emptyText}>Find coaches or groups to start chatting.</Text>
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -190,47 +244,70 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  headerTitle: { color: Colors.textPrimary, fontSize: 22, fontWeight: '800' },
+  logoWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  logoTitle: { color: TEXT, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  logoSub: { color: MUTED, fontSize: 11, fontWeight: '500' },
+  headerActions: { flexDirection: 'row', gap: 4 },
+  iconBtn: { padding: 8 },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(30,41,59,0.6)',
-    marginHorizontal: 16, marginVertical: 10,
-    borderRadius: 12, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: SURFACE,
+    marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 20, paddingHorizontal: 14,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 10, color: Colors.textPrimary, fontSize: 15 },
+  searchInput: { flex: 1, paddingVertical: 10, color: TEXT, fontSize: 15 },
+
+  filtersWrap: { paddingBottom: 16 },
+  filtersScroll: { paddingHorizontal: 16, gap: 10 },
+  filterChip: {
+    paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 20, backgroundColor: SURFACE,
+  },
+  filterChipActive: { backgroundColor: PRIMARY },
+  filterText: { color: TEXT, fontSize: 13, fontWeight: '600' },
+  filterTextActive: { color: '#000' },
 
   convRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+    paddingHorizontal: 16, paddingVertical: 12, gap: 14,
+  },
+  avatarWrap: {
+    width: 56, height: 56, borderRadius: 28,
+    justifyContent: 'center', alignItems: 'center',
   },
   avatar: { width: 52, height: 52, borderRadius: 26 },
   avatarInitialWrap: {
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: SURFACE, justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitialText: { color: '#000', fontWeight: '800', fontSize: 20 },
+  avatarInitialText: { color: PRIMARY, fontWeight: '800', fontSize: 20 },
+  onlineDot: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: PRIMARY, borderWidth: 2, borderColor: BG,
+  },
 
-  convInfo: { flex: 1 },
-  convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  convName: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  convTime: { color: Colors.textMuted, fontSize: 12 },
-  convLast: { color: Colors.textMuted, fontSize: 13, marginTop: 3 },
-
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 40 },
-  emptyTitle: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  emptyText: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22 },
-
+  convInfo: { flex: 1, justifyContent: 'center' },
+  convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  convName: { color: TEXT, fontSize: 16, fontWeight: '700' },
+  convTime: { color: MUTED, fontSize: 12, fontWeight: '500' },
+  
+  convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  convLast: { color: MUTED, fontSize: 14, flex: 1, paddingRight: 10 },
+  
   unreadBadge: {
-    backgroundColor: Colors.primary,
+    backgroundColor: PRIMARY,
     minWidth: 22, height: 22, borderRadius: 11,
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 6,
   },
-  unreadBadgeText: { color: '#000', fontSize: 12, fontWeight: '800' },
+  unreadBadgeText: { color: '#000', fontSize: 11, fontWeight: '800' },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  emptyTitle: { color: TEXT, fontSize: 18, fontWeight: '700' },
+  emptyText: { color: MUTED, fontSize: 14 },
 });
