@@ -30,6 +30,7 @@ export default function VoiceCallScreen() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
+  const remoteAudioRef = useRef<any>(null);
   const endCallCalledRef = useRef(false); // prevent double endCall
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -85,12 +86,18 @@ export default function VoiceCallScreen() {
       pcRef.current = pc;
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-      // Play remote audio if WebRTC peer actually connects
+      // Play remote audio properly — attach to DOM to prevent garbage collection
       pc.ontrack = (event) => {
         try {
-          const audio = new window.Audio();
-          audio.srcObject = event.streams[0];
-          audio.play().catch(() => {});
+          if (!remoteAudioRef.current) {
+            remoteAudioRef.current = new window.Audio();
+            remoteAudioRef.current.autoplay = true;
+            document.body.appendChild(remoteAudioRef.current);
+          }
+          remoteAudioRef.current.srcObject = event.streams[0];
+          remoteAudioRef.current.play().catch((e: any) => {
+            console.warn('Audio autoplay blocked:', e);
+          });
         } catch (_) {}
       };
 
@@ -184,6 +191,13 @@ export default function VoiceCallScreen() {
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
     if (channelRef.current) supabase.removeChannel(channelRef.current);
+    // Remove remote audio element from DOM
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.pause();
+      remoteAudioRef.current.srcObject = null;
+      try { remoteAudioRef.current.remove(); } catch (_) {}
+      remoteAudioRef.current = null;
+    }
   };
 
   const endCall = async (fromRemote = false) => {
