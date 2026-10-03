@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
+import { usePresenceStore } from '../store/presenceStore';
 
 export default function GlobalPresence() {
   const { user } = useUserStore();
@@ -18,7 +19,8 @@ export default function GlobalPresence() {
     });
 
     presenceChannel.on('presence', { event: 'sync' }, () => {
-      // Just connecting
+      const state = presenceChannel.presenceState();
+      usePresenceStore.getState().setAllOnline(state);
     });
 
     presenceChannel.subscribe(async (status) => {

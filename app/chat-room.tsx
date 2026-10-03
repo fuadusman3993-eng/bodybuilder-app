@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
+import { usePresenceStore } from '../store/presenceStore';
 import { Colors } from '../constants/colors';
 
 // expo-av only imported on native
@@ -41,7 +42,7 @@ export default function ChatRoom() {
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
-  const [isOnline, setIsOnline] = useState(false); // <--- Real Presence State
+  const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false; // <--- Real Presence State
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -76,24 +77,6 @@ export default function ChatRoom() {
         });
       }
     }).catch(() => {});
-  }, [otherUserUid]);
-
-  // Track Real Online Presence
-  useEffect(() => {
-    if (!otherUserUid) return;
-    const presenceChannel = supabase.channel('global_presence');
-    
-    presenceChannel.on('presence', { event: 'sync' }, () => {
-      const state = presenceChannel.presenceState();
-      const otherUserPresence = state[otherUserUid];
-      setIsOnline(!!(otherUserPresence && otherUserPresence.length > 0));
-    });
-
-    presenceChannel.subscribe();
-
-    return () => {
-      supabase.removeChannel(presenceChannel);
-    };
   }, [otherUserUid]);
 
   // Fetch messages
