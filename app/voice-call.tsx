@@ -149,7 +149,7 @@ export default function VoiceCallScreen() {
         await sig.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer, from: user.uid } });
 
         // Ring the receiver (wait until SUBSCRIBED)
-        const ringCh = supabase.channel(`user_calls_${otherUserUid}_${Date.now()}`);
+        const ringCh = supabase.channel(`user_calls_${otherUserUid}`);
         ringCh.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             ringCh.send({
