@@ -40,6 +40,7 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
+  const [showSettings, setShowSettings] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
