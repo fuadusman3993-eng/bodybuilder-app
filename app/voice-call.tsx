@@ -101,7 +101,7 @@ export default function VoiceCallScreen() {
         webRemoteVideoRef.current.srcObject = remoteStreamObj;
       }
     }
-  }, [localStreamObj, remoteStreamObj]);
+  }, [localStreamObj, remoteStreamObj, videoOn]);
 
   const initWebRTC = async () => {
     const md = Platform.OS === 'web' ? navigator.mediaDevices : mediaDevices;
