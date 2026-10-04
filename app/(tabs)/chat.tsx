@@ -122,9 +122,7 @@ export default function ChatScreen() {
     }, [user.uid])
   );
 
-  if (user.tier === UserTier.GUEST) {
-    return <GuestBlocker feature="chat" />;
-  }
+
 
   let filtered = conversations.filter(c =>
     c.otherName.toLowerCase().includes(search.toLowerCase())

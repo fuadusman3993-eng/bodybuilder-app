@@ -14,9 +14,7 @@ export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState('For You');
   const { user } = useUserStore();
 
-  if (user.tier === UserTier.GUEST) {
-    return <GuestBlocker feature="community" />;
-  }
+
 
 
   return (

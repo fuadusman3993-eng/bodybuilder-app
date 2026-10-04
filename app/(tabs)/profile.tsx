@@ -102,7 +102,8 @@ export default function ProfileScreen() {
     }
   };
 
-  if (user.tier === UserTier.GUEST) return <GuestBlocker feature="profile" />;
+
+
 
   // ── Data ──────────────────────────────────────────────────
   const name = profileData?.name || profileData?.username || user.name || 'User';

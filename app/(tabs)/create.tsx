@@ -11,9 +11,7 @@ export default function CreateScreen() {
   const [content, setContent] = useState('');
   const { user } = useUserStore();
 
-  if (user.tier === UserTier.GUEST) {
-    return <GuestBlocker feature="create" />;
-  }
+
 
 
   return (
