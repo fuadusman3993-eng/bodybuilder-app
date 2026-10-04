@@ -358,8 +358,58 @@ export default function ChatRoom() {
     setSending(false);
   };
 
+  const webImageInputRef = useRef<HTMLInputElement | null>(null);
+  const webVideoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const createImageInput = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.style.display = 'none';
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0];
+          if (file) await sendMedia(URL.createObjectURL(file), 'image', file.type, file);
+          input.value = ''; // reset
+        };
+        document.body.appendChild(input);
+        webImageInputRef.current = input;
+      };
+
+      const createVideoInput = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'video/*';
+        input.style.display = 'none';
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0];
+          if (file) await sendMedia(URL.createObjectURL(file), 'video', file.type, file);
+          input.value = ''; // reset
+        };
+        document.body.appendChild(input);
+        webVideoInputRef.current = input;
+      };
+
+      createImageInput();
+      createVideoInput();
+
+      return () => {
+        webImageInputRef.current?.remove();
+        webVideoInputRef.current?.remove();
+      };
+    }
+  }, []);
+
   const pickMedia = async (type: 'image' | 'video') => {
     setShowAttachMenu(false);
+    
+    if (Platform.OS === 'web') {
+      if (type === 'image') webImageInputRef.current?.click();
+      if (type === 'video') webVideoInputRef.current?.click();
+      return;
+    }
+
     try {
       if (!ImagePicker) throw new Error('ImagePicker not loaded');
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -642,8 +692,8 @@ export default function ChatRoom() {
             </View>
           ) : (
             <View style={styles.inputRow}>
-              <TouchableOpacity style={styles.attachBtn} onPress={() => setShowAttachMenu(true)}>
-                <Ionicons name="add" size={26} color="#FFF" />
+              <TouchableOpacity style={styles.emojiBtn}>
+                <Ionicons name="happy-outline" size={26} color="#808080" />
               </TouchableOpacity>
               
               <View style={styles.inputWrap}>
@@ -651,19 +701,22 @@ export default function ChatRoom() {
                   style={styles.input}
                   value={text}
                   onChangeText={setText}
-                  placeholder="Type a message..."
-                  placeholderTextColor="#A0A0A0"
+                  placeholder="Message"
+                  placeholderTextColor="#808080"
                   multiline
                 />
+                <TouchableOpacity style={styles.attachBtnInside} onPress={() => setShowAttachMenu(true)}>
+                  <Ionicons name="attach-outline" size={24} color="#808080" />
+                </TouchableOpacity>
               </View>
 
               {text.trim() ? (
-                <TouchableOpacity style={styles.sendBtnSolid} onPress={handleSend} disabled={sending}>
-                  {sending ? <ActivityIndicator size="small" color="#000" /> : <Ionicons name="send" size={16} color="#000" />}
+                <TouchableOpacity style={styles.blueActionBtn} onPress={handleSend} disabled={sending}>
+                  {sending ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 2 }} />}
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.sendBtnSolid} onPress={startRecording}>
-                  <Ionicons name="mic" size={20} color="#000" />
+                <TouchableOpacity style={styles.blueActionBtn} onPress={startRecording}>
+                  <Ionicons name="mic" size={20} color="#FFF" />
                 </TouchableOpacity>
               )}
             </View>
@@ -781,23 +834,28 @@ const styles = StyleSheet.create({
 
   // Input Row
   inputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
+    paddingHorizontal: 10, paddingVertical: 10,
     backgroundColor: '#0a0a0a',
   },
-  attachBtn: { paddingBottom: 10 },
+  emojiBtn: { 
+    paddingBottom: 10, paddingLeft: 4
+  },
   inputWrap: {
-    flex: 1, backgroundColor: '#121212', borderRadius: 24,
-    minHeight: 44, justifyContent: 'center',
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 24,
+    minHeight: 44, flexDirection: 'row', alignItems: 'flex-end',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
   },
   input: {
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
-    color: '#FFF', fontSize: 15, maxHeight: 120,
+    flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
+    color: '#FFF', fontSize: 16, maxHeight: 120,
   },
-  sendBtnSolid: { 
+  attachBtnInside: {
+    padding: 10, paddingRight: 14,
+  },
+  blueActionBtn: { 
     width: 44, height: 44, borderRadius: 22, 
-    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center',
     marginBottom: 2
   },
 
