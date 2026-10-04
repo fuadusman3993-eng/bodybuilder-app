@@ -358,76 +358,31 @@ export default function ChatRoom() {
     setSending(false);
   };
 
-  const webImageInputRef = useRef<HTMLInputElement | null>(null);
-  const webVideoInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const createImageInput = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.style.display = 'none';
-        input.onchange = async (e: any) => {
-          const file = e.target.files[0];
-          if (file) await sendMedia(URL.createObjectURL(file), 'image', file.type, file);
-          input.value = ''; // reset
-        };
-        document.body.appendChild(input);
-        webImageInputRef.current = input;
-      };
-
-      const createVideoInput = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'video/*';
-        input.style.display = 'none';
-        input.onchange = async (e: any) => {
-          const file = e.target.files[0];
-          if (file) await sendMedia(URL.createObjectURL(file), 'video', file.type, file);
-          input.value = ''; // reset
-        };
-        document.body.appendChild(input);
-        webVideoInputRef.current = input;
-      };
-
-      createImageInput();
-      createVideoInput();
-
-      return () => {
-        webImageInputRef.current?.remove();
-        webVideoInputRef.current?.remove();
-      };
-    }
-  }, []);
-
   const pickMedia = async (type: 'image' | 'video') => {
     setShowAttachMenu(false);
     
-    if (Platform.OS === 'web') {
-      if (type === 'image') webImageInputRef.current?.click();
-      if (type === 'video') webVideoInputRef.current?.click();
-      return;
-    }
+    // Give the modal time to unmount fully on Web before opening the file picker
+    // This prevents the browser from losing focus and triggering a router.back()
+    setTimeout(async () => {
+      try {
+        if (!ImagePicker) throw new Error('ImagePicker not loaded');
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+          quality: 0.8,
+          allowsEditing: false,
+        });
 
-    try {
-      if (!ImagePicker) throw new Error('ImagePicker not loaded');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
-        quality: 0.8,
-        allowsEditing: false,
-      });
-
-      if (result.canceled || !result.assets?.[0]) return;
-      
-      const asset = result.assets[0];
-      const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
-      
-      await sendMedia(asset.uri, type, mimeType, asset.file);
-    } catch (e: any) {
-      console.error('Picker error:', e);
-      Alert.alert('Error', e.message || 'Could not pick media');
-    }
+        if (result.canceled || !result.assets?.[0]) return;
+        
+        const asset = result.assets[0];
+        const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
+        
+        await sendMedia(asset.uri, type, mimeType, asset.file);
+      } catch (e: any) {
+        console.error('Picker error:', e);
+        Alert.alert('Error', e.message || 'Could not pick media');
+      }
+    }, Platform.OS === 'web' ? 100 : 0);
   };
 
   const pickImage = () => pickMedia('image');
@@ -855,7 +810,7 @@ const styles = StyleSheet.create({
   },
   blueActionBtn: { 
     width: 44, height: 44, borderRadius: 22, 
-    backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
     marginBottom: 2
   },
 
