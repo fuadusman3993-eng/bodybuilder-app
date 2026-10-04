@@ -131,6 +131,51 @@ export default function ChatRoom() {
     }
   }, [loading]);
 
+  // Keep sendMedia accessible in DOM event handlers without stale closure
+  const sendMediaRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const imgInput = document.createElement('input');
+    imgInput.type = 'file';
+    imgInput.accept = 'image/*';
+    imgInput.style.display = 'none';
+    imgInput.addEventListener('change', async (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        try {
+          await sendMediaRef.current(URL.createObjectURL(file), 'image', file.type || 'image/jpeg', file);
+        } catch (err: any) {
+          window.alert('Upload error: ' + (err.message || 'Unknown error'));
+        }
+      }
+      imgInput.value = '';
+    });
+    document.body.appendChild(imgInput);
+    webImageInputRef.current = imgInput;
+
+    const vidInput = document.createElement('input');
+    vidInput.type = 'file';
+    vidInput.accept = 'video/*';
+    vidInput.style.display = 'none';
+    vidInput.addEventListener('change', async (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        try {
+          await sendMediaRef.current(URL.createObjectURL(file), 'video', file.type || 'video/mp4', file);
+        } catch (err: any) {
+          window.alert('Upload error: ' + (err.message || 'Unknown error'));
+        }
+      }
+      vidInput.value = '';
+    });
+    document.body.appendChild(vidInput);
+    webVideoInputRef.current = vidInput;
+
+    return () => { imgInput.remove(); vidInput.remove(); };
+  }, []);
+
   useEffect(() => {
     if (isRecording) {
       const animations = waveAnims.map((anim, i) =>
@@ -362,6 +407,8 @@ export default function ChatRoom() {
     }
     setSending(false);
   };
+  // Always keep ref in sync with latest sendMedia (avoids stale closure in DOM handlers)
+  sendMediaRef.current = sendMedia;
 
   const pickMedia = (type: 'image' | 'video') => {
     setShowAttachMenu(false);
@@ -740,29 +787,6 @@ export default function ChatRoom() {
         </View>
       </Modal>
 
-      {/* Hidden Web File Inputs — always mounted so Browser doesn't cause navigation on close */}
-      {Platform.OS === 'web' && React.createElement('input', {
-        ref: webImageInputRef,
-        type: 'file',
-        accept: 'image/*',
-        style: { display: 'none' },
-        onChange: async (e: any) => {
-          const file = e.target.files?.[0];
-          if (file) await sendMedia(URL.createObjectURL(file), 'image', file.type || 'image/jpeg', file);
-          e.target.value = '';
-        },
-      })}
-      {Platform.OS === 'web' && React.createElement('input', {
-        ref: webVideoInputRef,
-        type: 'file',
-        accept: 'video/*',
-        style: { display: 'none' },
-        onChange: async (e: any) => {
-          const file = e.target.files?.[0];
-          if (file) await sendMedia(URL.createObjectURL(file), 'video', file.type || 'video/mp4', file);
-          e.target.value = '';
-        },
-      })}
 
     </SafeAreaView>
   );
