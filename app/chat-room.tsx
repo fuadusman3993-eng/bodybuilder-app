@@ -322,16 +322,17 @@ export default function ChatRoom() {
 
   // ─── Media Upload ───────────────────────────────────────────
   const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: any) => {
-    setShowAttachMenu(false);
     setSending(true);
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
       const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
       
-      let blobToUpload;
-      if (Platform.OS === 'web' && fileObj) {
+      let blobToUpload: Blob;
+      if (fileObj instanceof Blob || fileObj instanceof File) {
+        // Web: expo-image-picker gives a File object directly — use it
         blobToUpload = fileObj;
       } else {
+        // Native or blob/http uri: fetch it
         const response = await fetch(uri);
         blobToUpload = await response.blob();
       }
@@ -353,6 +354,7 @@ export default function ChatRoom() {
         .update({ last_message: type === 'image' ? '📷 Photo' : '🎥 Video', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
     } catch (e: any) {
+      console.error('Upload Error:', e);
       Alert.alert('Upload Error', e.message || 'Could not upload file');
     }
     setSending(false);
@@ -377,7 +379,7 @@ export default function ChatRoom() {
         const asset = result.assets[0];
         const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
         
-        await sendMedia(asset.uri, type, mimeType, asset.file);
+        await sendMedia(asset.uri, type, mimeType, (asset as any).file ?? undefined);
       } catch (e: any) {
         console.error('Picker error:', e);
         Alert.alert('Error', e.message || 'Could not pick media');
