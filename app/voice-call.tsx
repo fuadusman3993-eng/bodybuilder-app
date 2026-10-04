@@ -91,17 +91,7 @@ export default function VoiceCallScreen() {
     return () => { silentCleanup(); };
   }, []);
 
-  // Map Web video streams to DOM nodes when they change
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      if (webLocalVideoRef.current && localStreamObj) {
-        webLocalVideoRef.current.srcObject = localStreamObj;
-      }
-      if (webRemoteVideoRef.current && remoteStreamObj) {
-        webRemoteVideoRef.current.srcObject = remoteStreamObj;
-      }
-    }
-  }, [localStreamObj, remoteStreamObj, videoOn]);
+
 
   const initWebRTC = async () => {
     const md = Platform.OS === 'web' ? navigator.mediaDevices : mediaDevices;
@@ -297,7 +287,14 @@ export default function VoiceCallScreen() {
           autoPlay
           playsInline
           muted={isLocal}
-          ref={isLocal ? webLocalVideoRef : webRemoteVideoRef}
+          ref={(el) => {
+            if (isLocal) webLocalVideoRef.current = el;
+            else webRemoteVideoRef.current = el;
+            
+            if (el && streamObj) {
+              el.srcObject = streamObj;
+            }
+          }}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       );
