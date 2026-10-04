@@ -450,13 +450,8 @@ export default function ChatRoom() {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
       const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
       
-      let blobToUpload: Blob;
-      if (fileObj instanceof Blob || fileObj instanceof File) {
-        blobToUpload = fileObj;
-      } else {
-        const response = await fetch(uri);
-        blobToUpload = await response.blob();
-      }
+      const response = await fetch(uri);
+      const blobToUpload = await response.blob();
 
       const { error: upErr } = await supabase.storage
         .from('chat-media')
