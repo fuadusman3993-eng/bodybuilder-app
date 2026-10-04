@@ -70,6 +70,9 @@ export default function ChatRoom() {
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const flatRef = useRef<FlatList>(null);
+  const webImageInputRef = useRef<any>(null);
+  const webVideoInputRef = useRef<any>(null);
+
 
   // Fetch other user info
   useEffect(() => {
@@ -360,31 +363,34 @@ export default function ChatRoom() {
     setSending(false);
   };
 
-  const pickMedia = async (type: 'image' | 'video') => {
+  const pickMedia = (type: 'image' | 'video') => {
     setShowAttachMenu(false);
-    
-    // Give the modal time to unmount fully on Web before opening the file picker
-    // This prevents the browser from losing focus and triggering a router.back()
-    setTimeout(async () => {
-      try {
-        if (!ImagePicker) throw new Error('ImagePicker not loaded');
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
-          quality: 0.8,
-          allowsEditing: false,
-        });
-
-        if (result.canceled || !result.assets?.[0]) return;
-        
-        const asset = result.assets[0];
-        const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
-        
-        await sendMedia(asset.uri, type, mimeType, (asset as any).file ?? undefined);
-      } catch (e: any) {
-        console.error('Picker error:', e);
-        Alert.alert('Error', e.message || 'Could not pick media');
+    // Wait for modal to close, then trigger the always-mounted hidden input
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        if (type === 'image') webImageInputRef.current?.click();
+        else webVideoInputRef.current?.click();
+        return;
       }
-    }, Platform.OS === 'web' ? 100 : 0);
+      // Native: use ImagePicker
+      (async () => {
+        try {
+          if (!ImagePicker) throw new Error('ImagePicker not loaded');
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+            quality: 0.8,
+            allowsEditing: false,
+          });
+          if (result.canceled || !result.assets?.[0]) return;
+          const asset = result.assets[0];
+          const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
+          await sendMedia(asset.uri, type, mimeType, (asset as any).file ?? undefined);
+        } catch (e: any) {
+          console.error('Picker error:', e);
+          Alert.alert('Error', e.message || 'Could not pick media');
+        }
+      })();
+    }, 150);
   };
 
   const pickImage = () => pickMedia('image');
@@ -733,6 +739,30 @@ export default function ChatRoom() {
           )}
         </View>
       </Modal>
+
+      {/* Hidden Web File Inputs — always mounted so Browser doesn't cause navigation on close */}
+      {Platform.OS === 'web' && React.createElement('input', {
+        ref: webImageInputRef,
+        type: 'file',
+        accept: 'image/*',
+        style: { display: 'none' },
+        onChange: async (e: any) => {
+          const file = e.target.files?.[0];
+          if (file) await sendMedia(URL.createObjectURL(file), 'image', file.type || 'image/jpeg', file);
+          e.target.value = '';
+        },
+      })}
+      {Platform.OS === 'web' && React.createElement('input', {
+        ref: webVideoInputRef,
+        type: 'file',
+        accept: 'video/*',
+        style: { display: 'none' },
+        onChange: async (e: any) => {
+          const file = e.target.files?.[0];
+          if (file) await sendMedia(URL.createObjectURL(file), 'video', file.type || 'video/mp4', file);
+          e.target.value = '';
+        },
+      })}
 
     </SafeAreaView>
   );
