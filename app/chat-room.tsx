@@ -112,7 +112,10 @@ export default function ChatRoom() {
     if (!conversationId) return;
     const channel = supabase.channel(`messages_${conversationId}_${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        setMessages(prev => {
+          if (prev.some(m => m.id === payload.new.id)) return prev;
+          return [...prev, payload.new];
+        });
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
         if (payload.new.sender_uid !== user.uid) {
           supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
@@ -261,15 +264,35 @@ export default function ChatRoom() {
     const ext = recordedMime.includes('ogg') ? 'ogg' : 'webm';
 
     mr.onstop = async () => {
+      const tempId = `temp_${Date.now()}`;
       try {
         const blob = new Blob(audioChunksRef.current, { type: recordedMime });
+        const localUrl = URL.createObjectURL(blob);
+        
+        const optimisticMsg: any = {
+          id: tempId,
+          conversation_id: conversationId,
+          sender_uid: user.uid,
+          text: '🎤 Voice message',
+          audio_url: localUrl,
+          audio_duration: dur,
+          type: 'audio',
+          is_read: false,
+          created_at: new Date().toISOString(),
+          isUploading: true,
+        };
+        setMessages(prev => [...prev, optimisticMsg]);
+        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+
         const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('voice-messages')
           .upload(fileName, blob, { contentType: recordedMime, upsert: true });
         if (upErr) throw upErr;
+        
         const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName);
-        await supabase.from('messages').insert({
+        
+        const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
           conversation_id: conversationId,
           sender_uid: user.uid,
           text: '🎤 Voice message',
@@ -277,12 +300,18 @@ export default function ChatRoom() {
           audio_duration: dur,
           is_read: false,
           type: 'audio',
-        });
+        }).select().single();
+        
+        if (insertErr) throw insertErr;
+
+        setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+        
         await supabase.from('conversations')
           .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
           .eq('id', conversationId);
       } catch (e: any) {
         Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
       setSending(false);
     };
@@ -322,12 +351,32 @@ export default function ChatRoom() {
     clearInterval(recordingTimerRef.current);
     const dur = recordingSecs;
     setIsRecording(false);
-    setSending(true);
+    
+    let tempId: string | null = null;
     try {
       await rec.stopAndUnloadAsync();
       const uri = rec.getURI();
       nativeRecordingRef.current = null;
       if (!uri) throw new Error('No audio URI');
+      
+      tempId = `temp_${Date.now()}`;
+      const optimisticMsg: any = {
+        id: tempId,
+        conversation_id: conversationId,
+        sender_uid: user.uid,
+        text: '🎤 Voice message',
+        audio_url: uri,
+        audio_duration: dur,
+        type: 'audio',
+        is_read: false,
+        created_at: new Date().toISOString(),
+        isUploading: true,
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+
+      setSending(true);
+
       const response = await fetch(uri);
       const blob = await response.blob();
       const fileName = `voice_${user.uid}_${Date.now()}.m4a`;
@@ -335,8 +384,10 @@ export default function ChatRoom() {
         .from('voice-messages')
         .upload(fileName, blob, { contentType: 'audio/m4a', upsert: true });
       if (upErr) throw upErr;
+      
       const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName);
-      await supabase.from('messages').insert({
+      
+      const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
         text: '🎤 Voice message',
@@ -344,12 +395,20 @@ export default function ChatRoom() {
         audio_duration: dur,
         is_read: false,
         type: 'audio',
-      });
+      }).select().single();
+      
+      if (insertErr) throw insertErr;
+
+      setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+      
       await supabase.from('conversations')
         .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not send');
+      if (tempId) {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      }
     }
     setSending(false);
   };
@@ -370,6 +429,22 @@ export default function ChatRoom() {
 
   // ─── Media Upload ───────────────────────────────────────────
   const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: any) => {
+    const tempId = `temp_${Date.now()}`;
+    const optimisticMsg: any = {
+      id: tempId,
+      conversation_id: conversationId,
+      sender_uid: user.uid,
+      text: type === 'image' ? '📷 Photo' : '🎥 Video',
+      media_url: uri, // Use local URI for quick preview
+      type,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      isUploading: true,
+    };
+    
+    setMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+
     setSending(true);
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
@@ -377,10 +452,8 @@ export default function ChatRoom() {
       
       let blobToUpload: Blob;
       if (fileObj instanceof Blob || fileObj instanceof File) {
-        // Web: expo-image-picker gives a File object directly — use it
         blobToUpload = fileObj;
       } else {
-        // Native or blob/http uri: fetch it
         const response = await fetch(uri);
         blobToUpload = await response.blob();
       }
@@ -389,21 +462,31 @@ export default function ChatRoom() {
         .from('chat-media')
         .upload(fileName, blobToUpload, { contentType: mimeType, upsert: true });
       if (upErr) throw upErr;
+      
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
-      await supabase.from('messages').insert({
+      
+      const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
         text: type === 'image' ? '📷 Photo' : '🎥 Video',
         media_url: urlData.publicUrl,
         is_read: false,
         type,
-      });
+      }).select().single();
+      
+      if (insertErr) throw insertErr;
+
+      // Replace optimistic message with the real one
+      setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+      
       await supabase.from('conversations')
         .update({ last_message: type === 'image' ? '📷 Photo' : '🎥 Video', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
     } catch (e: any) {
       console.error('Upload Error:', e);
       Alert.alert('Upload Error', e.message || 'Could not upload file');
+      // Remove optimistic message on failure
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     }
     setSending(false);
   };
@@ -544,11 +627,17 @@ export default function ChatRoom() {
         <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
           <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
             {isAudio ? (
-              <View>
+              <View style={[item.isUploading && { opacity: 0.6 }]}>
                 <View style={styles.audioRow}>
-                  <TouchableOpacity style={styles.playIconWrap} onPress={() => togglePlay(item.id, item.audio_url)}>
-                    <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color="#000" />
-                  </TouchableOpacity>
+                  {item.isUploading ? (
+                    <View style={styles.playIconWrap}>
+                      <ActivityIndicator size="small" color="#00E676" />
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.playIconWrap} onPress={() => togglePlay(item.id, item.audio_url)}>
+                      <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color="#000" />
+                    </TouchableOpacity>
+                  )}
                   <View style={styles.audioWave}>
                     {[...Array(20)].map((_, i) => {
                       const isPlayed = (i / 20) <= progressRatio;
@@ -574,17 +663,26 @@ export default function ChatRoom() {
                 </View>
               </View>
             ) : isImage ? (
-              <TouchableOpacity onPress={() => setFullscreenImg(item.media_url)} activeOpacity={0.9}>
+              <TouchableOpacity onPress={() => item.isUploading ? null : setFullscreenImg(item.media_url)} activeOpacity={0.9} style={{ position: 'relative' }}>
                 <Image
                   source={{ uri: item.media_url }}
-                  style={styles.mediaBubble}
+                  style={[styles.mediaBubble, item.isUploading && { opacity: 0.5 }]}
                   resizeMode="cover"
                 />
+                {item.isUploading && (
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#00E676" />
+                  </View>
+                )}
               </TouchableOpacity>
             ) : isVideo ? (
-              <View style={styles.videoBubbleWrap}>
-                <Ionicons name="play-circle" size={52} color="#00E676" />
-                <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Video</Text>
+              <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
+                {item.isUploading ? (
+                   <ActivityIndicator size="large" color="#00E676" />
+                ) : (
+                   <Ionicons name="play-circle" size={52} color="#00E676" />
+                )}
+                <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
               </View>
             ) : (
               <Text style={styles.bubbleText}>
@@ -595,9 +693,13 @@ export default function ChatRoom() {
           <View style={styles.metaRow}>
             <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
             {isMe && (
-              <Text style={[styles.seenTick, item.is_read ? styles.seenRead : styles.seenSent]}>
-                {item.is_read ? '✓✓' : '✓'}
-              </Text>
+              item.isUploading ? (
+                <ActivityIndicator size={12} color="#00E676" style={{ marginLeft: 4 }} />
+              ) : (
+                <Text style={[styles.seenTick, item.is_read ? styles.seenRead : styles.seenSent]}>
+                  {item.is_read ? '✓✓' : '✓'}
+                </Text>
+              )
             )}
           </View>
         </View>
