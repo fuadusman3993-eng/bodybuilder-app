@@ -8,6 +8,25 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
 
+let RTCView: any = null;
+let mediaDevices: any = null;
+let RTCPeerConnectionNative: any = null;
+let RTCSessionDescriptionNative: any = null;
+let RTCIceCandidateNative: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const webrtc = require('react-native-webrtc');
+    RTCView = webrtc.RTCView;
+    mediaDevices = webrtc.mediaDevices;
+    RTCPeerConnectionNative = webrtc.RTCPeerConnection;
+    RTCSessionDescriptionNative = webrtc.RTCSessionDescription;
+    RTCIceCandidateNative = webrtc.RTCIceCandidate;
+  } catch (e) {
+    console.log("react-native-webrtc not installed natively yet");
+  }
+}
+
 export default function VoiceCallScreen() {
   const router = useRouter();
   const { channelId, otherUserUid, isIncoming } = useLocalSearchParams<{
@@ -18,27 +37,35 @@ export default function VoiceCallScreen() {
   const { user } = useUserStore();
   const incoming = isIncoming === 'true';
 
-  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
+  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string }>({ name: 'User', avatar: '' });
   const [callState, setCallState] = useState<'calling' | 'connected' | 'ended'>('calling');
-  const callStateRef = useRef<'calling' | 'connected' | 'ended'>('calling'); // fix stale closure
+  const callStateRef = useRef<'calling' | 'connected' | 'ended'>('calling');
+  
   const [micMuted, setMicMuted] = useState(false);
-  const [speakerOn, setSpeakerOn] = useState(false);
+  const [videoOn, setVideoOn] = useState(false); // Default to voice first
   const [duration, setDuration] = useState(0);
   const durationRef = useRef(0);
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const pcRef = useRef<any>(null);
+  const localStreamRef = useRef<any>(null);
+  
+  // Streams for UI rendering
+  const [localStreamObj, setLocalStreamObj] = useState<any>(null);
+  const [remoteStreamObj, setRemoteStreamObj] = useState<any>(null);
+
   const timerRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
-  const remoteAudioRef = useRef<any>(null);
-  const endCallCalledRef = useRef(false); // prevent double endCall
+  
+  // HTML Video Refs for Web
+  const webLocalVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webRemoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const endCallCalledRef = useRef(false);
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const setCallConnected = () => {
     callStateRef.current = 'connected';
     setCallState('connected');
-    // Start timer immediately on connection
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       durationRef.current += 1;
@@ -54,29 +81,51 @@ export default function VoiceCallScreen() {
           setOtherUser({ 
             name: d.name || d.displayName || d.username || 'User',
             avatar: d.avatar || d.photoURL || '',
-            isCoach: d.role === 'coach'
           });
         }
       }).catch(() => {});
     }
 
-    if (Platform.OS === 'web') {
-      initWebRTC();
-    } else {
-      Alert.alert('Voice Call', 'Voice calls work in the web app. APK support coming soon!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    }
+    initWebRTC();
 
     return () => { silentCleanup(); };
   }, []);
 
-  const initWebRTC = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      localStreamRef.current = stream;
+  // Map Web video streams to DOM nodes when they change
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      if (webLocalVideoRef.current && localStreamObj) {
+        webLocalVideoRef.current.srcObject = localStreamObj;
+      }
+      if (webRemoteVideoRef.current && remoteStreamObj) {
+        webRemoteVideoRef.current.srcObject = remoteStreamObj;
+      }
+    }
+  }, [localStreamObj, remoteStreamObj]);
 
-      const pc = new RTCPeerConnection({
+  const initWebRTC = async () => {
+    const md = Platform.OS === 'web' ? navigator.mediaDevices : mediaDevices;
+    if (!md) {
+      Alert.alert('Update Required', 'To use calling on mobile, please build a new APK.', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+      return;
+    }
+
+    try {
+      // Request audio and video (we can disable video tracks initially)
+      const stream = await md.getUserMedia({ audio: true, video: true });
+      localStreamRef.current = stream;
+      setLocalStreamObj(stream);
+
+      // Disable video by default to start as voice call
+      stream.getVideoTracks().forEach((t: any) => t.enabled = false);
+
+      const PeerConnection = Platform.OS === 'web' ? window.RTCPeerConnection : RTCPeerConnectionNative;
+      const SessionDesc = Platform.OS === 'web' ? window.RTCSessionDescription : RTCSessionDescriptionNative;
+      const IceCandidate = Platform.OS === 'web' ? window.RTCIceCandidate : RTCIceCandidateNative;
+
+      const pc = new PeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
@@ -84,24 +133,16 @@ export default function VoiceCallScreen() {
         ]
       });
       pcRef.current = pc;
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      
+      stream.getTracks().forEach((track: any) => pc.addTrack(track, stream));
 
-      // Play remote audio properly — attach to DOM to prevent garbage collection
-      pc.ontrack = (event) => {
-        try {
-          if (!remoteAudioRef.current) {
-            remoteAudioRef.current = new window.Audio();
-            remoteAudioRef.current.autoplay = true;
-            document.body.appendChild(remoteAudioRef.current);
-          }
-          remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch((e: any) => {
-            console.warn('Audio autoplay blocked:', e);
-          });
-        } catch (_) {}
+      pc.ontrack = (event: any) => {
+        if (event.streams && event.streams[0]) {
+          setRemoteStreamObj(event.streams[0]);
+        }
       };
 
-      pc.onicecandidate = (e) => {
+      pc.onicecandidate = (e: any) => {
         if (e.candidate && channelRef.current) {
           channelRef.current.send({
             type: 'broadcast',
@@ -124,32 +165,30 @@ export default function VoiceCallScreen() {
         } catch (_) {}
       });
 
-      // RECEIVER: gets offer → sends answer → start timer immediately
+      // RECEIVER: gets offer → sends answer
       sig.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          await pc.setRemoteDescription(new SessionDesc(payload.sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           await sig.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer, from: user.uid } });
-          // Connected! Start timer on receiver side
           setCallConnected();
         } catch (_) {}
       });
 
-      // CALLER: gets answer → start timer immediately
+      // CALLER: gets answer
       sig.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          // Connected! Start timer on caller side
+          await pc.setRemoteDescription(new SessionDesc(payload.sdp));
           setCallConnected();
         } catch (_) {}
       });
 
       sig.on('broadcast', { event: 'ice' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
-        try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (_) {}
+        try { await pc.addIceCandidate(new IceCandidate(payload.candidate)); } catch (_) {}
       });
 
       sig.on('broadcast', { event: 'call_ended' }, ({ payload }) => {
@@ -160,7 +199,6 @@ export default function VoiceCallScreen() {
       sig.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           if (!incoming) {
-            // CALLER: ring the receiver
             const ringCh = supabase.channel(`user_calls_${otherUserUid}`);
             ringCh.subscribe((rStatus) => {
               if (rStatus === 'SUBSCRIBED') {
@@ -173,41 +211,32 @@ export default function VoiceCallScreen() {
               }
             });
           } else {
-            // RECEIVER: tell caller we are ready for the offer
             await sig.send({ type: 'broadcast', event: 'receiver_ready', payload: { from: user.uid } });
           }
         }
       });
 
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not start voice call');
+      Alert.alert('Camera Error', 'Could not access camera/mic');
       router.back();
     }
   };
 
-  // Silent cleanup on unmount (no notify, no log)
   const silentCleanup = () => {
     clearInterval(timerRef.current);
-    localStreamRef.current?.getTracks().forEach(t => t.stop());
+    localStreamRef.current?.getTracks().forEach((t: any) => t.stop());
     pcRef.current?.close();
     if (channelRef.current) supabase.removeChannel(channelRef.current);
-    // Remove remote audio element from DOM
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.pause();
-      remoteAudioRef.current.srcObject = null;
-      try { remoteAudioRef.current.remove(); } catch (_) {}
-      remoteAudioRef.current = null;
-    }
+    setLocalStreamObj(null);
+    setRemoteStreamObj(null);
   };
 
   const endCall = async (fromRemote = false) => {
     if (endCallCalledRef.current) return;
     endCallCalledRef.current = true;
-
     const finalDuration = durationRef.current;
     const finalState = callStateRef.current;
 
-    // Notify the other side we hung up
     if (!fromRemote && channelRef.current) {
       try {
         await channelRef.current.send({
@@ -220,40 +249,25 @@ export default function VoiceCallScreen() {
 
     silentCleanup();
 
-    // Save call log to chat database — ONLY CALLER logs (to prevent duplicate messages)
     if (channelId && !incoming) {
       try {
         if (finalDuration > 0) {
-          const callLog = `📞 Voice call (${fmt(finalDuration)})`;
+          const callLog = `📞 Voice/Video call (${fmt(finalDuration)})`;
           await supabase.from('messages').insert({
-            conversation_id: channelId,
-            sender_uid: user.uid,
-            text: callLog,
-            is_read: false,
-            type: 'text',
+            conversation_id: channelId, sender_uid: user.uid,
+            text: callLog, is_read: false, type: 'text',
           });
-          await supabase.from('conversations')
-            .update({ last_message: callLog, last_message_at: new Date().toISOString() })
-            .eq('id', channelId);
+          await supabase.from('conversations').update({ last_message: callLog, last_message_at: new Date().toISOString() }).eq('id', channelId);
         } else if (finalState === 'calling') {
-          // Caller logs missed call (receiver didn't pick up)
-          const missedLog = `📞 Missed voice call`;
+          const missedLog = `📞 Missed call`;
           await supabase.from('messages').insert({
-            conversation_id: channelId,
-            sender_uid: user.uid,
-            text: missedLog,
-            is_read: false,
-            type: 'text',
+            conversation_id: channelId, sender_uid: user.uid,
+            text: missedLog, is_read: false, type: 'text',
           });
-          await supabase.from('conversations')
-            .update({ last_message: missedLog, last_message_at: new Date().toISOString() })
-            .eq('id', channelId);
+          await supabase.from('conversations').update({ last_message: missedLog, last_message_at: new Date().toISOString() }).eq('id', channelId);
         }
-      } catch (e: any) {
-        console.warn('Call log error:', e.message);
-      }
+      } catch (e: any) { console.warn('Call log error:', e.message); }
     }
-
     router.back();
   };
 
@@ -265,94 +279,115 @@ export default function VoiceCallScreen() {
     }
   };
 
+  const toggleVideo = () => {
+    const track = localStreamRef.current?.getVideoTracks()[0];
+    if (track) {
+      track.enabled = !track.enabled;
+      setVideoOn(track.enabled);
+    }
+  };
+
+  // Rendering Web Video or Native RTCView
+  const renderVideoNode = (streamObj: any, isLocal: boolean) => {
+    if (!streamObj) return null;
+    
+    if (Platform.OS === 'web') {
+      return (
+        <video
+          autoPlay
+          playsInline
+          muted={isLocal}
+          ref={isLocal ? webLocalVideoRef : webRemoteVideoRef}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      );
+    } else if (RTCView) {
+      return (
+        <RTCView 
+          streamURL={streamObj.toURL()} 
+          style={{ width: '100%', height: '100%' }} 
+          objectFit="cover" 
+        />
+      );
+    }
+    return null;
+  };
+
   return (
     <View style={styles.container}>
-      {/* Background overlay (Mock shows dark gym bg, we use dark green gradient approx) */}
-      <View style={styles.bgOverlay} />
+      {/* Background: Remote Video (if on) or Dark Gradient */}
+      <View style={styles.bgOverlay}>
+        {remoteStreamObj ? renderVideoNode(remoteStreamObj, false) : (
+          <View style={styles.darkBg} />
+        )}
+      </View>
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => endCall(false)}>
-            <Ionicons name="chevron-down" size={32} color="#FFF" />
-          </TouchableOpacity>
-          <View style={styles.headerRight}>
-            <Ionicons name="shield-checkmark" size={18} color="#00E676" />
-            <Text style={styles.headerTitle}>Video Call</Text>
+          <View style={styles.logoWrap}>
+            <Text style={styles.logoIcon}>H</Text>
+            <Text style={styles.logoText}>FitPulse</Text>
           </View>
-          {callState === 'connected' && (
-            <Text style={styles.headerTime}>{fmt(duration)}</Text>
-          )}
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIconBtn}>
+              <Ionicons name="settings-outline" size={20} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconBtn}>
+              <Ionicons name="expand-outline" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Center Content */}
         <View style={styles.centerSection}>
-          <View style={styles.avatarRing}>
-            {otherUser.avatar ? (
-              <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, { backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="person" size={60} color="#333" />
-              </View>
-            )}
-            <View style={styles.logoBadge}>
-               <Text style={styles.logoBadgeText}>F</Text>
+          {/* Main Avatar / Local Video Ring */}
+          <View style={styles.avatarRingWrap}>
+            <View style={styles.avatarRingInner}>
+               {videoOn ? (
+                 <View style={styles.localVideoWrap}>
+                   {renderVideoNode(localStreamObj, true)}
+                 </View>
+               ) : otherUser.avatar ? (
+                 <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
+               ) : (
+                 <View style={[styles.avatar, { backgroundColor: '#1A1D21', justifyContent: 'center', alignItems: 'center' }]}>
+                   <Ionicons name="person" size={60} color="#333" />
+                 </View>
+               )}
             </View>
           </View>
 
           <Text style={styles.name}>{otherUser.name}</Text>
-          <Text style={styles.status}>
-            {callState === 'calling'
-              ? (incoming ? 'Connecting...' : 'Calling...')
-              : callState === 'connected'
-              ? 'Connected'
-              : 'Call Ended'}
-          </Text>
-
-          <View style={styles.badgesRow}>
-            {otherUser.isCoach && (
-              <View style={styles.badge}>
-                <Ionicons name="shield-checkmark" size={12} color="#FBBF24" />
-                <Text style={styles.badgeText}>Coach</Text>
-              </View>
-            )}
-            <View style={styles.badge}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.badgeText}>Online</Text>
-            </View>
-            {otherUser.isCoach && (
-              <View style={styles.badge}>
-                <Ionicons name="star" size={12} color="#FBBF24" />
-                <Text style={styles.badgeText}>Certified</Text>
-              </View>
-            )}
+          <View style={styles.statusRow}>
+            <View style={[styles.statusDot, callState === 'connected' ? { backgroundColor: '#00E676' } : { backgroundColor: '#FBBF24' }]} />
+            <Text style={styles.statusText}>
+              {callState === 'calling'
+                ? (incoming ? 'Connecting...' : 'Calling...')
+                : callState === 'connected'
+                ? (duration > 0 ? fmt(duration) : 'Connected')
+                : 'Ended'}
+            </Text>
           </View>
         </View>
 
         {/* Bottom Controls */}
-        <View style={styles.controlsArea}>
-          <View style={styles.controlsRow}>
-            <TouchableOpacity style={styles.iconBtn} onPress={toggleMic}>
-              <Ionicons name={micMuted ? 'mic-off' : 'mic'} size={26} color="#FFF" />
-              <Text style={styles.iconLabel}>{micMuted ? 'Muted' : 'Mic'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setSpeakerOn(!speakerOn)}>
-              <Ionicons name={speakerOn ? 'volume-high' : 'volume-medium'} size={26} color="#FFF" />
-              <Text style={styles.iconLabel}>Speaker</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="videocam" size={26} color="#FFF" />
-              <Text style={styles.iconLabel}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)}>
-            <Ionicons name="call" size={32} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
+        <View style={styles.controlsRow}>
+          <TouchableOpacity style={[styles.roundBtn, videoOn && styles.roundBtnActive]} onPress={toggleVideo}>
+            <Ionicons name={videoOn ? "videocam" : "videocam-outline"} size={24} color="#FFF" />
           </TouchableOpacity>
-
-          <Text style={styles.footerText}>Better Coaching. Better You.</Text>
+          
+          <TouchableOpacity style={[styles.roundBtn, !micMuted && styles.roundBtnActive]} onPress={toggleMic}>
+            <Ionicons name={micMuted ? "mic-off-outline" : "mic"} size={24} color="#FFF" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.roundBtn}>
+            <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)}>
+            <Ionicons name="call" size={28} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </View>
@@ -360,55 +395,80 @@ export default function VoiceCallScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050a07' },
+  container: { flex: 1, backgroundColor: '#030508' }, // Deep dark background
   bgOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0a1a10',
-    opacity: 0.6,
+    zIndex: 0,
   },
-  safeArea: { flex: 1, justifyContent: 'space-between' },
+  darkBg: {
+    flex: 1,
+    backgroundColor: '#030508',
+  },
+  safeArea: { flex: 1, justifyContent: 'space-between', zIndex: 1 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerTitle: { color: '#FFF', fontSize: 16, fontWeight: '500' },
-  headerTime: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  // Header
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingHorizontal: 24, paddingTop: 16 
+  },
+  logoWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  logoIcon: { color: '#00E676', fontSize: 24, fontWeight: '900', fontStyle: 'italic' },
+  logoText: { color: '#FFF', fontSize: 20, fontWeight: '700' },
+  
+  headerRight: { flexDirection: 'row', gap: 12 },
+  headerIconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
+  },
 
-  centerSection: { alignItems: 'center', marginTop: 40 },
-  avatarRing: {
+  // Center
+  centerSection: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+  
+  avatarRingWrap: {
+    width: 180, height: 180, borderRadius: 90,
+    borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.2)',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 24
+  },
+  avatarRingInner: {
     width: 150, height: 150, borderRadius: 75,
     borderWidth: 3, borderColor: '#00E676',
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 20, position: 'relative'
+    overflow: 'hidden',
+    shadowColor: '#00E676', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20,
+    elevation: 10
   },
-  avatar: { width: 140, height: 140, borderRadius: 70 },
-  logoBadge: {
-    position: 'absolute', top: -10, right: 10,
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#050a07'
+  avatar: { width: '100%', height: '100%' },
+  localVideoWrap: { width: '100%', height: '100%', backgroundColor: '#000' },
+
+  name: { fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 8 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 16, color: '#A0A0A0' },
+
+  // Bottom Controls
+  controlsRow: { 
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, 
+    paddingBottom: 40 
   },
-  logoBadgeText: { color: '#000', fontWeight: '900', fontSize: 16, fontStyle: 'italic' },
-  
-  name: { fontSize: 28, fontWeight: '700', color: '#FFF', marginBottom: 8 },
-  status: { fontSize: 18, color: '#A0A0A0', marginBottom: 20 },
-
-  badgesRow: { flexDirection: 'row', gap: 12 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  badgeText: { color: '#E2E8F0', fontSize: 12, fontWeight: '500' },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00E676' },
-
-  controlsArea: { alignItems: 'center', paddingBottom: 30 },
-  controlsRow: { flexDirection: 'row', justifyContent: 'space-evenly', width: '100%', marginBottom: 40, paddingHorizontal: 20 },
-  iconBtn: { alignItems: 'center', gap: 10 },
-  iconLabel: { color: '#FFF', fontSize: 13, fontWeight: '500' },
-  
+  roundBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.4)'
+  },
+  roundBtnActive: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderColor: '#00E676'
+  },
   endCallBtn: {
-    width: 72, height: 72, borderRadius: 36,
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: '#ef4444',
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 40,
-    elevation: 5, shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8
+    marginLeft: 10,
+    shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
+    elevation: 5
   },
-
-  footerText: { color: '#F59E0B', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
 });
