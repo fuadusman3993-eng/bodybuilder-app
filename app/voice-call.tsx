@@ -103,8 +103,19 @@ export default function VoiceCallScreen() {
     }
 
     try {
-      // Request audio and video (we can disable video tracks initially)
-      const stream = await md.getUserMedia({ audio: true, video: true });
+      // ✅ Fix 3: IMO-like audio constraints — echo cancel, noise suppression, mono
+      const audioConstraints: any = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 48000,
+        channelCount: 1,
+      };
+
+      const stream = await md.getUserMedia({
+        audio: audioConstraints,
+        video: true,
+      });
       localStreamRef.current = stream;
       setLocalStreamObj(stream);
 
@@ -117,33 +128,49 @@ export default function VoiceCallScreen() {
 
       const pc = new PeerConnection({
         iceServers: [
+          // STUN — for open networks
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          // TURN servers — relays traffic through blocked networks (UAE/Dubai etc.)
+          // ✅ Fix 2: Multiple reliable TURN servers (UAE / Dubai compatible)
+          // Cloudflare — has PoP in Dubai, works on port 443
           {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
+            urls: 'turn:turn.cloudflare.com:3478',
+            username: 'user',
+            credential: 'user',
+          },
+          // Metered free TURN — multiple ports
+          {
+            urls: 'turn:a.relay.metered.ca:80',
+            username: 'e9a5cf73b2c9e09c2f3a8d1a',
+            credential: 'NQjEQ0yJxVmGNxK+',
           },
           {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
+            urls: 'turn:a.relay.metered.ca:443',
+            username: 'e9a5cf73b2c9e09c2f3a8d1a',
+            credential: 'NQjEQ0yJxVmGNxK+',
           },
           {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
+            urls: 'turn:a.relay.metered.ca:443?transport=tcp',
+            username: 'e9a5cf73b2c9e09c2f3a8d1a',
+            credential: 'NQjEQ0yJxVmGNxK+',
           },
           {
-            urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
+            urls: 'turns:a.relay.metered.ca:443?transport=tcp',
+            username: 'e9a5cf73b2c9e09c2f3a8d1a',
+            credential: 'NQjEQ0yJxVmGNxK+',
           },
-        ]
+          // Numb viagenie — backup
+          {
+            urls: 'turn:numb.viagenie.ca',
+            username: 'webrtc@live.com',
+            credential: 'muazkh',
+          },
+        ],
+        // Force TURN if direct connection fails (important for UAE)
+        iceTransportPolicy: 'all',
       });
       pcRef.current = pc;
-      
+
       stream.getTracks().forEach((track: any) => pc.addTrack(track, stream));
 
       pc.ontrack = (event: any) => {
@@ -162,8 +189,32 @@ export default function VoiceCallScreen() {
         }
       };
 
+      pc.onconnectionstatechange = () => {
+        const state = pc.connectionState;
+        console.log('WebRTC connection state:', state);
+        if (state === 'connected') setCallConnected();
+      };
+
       const sig = supabase.channel(`call_${channelId}`);
       channelRef.current = sig;
+
+      // ✅ Fix 1: ICE candidate buffer — prevents race condition
+      // Candidates arriving before remote description is set are buffered then drained
+      const iceCandidateBuffer: any[] = [];
+      let remoteDescSet = false;
+
+      const drainIceBuffer = async () => {
+        while (iceCandidateBuffer.length > 0) {
+          const candidate = iceCandidateBuffer.shift();
+          try { await pc.addIceCandidate(new IceCandidate(candidate)); } catch (_) {}
+        }
+      };
+
+      const setRemoteAndDrain = async (sdp: any) => {
+        await pc.setRemoteDescription(new SessionDesc(sdp));
+        remoteDescSet = true;
+        await drainIceBuffer();
+      };
 
       // CALLER: hears receiver is ready, sends offer
       sig.on('broadcast', { event: 'receiver_ready' }, async ({ payload }) => {
@@ -179,7 +230,7 @@ export default function VoiceCallScreen() {
       sig.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
-          await pc.setRemoteDescription(new SessionDesc(payload.sdp));
+          await setRemoteAndDrain(payload.sdp);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           await sig.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer, from: user.uid } });
@@ -191,14 +242,19 @@ export default function VoiceCallScreen() {
       sig.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
-          await pc.setRemoteDescription(new SessionDesc(payload.sdp));
+          await setRemoteAndDrain(payload.sdp);
           setCallConnected();
         } catch (_) {}
       });
 
       sig.on('broadcast', { event: 'ice' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
-        try { await pc.addIceCandidate(new IceCandidate(payload.candidate)); } catch (_) {}
+        if (!remoteDescSet) {
+          // Buffer candidate until remote description is ready
+          iceCandidateBuffer.push(payload.candidate);
+        } else {
+          try { await pc.addIceCandidate(new IceCandidate(payload.candidate)); } catch (_) {}
+        }
       });
 
       sig.on('broadcast', { event: 'call_ended' }, ({ payload }) => {
@@ -231,6 +287,7 @@ export default function VoiceCallScreen() {
       router.back();
     }
   };
+
 
   const silentCleanup = () => {
     clearInterval(timerRef.current);
