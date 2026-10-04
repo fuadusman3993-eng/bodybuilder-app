@@ -479,8 +479,11 @@ export default function ChatRoom() {
         .eq('id', conversationId);
     } catch (e: any) {
       console.error('Upload Error:', e);
-      Alert.alert('Upload Error', e.message || 'Could not upload file');
-      // Remove optimistic message on failure
+      if (Platform.OS === 'web') {
+        window.alert('ERROR DETECTED: ' + (e.message || JSON.stringify(e)));
+      } else {
+        Alert.alert('Upload Error', e.message || 'Could not upload file');
+      }
       setMessages(prev => prev.filter(m => m.id !== tempId));
     }
     setSending(false);
