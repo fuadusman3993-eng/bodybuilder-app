@@ -17,20 +17,38 @@ import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
 import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 // Save user profile to Firestore (merge so existing data stays)
-const saveUserToFirestore = async (uid: string, name: string, email: string) => {
+// Returns true if the user already has a fully setup profile (e.g. country exists)
+const saveAndCheckUser = async (uid: string, name: string, email: string) => {
   try {
-    await setDoc(doc(db, 'users', uid), {
+    const docRef = doc(db, 'users', uid);
+    const snap = await getDoc(docRef);
+    let isProfileComplete = false;
+    
+    if (snap.exists()) {
+      isProfileComplete = !!snap.data().country; // Country is required in create-profile
+    }
+
+    // Only set default username if they don't have one
+    const dataToSave: any = {
       name,
-      username: email.split('@')[0],
       email,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    };
+    
+    if (!snap.exists() || !snap.data().username) {
+      dataToSave.username = email.split('@')[0];
+    }
+
+    await setDoc(docRef, dataToSave, { merge: true });
+    
+    return isProfileComplete;
   } catch (e) {
     console.warn('Firestore save failed', e);
+    return true; // Fallback to tabs to avoid getting stuck
   }
 };
 
@@ -66,9 +84,14 @@ export default function LoginScreen() {
     try {
       const user = await loginWithEmail(email, password);
       const name = user.displayName || user.email?.split('@')[0] || 'User';
-      await saveUserToFirestore(user.uid, name, user.email || '');
+      const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
-      router.replace('/(tabs)');
+      
+      if (isComplete) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/create-profile');
+      }
     } catch (err: any) {
       setMainError(firebaseErrorMessage(err?.code || ''));
     } finally {
@@ -82,9 +105,14 @@ export default function LoginScreen() {
     try {
       const user = await loginWithGoogle();
       const name = user.displayName || user.email?.split('@')[0] || 'User';
-      await saveUserToFirestore(user.uid, name, user.email || '');
+      const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
-      router.replace('/(tabs)');
+      
+      if (isComplete) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/create-profile');
+      }
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         setMainError(firebaseErrorMessage(err?.code || ''));

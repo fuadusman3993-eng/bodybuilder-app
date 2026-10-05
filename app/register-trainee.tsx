@@ -77,8 +77,26 @@ export default function TraineeRegisterScreen() {
 
   const handleGoogleSignUp = async () => {
     setMainError(''); setIsGoogleLoading(true);
-    try { await loginWithGoogle('user'); }
-    catch (err: any) { setIsGoogleLoading(false); setMainError(firebaseErrorMessage(err?.code || '')); }
+    try {
+      const userResult = await loginWithGoogle('user');
+      const name = userResult.displayName || userResult.email?.split('@')[0] || 'User';
+      setUser({ uid: userResult.uid, tier: UserTier.FREE, name });
+      
+      // Check if they need to complete their profile
+      const { doc, getDoc } = require('firebase/firestore');
+      const snap = await getDoc(doc(db, 'users', userResult.uid));
+      if (!snap.exists() || !snap.data().country) {
+        router.replace('/create-profile');
+      } else {
+        router.replace('/(tabs)');
+      }
+    }
+    catch (err: any) { 
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        setMainError(firebaseErrorMessage(err?.code || '')); 
+      }
+    }
+    finally { setIsGoogleLoading(false); }
   };
 
   return (
