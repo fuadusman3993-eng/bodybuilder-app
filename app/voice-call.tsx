@@ -27,6 +27,17 @@ if (Platform.OS !== 'web') {
   }
 }
 
+// --- Agora Web SDK (Only loads on Web, prevents APK crashes) ---
+let AgoraRTC: any = null;
+if (Platform.OS === 'web') {
+  try {
+    AgoraRTC = require('agora-rtc-sdk-ng').default || require('agora-rtc-sdk-ng');
+  } catch (e) {
+    console.log("Agora SDK not available");
+  }
+}
+const AGORA_APP_ID = '26de4ddc5c954ff69a65f0c996494781';
+
 export default function VoiceCallScreen() {
   const router = useRouter();
   const { channelId, otherUserUid, isIncoming } = useLocalSearchParams<{
@@ -61,6 +72,10 @@ export default function VoiceCallScreen() {
   const webRemoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const endCallCalledRef = useRef(false);
 
+  // Agora Refs
+  const agoraClientRef = useRef<any>(null);
+  const agoraLocalAudioTrackRef = useRef<any>(null);
+
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const setCallConnected = () => {
@@ -94,6 +109,79 @@ export default function VoiceCallScreen() {
 
 
   const initWebRTC = async () => {
+    // ────────────── AGORA IMPLEMENTATION FOR WEB ──────────────
+    if (Platform.OS === 'web' && AgoraRTC) {
+      try {
+        const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        agoraClientRef.current = client;
+
+        client.on('user-published', async (remoteUser: any, mediaType: any) => {
+          await client.subscribe(remoteUser, mediaType);
+          if (mediaType === 'audio') {
+            remoteUser.audioTrack.play();
+          }
+        });
+
+        client.on('user-joined', () => {
+          setCallConnected();
+        });
+
+        // Join the channel (App ID, channel name, token (null for testing), uid)
+        // Firebase UID is string, Agora requires int. Passing null lets Agora generate one.
+        await client.join(AGORA_APP_ID, channelId, null, null);
+
+        // Create and publish local audio track
+        const localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+          encoderConfig: "speech_high_quality",
+          AEC: true, // Echo cancellation
+          ANS: true, // Noise suppression
+          AGC: true  // Auto gain control
+        });
+        
+        agoraLocalAudioTrackRef.current = localAudioTrack;
+        await client.publish([localAudioTrack]);
+
+        // If the other user is already in the channel, we should connect immediately
+        if (client.remoteUsers.length > 0) {
+          setCallConnected();
+        }
+
+        // We use Supabase signaling just for ringing/rejecting logic across apps
+        const sig = supabase.channel(`call_${channelId}`);
+        channelRef.current = sig;
+        
+        sig.on('broadcast', { event: 'call_ended' }, ({ payload }) => {
+          if (payload.from === user.uid) return;
+          endCall(true);
+        });
+
+        sig.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            if (!incoming) {
+              const ringCh = supabase.channel(`user_calls_${otherUserUid}`);
+              ringCh.subscribe((rStatus) => {
+                if (rStatus === 'SUBSCRIBED') {
+                  ringCh.send({
+                    type: 'broadcast',
+                    event: 'incoming_call',
+                    payload: { callerUid: user.uid, channelId, conversationId: channelId }
+                  });
+                  setTimeout(() => supabase.removeChannel(ringCh), 3000);
+                }
+              });
+            }
+          }
+        });
+
+      } catch (e) {
+        console.error("Agora Web Error:", e);
+        Alert.alert('Call Error', 'Could not connect to Agora server.');
+        router.back();
+      }
+      return;
+    }
+
+    // ────────────── EXISTING WEBRTC FOR NATIVE ──────────────
     const md = Platform.OS === 'web' ? navigator.mediaDevices : mediaDevices;
     if (!md) {
       Alert.alert('Update Required', 'To use calling on mobile, please build a new APK.', [
@@ -103,7 +191,6 @@ export default function VoiceCallScreen() {
     }
 
     try {
-      // ✅ Fix 3: IMO-like audio constraints — echo cancel, noise suppression, mono
       const audioConstraints: any = {
         echoCancellation: true,
         noiseSuppression: true,
@@ -128,17 +215,13 @@ export default function VoiceCallScreen() {
 
       const pc = new PeerConnection({
         iceServers: [
-          // STUN — for open networks
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          // ✅ Fix 2: Multiple reliable TURN servers (UAE / Dubai compatible)
-          // Cloudflare — has PoP in Dubai, works on port 443
           {
             urls: 'turn:turn.cloudflare.com:3478',
             username: 'user',
             credential: 'user',
           },
-          // Metered free TURN — multiple ports
           {
             urls: 'turn:a.relay.metered.ca:80',
             username: 'e9a5cf73b2c9e09c2f3a8d1a',
@@ -159,14 +242,12 @@ export default function VoiceCallScreen() {
             username: 'e9a5cf73b2c9e09c2f3a8d1a',
             credential: 'NQjEQ0yJxVmGNxK+',
           },
-          // Numb viagenie — backup
           {
             urls: 'turn:numb.viagenie.ca',
             username: 'webrtc@live.com',
             credential: 'muazkh',
           },
         ],
-        // Force TURN if direct connection fails (important for UAE)
         iceTransportPolicy: 'all',
       });
       pcRef.current = pc;
@@ -198,8 +279,6 @@ export default function VoiceCallScreen() {
       const sig = supabase.channel(`call_${channelId}`);
       channelRef.current = sig;
 
-      // ✅ Fix 1: ICE candidate buffer — prevents race condition
-      // Candidates arriving before remote description is set are buffered then drained
       const iceCandidateBuffer: any[] = [];
       let remoteDescSet = false;
 
@@ -216,7 +295,6 @@ export default function VoiceCallScreen() {
         await drainIceBuffer();
       };
 
-      // CALLER: hears receiver is ready, sends offer
       sig.on('broadcast', { event: 'receiver_ready' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
@@ -226,7 +304,6 @@ export default function VoiceCallScreen() {
         } catch (_) {}
       });
 
-      // RECEIVER: gets offer → sends answer
       sig.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
@@ -238,7 +315,6 @@ export default function VoiceCallScreen() {
         } catch (_) {}
       });
 
-      // CALLER: gets answer
       sig.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         try {
@@ -250,7 +326,6 @@ export default function VoiceCallScreen() {
       sig.on('broadcast', { event: 'ice' }, async ({ payload }) => {
         if (payload.from === user.uid) return;
         if (!remoteDescSet) {
-          // Buffer candidate until remote description is ready
           iceCandidateBuffer.push(payload.candidate);
         } else {
           try { await pc.addIceCandidate(new IceCandidate(payload.candidate)); } catch (_) {}
@@ -291,6 +366,18 @@ export default function VoiceCallScreen() {
 
   const silentCleanup = () => {
     clearInterval(timerRef.current);
+    
+    // Agora Cleanup
+    if (agoraLocalAudioTrackRef.current) {
+      agoraLocalAudioTrackRef.current.close();
+      agoraLocalAudioTrackRef.current = null;
+    }
+    if (agoraClientRef.current) {
+      agoraClientRef.current.leave();
+      agoraClientRef.current = null;
+    }
+
+    // WebRTC Cleanup
     localStreamRef.current?.getTracks().forEach((t: any) => t.stop());
     pcRef.current?.close();
     if (channelRef.current) supabase.removeChannel(channelRef.current);
@@ -339,6 +426,12 @@ export default function VoiceCallScreen() {
   };
 
   const toggleMic = () => {
+    if (agoraLocalAudioTrackRef.current) {
+      agoraLocalAudioTrackRef.current.setEnabled(micMuted);
+      setMicMuted(!micMuted);
+      return;
+    }
+
     const track = localStreamRef.current?.getAudioTracks()[0];
     if (track) {
       track.enabled = !track.enabled;
@@ -347,6 +440,9 @@ export default function VoiceCallScreen() {
   };
 
   const toggleVideo = () => {
+    // Agora Video not yet implemented here, voice only for now
+    if (agoraClientRef.current) return;
+
     const track = localStreamRef.current?.getVideoTracks()[0];
     if (track) {
       track.enabled = !track.enabled;
