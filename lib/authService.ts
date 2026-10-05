@@ -5,6 +5,7 @@ import {
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   updateProfile,
   User,
@@ -54,16 +55,22 @@ export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
-// ── Google Sign-In (Web Redirect) ─────────────────────────────────────────────
+// ── Google Sign-In (Web Popup) ─────────────────────────────────────────────
 
-export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<void> {
-  // If signing up with Google and selecting a role, we'd need a custom parameter or save it to local storage
-  if (role && typeof window !== 'undefined') {
-    localStorage.setItem('pendingGoogleRole', role);
+export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
+  const result = await signInWithPopup(auth, googleProvider);
+  if (role) {
+    // Save role to DB right away since popup doesn't lose state
+    await setDoc(doc(db, 'users', result.user.uid), {
+      uid: result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName,
+      role,
+      createdAt: serverTimestamp(),
+    }, { merge: true });
   }
-  await signInWithRedirect(auth, googleProvider);
+  return result.user;
 }
-
 export async function checkGoogleRedirectResult(): Promise<AuthUser | null> {
   const result = await getRedirectResult(auth);
   if (result?.user) {
