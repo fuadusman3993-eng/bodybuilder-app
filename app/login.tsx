@@ -32,12 +32,18 @@ const saveAndCheckUser = async (uid: string, name: string, email: string) => {
       isProfileComplete = !!snap.data().country; // Country is required in create-profile
     }
 
-    // Only set default username if they don't have one
+    // Only set default username and role if they don't have one
     const dataToSave: any = {
       name,
       email,
       updatedAt: serverTimestamp(),
     };
+    
+    if (!snap.exists()) {
+      dataToSave.uid = uid;
+      dataToSave.role = 'user'; // Default to Trainee if they didn't choose Coach
+      dataToSave.createdAt = serverTimestamp();
+    }
     
     if (!snap.exists() || !snap.data().username) {
       dataToSave.username = email.split('@')[0];
