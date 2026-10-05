@@ -126,9 +126,22 @@ export default function VoiceCallScreen() {
           setCallConnected();
         });
 
-        // Join the channel (App ID, channel name, token (null for testing), uid)
-        // Firebase UID is string, Agora requires int. Passing null lets Agora generate one.
-        await client.join(AGORA_APP_ID, channelId, null, null);
+        // Fetch a secure token from our Vercel serverless API
+        let agoraToken: string | null = null;
+        let agoraUid: number = 0;
+        try {
+          const tokenRes = await fetch(`/api/agora-token?channel=${channelId}&uid=0`);
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            agoraToken = tokenData.token;
+            agoraUid = tokenData.uid || 0;
+          }
+        } catch (tokenErr) {
+          console.warn('Token fetch failed, trying without token:', tokenErr);
+        }
+
+        // Join with token (or null for testing mode)
+        await client.join(AGORA_APP_ID, channelId, agoraToken, agoraUid);
 
         // Create and publish local audio track
         const localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
@@ -141,7 +154,7 @@ export default function VoiceCallScreen() {
         agoraLocalAudioTrackRef.current = localAudioTrack;
         await client.publish([localAudioTrack]);
 
-        // If the other user is already in the channel, we should connect immediately
+        // If the other user is already in the channel, connect immediately
         if (client.remoteUsers.length > 0) {
           setCallConnected();
         }
@@ -177,7 +190,6 @@ export default function VoiceCallScreen() {
         console.error("Agora Web Error:", e);
         const errorMsg = e?.message || e?.name || JSON.stringify(e);
         
-        // Use browser alert for Web so it doesn't get hidden if router.back happens too fast
         if (typeof window !== 'undefined') {
           window.alert(`Agora Connection Failed:\n\n${errorMsg}\n\n(If it says INVALID_TOKEN or DYNAMIC_KEY_TIMEOUT, go to Agora Console and create a new project in TESTING MODE (App ID only), then update the APP ID in the code.)`);
         } else {
