@@ -36,7 +36,7 @@ if (Platform.OS === 'web') {
     console.log("Agora SDK not available");
   }
 }
-const AGORA_APP_ID = '26de4ddc5c954ff69a65f0c996494781';
+const AGORA_APP_ID = '511e8cc7f06a4bd89ba9e4aad921c158';
 
 export default function VoiceCallScreen() {
   const router = useRouter();
