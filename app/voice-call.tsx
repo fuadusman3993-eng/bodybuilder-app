@@ -173,9 +173,17 @@ export default function VoiceCallScreen() {
           }
         });
 
-      } catch (e) {
+      } catch (e: any) {
         console.error("Agora Web Error:", e);
-        Alert.alert('Call Error', 'Could not connect to Agora server.');
+        const errorMsg = e?.message || e?.name || JSON.stringify(e);
+        
+        // Use browser alert for Web so it doesn't get hidden if router.back happens too fast
+        if (typeof window !== 'undefined') {
+          window.alert(`Agora Connection Failed:\n\n${errorMsg}\n\n(If it says INVALID_TOKEN or DYNAMIC_KEY_TIMEOUT, go to Agora Console and create a new project in TESTING MODE (App ID only), then update the APP ID in the code.)`);
+        } else {
+          Alert.alert('Call Error', `Agora Error: ${errorMsg}`);
+        }
+        
         router.back();
       }
       return;
