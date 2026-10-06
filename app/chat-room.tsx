@@ -721,45 +721,38 @@ export default function ChatRoom() {
                   )}
                 </View>
               </View>
-            ) : isImage ? (() => {
-              const pct = uploadProgress[item.id];
-              return (
-                <TouchableOpacity onPress={() => item.isUploading ? null : setFullscreenImg(item.media_url)} activeOpacity={0.9} style={{ position: 'relative' }}>
-                  <Image
-                    source={{ uri: item.media_url }}
-                    style={[styles.mediaBubble, item.isUploading && { opacity: 0.5 }]}
-                    resizeMode="cover"
-                  />
-                  {item.isUploading && (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                      {pct !== undefined ? (
-                        <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
-                          <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 16 }}>{pct}%</Text>
-                        </View>
-                      ) : (
-                        <ActivityIndicator size="large" color="#00E676" />
-                      )}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })() : isVideo ? (() => {
-              const pct = uploadProgress[item.id];
-              return (
-                <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
-                  {item.isUploading ? (
-                    pct !== undefined ? (
-                      <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 20 }}>{pct}%</Text>
+            ) : isImage ? (
+              <TouchableOpacity onPress={() => item.isUploading ? null : setFullscreenImg(item.media_url)} activeOpacity={0.9} style={{ position: 'relative' }}>
+                <Image
+                  source={{ uri: item.media_url }}
+                  style={[styles.mediaBubble, item.isUploading && { opacity: 0.5 }]}
+                  resizeMode="cover"
+                />
+                {item.isUploading && (
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
+                    {uploadProgress[item.id] !== undefined ? (
+                      <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+                        <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 16 }}>{uploadProgress[item.id]}%</Text>
+                      </View>
                     ) : (
                       <ActivityIndicator size="large" color="#00E676" />
-                    )
+                    )}
+                  </View>
+                )}
+              </TouchableOpacity>
+            ) : isVideo ? (
+              <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
+                {item.isUploading ? (
+                  uploadProgress[item.id] !== undefined ? (
+                    <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 20 }}>{uploadProgress[item.id]}%</Text>
                   ) : (
-                    <Ionicons name="play-circle" size={52} color="#00E676" />
-                  )}
-                  <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
-                </View>
-              );
-            })()
+                    <ActivityIndicator size="large" color="#00E676" />
+                  )
+                ) : (
+                  <Ionicons name="play-circle" size={52} color="#00E676" />
+                )}
+                <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
+              </View>
             ) : (
               <Text style={styles.bubbleText}>
                 {item.text}
