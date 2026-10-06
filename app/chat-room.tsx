@@ -33,14 +33,22 @@ function fmtSecs(secs: number) {
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 }
 
+import { useCachedState } from '../lib/useCachedState';
+
 export default function ChatRoom() {
   const router = useRouter();
   const { conversationId, otherUserUid } = useLocalSearchParams<{ conversationId: string; otherUserUid: string }>();
   const { user } = useUserStore();
 
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages, cacheLoaded] = useCachedState<any[]>(conversationId ? `msgs_${conversationId}` : '', []);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Hide loading spinner if cache loaded and has items
+  if (cacheLoaded && messages.length > 0 && loading) {
+    setLoading(false);
+  }
+
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
@@ -73,45 +81,6 @@ export default function ChatRoom() {
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
 
-  // Track upload progress per message (tempId -> 0-100)
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-
-  const SUPABASE_URL = 'https://eweoydtpchrmnoinyute.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_LKU29Jh-jtD9DnlDqE0Y0Q_rFFL_lhg';
-
-  // Upload with progress using XHR (returns public URL)
-  const uploadWithProgress = (bucket: string, fileName: string, blob: Blob, mimeType: string, tempId: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`;
-      xhr.open('POST', uploadUrl);
-      xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
-      xhr.setRequestHeader('Content-Type', mimeType);
-      xhr.setRequestHeader('x-upsert', 'true');
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(prev => ({ ...prev, [tempId]: pct }));
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
-          setUploadProgress(prev => { const n = { ...prev }; delete n[tempId]; return n; });
-          resolve(publicUrl);
-        } else {
-          reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network error during upload'));
-      xhr.send(blob);
-    });
-  };
-
-
   // Fetch other user info
   useEffect(() => {
     if (!otherUserUid) return;
@@ -130,12 +99,18 @@ export default function ChatRoom() {
   // Fetch messages
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
-    setMessages(data || []);
+      
+    if (error || !data) {
+      setLoading(false);
+      return; // Keep cached messages intact if offline/error
+    }
+    
+    setMessages(data);
     setLoading(false);
     if (user.uid) {
       supabase.from('messages').update({ is_read: true })

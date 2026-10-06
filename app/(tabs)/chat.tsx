@@ -48,12 +48,20 @@ interface ConvItem {
   isGroup?: boolean;
   isCoach?: boolean;
 }
+import { useCachedState } from '../../lib/useCachedState';
 
 export default function ChatScreen() {
   const router = useRouter();
   const { user } = useUserStore();
-  const [conversations, setConversations] = useState<ConvItem[]>([]);
+  const [conversations, setConversations, cacheLoaded] = useCachedState<ConvItem[]>(user?.uid ? `chats_${user.uid}` : '', []);
   const [loading, setLoading] = useState(true);
+  
+  // If cache is loaded and we have items, we can hide the loading spinner immediately
+  // while fetchConversations updates it in the background
+  if (cacheLoaded && conversations.length > 0 && loading) {
+    setLoading(false);
+  }
+
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Coaches' | 'Groups'>('All');
