@@ -113,8 +113,16 @@ export default function ChatRoom() {
     const channel = supabase.channel(`messages_${conversationId}_${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
         setMessages(prev => {
+          // If we already have this exact ID, skip
           if (prev.some(m => m.id === payload.new.id)) return prev;
-          return [...prev, payload.new];
+          // Remove any optimistic (temp) message with same sender+type+text to avoid duplicates
+          const withoutOptimistic = prev.filter(m => {
+            if (!m.isUploading) return true;
+            const sameType = m.type === payload.new.type;
+            const sameSender = m.sender_uid === payload.new.sender_uid;
+            return !(sameType && sameSender);
+          });
+          return [...withoutOptimistic, payload.new];
         });
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
         if (payload.new.sender_uid !== user.uid) {
@@ -428,7 +436,7 @@ export default function ChatRoom() {
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
   // ─── Media Upload ───────────────────────────────────────────
-  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: any) => {
+  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: File | any) => {
     const tempId = `temp_${Date.now()}`;
     const optimisticMsg: any = {
       id: tempId,
@@ -450,8 +458,15 @@ export default function ChatRoom() {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
       const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
       
-      const response = await fetch(uri);
-      const blobToUpload = await response.blob();
+      // On web, use the File object directly (faster, no CORS/blob issues)
+      // On native, fetch the uri to get a blob
+      let blobToUpload: Blob;
+      if (Platform.OS === 'web' && fileObj instanceof File) {
+        blobToUpload = fileObj;
+      } else {
+        const response = await fetch(uri);
+        blobToUpload = await response.blob();
+      }
 
       const { error: upErr } = await supabase.storage
         .from('chat-media')
@@ -471,7 +486,7 @@ export default function ChatRoom() {
       
       if (insertErr) throw insertErr;
 
-      // Replace optimistic message with the real one
+      // Replace optimistic message with the real one from DB
       setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
       
       await supabase.from('conversations')
@@ -479,10 +494,11 @@ export default function ChatRoom() {
         .eq('id', conversationId);
     } catch (e: any) {
       console.error('Upload Error:', e);
+      const errMsg = e?.message || e?.error_description || JSON.stringify(e);
       if (Platform.OS === 'web') {
-        window.alert('ERROR DETECTED: ' + (e.message || JSON.stringify(e)));
+        window.alert(`Upload Failed: ${errMsg}`);
       } else {
-        Alert.alert('Upload Error', e.message || 'Could not upload file');
+        Alert.alert('Upload Error', errMsg);
       }
       setMessages(prev => prev.filter(m => m.id !== tempId));
     }
