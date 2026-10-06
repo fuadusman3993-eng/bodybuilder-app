@@ -310,11 +310,8 @@ export default function ChatRoom() {
 
     mr.onstop = async () => {
       const tempId = `temp_${Date.now()}`;
-      let simInterval: any;
       try {
         const blob = new Blob(audioChunksRef.current, { type: recordedMime });
-        if (blob.size === 0) throw new Error('Recording is empty. Please try again.');
-
         const localUrl = URL.createObjectURL(blob);
 
         const optimisticMsg: any = {
@@ -332,33 +329,19 @@ export default function ChatRoom() {
         setMessages(prev => [...prev, optimisticMsg]);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
 
-        // Fake progress up to 95%
-        let currentPct = 0;
-        simInterval = setInterval(() => {
-          currentPct += Math.floor(Math.random() * 15) + 5;
-          if (currentPct > 95) currentPct = 95;
-          setUploadProgress(prev => ({ ...prev, [tempId]: currentPct }));
-        }, 300);
-
         const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
-
-        // Standard Supabase upload
         const { error: upErr } = await supabase.storage
           .from('voice-messages')
           .upload(fileName, blob, { contentType: recordedMime, upsert: true });
         if (upErr) throw upErr;
 
         const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName);
-        const publicUrl = urlData.publicUrl;
-
-        clearInterval(simInterval);
-        setUploadProgress(prev => ({ ...prev, [tempId]: 100 }));
 
         const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
           conversation_id: conversationId,
           sender_uid: user.uid,
           text: '🎤 Voice message',
-          audio_url: publicUrl,
+          audio_url: urlData.publicUrl,
           audio_duration: dur,
           is_read: false,
           type: 'audio',
@@ -372,11 +355,8 @@ export default function ChatRoom() {
           .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
           .eq('id', conversationId);
       } catch (e: any) {
-        clearInterval(simInterval);
-        const errMsg = e?.message || JSON.stringify(e);
-        window.alert(`Voice send failed: ${errMsg}`);
+        Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
         setMessages(prev => prev.filter(m => m.id !== tempId));
-        setUploadProgress(prev => { const n = { ...prev }; delete n[tempId]; return n; });
       }
     };
 
@@ -417,7 +397,6 @@ export default function ChatRoom() {
     setIsRecording(false);
     
     let tempId: string | null = null;
-    let simInterval: any;
     try {
       await rec.stopAndUnloadAsync();
       const uri = rec.getURI();
@@ -440,14 +419,6 @@ export default function ChatRoom() {
       setMessages(prev => [...prev, optimisticMsg]);
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
 
-      // Fake progress up to 95%
-      let currentPct = 0;
-      simInterval = setInterval(() => {
-        currentPct += Math.floor(Math.random() * 15) + 5;
-        if (currentPct > 95) currentPct = 95;
-        setUploadProgress(prev => ({ ...prev, [tempId as string]: currentPct }));
-      }, 300);
-
       const response = await fetch(uri);
       const blob = await response.blob();
       const fileName = `voice_${user.uid}_${Date.now()}.m4a`;
@@ -458,9 +429,6 @@ export default function ChatRoom() {
       
       const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName);
       
-      clearInterval(simInterval);
-      setUploadProgress(prev => ({ ...prev, [tempId as string]: 100 }));
-
       const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
@@ -479,11 +447,9 @@ export default function ChatRoom() {
         .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
     } catch (e: any) {
-      clearInterval(simInterval);
       Alert.alert('Error', e.message || 'Could not send');
       if (tempId) {
         setMessages(prev => prev.filter(m => m.id !== tempId));
-        setUploadProgress(prev => { const n = { ...prev }; delete n[tempId as string]; return n; });
       }
     }
   };
@@ -503,7 +469,7 @@ export default function ChatRoom() {
   const cancelRecording = Platform.OS === 'web' ? cancelRecordingWeb : cancelRecordingNative;
 
   // ─── Media Upload ───────────────────────────────────────────
-  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string, fileObj?: File | any) => {
+  const sendMedia = async (uri: string, type: 'image' | 'video', mimeType: string) => {
     const tempId = `temp_${Date.now()}`;
     const optimisticMsg: any = {
       id: tempId,
@@ -519,45 +485,26 @@ export default function ChatRoom() {
 
     setMessages(prev => [...prev, optimisticMsg]);
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
-    
-    let simInterval: any;
+
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
       const fileName = `media_${user.uid}_${Date.now()}.${ext}`;
 
-      let blobToUpload: Blob;
-      if (Platform.OS === 'web' && fileObj) {
-        blobToUpload = fileObj as Blob;
-      } else {
-        const resp = await fetch(uri);
-        blobToUpload = await resp.blob();
-      }
+      const response = await fetch(uri);
+      const blobToUpload = await response.blob();
 
-      // Fake progress up to 95%
-      let currentPct = 0;
-      simInterval = setInterval(() => {
-        currentPct += Math.floor(Math.random() * 15) + 5;
-        if (currentPct > 95) currentPct = 95;
-        setUploadProgress(prev => ({ ...prev, [tempId]: currentPct }));
-      }, 300);
-
-      // Standard SDK upload
       const { error: upErr } = await supabase.storage
         .from('chat-media')
         .upload(fileName, blobToUpload, { contentType: mimeType, upsert: true });
       if (upErr) throw upErr;
       
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
-
-      clearInterval(simInterval);
-      setUploadProgress(prev => ({ ...prev, [tempId]: 100 }));
 
       const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
         text: type === 'image' ? '📷 Photo' : '🎥 Video',
-        media_url: publicUrl,
+        media_url: urlData.publicUrl,
         is_read: false,
         type,
       }).select().single();
@@ -571,18 +518,14 @@ export default function ChatRoom() {
         .eq('id', conversationId);
 
     } catch (e: any) {
-      clearInterval(simInterval);
       console.error('Upload Error:', e);
-      const errMsg = e?.message || e?.error_description || JSON.stringify(e);
       if (Platform.OS === 'web') {
-        window.alert(`Upload Failed: ${errMsg}`);
+        window.alert('ERROR DETECTED: ' + (e.message || JSON.stringify(e)));
       } else {
-        Alert.alert('Upload Error', errMsg);
+        Alert.alert('Upload Error', e.message || 'Could not upload file');
       }
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      setUploadProgress(prev => { const n = { ...prev }; delete n[tempId]; return n; });
     }
-    // No setSending block here either!
   };
   // Always keep ref in sync with latest sendMedia (avoids stale closure in DOM handlers)
   sendMediaRef.current = sendMedia;
@@ -765,26 +708,16 @@ export default function ChatRoom() {
                 />
                 {item.isUploading && (
                   <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                    {uploadProgress[item.id] !== undefined ? (
-                      <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
-                        <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 16 }}>{uploadProgress[item.id]}%</Text>
-                      </View>
-                    ) : (
-                      <ActivityIndicator size="large" color="#00E676" />
-                    )}
+                    <ActivityIndicator size="large" color="#00E676" />
                   </View>
                 )}
               </TouchableOpacity>
             ) : isVideo ? (
               <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
                 {item.isUploading ? (
-                  uploadProgress[item.id] !== undefined ? (
-                    <Text style={{ color: '#00E676', fontWeight: '700', fontSize: 20 }}>{uploadProgress[item.id]}%</Text>
-                  ) : (
-                    <ActivityIndicator size="large" color="#00E676" />
-                  )
+                   <ActivityIndicator size="large" color="#00E676" />
                 ) : (
-                  <Ionicons name="play-circle" size={52} color="#00E676" />
+                   <Ionicons name="play-circle" size={52} color="#00E676" />
                 )}
                 <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
               </View>
