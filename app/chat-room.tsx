@@ -34,6 +34,7 @@ function fmtSecs(secs: number) {
 }
 
 import { useCachedState } from '../lib/useCachedState';
+import Skeleton from '../components/ui/Skeleton';
 
 export default function ChatRoom() {
   const router = useRouter();
@@ -768,7 +769,22 @@ export default function ChatRoom() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#00E676" style={{ marginTop: 60 }} />
+        <View style={{ flex: 1, padding: 16, justifyContent: 'flex-end', gap: 24, paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'flex-end' }}>
+            <Skeleton width={32} height={32} borderRadius={16} />
+            <Skeleton width={200} height={50} borderRadius={16} style={{ marginLeft: 8 }} />
+          </View>
+          <View style={{ alignSelf: 'flex-end' }}>
+            <Skeleton width={160} height={44} borderRadius={16} />
+          </View>
+          <View style={{ flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'flex-end' }}>
+            <Skeleton width={32} height={32} borderRadius={16} />
+            <Skeleton width={240} height={70} borderRadius={16} style={{ marginLeft: 8 }} />
+          </View>
+          <View style={{ alignSelf: 'flex-end' }}>
+            <Skeleton width={120} height={44} borderRadius={16} />
+          </View>
+        </View>
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}

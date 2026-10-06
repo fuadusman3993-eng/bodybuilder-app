@@ -11,6 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
+import Skeleton from '../../components/ui/Skeleton';
 
 const BG = '#0a0a0a';
 const PRIMARY = '#00E676';
@@ -226,7 +227,24 @@ export default function ChatScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 60 }} />
+        <View style={{ paddingTop: 16 }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <View key={i} style={styles.convRow}>
+              <View style={styles.avatarWrap}>
+                <Skeleton width={52} height={52} borderRadius={26} />
+              </View>
+              <View style={styles.convInfo}>
+                <View style={styles.convTop}>
+                  <Skeleton width={120} height={16} />
+                  <Skeleton width={40} height={12} />
+                </View>
+                <View style={[styles.convBottom, { marginTop: 6 }]}>
+                  <Skeleton width={200} height={14} />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="chatbubble-ellipses-outline" size={64} color={SURFACE} />
