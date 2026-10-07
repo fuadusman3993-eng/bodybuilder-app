@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Dimensions, Image, ActivityIndicator, Alert,
+  Dimensions, Image, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import Skeleton from '../components/ui/Skeleton';
 
 const { width } = Dimensions.get('window');
 const BG = '#0A0F1A';
@@ -162,9 +163,26 @@ export default function UserProfilePage() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { padding: 16 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 10 }}>
+           <Skeleton width={30} height={30} borderRadius={15} />
+        </View>
+        <View style={{ alignItems: 'center', marginTop: 20 }}>
+          <Skeleton width={120} height={120} borderRadius={60} />
+          <Skeleton width={180} height={28} borderRadius={8} style={{ marginTop: 16 }} />
+          <Skeleton width={100} height={18} borderRadius={4} style={{ marginTop: 12 }} />
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 30 }}>
+           <Skeleton width={80} height={60} borderRadius={12} />
+           <Skeleton width={80} height={60} borderRadius={12} />
+           <Skeleton width={80} height={60} borderRadius={12} />
+        </View>
+        <View style={{ marginTop: 40, gap: 12 }}>
+          <Skeleton width="100%" height={16} borderRadius={4} />
+          <Skeleton width="100%" height={16} borderRadius={4} />
+          <Skeleton width="70%" height={16} borderRadius={4} />
+        </View>
+      </SafeAreaView>
     );
   }
 
