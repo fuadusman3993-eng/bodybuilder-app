@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, Image, ActivityIndicator,
+  TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import Skeleton from '../components/ui/Skeleton';
 
 interface Coach {
   id: string;
@@ -135,8 +136,17 @@ export default function CoachesPage() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+        <View style={{ padding: 16, gap: 16 }}>
+          {[1, 2, 3, 4].map(i => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#1a1a2e', borderRadius: 14, padding: 14 }}>
+              <Skeleton width={64} height={64} borderRadius={32} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="55%" height={16} borderRadius={4} />
+                <Skeleton width="40%" height={13} borderRadius={4} />
+                <Skeleton width="70%" height={13} borderRadius={4} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>

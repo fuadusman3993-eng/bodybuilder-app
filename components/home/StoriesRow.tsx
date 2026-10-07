@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
+import Skeleton from '../ui/Skeleton';
 
 interface StoryGroup {
   uid: string;
@@ -267,8 +267,13 @@ export default function StoriesRow() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={Colors.primary} />
+        <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 12, gap: 16 }]}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <View key={i} style={{ alignItems: 'center', gap: 6 }}>
+              <Skeleton width={64} height={64} borderRadius={32} />
+              <Skeleton width={48} height={10} borderRadius={4} />
+            </View>
+          ))}
         </View>
       ) : (
         <>

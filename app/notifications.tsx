@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SectionList, TouchableOpacity,
-  ActivityIndicator, Image,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import { doc, getDoc } from 'firebase/firestore';
+import Skeleton from '../components/ui/Skeleton';
+
 import { db } from '../lib/firebase';
 
 const BG = '#0A0F1A';
@@ -249,7 +251,17 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 60 }} />
+        <View style={{ padding: 16, gap: 20, marginTop: 8 }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Skeleton width={46} height={46} borderRadius={23} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="70%" height={15} borderRadius={4} />
+                <Skeleton width="50%" height={12} borderRadius={4} />
+              </View>
+            </View>
+          ))}
+        </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="notifications-off-outline" size={64} color={Colors.textMuted} />

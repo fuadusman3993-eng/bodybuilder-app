@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import Skeleton from '../components/ui/Skeleton';
 
 interface Request {
   id: string;
@@ -99,9 +99,38 @@ export default function CoachDashboard() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Skeleton width={24} height={24} borderRadius={4} />
+          <Skeleton width={160} height={22} borderRadius={4} />
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <Skeleton width={24} height={24} borderRadius={12} />
+            <Skeleton width={24} height={24} borderRadius={12} />
+          </View>
+        </View>
+        {/* Summary cards skeleton */}
+        <View style={{ flexDirection: 'row', gap: 12, padding: 16 }}>
+          <Skeleton width="47%" height={80} borderRadius={12} />
+          <Skeleton width="47%" height={80} borderRadius={12} />
+        </View>
+        {/* Tab row skeleton */}
+        <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: 16 }}>
+          <Skeleton width={140} height={36} borderRadius={8} />
+          <Skeleton width={140} height={36} borderRadius={8} />
+        </View>
+        {/* List items skeleton */}
+        <View style={{ paddingHorizontal: 16, gap: 14 }}>
+          {[1, 2, 3, 4].map(i => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Skeleton width={48} height={48} borderRadius={24} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="55%" height={16} borderRadius={4} />
+                <Skeleton width="80%" height={13} borderRadius={4} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </SafeAreaView>
     );
   }
 

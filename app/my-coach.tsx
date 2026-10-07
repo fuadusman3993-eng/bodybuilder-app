@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import Skeleton from '../components/ui/Skeleton';
 
 export default function MyCoachPage() {
   const router = useRouter();
@@ -70,7 +71,24 @@ export default function MyCoachPage() {
   };
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>;
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Skeleton width={24} height={24} borderRadius={4} />
+          <Skeleton width={120} height={20} borderRadius={4} />
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={{ padding: 20, gap: 16 }}>
+          <Skeleton width="100%" height={180} borderRadius={16} />
+          <View style={{ gap: 10 }}>
+            <Skeleton width="60%" height={22} borderRadius={6} />
+            <Skeleton width="40%" height={16} borderRadius={6} />
+            <Skeleton width="85%" height={14} borderRadius={6} />
+          </View>
+          <Skeleton width="100%" height={52} borderRadius={12} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   // No coach yet
