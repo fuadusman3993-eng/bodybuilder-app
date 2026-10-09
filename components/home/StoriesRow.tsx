@@ -268,10 +268,30 @@ export default function StoriesRow() {
     <View style={styles.container}>
       {loading ? (
         <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 12, gap: 16 }]}>
-          {[1, 2, 3].map(i => (
+          {/* Always show the user's "Your story" circle immediately (like Instagram does) */}
+          <View style={styles.storyItem}>
+            <View style={[
+              styles.storyRing, 
+              { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
+              styles.storyRingEmpty, 
+              styles.storyRingOwn
+            ]}>
+              <Image 
+                source={{ uri: user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+                style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }} 
+              />
+              <View style={styles.addBadge}>
+                <Ionicons name="add" size={12} color={Colors.textPrimary} />
+              </View>
+            </View>
+            <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
+          </View>
+          
+          {/* Then show skeletons for the others being fetched */}
+          {[1, 2, 3, 4].map(i => (
             <View key={i} style={{ alignItems: 'center', gap: 6 }}>
               <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
-              <Skeleton width={48} height={10} borderRadius={4} />
+              <Skeleton width={48} height={10} borderRadius={4} style={{ marginTop: 2 }} />
             </View>
           ))}
         </View>
