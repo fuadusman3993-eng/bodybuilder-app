@@ -4,7 +4,7 @@ import {
   StyleSheet, Image, ActivityIndicator, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import GuestBlocker from '../../components/ui/GuestBlocker';
 import Skeleton from '../../components/ui/Skeleton';
+import BrandLogo from '../../components/ui/BrandLogo';
 
 const BG = '#0a0a0a';
 const PRIMARY = '#00E676';
@@ -178,9 +179,8 @@ export default function ChatScreen() {
       {/* App Header */}
       <View style={styles.header}>
         <View style={styles.logoWrap}>
-          <MaterialCommunityIcons name="lightning-bolt" size={28} color={PRIMARY} />
+          <BrandLogo size="small" />
           <View>
-            <Text style={styles.logoTitle}>FitPulse</Text>
             <Text style={styles.logoSub}>Stronger Together</Text>
           </View>
         </View>

@@ -5,6 +5,7 @@ import { Colors } from '../../constants/colors';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
+import BrandLogo from '../ui/BrandLogo';
 
 export default function Header() {
   const { width } = useWindowDimensions();
@@ -29,11 +30,7 @@ export default function Header() {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <Ionicons name="pulse" size={isCompact ? 28 : 34} color={Colors.primary} style={styles.logoIcon} />
-        <View style={styles.textStack}>
-          <Text style={[styles.appName, isCompact && styles.appNameSm]}>FitPulse</Text>
-          <Text style={styles.tagline}>Stronger • Healthier • Together</Text>
-        </View>
+        <BrandLogo size="small" />
       </View>
       <View style={styles.right}>
         <TouchableOpacity 

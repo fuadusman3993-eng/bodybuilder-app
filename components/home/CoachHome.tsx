@@ -7,6 +7,7 @@ import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
 import StoriesRow from './StoriesRow';
+import BrandLogo from '../ui/BrandLogo';
 
 export default function CoachHome() {
   const router = useRouter();
@@ -67,10 +68,8 @@ export default function CoachHome() {
     >
       {/* Custom Coach Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.logoText}>FitPulse</Text>
-          <Text style={styles.headerSub}>Coach Dashboard</Text>
-        </View>
+        <BrandLogo size="small" />
+        <Text style={styles.headerSub}>Coach Dashboard</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.bellBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#FFF" />

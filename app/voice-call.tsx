@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
+import BrandLogo from '../components/ui/BrandLogo';
 
 let RTCView: any = null;
 let mediaDevices: any = null;
@@ -515,10 +516,7 @@ export default function VoiceCallScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* Top Header */}
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoIcon}>H</Text>
-            <Text style={styles.logoText}>FitPulse</Text>
-          </View>
+          <BrandLogo size="small" />
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerIconBtn}>
               <Ionicons name="settings-outline" size={20} color="#FFF" />

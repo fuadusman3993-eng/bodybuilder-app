@@ -11,6 +11,7 @@ import { signOut } from '../../lib/authService';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
+import BrandLogo from '../../components/ui/BrandLogo';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
@@ -147,8 +148,7 @@ export default function ProfileScreen() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerBrand}>
-          <Ionicons name="fitness" size={22} color={Colors.primary} />
-          <Text style={styles.brandText}>FitPulse</Text>
+          <BrandLogo size="small" />
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
