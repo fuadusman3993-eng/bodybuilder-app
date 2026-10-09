@@ -164,16 +164,64 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
+        {/* Header skeleton */}
         <View style={styles.header}>
           <Skeleton width={36} height={36} borderRadius={18} />
           <Skeleton width={120} height={18} borderRadius={4} />
           <View style={{ width: 36 }} />
         </View>
 
-        <View style={[styles.scroll, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          {/* Avatar + Stats row */}
+          <View style={styles.topSection}>
+            <View style={styles.avatarRing}>
+              <Skeleton width={86} height={86} borderRadius={43} />
+            </View>
+            <View style={styles.statsRow}>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.statItem}>
+                  <Skeleton width={28} height={22} borderRadius={4} />
+                  <Skeleton width={44} height={11} borderRadius={3} style={{ marginTop: 6 }} />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Name / role / bio */}
+          <View style={styles.nameSection}>
+            <Skeleton width={150} height={20} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width={90} height={13} borderRadius={4} style={{ marginBottom: 10 }} />
+            <Skeleton width="90%" height={13} borderRadius={4} style={{ marginBottom: 5 }} />
+            <Skeleton width="70%" height={13} borderRadius={4} style={{ marginBottom: 12 }} />
+            <View style={styles.badgesRow}>
+              <Skeleton width={64} height={24} borderRadius={10} />
+              <Skeleton width={80} height={24} borderRadius={10} />
+            </View>
+          </View>
+
+          {/* Action buttons */}
+          <View style={styles.actionsRow}>
+            <Skeleton width="48%" height={40} borderRadius={10} />
+            <Skeleton width="48%" height={40} borderRadius={10} />
+          </View>
+
+          {/* Grid tab icon */}
+          <View style={styles.gridHeader}>
+            <Skeleton width={24} height={24} borderRadius={4} />
+          </View>
+
+          {/* Photo grid */}
+          <View style={styles.grid}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <Skeleton
+                key={i}
+                width={GRID_SIZE}
+                height={GRID_SIZE * 1.15}
+                borderRadius={10}
+              />
+            ))}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
