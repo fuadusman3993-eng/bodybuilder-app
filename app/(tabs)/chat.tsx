@@ -179,7 +179,7 @@ export default function ChatScreen() {
       {/* App Header */}
       <View style={styles.header}>
         <View style={styles.logoWrap}>
-          <BrandLogo size="small" />
+          <BrandLogo size="small" showText={false} />
           <View>
             <Text style={styles.logoSub}>Stronger Together</Text>
           </View>

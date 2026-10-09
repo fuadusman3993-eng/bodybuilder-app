@@ -30,7 +30,7 @@ export default function Header() {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <BrandLogo size="small" />
+        <BrandLogo size="small" showText={false} />
       </View>
       <View style={styles.right}>
         <TouchableOpacity 

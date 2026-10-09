@@ -148,7 +148,7 @@ export default function ProfileScreen() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerBrand}>
-          <BrandLogo size="small" />
+          <BrandLogo size="small" showText={false} />
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>

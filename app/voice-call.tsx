@@ -516,7 +516,7 @@ export default function VoiceCallScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* Top Header */}
         <View style={styles.header}>
-          <BrandLogo size="small" />
+          <BrandLogo size="small" showText={false} />
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerIconBtn}>
               <Ionicons name="settings-outline" size={20} color="#FFF" />

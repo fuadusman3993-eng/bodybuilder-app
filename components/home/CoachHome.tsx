@@ -69,7 +69,7 @@ export default function CoachHome() {
       {/* Custom Coach Header */}
       <View style={styles.header}>
         <View>
-          <BrandLogo size="small" />
+          <BrandLogo size="small" showText={false} />
           <Text style={styles.headerSub}>Coach Dashboard</Text>
         </View>
         <View style={styles.headerRight}>

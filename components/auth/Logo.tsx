@@ -6,5 +6,5 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 'large' }: LogoProps) {
-  return <BrandLogo size={size === 'large' ? 'large' : 'small'} />;
+  return <BrandLogo size={size === 'large' ? 'large' : 'small'} showText={true} layout="column" />;
 }
