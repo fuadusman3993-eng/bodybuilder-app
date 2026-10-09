@@ -23,6 +23,8 @@ if (Platform.OS === 'web') {
 
 SplashScreen.preventAutoHideAsync();
 
+import { Ionicons } from '@expo/vector-icons';
+
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const { setUser } = useUserStore();
@@ -30,7 +32,9 @@ export default function RootLayout() {
   useEffect(() => {
     async function loadAssetsAsync() {
       try {
-        await Font.loadAsync({});
+        await Font.loadAsync({
+          ...Ionicons.font,
+        });
       } catch (e) {
         console.warn('Asset loading error:', e);
       } finally {

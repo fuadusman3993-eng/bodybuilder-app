@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Dimensions, Image, Alert,
+  Dimensions, Image, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,49 +171,8 @@ export default function UserProfilePage() {
           <View style={{ width: 36 }} />
         </View>
 
-        <View style={styles.scroll}>
-          {/* Avatar + Stats */}
-          <View style={styles.topSection}>
-            <Skeleton width={86} height={86} borderRadius={43} />
-            <View style={styles.statsRow}>
-              {[1, 2, 3].map(i => (
-                <View key={i} style={styles.statItem}>
-                  <Skeleton width={20} height={20} borderRadius={4} />
-                  <Skeleton width={40} height={10} borderRadius={2} style={{ marginTop: 6 }} />
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Name / role */}
-          <View style={styles.nameSection}>
-            <Skeleton width={140} height={20} borderRadius={4} style={{ marginBottom: 6 }} />
-            <Skeleton width={100} height={14} borderRadius={4} style={{ marginBottom: 10 }} />
-            <Skeleton width="90%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
-            <Skeleton width="70%" height={14} borderRadius={4} style={{ marginBottom: 10 }} />
-            <View style={styles.badgesRow}>
-              <Skeleton width={60} height={24} borderRadius={10} />
-              <Skeleton width={80} height={24} borderRadius={10} />
-            </View>
-          </View>
-
-          {/* Actions Row */}
-          <View style={styles.actionsRow}>
-            <Skeleton width="48%" height={40} borderRadius={10} />
-            <Skeleton width="48%" height={40} borderRadius={10} />
-          </View>
-
-          {/* Grid Header & Grid */}
-          <View style={styles.gridHeader}>
-            <Skeleton width={24} height={24} borderRadius={12} />
-          </View>
-          <View style={styles.grid}>
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <View key={i} style={{ width: (Dimensions.get('window').width - 28) / 3 - 6, height: ((Dimensions.get('window').width - 28) / 3 - 6) * 1.15, borderRadius: 10, overflow: 'hidden' }}>
-                <Skeleton width="100%" height="100%" borderRadius={10} />
-              </View>
-            ))}
-          </View>
+        <View style={[styles.scroll, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       </SafeAreaView>
     );

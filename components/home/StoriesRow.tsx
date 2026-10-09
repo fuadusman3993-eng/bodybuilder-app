@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -44,7 +45,7 @@ export default function StoriesRow() {
 
   const fetchStories = async () => {
     try {
-      setLoading(true);
+      if (storyGroups.length === 0) setLoading(true);
       const now = new Date().toISOString();
 
       let fetchedStories: any[] = [];
@@ -287,13 +288,10 @@ export default function StoriesRow() {
             <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
           </View>
           
-          {/* Then show skeletons for the others being fetched */}
-          {[1, 2, 3, 4].map(i => (
-            <View key={i} style={{ alignItems: 'center', gap: 6 }}>
-              <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
-              <Skeleton width={48} height={10} borderRadius={4} style={{ marginTop: 2 }} />
-            </View>
-          ))}
+          {/* Just show a small subtle spinner to the right of "Your story" */}
+          <View style={{ justifyContent: 'center', marginLeft: 10 }}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+          </View>
         </View>
       ) : (
         <>
