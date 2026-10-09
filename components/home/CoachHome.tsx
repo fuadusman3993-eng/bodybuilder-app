@@ -68,8 +68,10 @@ export default function CoachHome() {
     >
       {/* Custom Coach Header */}
       <View style={styles.header}>
-        <BrandLogo size="small" />
-        <Text style={styles.headerSub}>Coach Dashboard</Text>
+        <View>
+          <BrandLogo size="small" />
+          <Text style={styles.headerSub}>Coach Dashboard</Text>
+        </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.bellBtn} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={24} color="#FFF" />
