@@ -100,32 +100,42 @@ export default function CoachDashboard() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
           <Skeleton width={24} height={24} borderRadius={4} />
-          <Skeleton width={160} height={22} borderRadius={4} />
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <Skeleton width={24} height={24} borderRadius={12} />
-            <Skeleton width={24} height={24} borderRadius={12} />
+          <Skeleton width={150} height={20} borderRadius={4} />
+          <View style={{ flexDirection: 'row', gap: 15 }}>
+            <Skeleton width={26} height={26} borderRadius={13} />
+            <Skeleton width={28} height={28} borderRadius={14} />
           </View>
         </View>
-        {/* Summary cards skeleton */}
-        <View style={{ flexDirection: 'row', gap: 12, padding: 16 }}>
-          <Skeleton width="47%" height={80} borderRadius={12} />
-          <Skeleton width="47%" height={80} borderRadius={12} />
+
+        {/* Summary Cards */}
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <Skeleton width={40} height={32} borderRadius={4} />
+            <Skeleton width={60} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+          </View>
+          <View style={styles.summaryCard}>
+            <Skeleton width={40} height={32} borderRadius={4} />
+            <Skeleton width={60} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+          </View>
         </View>
-        {/* Tab row skeleton */}
-        <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: 16 }}>
-          <Skeleton width={140} height={36} borderRadius={8} />
-          <Skeleton width={140} height={36} borderRadius={8} />
+
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          <View style={styles.tab}><Skeleton width={100} height={16} borderRadius={4} /></View>
+          <View style={styles.tab}><Skeleton width={100} height={16} borderRadius={4} /></View>
         </View>
-        {/* List items skeleton */}
-        <View style={{ paddingHorizontal: 16, gap: 14 }}>
+
+        {/* List items */}
+        <View style={styles.scrollContent}>
           {[1, 2, 3, 4].map(i => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View key={i} style={styles.traineeCard}>
               <Skeleton width={48} height={48} borderRadius={24} />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Skeleton width="55%" height={16} borderRadius={4} />
-                <Skeleton width="80%" height={13} borderRadius={4} />
+              <View style={styles.traineeInfo}>
+                <Skeleton width="60%" height={16} borderRadius={4} />
+                <Skeleton width="40%" height={12} borderRadius={4} style={{ marginTop: 4 }} />
               </View>
             </View>
           ))}

@@ -163,24 +163,57 @@ export default function UserProfilePage() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { padding: 16 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 10 }}>
-           <Skeleton width={30} height={30} borderRadius={15} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Skeleton width={36} height={36} borderRadius={18} />
+          <Skeleton width={120} height={18} borderRadius={4} />
+          <View style={{ width: 36 }} />
         </View>
-        <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <Skeleton width={120} height={120} borderRadius={60} />
-          <Skeleton width={180} height={28} borderRadius={8} style={{ marginTop: 16 }} />
-          <Skeleton width={100} height={18} borderRadius={4} style={{ marginTop: 12 }} />
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 30 }}>
-           <Skeleton width={80} height={60} borderRadius={12} />
-           <Skeleton width={80} height={60} borderRadius={12} />
-           <Skeleton width={80} height={60} borderRadius={12} />
-        </View>
-        <View style={{ marginTop: 40, gap: 12 }}>
-          <Skeleton width="100%" height={16} borderRadius={4} />
-          <Skeleton width="100%" height={16} borderRadius={4} />
-          <Skeleton width="70%" height={16} borderRadius={4} />
+
+        <View style={styles.scroll}>
+          {/* Avatar + Stats */}
+          <View style={styles.topSection}>
+            <Skeleton width={86} height={86} borderRadius={43} />
+            <View style={styles.statsRow}>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.statItem}>
+                  <Skeleton width={20} height={20} borderRadius={4} />
+                  <Skeleton width={40} height={10} borderRadius={2} style={{ marginTop: 6 }} />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Name / role */}
+          <View style={styles.nameSection}>
+            <Skeleton width={140} height={20} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width={100} height={14} borderRadius={4} style={{ marginBottom: 10 }} />
+            <Skeleton width="90%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width="70%" height={14} borderRadius={4} style={{ marginBottom: 10 }} />
+            <View style={styles.badgesRow}>
+              <Skeleton width={60} height={24} borderRadius={10} />
+              <Skeleton width={80} height={24} borderRadius={10} />
+            </View>
+          </View>
+
+          {/* Actions Row */}
+          <View style={styles.actionsRow}>
+            <Skeleton width="48%" height={40} borderRadius={10} />
+            <Skeleton width="48%" height={40} borderRadius={10} />
+          </View>
+
+          {/* Grid Header & Grid */}
+          <View style={styles.gridHeader}>
+            <Skeleton width={24} height={24} borderRadius={12} />
+          </View>
+          <View style={styles.grid}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <View key={i} style={{ width: (Dimensions.get('window').width - 28) / 3 - 6, height: ((Dimensions.get('window').width - 28) / 3 - 6) * 1.15, borderRadius: 10, overflow: 'hidden' }}>
+                <Skeleton width="100%" height="100%" borderRadius={10} />
+              </View>
+            ))}
+          </View>
         </View>
       </SafeAreaView>
     );

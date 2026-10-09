@@ -227,7 +227,7 @@ export default function ChatScreen() {
       </View>
 
       {loading ? (
-        <View style={{ paddingTop: 16 }}>
+        <View style={{ flex: 1 }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
             <View key={i} style={styles.convRow}>
               <View style={styles.avatarWrap}>
@@ -238,7 +238,7 @@ export default function ChatScreen() {
                   <Skeleton width={120} height={16} />
                   <Skeleton width={40} height={12} />
                 </View>
-                <View style={[styles.convBottom, { marginTop: 6 }]}>
+                <View style={styles.convBottom}>
                   <Skeleton width={200} height={14} />
                 </View>
               </View>

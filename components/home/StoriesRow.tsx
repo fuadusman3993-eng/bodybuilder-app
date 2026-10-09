@@ -268,9 +268,9 @@ export default function StoriesRow() {
     <View style={styles.container}>
       {loading ? (
         <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 12, gap: 16 }]}>
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2, 3].map(i => (
             <View key={i} style={{ alignItems: 'center', gap: 6 }}>
-              <Skeleton width={64} height={64} borderRadius={32} />
+              <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
               <Skeleton width={48} height={10} borderRadius={4} />
             </View>
           ))}

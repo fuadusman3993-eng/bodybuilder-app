@@ -136,15 +136,16 @@ export default function CoachesPage() {
       </View>
 
       {loading ? (
-        <View style={{ padding: 16, gap: 16 }}>
-          {[1, 2, 3, 4].map(i => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#1a1a2e', borderRadius: 14, padding: 14 }}>
-              <Skeleton width={64} height={64} borderRadius={32} />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Skeleton width="55%" height={16} borderRadius={4} />
-                <Skeleton width="40%" height={13} borderRadius={4} />
-                <Skeleton width="70%" height={13} borderRadius={4} />
+        <View style={styles.list}>
+          <Skeleton width={140} height={18} borderRadius={4} style={{ marginBottom: 16, marginTop: 8 }} />
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <View key={i} style={styles.listRow}>
+              <Skeleton width={54} height={54} borderRadius={27} />
+              <View style={styles.infoCol}>
+                <Skeleton width={120} height={16} borderRadius={4} />
+                <Skeleton width={180} height={14} borderRadius={4} style={{ marginTop: 6 }} />
               </View>
+              <Skeleton width={66} height={32} borderRadius={8} />
             </View>
           ))}
         </View>

@@ -78,14 +78,27 @@ export default function MyCoachPage() {
           <Skeleton width={120} height={20} borderRadius={4} />
           <View style={{ width: 24 }} />
         </View>
-        <View style={{ padding: 20, gap: 16 }}>
-          <Skeleton width="100%" height={180} borderRadius={16} />
-          <View style={{ gap: 10 }}>
-            <Skeleton width="60%" height={22} borderRadius={6} />
-            <Skeleton width="40%" height={16} borderRadius={6} />
-            <Skeleton width="85%" height={14} borderRadius={6} />
+        <View style={styles.coachCard}>
+          <Skeleton width={64} height={64} borderRadius={32} />
+          <View style={styles.coachInfo}>
+            <Skeleton width="70%" height={18} borderRadius={4} style={{ marginBottom: 4 }} />
+            <Skeleton width="40%" height={12} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width="30%" height={12} borderRadius={4} />
           </View>
-          <Skeleton width="100%" height={52} borderRadius={12} />
+          <Skeleton width={40} height={40} borderRadius={20} />
+        </View>
+        <View style={styles.section}>
+          <Skeleton width={120} height={18} borderRadius={4} style={{ marginBottom: 12 }} />
+          {[1, 2].map(i => (
+            <View key={i} style={styles.planCard}>
+               <Skeleton width={44} height={44} borderRadius={12} />
+               <View style={{ flex: 1, gap: 4 }}>
+                 <Skeleton width="60%" height={16} borderRadius={4} />
+                 <Skeleton width="40%" height={12} borderRadius={4} />
+               </View>
+               <Skeleton width={18} height={18} borderRadius={9} />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );

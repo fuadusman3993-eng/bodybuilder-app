@@ -251,13 +251,13 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <View style={{ padding: 16, gap: 20, marginTop: 8 }}>
-          {[1, 2, 3, 4, 5].map(i => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Skeleton width={46} height={46} borderRadius={23} />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Skeleton width="70%" height={15} borderRadius={4} />
-                <Skeleton width="50%" height={12} borderRadius={4} />
+        <View style={{ paddingTop: 16 }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <View key={i} style={styles.row}>
+              <Skeleton width={50} height={50} borderRadius={25} />
+              <View style={styles.textWrap}>
+                <Skeleton width="80%" height={15} borderRadius={4} style={{ marginBottom: 6 }} />
+                <Skeleton width="40%" height={12} borderRadius={4} />
               </View>
             </View>
           ))}
