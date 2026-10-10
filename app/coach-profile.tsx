@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import Skeleton from '../components/ui/Skeleton';
 
 interface CoachProfile {
   uid: string;
@@ -110,9 +111,58 @@ export default function CoachProfilePage() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container}>
+        {/* Header skeleton */}
+        <View style={styles.header}>
+          <Skeleton width={36} height={36} borderRadius={18} />
+          <Skeleton width={130} height={18} borderRadius={4} />
+          <View style={{ width: 24 }} />
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Hero: avatar + name + specialty + stats */}
+          <View style={[styles.heroSection]}>
+            <Skeleton width={110} height={110} borderRadius={55} />
+            <Skeleton width={160} height={24} borderRadius={6} style={{ marginTop: 14 }} />
+            <Skeleton width={100} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+            {/* Stats row */}
+            <View style={[styles.statsRow]}>
+              {[1, 2, 3].map((_, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <View style={styles.statDivider} />}
+                  <View style={styles.statBox}>
+                    <Skeleton width={36} height={22} borderRadius={4} />
+                    <Skeleton width={48} height={11} borderRadius={3} style={{ marginTop: 6 }} />
+                  </View>
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
+          {/* About section */}
+          <View style={styles.section}>
+            <Skeleton width={60} height={16} borderRadius={4} style={{ marginBottom: 10 }} />
+            <Skeleton width="100%" height={13} borderRadius={4} style={{ marginBottom: 5 }} />
+            <Skeleton width="80%" height={13} borderRadius={4} />
+          </View>
+          {/* Specialties */}
+          <View style={styles.section}>
+            <Skeleton width={90} height={16} borderRadius={4} style={{ marginBottom: 10 }} />
+            <View style={styles.tagRow}>
+              {[80, 110, 70].map((w, i) => (
+                <Skeleton key={i} width={w} height={30} borderRadius={20} />
+              ))}
+            </View>
+          </View>
+          {/* Price */}
+          <View style={styles.section}>
+            <Skeleton width={60} height={16} borderRadius={4} style={{ marginBottom: 10 }} />
+            <Skeleton width="100%" height={54} borderRadius={14} />
+          </View>
+          {/* Request button */}
+          <View style={{ paddingHorizontal: 16, paddingBottom: 40, marginTop: 10 }}>
+            <Skeleton width="100%" height={54} borderRadius={30} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 

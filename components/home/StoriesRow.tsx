@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -268,18 +267,18 @@ export default function StoriesRow() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 12, gap: 16 }]}>
-          {/* Always show the user's "Your story" circle immediately (like Instagram does) */}
+        <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 16, gap: 14 }]}>
+          {/* "Your story" — real button, loads immediately */}
           <View style={styles.storyItem}>
             <View style={[
-              styles.storyRing, 
+              styles.storyRing,
               { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
-              styles.storyRingEmpty, 
-              styles.storyRingOwn
+              styles.storyRingEmpty,
+              styles.storyRingOwn,
             ]}>
-              <Image 
+              <Image
                 source={{ uri: user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
-                style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }} 
+                style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
               />
               <View style={styles.addBadge}>
                 <Ionicons name="add" size={12} color={Colors.textPrimary} />
@@ -287,11 +286,14 @@ export default function StoriesRow() {
             </View>
             <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
           </View>
-          
-          {/* Just show a small subtle spinner to the right of "Your story" */}
-          <View style={{ justifyContent: 'center', marginLeft: 10 }}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-          </View>
+
+          {/* 4 skeleton placeholders — same size/spacing as real story items */}
+          {[1, 2, 3, 4].map(i => (
+            <View key={i} style={styles.storyItem}>
+              <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
+              <Skeleton width={44} height={10} borderRadius={4} style={{ marginTop: 1 }} />
+            </View>
+          ))}
         </View>
       ) : (
         <>

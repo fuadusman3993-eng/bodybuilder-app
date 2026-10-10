@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Colors } from '../constants/colors';
+import Skeleton from '../components/ui/Skeleton';
 
 export default function TraineeProfilePage() {
   const { uid } = useLocalSearchParams<{ uid: string }>();
@@ -32,9 +33,23 @@ export default function TraineeProfilePage() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {/* Header: avatar + name + location */}
+          <View style={styles.header}>
+            <Skeleton width={100} height={100} borderRadius={50} style={{ marginBottom: 16 }} />
+            <Skeleton width={180} height={24} borderRadius={6} style={{ marginBottom: 8 }} />
+            <Skeleton width={100} height={14} borderRadius={4} />
+          </View>
+          {/* Cards */}
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[styles.card, { marginBottom: 16 }]}>
+              <Skeleton width={110} height={13} borderRadius={4} style={{ marginBottom: 10 }} />
+              <Skeleton width="70%" height={18} borderRadius={4} />
+            </View>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
