@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
@@ -232,22 +232,22 @@ export default function StoriesRow() {
     }
   };
 
-  const StoryAvatar = ({ url }: { url: string }) => {
-    const [error, setError] = useState(false);
-    const fallback = 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150';
-    return (
-      <Image
-        source={{ uri: error ? fallback : url }}
-        onError={() => setError(true)}
-        style={{
-          width: avatarInner,
-          height: avatarInner,
-          borderRadius: avatarInner / 2,
-          backgroundColor: Colors.surface,
-        }}
-        resizeMode="cover"
-      />
-    );
+  const fallbackAvatar = 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150';
+
+  const StoryAvatar = ({ url }: { url: string }) => (
+    <Image
+      source={url || fallbackAvatar}
+      placeholder={fallbackAvatar}
+      cachePolicy="memory-disk"
+      contentFit="cover"
+      style={{
+        width: avatarInner,
+        height: avatarInner,
+        borderRadius: avatarInner / 2,
+        backgroundColor: Colors.surface,
+      }}
+    />
+  );
   };
 
   const renderItem = ({ item }: { item: StoryGroup }) => {
@@ -294,7 +294,10 @@ export default function StoriesRow() {
               styles.storyRingOwn,
             ]}>
               <Image
-                source={{ uri: user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150' }}
+                source={user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : fallbackAvatar}
+                placeholder={fallbackAvatar}
+                cachePolicy="memory-disk"
+                contentFit="cover"
                 style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
               />
               <View style={styles.addBadge}>

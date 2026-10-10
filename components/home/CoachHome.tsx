@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -75,7 +76,7 @@ export default function CoachHome() {
             {stats.requests > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{stats.requests}</Text></View>}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-            <Image source={{ uri: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` }} style={styles.avatar} />
+            <Image source={`https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`} cachePolicy="memory-disk" contentFit="cover" style={styles.avatar} />
             <View style={styles.onlineDot} />
           </TouchableOpacity>
         </View>
@@ -170,7 +171,7 @@ export default function CoachHome() {
         ) : (
           requests.map(req => (
             <View key={req.id} style={styles.reqCard}>
-              <Image source={{ uri: req.trainee_avatar || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=150' }} style={styles.reqAvatar} />
+              <Image source={req.trainee_avatar || 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150'} cachePolicy="memory-disk" contentFit="cover" style={styles.reqAvatar} />
               <View style={styles.reqInfo}>
                 <Text style={styles.reqName}>{req.trainee_name}</Text>
                 <Text style={styles.reqMeta}>New Trainee • Request</Text>
