@@ -160,7 +160,7 @@ export default function CreatePostPage() {
           <Image
             source={{ uri: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` }}
             style={styles.miniAvatar}
-            defaultSource={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+            defaultSource={{ uri: 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150' }}
           />
           <TextInput
             style={styles.captionInput}

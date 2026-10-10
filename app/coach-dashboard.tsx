@@ -222,7 +222,7 @@ export default function CoachDashboard() {
                 onPress={() => router.push({ pathname: '/trainee-profile', params: { uid: t.trainee_uid } })}
               >
                 <Image
-                  source={{ uri: t.trainee_avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+                  source={{ uri: t.trainee_avatar || 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150' }}
                   style={styles.avatar}
                 />
                 <View style={styles.traineeInfo}>
@@ -252,7 +252,7 @@ export default function CoachDashboard() {
                 onPress={() => router.push({ pathname: '/trainee-profile', params: { uid: req.trainee_uid } })}
               >
                 <Image
-                  source={{ uri: req.trainee_avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+                  source={{ uri: req.trainee_avatar || 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150' }}
                   style={styles.avatar}
                 />
                 <View style={styles.traineeInfo}>

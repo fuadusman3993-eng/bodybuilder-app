@@ -8,21 +8,26 @@ interface Props {
   style?: ViewStyle;
 }
 
-export default function Skeleton({ width, height, borderRadius = 4, style }: Props) {
-  const anim = useRef(new Animated.Value(0.3)).current;
+// Shared animation value for all skeletons to prevent lag
+const sharedAnim = new Animated.Value(0.3);
+let isAnimating = false;
 
+export default function Skeleton({ width, height, borderRadius = 4, style }: Props) {
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [anim]);
+    if (!isAnimating) {
+      isAnimating = true;
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(sharedAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(sharedAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, []);
 
   return (
     <Animated.View 
-      style={[{ width, height, borderRadius, backgroundColor: '#2A3241', opacity: anim }, style]} 
+      style={[{ width, height, borderRadius, backgroundColor: '#2A3241', opacity: sharedAnim }, style]} 
     />
   );
 }

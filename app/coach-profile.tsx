@@ -189,7 +189,7 @@ export default function CoachProfilePage() {
         {/* Avatar & Name */}
         <View style={styles.heroSection}>
           <Image
-            source={{ uri: coach.avatar_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300' }}
+            source={{ uri: coach.avatar_url || 'https://ui-avatars.com/api/?name=Coach&background=2A3241&color=fff&size=150' }}
             style={styles.avatar}
           />
           <View style={styles.nameRow}>

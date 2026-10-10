@@ -24,6 +24,9 @@ interface StoryGroup {
   viewed: boolean;
 }
 
+let cachedStories: StoryGroup[] = [];
+let cachedViewedIds: string[] = [];
+
 export default function StoriesRow() {
   const router = useRouter();
   const { user } = useUserStore();
@@ -31,13 +34,16 @@ export default function StoriesRow() {
   const avatarOuter = width < 360 ? 56 : 64;
   const avatarInner = avatarOuter - 8;
 
-  const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewedIds, setViewedIds] = useState<string[]>([]);
+  const [storyGroups, setStoryGroups] = useState<StoryGroup[]>(cachedStories);
+  const [loading, setLoading] = useState(cachedStories.length === 0);
+  const [viewedIds, setViewedIds] = useState<string[]>(cachedViewedIds);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
+      // If we already have cached stories, we can fetch in background silently
+      // without setting loading to true, or just use the cache. 
+      // For this app, we'll fetch silently in background.
       fetchStories();
     }, [user.uid])
   );
@@ -174,7 +180,7 @@ export default function StoriesRow() {
         username: user.name || 'You',
         avatar_url: user.uid
           ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`
-          : 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150',
+          : 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150',
         isOwn: true,
         hasStory: !!ownExists,
         viewed: ownExists ? groupMap[user.uid].allViewed : false,
@@ -187,20 +193,23 @@ export default function StoriesRow() {
         }
       });
 
+      cachedStories = groups;
       setStoryGroups(groups);
     } catch (e: any) {
       setErrorMsg('Top level error: ' + (e.message || e.toString()));
       console.warn('Stories fetch error:', e);
-      setStoryGroups([
+      const fallbackGroup = [
         {
           uid: user.uid || 'own',
           username: 'You',
-          avatar_url: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150',
+          avatar_url: 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150',
           isOwn: true,
           hasStory: false,
           viewed: false,
         },
-      ]);
+      ];
+      cachedStories = fallbackGroup;
+      setStoryGroups(fallbackGroup);
     } finally {
       setLoading(false);
     }
@@ -217,7 +226,7 @@ export default function StoriesRow() {
 
   const StoryAvatar = ({ url }: { url: string }) => {
     const [error, setError] = useState(false);
-    const fallback = 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150';
+    const fallback = 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150';
     return (
       <Image
         source={{ uri: error ? fallback : url }}
@@ -277,7 +286,7 @@ export default function StoriesRow() {
               styles.storyRingOwn,
             ]}>
               <Image
-                source={{ uri: user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150' }}
+                source={{ uri: user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150' }}
                 style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
               />
               <View style={styles.addBadge}>
