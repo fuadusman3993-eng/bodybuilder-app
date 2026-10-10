@@ -26,6 +26,8 @@ interface StoryGroup {
 
 let cachedStories: StoryGroup[] = [];
 let cachedViewedIds: string[] = [];
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — no re-fetch within this window
 
 export default function StoriesRow() {
   const router = useRouter();
@@ -41,16 +43,21 @@ export default function StoriesRow() {
 
   useFocusEffect(
     React.useCallback(() => {
-      // If we already have cached stories, we can fetch in background silently
-      // without setting loading to true, or just use the cache. 
-      // For this app, we'll fetch silently in background.
+      const now = Date.now();
+      // If cache is fresh — show instantly, zero network call, zero flash
+      if (cachedStories.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
+        setStoryGroups(cachedStories);
+        setLoading(false);
+        return;
+      }
+      // Cache is empty or stale — fetch from DB
       fetchStories();
     }, [user.uid])
   );
 
   const fetchStories = async () => {
     try {
-      if (storyGroups.length === 0) setLoading(true);
+      if (cachedStories.length === 0) setLoading(true);
       const now = new Date().toISOString();
 
       let fetchedStories: any[] = [];
@@ -194,6 +201,7 @@ export default function StoriesRow() {
       });
 
       cachedStories = groups;
+      cacheTimestamp = Date.now();
       setStoryGroups(groups);
     } catch (e: any) {
       setErrorMsg('Top level error: ' + (e.message || e.toString()));

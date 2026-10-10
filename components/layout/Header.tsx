@@ -13,17 +13,20 @@ export default function Header() {
   const router = useRouter();
   const { user } = useUserStore();
   const [unreadCount, setUnreadCount] = useState(0);
+  const lastFetchRef = React.useRef(0);
 
   useFocusEffect(
     useCallback(() => {
-      if (user?.uid) {
-        supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_uid', user.uid)
-          .eq('is_read', false)
-          .then(({ count }) => setUnreadCount(count || 0));
-      }
+      if (!user?.uid) return;
+      const now = Date.now();
+      if (now - lastFetchRef.current < 30_000) return; // throttle to once per 30 s
+      lastFetchRef.current = now;
+      supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_uid', user.uid)
+        .eq('is_read', false)
+        .then(({ count }) => setUnreadCount(count || 0));
     }, [user?.uid])
   );
 
