@@ -1,93 +1,129 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { Layout, useLayout } from '../../constants/layout';
+import { Layout } from '../../constants/layout';
 
-interface Post {
+export interface RealPost {
   id: string;
-  user: {
-    name: string;
-    avatar: string;
-    location: string;
-  };
-  timeAgo: string;
-  content: string;
-  images: string[];
-  imageCount: number;
-  currentImage: number;
-  likes: number;
-  comments: number;
-  isLiked: boolean;
+  uid: string;
+  username: string;
+  avatar_url: string;
+  image_url: string;
+  caption?: string;
+  likes_count: number;
+  created_at: string;
+  isLiked?: boolean;
+  isCoach?: boolean;
+  city?: string;
 }
 
-export default function PostCard({ post }: { post: Post }) {
-  const { width } = useWindowDimensions();
-  // Image height = square aspect ratio
-  const imageHeight = width;
+function timeAgo(dateStr: string) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  const w = Math.floor(d / 7);
+  return `${w}w ago`;
+}
+
+interface PostCardProps {
+  post: RealPost;
+  onToggleLike?: (postId: string) => void;
+  onPressUser?: (uid: string) => void;
+}
+
+export default function PostCard({ post, onToggleLike, onPressUser }: PostCardProps) {
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
 
   return (
     <View style={styles.container}>
       {/* Post Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+        <TouchableOpacity
+          style={styles.userInfo}
+          activeOpacity={0.8}
+          onPress={() => onPressUser?.(post.uid)}
+        >
+          <Image
+            source={post.avatar_url || defaultAvatar}
+            placeholder={defaultAvatar}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            style={styles.avatar}
+          />
           <View>
-            <Text style={styles.userName}>{post.user.name}</Text>
-            <Text style={styles.postMeta}>{post.timeAgo} • {post.user.location}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.userName}>{post.username || 'User'}</Text>
+              {post.isCoach && (
+                <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
+              )}
+            </View>
+            <Text style={styles.postMeta}>
+              {timeAgo(post.created_at)}{post.city ? ` • ${post.city}` : ''}
+            </Text>
           </View>
-        </View>
-        <TouchableOpacity>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => onPressUser?.(post.uid)}>
           <Ionicons name="ellipsis-horizontal" size={Layout.iconSizeSM} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      {/* Post Content */}
-      <Text style={styles.content}>{post.content}</Text>
+      {/* Post Caption (if any) */}
+      {!!post.caption && (
+        <Text style={styles.content}>{post.caption}</Text>
+      )}
 
       {/* Post Image */}
-      {post.images.length > 0 && (
+      {!!post.image_url && (
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: post.images[0] }} 
-            style={styles.postImage} 
-            resizeMode="cover"
+          <Image
+            source={post.image_url}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            style={styles.postImage}
           />
-          {post.imageCount > 1 && (
-            <View style={styles.imageCounter}>
-              <Text style={styles.imageCounterText}>{post.currentImage}/{post.imageCount}</Text>
-            </View>
-          )}
         </View>
       )}
 
       {/* Post Actions */}
       <View style={styles.actions}>
         <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            activeOpacity={0.7}
+            onPress={() => onToggleLike?.(post.id)}
+          >
             <Ionicons
               name={post.isLiked ? 'heart' : 'heart-outline'}
               size={Layout.iconSize}
-              color={post.isLiked ? Colors.danger : Colors.textPrimary}
+              color={post.isLiked ? '#EF4444' : Colors.textPrimary}
             />
-            <Text style={[styles.actionText, post.isLiked && { color: Colors.danger }]}>
-              {post.likes}
+            <Text style={[styles.actionText, post.isLiked && { color: '#EF4444' }]}>
+              {post.likes_count || 0}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            activeOpacity={0.7}
+            onPress={() => onPressUser?.(post.uid)}
+          >
             <Ionicons name="chatbubble-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
-            <Text style={styles.actionText}>{post.comments}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
             <Ionicons name="paper-plane-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity activeOpacity={0.7}>
-          <Ionicons name="bookmark-outline" size={Layout.iconSize} color={Colors.textPrimary} />
-        </TouchableOpacity>
       </View>
     </View>
   );

@@ -1,14 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, TextInput,
-  Image, ActivityIndicator, Alert, Animated, ScrollView, Platform,
+  ActivityIndicator, Alert, Animated, ScrollView, Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
-import { useUserStore } from '../store/userStore';
+import { useUserStore, UserTier } from '../store/userStore';
 import { Colors } from '../constants/colors';
 
 const BG = '#0A0F1A';
@@ -22,6 +23,39 @@ export default function CreatePostPage() {
   const [progress, setProgress] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  const isCoach = user.role === 'coach';
+  const isPremium = user.tier === UserTier.PREMIUM;
+  const [limitReached, setLimitReached] = useState(false);
+  const [checkingLimit, setCheckingLimit] = useState(!isCoach && !isPremium);
+
+  useEffect(() => {
+    checkPostLimit();
+  }, [user.uid, user.role, user.tier]);
+
+  const checkPostLimit = async () => {
+    if (isCoach || isPremium || !user.uid) {
+      setCheckingLimit(false);
+      return;
+    }
+    try {
+      // Free trainees: 1 post per 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('uid', user.uid)
+        .gte('created_at', thirtyDaysAgo);
+
+      if (!error && (count || 0) >= 1) {
+        setLimitReached(true);
+      }
+    } catch (e) {
+      console.warn('Check limit error:', e);
+    } finally {
+      setCheckingLimit(false);
+    }
+  };
+
   const animateTo = (val: number) => {
     setProgress(val);
     Animated.timing(progressAnim, {
@@ -32,6 +66,13 @@ export default function CreatePostPage() {
   };
 
   const pickImage = async () => {
+    if (limitReached) {
+      Alert.alert(
+        'Post Limit Reached',
+        'Free accounts can share 1 post per month. As a Coach or with a Premium subscription, you can post without limits!'
+      );
+      return;
+    }
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -53,6 +94,13 @@ export default function CreatePostPage() {
   };
 
   const handlePost = async () => {
+    if (limitReached) {
+      Alert.alert(
+        'Post Limit Reached',
+        'Free trainee accounts can share 1 post per month. Upgrade to Premium for unlimited monthly posts!'
+      );
+      return;
+    }
     if (!imageUri || !user.uid) {
       Alert.alert('Please select a photo first.');
       return;
@@ -80,7 +128,7 @@ export default function CreatePostPage() {
 
       // 3. Get public URL
       const { data: urlData } = supabase.storage.from('posts').getPublicUrl(fileName);
-      const avatarUrl = `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
+      const avatarUrl = user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
       // 4. Insert post record
       const { error: dbError } = await supabase.from('posts').insert({
@@ -117,9 +165,9 @@ export default function CreatePostPage() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Post</Text>
         <TouchableOpacity
-          style={[styles.postBtn, (!imageUri || uploading) && { opacity: 0.4 }]}
+          style={[styles.postBtn, (!imageUri || uploading || limitReached) && { opacity: 0.4 }]}
           onPress={handlePost}
-          disabled={!imageUri || uploading}
+          disabled={!imageUri || uploading || limitReached}
         >
           <Text style={styles.postBtnText}>Share</Text>
         </TouchableOpacity>
@@ -137,10 +185,23 @@ export default function CreatePostPage() {
       )}
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Monthly Limit Card if reached */}
+        {limitReached && (
+          <View style={styles.limitCard}>
+            <View style={styles.limitHeader}>
+              <Ionicons name="lock-closed" size={18} color="#F59E0B" />
+              <Text style={styles.limitTitle}>Monthly Free Post Limit Reached (1/1)</Text>
+            </View>
+            <Text style={styles.limitDesc}>
+              Free trainee accounts can share 1 post every 30 days. Real Coaches and Premium members enjoy unlimited posting privileges!
+            </Text>
+          </View>
+        )}
+
         {/* Image picker */}
         <TouchableOpacity style={styles.imagePicker} onPress={pickImage} activeOpacity={0.8}>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.pickedImage} resizeMode="cover" />
+            <Image source={imageUri} style={styles.pickedImage} contentFit="cover" />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Ionicons name="image-outline" size={48} color={Colors.textMuted} />
@@ -158,9 +219,11 @@ export default function CreatePostPage() {
         {/* Caption */}
         <View style={styles.captionContainer}>
           <Image
-            source={{ uri: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` }}
+            source={user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`}
+            placeholder="https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150"
+            cachePolicy="memory-disk"
+            contentFit="cover"
             style={styles.miniAvatar}
-            defaultSource={{ uri: 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150' }}
           />
           <TextInput
             style={styles.captionInput}
@@ -170,15 +233,16 @@ export default function CreatePostPage() {
             onChangeText={setCaption}
             multiline
             maxLength={300}
+            editable={!limitReached}
           />
         </View>
 
         {/* Tips */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>📸 Tips for great posts</Text>
-          <Text style={styles.tipText}>• Show your workout, progress, or daily routine</Text>
-          <Text style={styles.tipText}>• Add a caption to inspire your followers</Text>
-          <Text style={styles.tipText}>• Posts stay on your profile permanently</Text>
+          <Text style={styles.tipsTitle}>📸 Community Guidelines</Text>
+          <Text style={styles.tipText}>• Coaches post unlimited workouts and advice</Text>
+          <Text style={styles.tipText}>• Free trainees get 1 post per month to share major milestones</Text>
+          <Text style={styles.tipText}>• Premium trainees can post without restrictions</Text>
         </View>
 
         {uploading && (
@@ -204,6 +268,19 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: Colors.primary },
 
   scroll: { padding: 16, paddingBottom: 80 },
+
+  limitCard: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    padding: 14,
+    marginBottom: 16,
+    gap: 6,
+  },
+  limitHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  limitTitle: { color: '#F59E0B', fontSize: 14, fontWeight: '700' },
+  limitDesc: { color: Colors.textSecondary, fontSize: 12.5, lineHeight: 18 },
 
   imagePicker: { borderRadius: 16, overflow: 'hidden', height: 360, marginBottom: 16, position: 'relative' },
   pickedImage: { width: '100%', height: '100%' },
