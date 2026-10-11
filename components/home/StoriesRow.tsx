@@ -13,6 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
+import { auth } from '../../lib/firebase';
 import Skeleton from '../ui/Skeleton';
 
 interface StoryGroup {
@@ -26,6 +27,7 @@ interface StoryGroup {
 
 let cachedStories: StoryGroup[] = [];
 let cachedViewedIds: string[] = [];
+let cachedUserUid: string | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — no re-fetch within this window
 
@@ -36,50 +38,62 @@ export default function StoriesRow() {
   const avatarOuter = width < 360 ? 56 : 64;
   const avatarInner = avatarOuter - 8;
 
+  const activeUid = user.uid || auth.currentUser?.uid;
+  const ownAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : null);
+  const fallbackAvatar = ownAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=10B981&color=fff&size=150`;
+
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>(cachedStories);
-  const [loading, setLoading] = useState(cachedStories.length === 0);
+  const [loading, setLoading] = useState(cachedStories.length === 0 || cachedUserUid !== activeUid);
   const [viewedIds, setViewedIds] = useState<string[]>(cachedViewedIds);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
+      const currentUid = user.uid || auth.currentUser?.uid;
       const now = Date.now();
-      // If cache is fresh — show instantly, zero network call, zero flash
-      if (cachedStories.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
+      // Only reuse cache if it belongs to THIS user and is fresh
+      if (
+        currentUid &&
+        cachedUserUid === currentUid &&
+        cachedStories.length > 0 &&
+        (now - cacheTimestamp) < CACHE_TTL_MS
+      ) {
         setStoryGroups(cachedStories);
         setLoading(false);
         return;
       }
-      // Cache is empty or stale — fetch from DB
       fetchStories();
-    }, [user.uid])
+    }, [user.uid, user.avatar, user.role])
   );
 
   const fetchStories = async () => {
     try {
-      if (cachedStories.length === 0) setLoading(true);
+      const activeUid = user.uid || auth.currentUser?.uid;
+      if (cachedStories.length === 0 || cachedUserUid !== activeUid) setLoading(true);
       const now = new Date().toISOString();
 
       let fetchedStories: any[] = [];
 
       // 1. Fetch user's own stories and filter expiration in JS safely
-      const { data: myData, error: myError } = await supabase
-        .from('stories')
-        .select('id, uid, username, avatar_url, created_at, expires_at')
-        .eq('uid', user.uid);
+      if (activeUid) {
+        const { data: myData, error: myError } = await supabase
+          .from('stories')
+          .select('id, uid, username, avatar_url, created_at, expires_at')
+          .eq('uid', activeUid);
+          
+        if (myError) {
+          console.warn('myError', myError);
+          setErrorMsg(prev => (prev ? prev + '\n' : '') + 'DB Error (own): ' + myError.message);
+        }
         
-      if (myError) {
-        console.warn('myError', myError);
-        setErrorMsg(prev => (prev ? prev + '\n' : '') + 'DB Error (own): ' + myError.message);
-      }
-      
-      if (myData) {
-        const nowTime = new Date().getTime();
-        const validMyStories = myData.filter(s => {
-          if (!s.expires_at) return true;
-          return new Date(s.expires_at).getTime() > nowTime;
-        });
-        fetchedStories = [...validMyStories];
+        if (myData) {
+          const nowTime = new Date().getTime();
+          const validMyStories = myData.filter(s => {
+            if (!s.expires_at) return true;
+            return new Date(s.expires_at).getTime() > nowTime;
+          });
+          fetchedStories = [...validMyStories];
+        }
       }
 
       // 2. Role-based Fetching
@@ -88,7 +102,7 @@ export default function StoriesRow() {
         const { data: trainees } = await supabase
           .from('coach_requests')
           .select('trainee_uid')
-          .eq('coach_uid', user.uid)
+          .eq('coach_uid', activeUid)
           .eq('status', 'accepted');
         
         const traineeUids = (trainees || []).map(t => t.trainee_uid);
@@ -150,7 +164,7 @@ export default function StoriesRow() {
       const { data: views } = await supabase
         .from('story_views')
         .select('story_id')
-        .eq('viewer_uid', user.uid);
+        .eq('viewer_uid', activeUid);
       const viewedSet = new Set((views || []).map(v => v.story_id));
 
       // 4. Group by User
@@ -160,12 +174,13 @@ export default function StoriesRow() {
       fetchedStories.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
       fetchedStories.forEach((s: any) => {
+        const isThisUser = activeUid ? s.uid === activeUid : false;
         if (!groupMap[s.uid]) {
           groupMap[s.uid] = {
             uid: s.uid,
             username: s.username,
             avatar_url: s.avatar_url,
-            isOwn: s.uid === user.uid,
+            isOwn: isThisUser,
             hasStory: true,
             viewed: false, // We will evaluate this below
             allViewed: true,
@@ -179,44 +194,48 @@ export default function StoriesRow() {
 
       // 5. Build Final List
       const groups: StoryGroup[] = [];
-      const ownExists = user.uid && groupMap[user.uid];
-      
+      const ownGroup = activeUid ? groupMap[activeUid] : null;
+      const ownExists = !!ownGroup;
+      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : fallbackAvatar);
+
       // Always show "Your Story" first
       groups.push({
-        uid: user.uid || 'own',
+        uid: activeUid || 'own',
         username: user.name || 'You',
-        avatar_url: user.uid
-          ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`
-          : 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150',
+        avatar_url: myAvatar,
         isOwn: true,
-        hasStory: !!ownExists,
-        viewed: ownExists ? groupMap[user.uid].allViewed : false,
+        hasStory: ownExists,
+        viewed: ownExists ? ownGroup.allViewed : false,
       });
 
-      // Add others
+      // Add other users' stories (filter out own UID to never duplicate)
       Object.values(groupMap).forEach((g) => {
-        if (!g.isOwn) {
+        if (g.uid !== activeUid && !g.isOwn) {
           groups.push({ ...g, viewed: g.allViewed });
         }
       });
 
       cachedStories = groups;
+      cachedUserUid = activeUid || null;
       cacheTimestamp = Date.now();
       setStoryGroups(groups);
     } catch (e: any) {
       setErrorMsg('Top level error: ' + (e.message || e.toString()));
       console.warn('Stories fetch error:', e);
+      const activeUid = user.uid || auth.currentUser?.uid;
+      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : fallbackAvatar);
       const fallbackGroup = [
         {
-          uid: user.uid || 'own',
-          username: 'You',
-          avatar_url: 'https://ui-avatars.com/api/?name=You&background=2A3241&color=fff&size=150',
+          uid: activeUid || 'own',
+          username: user.name || 'You',
+          avatar_url: myAvatar,
           isOwn: true,
           hasStory: false,
           viewed: false,
         },
       ];
       cachedStories = fallbackGroup;
+      cachedUserUid = activeUid || null;
       setStoryGroups(fallbackGroup);
     } finally {
       setLoading(false);
@@ -232,12 +251,12 @@ export default function StoriesRow() {
     }
   };
 
-  const fallbackAvatar = 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150';
+  const storyFallback = 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150';
 
   const StoryAvatar = ({ url }: { url: string }) => (
     <Image
-      source={url || fallbackAvatar}
-      placeholder={fallbackAvatar}
+      source={url || storyFallback}
+      placeholder={storyFallback}
       cachePolicy="memory-disk"
       contentFit="cover"
       style={{
@@ -293,7 +312,7 @@ export default function StoriesRow() {
               styles.storyRingOwn,
             ]}>
               <Image
-                source={user.uid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg` : fallbackAvatar}
+                source={ownAvatar || fallbackAvatar}
                 placeholder={fallbackAvatar}
                 cachePolicy="memory-disk"
                 contentFit="cover"

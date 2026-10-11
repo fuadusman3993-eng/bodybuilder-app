@@ -15,6 +15,8 @@ export interface UserModel {
   email?: string;
   tier: UserTier;
   role?: UserRole;
+  avatar?: string;
+  city?: string;
 }
 
 interface UserState {

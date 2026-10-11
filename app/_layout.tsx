@@ -50,8 +50,11 @@ export default function RootLayout() {
       if (firebaseUser) {
         try {
           const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          const role = docSnap.exists() ? (docSnap.data().role ?? 'user') : 'user';
-          const name = firebaseUser.displayName || docSnap.data()?.username || 'User';
+          const uData = docSnap.exists() ? docSnap.data() : null;
+          const role = uData?.role ?? 'user';
+          const name = firebaseUser.displayName || uData?.username || uData?.name || 'User';
+          const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
+          const city = uData?.city || undefined;
           
           setUser({
             tier: UserTier.FREE,
@@ -59,6 +62,8 @@ export default function RootLayout() {
             role,
             uid: firebaseUser.uid,
             email: firebaseUser.email || undefined,
+            avatar,
+            city,
           });
 
           // AUTO-SYNC: If user is a coach in Firebase, ensure they exist in Supabase `coach_profiles`
