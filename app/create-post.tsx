@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useUserStore, UserTier } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import { invalidateCommunityCache } from './(tabs)/community';
 
 const BG = '#0A0F1A';
 
@@ -159,17 +160,28 @@ export default function CreatePostPage() {
       if (dbError) throw dbError;
 
       animateTo(100);
-      setTimeout(() => {
+      setUploading(false);
+      invalidateCommunityCache();
+
+      if (Platform.OS === 'web') {
+        window.alert('✅ Posted! Your post is now live in the Community!');
+        router.replace('/(tabs)/community');
+      } else {
         Alert.alert('✅ Posted!', 'Your post is now live in the Community!', [
-          { text: 'OK', onPress: () => router.back() }
+          { text: 'OK', onPress: () => router.replace('/(tabs)/community') }
         ]);
-      }, 400);
+      }
     } catch (e: any) {
       console.warn('Post upload error:', e);
-      Alert.alert('Post Failed', e?.message || 'Could not upload your post. Please try again.');
       setUploading(false);
       setProgress(0);
       progressAnim.setValue(0);
+      const errMsg = e?.message || 'Could not upload your post. Please try again.';
+      if (Platform.OS === 'web') {
+        window.alert('Post Failed: ' + errMsg);
+      } else {
+        Alert.alert('Post Failed', errMsg);
+      }
     }
   };
 

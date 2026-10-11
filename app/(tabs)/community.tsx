@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import PostCard, { RealPost } from '../../components/home/PostCard';
 import { useUserStore } from '../../store/userStore';
@@ -19,6 +19,11 @@ const tabs = ['For You', 'Following', 'Recent'];
 let cachedPosts: RealPost[] = [];
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 3 * 60 * 1000;
+
+export function invalidateCommunityCache() {
+  cachedPosts = [];
+  cacheTimestamp = 0;
+}
 
 export default function CommunityScreen() {
   const router = useRouter();
@@ -113,19 +118,21 @@ export default function CommunityScreen() {
     }
   }, [user?.uid]);
 
-  useEffect(() => {
-    fetchFollowing();
-    const now = Date.now();
-    if (cachedPosts.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
-      setPosts(cachedPosts);
-      setLoading(false);
-      if (now - cacheTimestamp > 60 * 1000) {
-        fetchPosts(false);
+  useFocusEffect(
+    useCallback(() => {
+      fetchFollowing();
+      const now = Date.now();
+      if (cachedPosts.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
+        setPosts(cachedPosts);
+        setLoading(false);
+        if (now - cacheTimestamp > 20 * 1000) {
+          fetchPosts(false);
+        }
+        return;
       }
-      return;
-    }
-    fetchPosts(true);
-  }, [fetchPosts]);
+      fetchPosts(cachedPosts.length === 0);
+    }, [fetchPosts])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
