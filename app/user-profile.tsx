@@ -144,12 +144,6 @@ export default function UserProfilePage() {
       ]);
 
       const newProfile = newProfileSnap || profileCache[uid!]?.profile || null;
-      const newCoachData = cpRes?.data || null;
-      const newPosts = postsRes?.data || [];
-      const newFollowers = fCountRes?.count || 0;
-      const newFollowing = fgCountRes?.count || 0;
-      const newIsFollowing = !!fRowRes?.data;
-      const newRequestSent = !!rRowRes?.data;
 
       setProfile(newProfile);
       setCoachData(newCoachData);
