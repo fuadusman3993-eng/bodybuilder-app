@@ -101,27 +101,43 @@ export default function CreatePostPage() {
       );
       return;
     }
-    if (!imageUri || !user.uid) {
-      Alert.alert('Please select a photo first.');
+    if (!imageUri) {
+      Alert.alert('No photo selected', 'Please select a photo first.');
       return;
     }
+    if (!user?.uid) {
+      Alert.alert('Not logged in', 'Please log in again before posting.');
+      return;
+    }
+
     setUploading(true);
     animateTo(20);
 
     try {
-      // 1. Fetch image as blob
+      // 1. Fetch image as blob and convert to ArrayBuffer for cross-platform upload
       const response = await fetch(imageUri);
+      if (!response.ok) throw new Error('Failed to read the selected image.');
       const blob = await response.blob();
       const mimeType = blob.type || 'image/jpeg';
       const ext = mimeType.split('/')[1]?.split('+')[0] || 'jpg';
       const fileName = `${user.uid}_${Date.now()}.${ext}`;
 
-      animateTo(50);
+      animateTo(40);
+
+      // Convert blob → ArrayBuffer (works on both web and mobile)
+      const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as ArrayBuffer);
+        reader.onerror = () => reject(new Error('Failed to read image data.'));
+        reader.readAsArrayBuffer(blob);
+      });
+
+      animateTo(55);
 
       // 2. Upload to Supabase storage bucket 'posts'
       const { error: uploadError } = await supabase.storage
         .from('posts')
-        .upload(fileName, blob, { contentType: mimeType, upsert: false });
+        .upload(fileName, arrayBuffer, { contentType: mimeType, upsert: true });
       if (uploadError) throw uploadError;
 
       animateTo(75);
@@ -130,7 +146,7 @@ export default function CreatePostPage() {
       const { data: urlData } = supabase.storage.from('posts').getPublicUrl(fileName);
       const avatarUrl = user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
 
-      // 4. Insert post record
+      // 4. Insert post record into 'posts' table
       const { error: dbError } = await supabase.from('posts').insert({
         uid: user.uid,
         username: user.name || 'User',
@@ -144,12 +160,13 @@ export default function CreatePostPage() {
 
       animateTo(100);
       setTimeout(() => {
-        Alert.alert('✅ Posted!', 'Your post is now live.', [
+        Alert.alert('✅ Posted!', 'Your post is now live in the Community!', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       }, 400);
     } catch (e: any) {
-      Alert.alert('Upload failed', e.message || 'Something went wrong.');
+      console.warn('Post upload error:', e);
+      Alert.alert('Post Failed', e?.message || 'Could not upload your post. Please try again.');
       setUploading(false);
       setProgress(0);
       progressAnim.setValue(0);
