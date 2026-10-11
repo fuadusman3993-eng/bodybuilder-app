@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SectionList, TouchableOpacity,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -80,7 +81,12 @@ export default function NotificationsScreen() {
           .order('created_at', { ascending: false });
 
         if (reqs) {
+          const seenTrainees = new Set<string>();
           for (const req of reqs) {
+            // Deduplicate: only show latest request per trainee
+            if (seenTrainees.has(req.trainee_uid)) continue;
+            seenTrainees.add(req.trainee_uid);
+
             let name = 'A user';
             let avatar = `https://ui-avatars.com/api/?name=User&background=10B981&color=fff`;
             try {
@@ -109,11 +115,17 @@ export default function NotificationsScreen() {
       }
 
       // 2. Regular notifications (likes, follows, etc.)
-      const { data: notifs } = await supabase
+      let notifsQuery = supabase
         .from('notifications')
         .select('*')
-        .eq('user_uid', user.uid)
-        .order('created_at', { ascending: false });
+        .eq('user_uid', user.uid);
+
+      if (user.role === 'coach') {
+        // Exclude coach request notifications because they are already loaded from coach_requests above
+        notifsQuery = notifsQuery.neq('type', 'request');
+      }
+
+      const { data: notifs } = await notifsQuery.order('created_at', { ascending: false });
 
       if (notifs) {
         // Enrich with sender info
@@ -148,28 +160,71 @@ export default function NotificationsScreen() {
   };
 
   const handleRequest = async (requestId: string, itemId: string, action: 'accepted' | 'rejected') => {
+    if (!requestId) return;
     setActionLoading(itemId);
     try {
-      await supabase.from('coach_requests').update({ status: action }).eq('id', requestId);
+      const { error } = await supabase.from('coach_requests').update({ status: action }).eq('id', requestId);
+      if (error) console.warn('coach_requests update error:', error);
       
-      if (action === 'accepted') {
-        await supabase.rpc('increment_trainees', { coach_uid_param: user.uid }).catch(() => {});
-        const traineeUid = sections.flatMap(s => s.data).find(i => i.id === itemId)?.sender_uid;
-        if (traineeUid) {
+      const targetItem = sections.flatMap(s => s.data).find(i => i.id === itemId);
+      const traineeUid = targetItem?.sender_uid;
+
+      if (action === 'accepted' && user?.uid && traineeUid) {
+        // Increment trainee count on coach_profiles
+        try {
+          const { error: rpcErr } = await supabase.rpc('increment_trainees', { coach_uid_param: user.uid });
+          if (rpcErr) {
+            const { data: cp } = await supabase.from('coach_profiles').select('total_trainees').eq('uid', user.uid).single();
+            const curr = (cp?.total_trainees || 0) + 1;
+            await supabase.from('coach_profiles').update({ total_trainees: curr }).eq('uid', user.uid);
+          }
+        } catch (_) {}
+
+        // Ensure conversation exists between coach and trainee
+        try {
           const u1 = user.uid < traineeUid ? user.uid : traineeUid;
           const u2 = user.uid < traineeUid ? traineeUid : user.uid;
-          await supabase.from('conversations').insert({ user1_uid: u1, user2_uid: u2 }).catch(() => {});
-        }
+          const { data: existingConv } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('user1_uid', u1)
+            .eq('user2_uid', u2)
+            .single();
+            
+          if (!existingConv) {
+            await supabase.from('conversations').insert({ user1_uid: u1, user2_uid: u2 });
+          }
+        } catch (_) {}
+
+        // Send notification to trainee
+        try {
+          await supabase.from('notifications').insert({
+            user_uid: traineeUid,
+            sender_uid: user.uid,
+            type: 'request_accepted',
+            message: `${user.name || 'Coach'} accepted your training request!`,
+          });
+        } catch (_) {}
       }
       
-      // Update UI immediately
-      setSections(prev => prev.map(section => ({
-        ...section,
-        data: section.data.map(item => item.id === itemId ? { ...item, status: action } : item)
-      })));
+      // Update UI state immediately
+      if (action === 'rejected') {
+        setSections(prev => prev.map((section: any) => ({
+          ...section,
+          data: section.data.filter((item: any) => item.id !== itemId)
+        })).filter((section: any) => section.data.length > 0));
+      } else {
+        setSections(prev => prev.map((section: any) => ({
+          ...section,
+          data: section.data.map((item: any) => item.id === itemId ? { ...item, status: action } : item)
+        })));
+      }
       
-    } catch (e) { console.warn(e); }
-    setActionLoading(null);
+    } catch (e) {
+      console.warn('handleRequest error:', e);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const getActionText = (type: string) => {
@@ -178,6 +233,7 @@ export default function NotificationsScreen() {
       case 'like_post': return 'liked your post.';
       case 'follow': return 'started following you.';
       case 'request': return 'wants you to be their coach.';
+      case 'request_accepted': return 'accepted your training request!';
       default: return 'sent you a notification.';
     }
   };
@@ -189,7 +245,9 @@ export default function NotificationsScreen() {
         onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
       >
         <Image
-          source={{ uri: item.sender_avatar }}
+          source={item.sender_avatar}
+          cachePolicy="memory-disk"
+          contentFit="cover"
           style={styles.avatar}
         />
       </TouchableOpacity>
@@ -324,6 +382,22 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
   deleteText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 13 },
+
+  acceptedBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptedText: {
+    color: '#10B981',
+    fontWeight: '700',
+    fontSize: 12.5,
+  },
 
   unreadDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary },
 
