@@ -74,6 +74,8 @@ export default function RootLayout() {
               name: name,
               // Other fields will just be defaults or remain unchanged
             }, { onConflict: 'uid' });
+          } else {
+            await supabase.from('coach_profiles').delete().eq('uid', firebaseUser.uid);
           }
 
         } catch (e) {

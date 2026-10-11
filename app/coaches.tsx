@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, Image,
+  TouchableOpacity,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,14 +22,19 @@ interface Coach {
   is_verified: boolean;
 }
 
+let cachedCoaches: Coach[] = [];
+let coachesCacheTimestamp = 0;
+const COACHES_CACHE_TTL_MS = 5 * 60 * 1000;
+
 export default function CoachesPage() {
   const router = useRouter();
-  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const isCacheValid = cachedCoaches.length > 0;
+  const [coaches, setCoaches] = useState<Coach[]>(cachedCoaches);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isCacheValid);
 
-  const fetchCoaches = useCallback(async () => {
-    setLoading(true);
+  const fetchCoaches = useCallback(async (showLoading = false) => {
+    if (showLoading && cachedCoaches.length === 0) setLoading(true);
     try {
       const { data, error } = await supabase
         .from('coach_profiles')
@@ -44,25 +50,45 @@ export default function CoachesPage() {
           const snap = await getDoc(doc(db, 'users', coach.uid));
           if (snap.exists()) {
             const d = snap.data();
+            // CRITICAL: Only include accounts that are actually coaches in Firebase!
+            // If user is a trainee/regular user, remove them from coach_profiles!
+            if (d.role !== 'coach') {
+              supabase.from('coach_profiles').delete().eq('uid', coach.uid).then();
+              continue;
+            }
             enriched.push({
               ...coach,
               name: d.name || d.username || coach.name || 'Coach',
-              avatar_url: d.avatar || d.photoURL || '',
+              avatar_url: d.avatar || d.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${coach.uid}.jpg`,
             });
+          } else {
+            // Not in Firebase users: remove ghost account
+            supabase.from('coach_profiles').delete().eq('uid', coach.uid).then();
           }
-          // If not in Firebase → skip (ghost account)
         } catch (_) {}
       }
 
       setCoaches(enriched);
+      cachedCoaches = enriched;
+      coachesCacheTimestamp = Date.now();
     } catch (e) {
       console.warn(e);
+    } finally {
+      if (showLoading) setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchCoaches();
+    const now = Date.now();
+    if (cachedCoaches.length > 0 && (now - coachesCacheTimestamp) < COACHES_CACHE_TTL_MS) {
+      setCoaches(cachedCoaches);
+      setLoading(false);
+      if (now - coachesCacheTimestamp > 60 * 1000) {
+        fetchCoaches(false);
+      }
+      return;
+    }
+    fetchCoaches(true);
   }, [fetchCoaches]);
 
   // Filter by search
@@ -80,7 +106,13 @@ export default function CoachesPage() {
         onPress={() => router.push({ pathname: '/user-profile', params: { uid: item.uid } })}
       >
         {item.avatar_url ? (
-          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+          <Image
+            source={item.avatar_url}
+            placeholder={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.name || 'Coach')}&background=10B981&color=fff&size=150`}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            style={styles.avatar}
+          />
         ) : (
           <View style={styles.avatarInitialWrap}>
             <Text style={styles.avatarInitialText}>{item.name?.[0]?.toUpperCase() || 'C'}</Text>

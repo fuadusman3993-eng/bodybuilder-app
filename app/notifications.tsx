@@ -53,21 +53,42 @@ function groupByDate(items: any[]) {
   return sections;
 }
 
+let cachedSections: any[] = [];
+let cachedNotifUserUid: string | null = null;
+let notifCacheTimestamp = 0;
+const NOTIF_CACHE_TTL_MS = 2 * 60 * 1000;
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useUserStore();
-  const [sections, setSections] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const isCacheValid = !!(user?.uid && cachedNotifUserUid === user.uid && cachedSections.length > 0);
+  const [sections, setSections] = useState<any[]>(isCacheValid ? cachedSections : []);
+  const [loading, setLoading] = useState(!isCacheValid);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      if (user?.uid) fetchNotifications();
-    }, [user?.uid])
+      if (!user?.uid) return;
+      const now = Date.now();
+      if (
+        cachedNotifUserUid === user.uid &&
+        cachedSections.length > 0 &&
+        (now - notifCacheTimestamp) < NOTIF_CACHE_TTL_MS
+      ) {
+        setSections(cachedSections);
+        setLoading(false);
+        if (now - notifCacheTimestamp > 20 * 1000) {
+          fetchNotifications(false);
+        }
+        return;
+      }
+      fetchNotifications(cachedSections.length === 0 || cachedNotifUserUid !== user.uid);
+    }, [user?.uid, user?.role])
   );
 
-  const fetchNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const items: any[] = [];
 
@@ -152,11 +173,16 @@ export default function NotificationsScreen() {
       }
 
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setSections(groupByDate(items));
+      const grouped = groupByDate(items);
+      setSections(grouped);
+      cachedSections = grouped;
+      cachedNotifUserUid = user.uid || null;
+      notifCacheTimestamp = Date.now();
     } catch (e) {
       console.warn(e);
+    } finally {
+      if (showLoading) setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRequest = async (requestId: string, itemId: string, action: 'accepted' | 'rejected') => {
@@ -207,17 +233,25 @@ export default function NotificationsScreen() {
         } catch (_) {}
       }
       
-      // Update UI state immediately
+      // Update UI state and cache immediately
       if (action === 'rejected') {
-        setSections(prev => prev.map((section: any) => ({
-          ...section,
-          data: section.data.filter((item: any) => item.id !== itemId)
-        })).filter((section: any) => section.data.length > 0));
+        setSections(prev => {
+          const updated = prev.map((section: any) => ({
+            ...section,
+            data: section.data.filter((item: any) => item.id !== itemId)
+          })).filter((section: any) => section.data.length > 0);
+          cachedSections = updated;
+          return updated;
+        });
       } else {
-        setSections(prev => prev.map((section: any) => ({
-          ...section,
-          data: section.data.map((item: any) => item.id === itemId ? { ...item, status: action } : item)
-        })));
+        setSections(prev => {
+          const updated = prev.map((section: any) => ({
+            ...section,
+            data: section.data.map((item: any) => item.id === itemId ? { ...item, status: action } : item)
+          }));
+          cachedSections = updated;
+          return updated;
+        });
       }
       
     } catch (e) {
