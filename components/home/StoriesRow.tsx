@@ -248,7 +248,6 @@ export default function StoriesRow() {
       }}
     />
   );
-  };
 
   const renderItem = ({ item }: { item: StoryGroup }) => {
     const isViewed = viewedIds.includes(item.uid);

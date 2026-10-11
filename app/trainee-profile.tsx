@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,26 +9,51 @@ import { db } from '../lib/firebase';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 
+interface CachedTrainee {
+  trainee: any;
+  timestamp: number;
+}
+
+const traineeProfileCache: Record<string, CachedTrainee> = {};
+
 export default function TraineeProfilePage() {
   const { uid } = useLocalSearchParams<{ uid: string }>();
-  const [trainee, setTrainee] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = uid ? traineeProfileCache[uid] : undefined;
+
+  const [trainee, setTrainee] = useState<any>(cached?.trainee || null);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
-    fetchTrainee();
+    if (!uid) return;
+    const c = traineeProfileCache[uid];
+    if (c) {
+      setTrainee(c.trainee);
+      setLoading(false);
+      if (Date.now() - c.timestamp > 2 * 60 * 1000) {
+        fetchTrainee(false);
+      }
+    } else {
+      fetchTrainee(true);
+    }
   }, [uid]);
 
-  const fetchTrainee = async () => {
+  const fetchTrainee = async (showLoading: boolean) => {
+    if (showLoading) setLoading(true);
     try {
-      const docRef = doc(db, 'users', uid);
+      const docRef = doc(db, 'users', uid!);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setTrainee(docSnap.data());
+        const data = docSnap.data();
+        setTrainee(data);
+        traineeProfileCache[uid!] = {
+          trainee: data,
+          timestamp: Date.now(),
+        };
       }
     } catch (e) {
       console.warn(e);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -67,7 +93,13 @@ export default function TraineeProfilePage() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <Image
+            source={avatarUrl}
+            placeholder={`https://ui-avatars.com/api/?name=${encodeURIComponent(trainee.name || 'Trainee')}&background=10B981&color=fff&size=150`}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            style={styles.avatar}
+          />
           <Text style={styles.name}>{trainee.name || trainee.username || 'Trainee'}</Text>
           <Text style={styles.location}>
             <Ionicons name="location" size={14} color={Colors.textMuted} /> {trainee.city || 'Unknown City'}

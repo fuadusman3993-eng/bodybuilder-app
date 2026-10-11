@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert,
+  ActivityIndicator, Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,47 +25,76 @@ interface CoachProfile {
   is_verified: boolean;
 }
 
+interface CachedCoachProfile {
+  coach: CoachProfile;
+  requestStatus: 'none' | 'pending' | 'accepted' | 'rejected';
+  timestamp: number;
+}
+
+const coachProfileCache: Record<string, CachedCoachProfile> = {};
+
 export default function CoachProfilePage() {
   const router = useRouter();
   const { uid } = useLocalSearchParams<{ uid: string }>();
   const { user } = useUserStore();
-  const [coach, setCoach] = useState<CoachProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const cached = uid ? coachProfileCache[uid] : undefined;
+
+  const [coach, setCoach] = useState<CoachProfile | null>(cached?.coach || null);
+  const [loading, setLoading] = useState(!cached);
   const [requesting, setRequesting] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
+  const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>(cached?.requestStatus || 'none');
 
   useEffect(() => {
-    fetchCoach();
-    checkRequestStatus();
+    if (!uid) return;
+    const c = coachProfileCache[uid];
+    if (c) {
+      setCoach(c.coach);
+      setRequestStatus(c.requestStatus);
+      setLoading(false);
+      if (Date.now() - c.timestamp > 2 * 60 * 1000) {
+        fetchAll(false);
+      }
+    } else {
+      fetchAll(true);
+    }
   }, [uid]);
 
-  const fetchCoach = async () => {
+  const fetchAll = async (showLoading: boolean) => {
+    if (showLoading) setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('coach_profiles')
-        .select('*')
-        .eq('uid', uid)
-        .single();
-      if (error) throw error;
-      setCoach(data);
+      const coachPromise = (async () => {
+        try {
+          const { data } = await supabase.from('coach_profiles').select('*').eq('uid', uid).single();
+          return data;
+        } catch { return null; }
+      })();
+
+      const reqPromise = (async () => {
+        if (!user.uid) return 'none';
+        try {
+          const { data } = await supabase.from('coach_requests').select('status').eq('trainee_uid', user.uid).eq('coach_uid', uid).order('created_at', { ascending: false }).limit(1).single();
+          return (data?.status as any) || 'none';
+        } catch { return 'none'; }
+      })();
+
+      const [coachData, reqStat] = await Promise.all([coachPromise, reqPromise]);
+
+      if (coachData) {
+        setCoach(coachData);
+        setRequestStatus(reqStat);
+
+        coachProfileCache[uid!] = {
+          coach: coachData,
+          requestStatus: reqStat,
+          timestamp: Date.now(),
+        };
+      }
     } catch (e) {
       console.warn(e);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
-
-  const checkRequestStatus = async () => {
-    if (!user.uid) return;
-    const { data } = await supabase
-      .from('coach_requests')
-      .select('status')
-      .eq('trainee_uid', user.uid)
-      .eq('coach_uid', uid)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    if (data) setRequestStatus(data.status as any);
   };
 
   const sendRequest = async () => {
@@ -88,6 +118,9 @@ export default function CoachProfilePage() {
       });
       if (error) throw error;
       setRequestStatus('pending');
+      if (coachProfileCache[uid!]) {
+        coachProfileCache[uid!].requestStatus = 'pending';
+      }
       Alert.alert('✅ Request Sent!', 'The coach will review your request.');
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to send request.');
@@ -189,7 +222,10 @@ export default function CoachProfilePage() {
         {/* Avatar & Name */}
         <View style={styles.heroSection}>
           <Image
-            source={{ uri: coach.avatar_url || 'https://ui-avatars.com/api/?name=Coach&background=2A3241&color=fff&size=150' }}
+            source={coach.avatar_url || 'https://ui-avatars.com/api/?name=Coach&background=2A3241&color=fff&size=150'}
+            placeholder="https://ui-avatars.com/api/?name=Coach&background=2A3241&color=fff&size=150"
+            cachePolicy="memory-disk"
+            contentFit="cover"
             style={styles.avatar}
           />
           <View style={styles.nameRow}>

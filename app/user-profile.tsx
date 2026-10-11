@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Dimensions, Image, Alert, ActivityIndicator,
+  Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,95 +20,161 @@ const CARD_BG = 'rgba(30, 41, 59, 0.5)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const GRID_SIZE = (width - 28 - 16) / 3;
 
+interface CachedUserProfile {
+  profile: any;
+  coachData: any;
+  posts: any[];
+  followers: number;
+  following: number;
+  isFollowing: boolean;
+  requestSent: boolean;
+  timestamp: number;
+}
+
+// Module-level in-memory cache for visited user profiles
+const profileCache: Record<string, CachedUserProfile> = {};
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache
+
 export default function UserProfilePage() {
   const router = useRouter();
   const { uid } = useLocalSearchParams<{ uid: string }>();
   const { user: currentUser } = useUserStore();
 
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
-  const [coachData, setCoachData] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [followers, setFollowers] = useState(0);
-  const [following, setFollowing] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [requestSent, setRequestSent] = useState(false);
+  const cached = uid ? profileCache[uid] : undefined;
+
+  const [loading, setLoading] = useState(!cached);
+  const [profile, setProfile] = useState<any>(cached?.profile || null);
+  const [coachData, setCoachData] = useState<any>(cached?.coachData || null);
+  const [posts, setPosts] = useState<any[]>(cached?.posts || []);
+  const [followers, setFollowers] = useState(cached?.followers || 0);
+  const [following, setFollowing] = useState(cached?.following || 0);
+  const [isFollowing, setIsFollowing] = useState(cached?.isFollowing || false);
+  const [requestSent, setRequestSent] = useState(cached?.requestSent || false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const isOwnProfile = uid === currentUser.uid;
 
   useEffect(() => {
-    if (uid) loadAll();
+    if (!uid) return;
+
+    const c = profileCache[uid];
+    if (c) {
+      // Instantly populate state from cache with 0ms delay
+      setProfile(c.profile);
+      setCoachData(c.coachData);
+      setPosts(c.posts);
+      setFollowers(c.followers);
+      setFollowing(c.following);
+      setIsFollowing(c.isFollowing);
+      setRequestSent(c.requestSent);
+      setLoading(false);
+
+      // Only refresh silently in background if cache is older than 2 minutes
+      if (Date.now() - c.timestamp > 2 * 60 * 1000) {
+        fetchAll(false);
+      }
+    } else {
+      // First visit: show skeleton and fetch
+      fetchAll(true);
+    }
   }, [uid]);
 
-  const loadAll = async () => {
-    setLoading(true);
-    await Promise.all([
-      fetchFirebaseProfile(),
-      fetchSupabaseData(),
-    ]);
-    setLoading(false);
-  };
-
-  const fetchFirebaseProfile = async () => {
+  const fetchAll = async (showLoading: boolean) => {
+    if (showLoading) setLoading(true);
     try {
-      const snap = await getDoc(doc(db, 'users', uid!));
-      if (snap.exists()) setProfile(snap.data());
-    } catch (e) { console.warn(e); }
-  };
+      const pPromise = (async () => {
+        try {
+          const snap = await getDoc(doc(db, 'users', uid!));
+          return snap.exists() ? snap.data() : null;
+        } catch { return null; }
+      })();
 
-  const fetchSupabaseData = async () => {
-    try {
-      // Coach profile
-      const { data: cp } = await supabase
-        .from('coach_profiles')
-        .select('*')
-        .eq('uid', uid)
-        .single();
-      setCoachData(cp || null);
+      const cpPromise = (async () => {
+        try {
+          const { data } = await supabase.from('coach_profiles').select('*').eq('uid', uid).single();
+          return data;
+        } catch { return null; }
+      })();
 
-      // Posts
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('uid', uid)
-        .order('created_at', { ascending: false });
-      setPosts(postsData || []);
+      const postsPromise = (async () => {
+        try {
+          const { data } = await supabase.from('posts').select('*').eq('uid', uid).order('created_at', { ascending: false });
+          return data || [];
+        } catch { return []; }
+      })();
 
-      // Followers count
-      const { count: fCount } = await supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_uid', uid);
-      setFollowers(fCount || 0);
+      const fCountPromise = (async () => {
+        try {
+          const { count } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_uid', uid);
+          return count || 0;
+        } catch { return 0; }
+      })();
 
-      // Following count
-      const { count: fgCount } = await supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_uid', uid);
-      setFollowing(fgCount || 0);
+      const fgCountPromise = (async () => {
+        try {
+          const { count } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_uid', uid);
+          return count || 0;
+        } catch { return 0; }
+      })();
 
-      // Is current user following this profile?
-      if (currentUser.uid && currentUser.uid !== uid) {
-        const { data: fRow } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('follower_uid', currentUser.uid)
-          .eq('following_uid', uid)
-          .single();
-        setIsFollowing(!!fRow);
+      const fRowPromise = (async () => {
+        if (!currentUser.uid || currentUser.uid === uid) return false;
+        try {
+          const { data } = await supabase.from('follows').select('id').eq('follower_uid', currentUser.uid).eq('following_uid', uid).single();
+          return !!data;
+        } catch { return false; }
+      })();
 
-        // Has request been sent?
-        const { data: rRow } = await supabase
-          .from('coach_requests')
-          .select('id')
-          .eq('coach_uid', uid)
-          .eq('trainee_uid', currentUser.uid)
-          .single();
-        setRequestSent(!!rRow);
-      }
-    } catch (e) { console.warn(e); }
+      const rRowPromise = (async () => {
+        if (!currentUser.uid || currentUser.uid === uid) return false;
+        try {
+          const { data } = await supabase.from('coach_requests').select('id').eq('coach_uid', uid).eq('trainee_uid', currentUser.uid).single();
+          return !!data;
+        } catch { return false; }
+      })();
+
+      const [newProfileSnap, newCoachData, newPosts, newFollowers, newFollowing, newIsFollowing, newRequestSent] = await Promise.all([
+        pPromise,
+        cpPromise,
+        postsPromise,
+        fCountPromise,
+        fgCountPromise,
+        fRowPromise,
+        rRowPromise,
+      ]);
+
+      const newProfile = newProfileSnap || profileCache[uid!]?.profile || null;
+      const newCoachData = cpRes?.data || null;
+      const newPosts = postsRes?.data || [];
+      const newFollowers = fCountRes?.count || 0;
+      const newFollowing = fgCountRes?.count || 0;
+      const newIsFollowing = !!fRowRes?.data;
+      const newRequestSent = !!rRowRes?.data;
+
+      setProfile(newProfile);
+      setCoachData(newCoachData);
+      setPosts(newPosts);
+      setFollowers(newFollowers);
+      setFollowing(newFollowing);
+      setIsFollowing(newIsFollowing);
+      setRequestSent(newRequestSent);
+
+      // Save to cache
+      profileCache[uid!] = {
+        profile: newProfile,
+        coachData: newCoachData,
+        posts: newPosts,
+        followers: newFollowers,
+        following: newFollowing,
+        isFollowing: newIsFollowing,
+        requestSent: newRequestSent,
+        timestamp: Date.now(),
+      };
+    } catch (e) {
+      console.warn('Profile fetch error:', e);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   };
 
   const handleFollow = async () => {
@@ -121,6 +188,10 @@ export default function UserProfilePage() {
           .eq('following_uid', uid);
         setIsFollowing(false);
         setFollowers(f => Math.max(0, f - 1));
+        if (profileCache[uid!]) {
+          profileCache[uid!].isFollowing = false;
+          profileCache[uid!].followers = Math.max(0, profileCache[uid!].followers - 1);
+        }
       } else {
         await supabase.from('follows').insert({
           follower_uid: currentUser.uid,
@@ -128,6 +199,10 @@ export default function UserProfilePage() {
         });
         setIsFollowing(true);
         setFollowers(f => f + 1);
+        if (profileCache[uid!]) {
+          profileCache[uid!].isFollowing = true;
+          profileCache[uid!].followers = profileCache[uid!].followers + 1;
+        }
       }
     } catch (e) { console.warn(e); }
     setActionLoading(false);
@@ -146,6 +221,9 @@ export default function UserProfilePage() {
         Alert.alert('Error', error.message);
       } else {
         setRequestSent(true);
+        if (profileCache[uid!]) {
+          profileCache[uid!].requestSent = true;
+        }
         // Add notification for coach
         await supabase.from('notifications').insert({
           user_uid: uid,
@@ -251,9 +329,11 @@ export default function UserProfilePage() {
         <View style={styles.topSection}>
           <View style={styles.avatarRing}>
             <Image
-              source={{ uri: avatarUri }}
+              source={avatarUri}
+              placeholder={defaultAvatar}
+              cachePolicy="memory-disk"
+              contentFit="cover"
               style={styles.avatar}
-              defaultSource={{ uri: defaultAvatar }}
             />
           </View>
 
@@ -418,7 +498,12 @@ export default function UserProfilePage() {
           <View style={styles.grid}>
             {posts.map((post) => (
               <TouchableOpacity key={post.id} style={styles.gridItem} activeOpacity={0.85}>
-                <Image source={{ uri: post.image_url }} style={styles.gridImg} />
+                <Image
+                  source={post.image_url}
+                  cachePolicy="memory-disk"
+                  contentFit="cover"
+                  style={styles.gridImg}
+                />
                 <View style={styles.gridLikes}>
                   <Ionicons name="heart" size={12} color="#FFF" />
                   <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
