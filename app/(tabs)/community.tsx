@@ -331,6 +331,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 24,
@@ -356,6 +359,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
     gap: 10,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
   },
   tab: {
     paddingVertical: 7,
@@ -377,6 +383,10 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     paddingBottom: 40,
+    paddingHorizontal: 12,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
   },
   skeletonCard: {
     marginBottom: 24,
