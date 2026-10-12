@@ -188,11 +188,11 @@ export default function PostCard({
     ? timeAgo(post.created_at) + (post.city ? ` • ${post.city}` : '')
     : post.isFollowing
       ? `Following • ${timeAgo(post.created_at)}`
-      : `Suggested for you • ${timeAgo(post.created_at)}`;
+      : `Suggested for you`;
 
   return (
     <View style={styles.container}>
-      {/* ── 1. HEADER ── */}
+      {/* ── 1. HEADER (Instagram style) ── */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.userInfo}
@@ -206,7 +206,7 @@ export default function PostCard({
             contentFit="cover"
             style={styles.avatar}
           />
-          <View>
+          <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={styles.userName}>{post.username || 'User'}</Text>
               {post.isCoach && (
@@ -217,7 +217,7 @@ export default function PostCard({
           </View>
         </TouchableOpacity>
 
-        {/* Right side: Follow button + menu */}
+        {/* Right side: Follow button + 3-dots */}
         <View style={styles.headerRight}>
           {!post.isSelf && (
             <TouchableOpacity
@@ -239,7 +239,7 @@ export default function PostCard({
         </View>
       </View>
 
-      {/* ── 2. PHOTO ── */}
+      {/* ── 2. PHOTO (Edge-to-Edge, Zero Margins, Zero Radius) ── */}
       {!!post.image_url && (
         <TouchableOpacity
           activeOpacity={0.95}
@@ -261,9 +261,8 @@ export default function PostCard({
         </TouchableOpacity>
       )}
 
-      {/* ── 3. ACTION BAR ── */}
+      {/* ── 3. ACTION BAR (Heart, Comment, Repost, Send, Bookmark) ── */}
       <View style={styles.actions}>
-        {/* Left: Like · Comment · Send */}
         <View style={styles.leftActions}>
           {/* Like */}
           <TouchableOpacity
@@ -291,7 +290,12 @@ export default function PostCard({
             <Text style={styles.actionText}>{commentsCount}</Text>
           </TouchableOpacity>
 
-          {/* Send / Share */}
+          {/* Repost */}
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <Ionicons name="repeat-outline" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+
+          {/* Send */}
           <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
             <Ionicons name="paper-plane-outline" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -311,13 +315,31 @@ export default function PostCard({
         </TouchableOpacity>
       </View>
 
-      {/* ── 4. LIKED BY ROW ── */}
+      {/* ── 4. LIKED BY ROW (Overlapping Avatars + Text) ── */}
       {(post.likes_count || 0) > 0 && (
         <View style={styles.likedByRow}>
+          <View style={styles.likedAvatars}>
+            <Image
+              source={defaultAvatar}
+              placeholder={defaultAvatar}
+              cachePolicy="memory-disk"
+              contentFit="cover"
+              style={styles.likedAvatar1}
+            />
+            <Image
+              source={currentAvatar}
+              placeholder={defaultAvatar}
+              cachePolicy="memory-disk"
+              contentFit="cover"
+              style={styles.likedAvatar2}
+            />
+          </View>
           <Text style={styles.likedByText}>
-            {post.recentLikerName && post.recentLikerName !== post.username
-              ? `Liked by ${post.recentLikerName}${post.likes_count > 1 ? ' and others' : ''}`
-              : `${post.likes_count} like${post.likes_count !== 1 ? 's' : ''}`}
+            Liked by{' '}
+            <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>
+              {post.recentLikerName || 'remuabu'}
+            </Text>
+            {(post.likes_count || 0) > 1 ? ' and others' : ''}
           </Text>
         </View>
       )}
@@ -501,22 +523,19 @@ export default function PostCard({
 }
 
 const styles = StyleSheet.create({
+  // Seamless Edge-to-Edge Container (No rounded box, no borders)
   container: {
-    backgroundColor: '#0F172A',
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'transparent',
+    marginBottom: 24,
     width: '100%',
   },
 
-  // ── Header ──
+  // ── Header (Padding 12) ──
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
   },
   userInfo: {
@@ -526,13 +545,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.surface,
   },
   userName: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
@@ -544,26 +563,26 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   followBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
   followingBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   followBtnText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#000',
+    color: '#FFFFFF',
   },
   followingBtnText: {
-    color: Colors.primary,
+    color: Colors.textSecondary,
   },
   menuBtn: {
     width: 28,
@@ -572,38 +591,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Image ──
+  // ── Edge-to-Edge Image (Zero Radius, Zero Margin) ──
   imageContainer: {
     width: '100%',
-    backgroundColor: '#070B14',
+    backgroundColor: '#000000',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },
   postImage: {
     width: '100%',
-    maxHeight: 500,
-    backgroundColor: '#070B14',
+    maxHeight: 560,
+    backgroundColor: '#000000',
   },
 
-  // ── Actions ──
+  // ── Actions (Padding 12) ──
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 4,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   actionText: {
     fontSize: 13,
@@ -614,20 +633,42 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 
-  // ── Liked by ──
+  // ── Liked by (Overlapping Avatars + Text) ──
   likedByRow: {
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 4,
     paddingBottom: 4,
+  },
+  likedAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likedAvatar1: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#0A0F1A',
+  },
+  likedAvatar2: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginLeft: -6,
+    borderWidth: 1.5,
+    borderColor: '#0A0F1A',
   },
   likedByText: {
     fontSize: 12.5,
-    fontWeight: '600',
     color: Colors.textPrimary,
   },
 
   // ── Caption ──
   captionWrap: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingTop: 4,
     paddingBottom: 4,
   },
@@ -643,8 +684,8 @@ const styles = StyleSheet.create({
 
   // ── Comments Preview ──
   viewCommentsRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   viewCommentsText: {
     fontSize: 12.5,
@@ -655,8 +696,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   tinyAvatar: {
     width: 22,

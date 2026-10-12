@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     paddingBottom: 40,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
     maxWidth: 580,
     width: '100%',
     alignSelf: 'center',
