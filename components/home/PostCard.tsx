@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   TextInput, FlatList, KeyboardAvoidingView, Platform,
-  ActivityIndicator,
+  ActivityIndicator, Image as RNImage,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +62,25 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
   const { user: currentUser } = useUserStore();
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
   const currentAvatar = currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=10B981&color=fff&size=150`;
+
+  // Image Aspect Ratio & Full View State
+  const [aspectRatio, setAspectRatio] = useState<number>(1);
+  const [showFullImage, setShowFullImage] = useState(false);
+
+  useEffect(() => {
+    if (post.image_url) {
+      RNImage.getSize(
+        post.image_url,
+        (w, h) => {
+          if (w && h) {
+            const ratio = w / h;
+            setAspectRatio(Math.max(0.75, Math.min(1.91, ratio)));
+          }
+        },
+        () => {}
+      );
+    }
+  }, [post.image_url]);
 
   // Comments State
   const [showComments, setShowComments] = useState(false);
@@ -189,16 +208,29 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
         </TouchableOpacity>
       </View>
 
-      {/* 2. Photo: Contained, balanced height so everything fits in 1 screen */}
+      {/* 2. Photo: Contained, natural aspect ratio, full image visible with ZERO cropping */}
       {!!post.image_url && (
-        <View style={styles.imageContainer}>
+        <TouchableOpacity
+          activeOpacity={0.95}
+          onPress={() => setShowFullImage(true)}
+          style={styles.imageContainer}
+        >
           <Image
             source={post.image_url}
             cachePolicy="memory-disk"
-            contentFit="cover"
-            style={styles.postImage}
+            contentFit="contain"
+            onLoad={(e) => {
+              if (e.source?.width && e.source?.height) {
+                const ratio = e.source.width / e.source.height;
+                setAspectRatio(Math.max(0.75, Math.min(1.91, ratio)));
+              }
+            }}
+            style={[
+              styles.postImage,
+              { aspectRatio },
+            ]}
           />
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* 3. Action Bar: Immediately below photo */}
@@ -397,6 +429,34 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* FULL SCREEN IMAGE VIEWER MODAL */}
+      <Modal
+        visible={showFullImage}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowFullImage(false)}
+      >
+        <View style={styles.fullImageModal}>
+          <TouchableOpacity
+            style={styles.fullImageClose}
+            onPress={() => setShowFullImage(false)}
+          >
+            <Ionicons name="close" size={26} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+            onPress={() => setShowFullImage(false)}
+          >
+            <Image
+              source={post.image_url}
+              contentFit="contain"
+              style={styles.fullImage}
+            />
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -443,13 +503,37 @@ const styles = StyleSheet.create({
   // Contained Image
   imageContainer: {
     width: '100%',
-    backgroundColor: '#0A0F1D',
+    backgroundColor: '#070B14',
     overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   postImage: {
     width: '100%',
-    height: 310,
-    backgroundColor: '#0A0F1D',
+    maxHeight: 500,
+    backgroundColor: '#070B14',
+  },
+  fullImageModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImageClose: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 24 : 50,
+    right: 20,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '95%',
+    height: '85%',
   },
 
   // Actions
