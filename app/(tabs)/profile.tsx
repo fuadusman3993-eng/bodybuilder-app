@@ -290,7 +290,19 @@ export default function ProfileScreen() {
           )
         )}
 
-        {activeTab !== 'Posts' && (
+        {activeTab === 'Saved' && (
+          <TouchableOpacity
+            style={styles.emptyPosts}
+            onPress={() => router.push('/saved-posts')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bookmark-outline" size={44} color={Colors.primary} />
+            <Text style={styles.emptyTitle}>View Saved Posts</Text>
+            <Text style={styles.emptySubtitle}>Tap here to view all your bookmarked posts</Text>
+          </TouchableOpacity>
+        )}
+
+        {activeTab !== 'Posts' && activeTab !== 'Saved' && (
           <View style={styles.emptyPosts}>
             <Ionicons name="construct-outline" size={40} color={Colors.textMuted} />
             <Text style={styles.emptySubtitle}>Coming soon</Text>

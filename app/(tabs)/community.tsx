@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, StyleSheet,
   RefreshControl,
@@ -32,25 +32,28 @@ export default function CommunityScreen() {
   const [posts, setPosts] = useState<RealPost[]>(cachedPosts);
   const [loading, setLoading] = useState(cachedPosts.length === 0);
   const [refreshing, setRefreshing] = useState(false);
-  const [followingUids, setFollowingUids] = useState<string[]>([]);
+  const followingUidsRef = useRef<Set<string>>(new Set());
+  const [followingUidsArr, setFollowingUidsArr] = useState<string[]>([]);
 
-  const fetchFollowing = async () => {
-    if (!user?.uid) return;
+  const fetchFollowing = async (): Promise<Set<string>> => {
+    if (!user?.uid) return new Set();
     try {
       const { data } = await supabase
         .from('follows')
         .select('following_uid')
         .eq('follower_uid', user.uid);
-      if (data) {
-        setFollowingUids(data.map(f => f.following_uid));
-      }
+      const set = new Set<string>((data || []).map((f: any) => f.following_uid));
+      followingUidsRef.current = set;
+      setFollowingUidsArr(Array.from(set));
+      return set;
     } catch (_) {}
+    return new Set();
   };
 
   const fetchPosts = useCallback(async (showLoading = false) => {
     if (showLoading && cachedPosts.length === 0) setLoading(true);
     try {
-      // 1. Fetch raw posts from Supabase
+      // 1. Raw posts
       const { data: dbPosts, error } = await supabase
         .from('posts')
         .select('*')
@@ -59,7 +62,7 @@ export default function CommunityScreen() {
 
       if (error) throw error;
 
-      // 2. Fetch user's likes if logged in
+      // 2. My likes
       let likedSet = new Set<string>();
       if (user?.uid) {
         try {
@@ -67,19 +70,35 @@ export default function CommunityScreen() {
             .from('post_likes')
             .select('post_id')
             .eq('uid', user.uid);
-          if (myLikes) {
-            likedSet = new Set(myLikes.map(l => l.post_id));
-          }
+          if (myLikes) likedSet = new Set(myLikes.map((l: any) => l.post_id));
         } catch (_) {}
       }
 
-      // 3. Enrich posts with author info (role, name, avatar, city)
+      // 3. My bookmarks
+      let savedSet = new Set<string>();
+      if (user?.uid) {
+        try {
+          const { data: mySaves } = await supabase
+            .from('post_saves')
+            .select('post_id')
+            .eq('uid', user.uid);
+          if (mySaves) savedSet = new Set(mySaves.map((s: any) => s.post_id));
+        } catch (_) {}
+      }
+
+      // 4. Following set (may already be populated)
+      const followingSet = followingUidsRef.current.size > 0
+        ? followingUidsRef.current
+        : await fetchFollowing();
+
+      // 5. Enrich posts with Firebase author info
       const enriched: RealPost[] = [];
       for (const p of dbPosts || []) {
         let isCoach = false;
         let username = p.username || 'User';
         let avatar = p.avatar_url || '';
         let city = '';
+        let recentLikerName: string | undefined;
 
         try {
           const snap = await getDoc(doc(db, 'users', p.uid));
@@ -92,6 +111,21 @@ export default function CommunityScreen() {
           }
         } catch (_) {}
 
+        // Fetch most recent liker name (for "Liked by X" row)
+        if ((p.likes_count || 0) > 0) {
+          try {
+            const { data: likerRows } = await supabase
+              .from('post_likes')
+              .select('uid, username')
+              .eq('post_id', p.id)
+              .neq('uid', user?.uid || '')
+              .limit(1);
+            if (likerRows && likerRows.length > 0) {
+              recentLikerName = likerRows[0].username || undefined;
+            }
+          } catch (_) {}
+        }
+
         enriched.push({
           id: p.id,
           uid: p.uid,
@@ -102,8 +136,12 @@ export default function CommunityScreen() {
           likes_count: p.likes_count || 0,
           created_at: p.created_at,
           isLiked: likedSet.has(p.id),
+          isBookmarked: savedSet.has(p.id),
           isCoach,
           city,
+          recentLikerName,
+          isFollowing: followingSet.has(p.uid),
+          isSelf: p.uid === user?.uid,
         });
       }
 
@@ -120,17 +158,16 @@ export default function CommunityScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchFollowing();
-      const now = Date.now();
-      if (cachedPosts.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
-        setPosts(cachedPosts);
-        setLoading(false);
-        if (now - cacheTimestamp > 20 * 1000) {
-          fetchPosts(false);
+      fetchFollowing().then(() => {
+        const now = Date.now();
+        if (cachedPosts.length > 0 && (now - cacheTimestamp) < CACHE_TTL_MS) {
+          setPosts(cachedPosts);
+          setLoading(false);
+          if (now - cacheTimestamp > 20 * 1000) fetchPosts(false);
+          return;
         }
-        return;
-      }
-      fetchPosts(cachedPosts.length === 0);
+        fetchPosts(cachedPosts.length === 0);
+      });
     }, [fetchPosts])
   );
 
@@ -139,24 +176,19 @@ export default function CommunityScreen() {
     fetchPosts(false);
   };
 
+  // ── Like Toggle ──
   const handleToggleLike = async (postId: string) => {
-    if (!user?.uid) {
-      router.push('/login');
-      return;
-    }
+    if (!user?.uid) { router.push('/login'); return; }
 
-    // Optimistic UI update
     setPosts(prev => {
       const next = prev.map(p => {
-        if (p.id === postId) {
-          const wasLiked = !!p.isLiked;
-          return {
-            ...p,
-            isLiked: !wasLiked,
-            likes_count: wasLiked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1,
-          };
-        }
-        return p;
+        if (p.id !== postId) return p;
+        const wasLiked = !!p.isLiked;
+        return {
+          ...p,
+          isLiked: !wasLiked,
+          likes_count: wasLiked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1,
+        };
       });
       cachedPosts = next;
       return next;
@@ -169,7 +201,11 @@ export default function CommunityScreen() {
     try {
       if (willLike) {
         try {
-          await supabase.from('post_likes').insert({ post_id: postId, uid: user.uid });
+          await supabase.from('post_likes').insert({
+            post_id: postId,
+            uid: user.uid,
+            username: user.name || 'User',
+          });
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: (targetPost.likes_count || 0) + 1 }).eq('id', postId);
         if (targetPost.uid !== user.uid) {
@@ -193,25 +229,102 @@ export default function CommunityScreen() {
     }
   };
 
-  // Algorithmic feed filtering
+  // ── Bookmark Toggle ──
+  const handleToggleBookmark = async (postId: string) => {
+    if (!user?.uid) { router.push('/login'); return; }
+
+    setPosts(prev => {
+      const next = prev.map(p =>
+        p.id === postId ? { ...p, isBookmarked: !p.isBookmarked } : p
+      );
+      cachedPosts = next;
+      return next;
+    });
+
+    const targetPost = posts.find(p => p.id === postId);
+    const willSave = !targetPost?.isBookmarked;
+
+    try {
+      if (willSave) {
+        await supabase.from('post_saves').insert({ post_id: postId, uid: user.uid });
+      } else {
+        await supabase.from('post_saves').delete().eq('post_id', postId).eq('uid', user.uid);
+      }
+    } catch (e) {
+      console.warn('Bookmark toggle error:', e);
+    }
+  };
+
+  // ── Follow Toggle ──
+  const handleFollowToggle = async (targetUid: string, isCurrentlyFollowing: boolean) => {
+    if (!user?.uid) return;
+
+    // Optimistic: flip isFollowing on all posts by this user
+    setPosts(prev => {
+      const next = prev.map(p =>
+        p.uid === targetUid ? { ...p, isFollowing: !isCurrentlyFollowing } : p
+      );
+      cachedPosts = next;
+      return next;
+    });
+
+    // Update local set
+    const newSet = new Set(followingUidsRef.current);
+    if (isCurrentlyFollowing) {
+      newSet.delete(targetUid);
+    } else {
+      newSet.add(targetUid);
+    }
+    followingUidsRef.current = newSet;
+    setFollowingUidsArr(Array.from(newSet));
+
+    try {
+      if (isCurrentlyFollowing) {
+        await supabase.from('follows')
+          .delete()
+          .eq('follower_uid', user.uid)
+          .eq('following_uid', targetUid);
+      } else {
+        await supabase.from('follows').insert({
+          follower_uid: user.uid,
+          following_uid: targetUid,
+        });
+        try {
+          await supabase.from('notifications').insert({
+            user_uid: targetUid,
+            sender_uid: user.uid,
+            type: 'follow',
+            message: `${user.name || 'Someone'} started following you.`,
+          });
+        } catch (_) {}
+      }
+    } catch (e) {
+      console.warn('Follow toggle error:', e);
+      // Revert on error
+      setPosts(prev => {
+        const next = prev.map(p =>
+          p.uid === targetUid ? { ...p, isFollowing: isCurrentlyFollowing } : p
+        );
+        cachedPosts = next;
+        return next;
+      });
+    }
+  };
+
+  // ── Feed Sorting ──
   const getFilteredPosts = () => {
     if (activeTab === 'Following') {
-      return posts.filter(p => followingUids.includes(p.uid));
+      return posts.filter(p => followingUidsArr.includes(p.uid) || !!p.isSelf);
     }
     if (activeTab === 'Recent') {
       return [...posts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
-    // "For You" - Algorithmic ranking (Coach priority + Likes engagement + Recency decay)
     const now = Date.now();
     return [...posts].sort((a, b) => {
-      const aCoachBonus = a.isCoach ? 30 : 0;
-      const bCoachBonus = b.isCoach ? 30 : 0;
-      const aLikesScore = (a.likes_count || 0) * 3;
-      const bLikesScore = (b.likes_count || 0) * 3;
-      const aHours = Math.max(0, (now - new Date(a.created_at).getTime()) / (1000 * 60 * 60));
-      const bHours = Math.max(0, (now - new Date(b.created_at).getTime()) / (1000 * 60 * 60));
-      const aScore = aCoachBonus + aLikesScore - (aHours * 0.4);
-      const bScore = bCoachBonus + bLikesScore - (bHours * 0.4);
+      const aScore = (a.isCoach ? 30 : 0) + (a.likes_count || 0) * 3
+        - Math.max(0, (now - new Date(a.created_at).getTime()) / 3600000) * 0.4;
+      const bScore = (b.isCoach ? 30 : 0) + (b.likes_count || 0) * 3
+        - Math.max(0, (now - new Date(b.created_at).getTime()) / 3600000) * 0.4;
       return bScore - aScore;
     });
   };
@@ -227,17 +340,26 @@ export default function CommunityScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Community</Text>
-        <TouchableOpacity
-          style={styles.createBtn}
-          activeOpacity={0.8}
-          onPress={() => router.push('/create-post')}
-        >
-          <Ionicons name="add" size={20} color="#000" />
-          <Text style={styles.createBtnText}>Post</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={styles.savedBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push('/saved-posts')}
+          >
+            <Ionicons name="bookmark-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.createBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push('/create-post')}
+          >
+            <Ionicons name="add" size={20} color="#000" />
+            <Text style={styles.createBtnText}>Post</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Top Tabs */}
+      {/* Tabs */}
       <View style={styles.tabsContainer}>
         {tabs.map((tab) => (
           <TouchableOpacity
@@ -301,6 +423,8 @@ export default function CommunityScreen() {
             <PostCard
               post={item}
               onToggleLike={handleToggleLike}
+              onToggleBookmark={handleToggleBookmark}
+              onFollowToggle={handleFollowToggle}
               onPressUser={handlePressUser}
             />
           )}
@@ -339,6 +463,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     color: Colors.textPrimary,
+  },
+  savedBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   createBtn: {
     flexDirection: 'row',

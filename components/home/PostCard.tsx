@@ -22,8 +22,12 @@ export interface RealPost {
   comments_count?: number;
   created_at: string;
   isLiked?: boolean;
+  isBookmarked?: boolean;
   isCoach?: boolean;
   city?: string;
+  recentLikerName?: string;
+  isFollowing?: boolean;
+  isSelf?: boolean;
 }
 
 export interface PostComment {
@@ -55,10 +59,18 @@ function timeAgo(dateStr: string) {
 interface PostCardProps {
   post: RealPost;
   onToggleLike?: (postId: string) => void;
+  onToggleBookmark?: (postId: string) => void;
+  onFollowToggle?: (uid: string, isFollowing: boolean) => void;
   onPressUser?: (uid: string) => void;
 }
 
-export default function PostCard({ post, onToggleLike, onPressUser }: PostCardProps) {
+export default function PostCard({
+  post,
+  onToggleLike,
+  onToggleBookmark,
+  onFollowToggle,
+  onPressUser,
+}: PostCardProps) {
   const { user: currentUser } = useUserStore();
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
   const currentAvatar = currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=10B981&color=fff&size=150`;
@@ -90,7 +102,6 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Load comments when modal opens
   useEffect(() => {
     if (showComments) {
       loadComments();
@@ -135,7 +146,6 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
       isCoach: currentUser.role === 'coach',
     };
 
-    // Optimistic UI update
     setComments(prev => [...prev, newComment]);
     setCommentsCount(c => c + 1);
 
@@ -156,7 +166,6 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
         setComments(prev => prev.map(c => c.id === tempId ? data : c));
       }
 
-      // Notify post author if not self
       if (post.uid !== currentUser.uid) {
         try {
           await supabase.from('notifications').insert({
@@ -174,9 +183,16 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
     }
   };
 
+  /* ─── Derived subtitle ─── */
+  const subtitle = post.isSelf
+    ? timeAgo(post.created_at) + (post.city ? ` • ${post.city}` : '')
+    : post.isFollowing
+      ? `Following • ${timeAgo(post.created_at)}`
+      : `Suggested for you • ${timeAgo(post.created_at)}`;
+
   return (
     <View style={styles.container}>
-      {/* 1. Header: Avatar + Username + Location/Time */}
+      {/* ── 1. HEADER ── */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.userInfo}
@@ -197,18 +213,33 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
                 <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
               )}
             </View>
-            <Text style={styles.postMeta}>
-              {timeAgo(post.created_at)}{post.city ? ` • ${post.city}` : ''}
-            </Text>
+            <Text style={styles.postMeta} numberOfLines={1}>{subtitle}</Text>
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => onPressUser?.(post.uid)}>
-          <Ionicons name="ellipsis-horizontal" size={Layout.iconSizeSM} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        {/* Right side: Follow button + menu */}
+        <View style={styles.headerRight}>
+          {!post.isSelf && (
+            <TouchableOpacity
+              style={[styles.followBtn, post.isFollowing && styles.followingBtn]}
+              activeOpacity={0.8}
+              onPress={() => onFollowToggle?.(post.uid, !!post.isFollowing)}
+            >
+              <Text style={[styles.followBtnText, post.isFollowing && styles.followingBtnText]}>
+                {post.isFollowing ? 'Following' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.menuBtn}
+            onPress={() => onPressUser?.(post.uid)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* 2. Photo: Contained, natural aspect ratio, full image visible with ZERO cropping */}
+      {/* ── 2. PHOTO ── */}
       {!!post.image_url && (
         <TouchableOpacity
           activeOpacity={0.95}
@@ -225,18 +256,16 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
                 setAspectRatio(Math.max(0.75, Math.min(1.91, ratio)));
               }
             }}
-            style={[
-              styles.postImage,
-              { aspectRatio },
-            ]}
+            style={[styles.postImage, { aspectRatio }]}
           />
         </TouchableOpacity>
       )}
 
-      {/* 3. Action Bar: Immediately below photo */}
+      {/* ── 3. ACTION BAR ── */}
       <View style={styles.actions}>
+        {/* Left: Like · Comment · Send */}
         <View style={styles.leftActions}>
-          {/* Like Button */}
+          {/* Like */}
           <TouchableOpacity
             style={styles.actionButton}
             activeOpacity={0.7}
@@ -244,7 +273,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
           >
             <Ionicons
               name={post.isLiked ? 'heart' : 'heart-outline'}
-              size={Layout.iconSize}
+              size={26}
               color={post.isLiked ? '#EF4444' : Colors.textPrimary}
             />
             <Text style={[styles.actionText, post.isLiked && { color: '#EF4444' }]}>
@@ -252,24 +281,48 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
             </Text>
           </TouchableOpacity>
 
-          {/* Comment Button (Opens Comments Modal) */}
+          {/* Comment */}
           <TouchableOpacity
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => setShowComments(true)}
           >
-            <Ionicons name="chatbubble-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
+            <Ionicons name="chatbubble-outline" size={24} color={Colors.textPrimary} />
             <Text style={styles.actionText}>{commentsCount}</Text>
           </TouchableOpacity>
 
-          {/* Share Button */}
+          {/* Send / Share */}
           <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-            <Ionicons name="paper-plane-outline" size={Layout.iconSizeSM} color={Colors.textPrimary} />
+            <Ionicons name="paper-plane-outline" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
+
+        {/* Right: Bookmark */}
+        <TouchableOpacity
+          style={styles.bookmarkBtn}
+          activeOpacity={0.7}
+          onPress={() => onToggleBookmark?.(post.id)}
+        >
+          <Ionicons
+            name={post.isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={24}
+            color={post.isBookmarked ? Colors.primary : Colors.textPrimary}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* 4. Caption: Below Actions, Instagram-style */}
+      {/* ── 4. LIKED BY ROW ── */}
+      {(post.likes_count || 0) > 0 && (
+        <View style={styles.likedByRow}>
+          <Text style={styles.likedByText}>
+            {post.recentLikerName && post.recentLikerName !== post.username
+              ? `Liked by ${post.recentLikerName}${post.likes_count > 1 ? ' and others' : ''}`
+              : `${post.likes_count} like${post.likes_count !== 1 ? 's' : ''}`}
+          </Text>
+        </View>
+      )}
+
+      {/* ── 5. CAPTION ── */}
       {!!post.caption && (
         <View style={styles.captionWrap}>
           <Text style={styles.captionText} numberOfLines={3}>
@@ -284,7 +337,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
         </View>
       )}
 
-      {/* 5. Comments preview & quick entry */}
+      {/* ── 6. COMMENTS PREVIEW ── */}
       {commentsCount > 0 ? (
         <TouchableOpacity
           style={styles.viewCommentsRow}
@@ -312,7 +365,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
         </TouchableOpacity>
       )}
 
-      {/* COMMENTS MODAL */}
+      {/* ── COMMENTS MODAL ── */}
       <Modal
         visible={showComments}
         animationType="slide"
@@ -328,25 +381,15 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
             activeOpacity={1}
             onPress={() => setShowComments(false)}
           />
-
           <View style={styles.modalSheet}>
-            {/* Sheet Handle */}
             <View style={styles.sheetHandle} />
-
-            {/* Sheet Header */}
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>
-                Comments ({commentsCount})
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowComments(false)}
-                style={styles.closeBtn}
-              >
+              <Text style={styles.sheetTitle}>Comments ({commentsCount})</Text>
+              <TouchableOpacity onPress={() => setShowComments(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={22} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            {/* Comments List */}
             {loadingComments ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={Colors.primary} />
@@ -357,7 +400,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
                 <Ionicons name="chatbubbles-outline" size={44} color={Colors.textMuted} />
                 <Text style={styles.emptyCommentsTitle}>No comments yet</Text>
                 <Text style={styles.emptyCommentsSubtitle}>
-                  Be the first to share your thoughts on this post!
+                  Be the first to share your thoughts!
                 </Text>
               </View>
             ) : (
@@ -392,7 +435,6 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
               />
             )}
 
-            {/* Bottom Input Bar */}
             <View style={styles.inputBar}>
               <Image
                 source={currentAvatar}
@@ -412,10 +454,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
                 onSubmitEditing={handleAddComment}
               />
               <TouchableOpacity
-                style={[
-                  styles.sendBtn,
-                  (!commentText.trim() || submittingComment) && { opacity: 0.35 }
-                ]}
+                style={[styles.sendBtn, (!commentText.trim() || submittingComment) && { opacity: 0.35 }]}
                 onPress={handleAddComment}
                 disabled={!commentText.trim() || submittingComment}
               >
@@ -430,7 +469,7 @@ export default function PostCard({ post, onToggleLike, onPressUser }: PostCardPr
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* FULL SCREEN IMAGE VIEWER MODAL */}
+      {/* ── FULL SCREEN IMAGE MODAL ── */}
       <Modal
         visible={showFullImage}
         animationType="fade"
@@ -468,9 +507,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     width: '100%',
   },
+
+  // ── Header ──
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -482,6 +523,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   avatar: {
     width: 38,
@@ -495,12 +537,42 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   postMeta: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  followBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  followBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000',
+  },
+  followingBtnText: {
+    color: Colors.primary,
+  },
+  menuBtn: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  // Contained Image
+  // ── Image ──
   imageContainer: {
     width: '100%',
     backgroundColor: '#070B14',
@@ -513,30 +585,8 @@ const styles = StyleSheet.create({
     maxHeight: 500,
     backgroundColor: '#070B14',
   },
-  fullImageModal: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImageClose: {
-    position: 'absolute',
-    top: Platform.OS === 'web' ? 24 : 50,
-    right: 20,
-    zIndex: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '95%',
-    height: '85%',
-  },
 
-  // Actions
+  // ── Actions ──
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -548,23 +598,37 @@ const styles = StyleSheet.create({
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   actionText: {
     fontSize: 13,
     color: Colors.textPrimary,
     fontWeight: '600',
   },
+  bookmarkBtn: {
+    padding: 2,
+  },
 
-  // Caption
+  // ── Liked by ──
+  likedByRow: {
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
+  likedByText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+
+  // ── Caption ──
   captionWrap: {
     paddingHorizontal: 14,
-    paddingTop: 6,
+    paddingTop: 4,
     paddingBottom: 4,
   },
   captionText: {
@@ -577,7 +641,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  // Comments view / add
+  // ── Comments Preview ──
   viewCommentsRow: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -604,15 +668,13 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
 
-  // Modal Styles
+  // ── Comments Modal ──
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
-  backdropDismiss: {
-    flex: 1,
-  },
+  backdropDismiss: { flex: 1 },
   modalSheet: {
     backgroundColor: '#0F172A',
     borderTopLeftRadius: 22,
@@ -653,7 +715,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -661,10 +722,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 40,
   },
-  loadingText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
+  loadingText: { fontSize: 13, color: Colors.textMuted },
   emptyComments: {
     flex: 1,
     justifyContent: 'center',
@@ -684,7 +742,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-
   commentsList: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -700,9 +757,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginTop: 2,
   },
-  commentContent: {
-    flex: 1,
-  },
+  commentContent: { flex: 1 },
   commentAuthorRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -714,16 +769,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textPrimary,
   },
-  commentTime: {
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
+  commentTime: { fontSize: 11, color: Colors.textMuted },
   commentText: {
     fontSize: 13,
     color: Colors.textPrimary,
     lineHeight: 18,
   },
-
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -734,11 +785,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
     backgroundColor: '#0B1120',
   },
-  inputAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
+  inputAvatar: { width: 30, height: 30, borderRadius: 15 },
   commentInput: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -755,5 +802,29 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // ── Full Screen Image ──
+  fullImageModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImageClose: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 24 : 50,
+    right: 20,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '95%',
+    height: '85%',
   },
 });
