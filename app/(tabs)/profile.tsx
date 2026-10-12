@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Image, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Image, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -25,13 +25,15 @@ export default function ProfileScreen() {
 
   const isCoach = user.role === 'coach';
   const defaultTabs = isCoach
-    ? ['Posts', 'Clients', 'Reviews']
+    ? ['Posts', 'Clients', 'Saved']
     : ['Posts', 'Progress', 'Saved'];
 
   const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
+  const [savedPosts, setSavedPosts] = useState<any[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
 
@@ -42,7 +44,7 @@ export default function ProfileScreen() {
   );
 
   const loadAll = async () => {
-    await Promise.all([fetchProfile(), fetchSupabaseStats()]);
+    await Promise.all([fetchProfile(), fetchSupabaseStats(), fetchSavedPosts()]);
   };
 
   const fetchProfile = async () => {
@@ -86,6 +88,48 @@ export default function ProfileScreen() {
       console.warn(e);
     }
   };
+
+  const fetchSavedPosts = async () => {
+    const uid = user.uid;
+    if (!uid) return;
+    setLoadingSaved(true);
+    try {
+      const { data: saves, error } = await supabase
+        .from('post_saves')
+        .select('post_id, created_at')
+        .eq('uid', uid)
+        .order('created_at', { ascending: false });
+
+      if (error || !saves || saves.length === 0) {
+        setSavedPosts([]);
+        setLoadingSaved(false);
+        return;
+      }
+
+      const postIds = saves.map((s: any) => s.post_id);
+      const { data: dbPosts } = await supabase
+        .from('posts')
+        .select('*')
+        .in('id', postIds);
+
+      if (dbPosts) {
+        const ordered = postIds
+          .map((id: string) => dbPosts.find((p: any) => p.id === id))
+          .filter(Boolean);
+        setSavedPosts(ordered);
+      }
+    } catch (e) {
+      console.warn('Error fetching saved posts in profile:', e);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Saved') {
+      fetchSavedPosts();
+    }
+  }, [activeTab]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -251,9 +295,9 @@ export default function ProfileScreen() {
             const active = activeTab === tab;
             const icon: any = tab === 'Posts'
               ? 'grid-outline'
-              : tab.includes('Clients') || tab.includes('Progress')
-              ? 'stats-chart-outline'
-              : 'bookmark-outline';
+              : tab === 'Saved'
+              ? 'bookmark-outline'
+              : 'stats-chart-outline';
             return (
               <TouchableOpacity
                 key={tab}
@@ -290,16 +334,36 @@ export default function ProfileScreen() {
           )
         )}
 
+        {/* ── Saved Posts Grid ── */}
         {activeTab === 'Saved' && (
-          <TouchableOpacity
-            style={styles.emptyPosts}
-            onPress={() => router.push('/saved-posts')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="bookmark-outline" size={44} color={Colors.primary} />
-            <Text style={styles.emptyTitle}>View Saved Posts</Text>
-            <Text style={styles.emptySubtitle}>Tap here to view all your bookmarked posts</Text>
-          </TouchableOpacity>
+          loadingSaved ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.primary} />
+            </View>
+          ) : savedPosts.length === 0 ? (
+            <View style={styles.emptyPosts}>
+              <Ionicons name="bookmark-outline" size={44} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No saved posts</Text>
+              <Text style={styles.emptySubtitle}>Posts you bookmark in Community will appear here.</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {savedPosts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.gridItem}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/(tabs)/community')}
+                >
+                  <Image source={{ uri: post.image_url }} style={styles.gridImg} />
+                  <View style={styles.gridOverlay}>
+                    <Ionicons name="heart" size={12} color="#FFF" />
+                    <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         )}
 
         {activeTab !== 'Posts' && activeTab !== 'Saved' && (

@@ -340,23 +340,14 @@ export default function CommunityScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Community</Text>
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-          <TouchableOpacity
-            style={styles.savedBtn}
-            activeOpacity={0.8}
-            onPress={() => router.push('/saved-posts')}
-          >
-            <Ionicons name="bookmark-outline" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.createBtn}
-            activeOpacity={0.8}
-            onPress={() => router.push('/create-post')}
-          >
-            <Ionicons name="add" size={20} color="#000" />
-            <Text style={styles.createBtnText}>Post</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.createBtn}
+          activeOpacity={0.8}
+          onPress={() => router.push('/create-post')}
+        >
+          <Ionicons name="add" size={20} color="#000" />
+          <Text style={styles.createBtnText}>Post</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}

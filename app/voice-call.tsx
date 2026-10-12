@@ -188,15 +188,22 @@ export default function VoiceCallScreen() {
         });
 
       } catch (e: any) {
-        console.error("Agora Web Error:", e);
-        const errorMsg = e?.message || e?.name || JSON.stringify(e);
-        
-        if (typeof window !== 'undefined') {
-          window.alert(`Agora Connection Failed:\n\n${errorMsg}\n\n(If it says INVALID_TOKEN or DYNAMIC_KEY_TIMEOUT, go to Agora Console and create a new project in TESTING MODE (App ID only), then update the APP ID in the code.)`);
-        } else {
-          Alert.alert('Call Error', `Agora Error: ${errorMsg}`);
+        console.warn("Agora Web Error:", e);
+        const errorMsg = String(e?.message || e?.name || e || '');
+
+        // If user hung up, cancelled, navigated away, or operation was aborted, exit silently
+        if (
+          endCallCalledRef.current ||
+          errorMsg.includes('OPERATION_ABORTED') ||
+          errorMsg.includes('canceled') ||
+          errorMsg.includes('cancel') ||
+          errorMsg.includes('abort') ||
+          errorMsg.includes('LEAVE')
+        ) {
+          return;
         }
-        
+
+        // For other real errors, exit gracefully without annoying popup alerts
         router.back();
       }
       return;
