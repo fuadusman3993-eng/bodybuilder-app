@@ -546,6 +546,8 @@ export default function PostCard({
             />
           </TouchableOpacity>
         </View>
+      </Modal>
+
       {/* ── POST OPTIONS MODAL (OWNER DELETE) ── */}
       <Modal
         visible={showPostOptions}
