@@ -258,6 +258,28 @@ export default function CommunityScreen() {
     }
   };
 
+  // ── Post Deletion ──
+  const handleDeletePost = async (postId: string) => {
+    setPosts(prev => {
+      const next = prev.filter(p => p.id !== postId);
+      cachedPosts = next;
+      return next;
+    });
+
+    try {
+      await Promise.allSettled([
+        supabase.from('post_likes').delete().eq('post_id', postId),
+        supabase.from('post_comments').delete().eq('post_id', postId),
+        supabase.from('post_saves').delete().eq('post_id', postId),
+      ]);
+      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      if (error) throw error;
+    } catch (e: any) {
+      console.warn('Delete post error:', e);
+      fetchPosts(false);
+    }
+  };
+
   // ── Follow Toggle ──
   const handleFollowToggle = async (targetUid: string, isCurrentlyFollowing: boolean) => {
     if (!user?.uid) return;
@@ -478,6 +500,7 @@ export default function CommunityScreen() {
               onToggleBookmark={handleToggleBookmark}
               onFollowToggle={handleFollowToggle}
               onPressUser={handlePressUser}
+              onDeletePost={handleDeletePost}
             />
           )}
           contentContainerStyle={styles.feedContainer}

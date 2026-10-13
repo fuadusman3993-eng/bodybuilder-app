@@ -18,7 +18,7 @@ import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
 import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 // Save user profile to Firestore (merge so existing data stays)
@@ -28,26 +28,53 @@ const saveAndCheckUser = async (uid: string, name: string, email: string) => {
     const docRef = doc(db, 'users', uid);
     const snap = await getDoc(docRef);
     let isProfileComplete = false;
+    let existingProfileData: any = null;
     
     if (snap.exists()) {
       isProfileComplete = !!snap.data().country; // Country is required in create-profile
     }
 
-    // Only set default username and role if they don't have one
+    // Check if an account already exists with this email under any document in Firestore
+    if (email) {
+      try {
+        const q = query(collection(db, 'users'), where('email', '==', email));
+        const querySnap = await getDocs(q);
+        querySnap.forEach((d) => {
+          const data = d.data();
+          if (data && (data.country || data.username || data.role || data.city)) {
+            existingProfileData = data;
+            isProfileComplete = true;
+          }
+        });
+      } catch (err) {
+        console.warn('Could not query users by email:', err);
+      }
+    }
+
+    // Set user data, copying over any existing profile information
     const dataToSave: any = {
-      name,
+      name: existingProfileData?.name || name,
       email,
       updatedAt: serverTimestamp(),
     };
+
+    if (existingProfileData?.country) dataToSave.country = existingProfileData.country;
+    if (existingProfileData?.city) dataToSave.city = existingProfileData.city;
+    if (existingProfileData?.username) dataToSave.username = existingProfileData.username;
+    if (existingProfileData?.role) dataToSave.role = existingProfileData.role;
+    if (existingProfileData?.avatar) dataToSave.avatar = existingProfileData.avatar;
+    if (existingProfileData?.photoURL) dataToSave.photoURL = existingProfileData.photoURL;
     
     if (!snap.exists()) {
       dataToSave.uid = uid;
-      dataToSave.role = 'user'; // Default to Trainee if they didn't choose Coach
+      dataToSave.role = existingProfileData?.role || 'user'; // Default to Trainee if they didn't choose Coach
       dataToSave.createdAt = serverTimestamp();
     }
     
     if (!snap.exists() || !snap.data().username) {
-      dataToSave.username = email.split('@')[0];
+      if (!dataToSave.username) {
+        dataToSave.username = email.split('@')[0];
+      }
     }
 
     await setDoc(docRef, dataToSave, { merge: true });
@@ -138,11 +165,8 @@ export default function LoginScreen() {
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
       
-      if (isComplete) {
-        router.replace('/(tabs)');
-      } else {
-        router.replace('/create-profile');
-      }
+      // On the login page, Google sign-in always takes the user straight to the app
+      router.replace('/(tabs)');
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         setMainError(firebaseErrorMessage(err?.code || ''));

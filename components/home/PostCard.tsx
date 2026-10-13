@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   TextInput, FlatList, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Image as RNImage,
+  ActivityIndicator, Image as RNImage, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +62,7 @@ interface PostCardProps {
   onToggleBookmark?: (postId: string) => void;
   onFollowToggle?: (uid: string, isFollowing: boolean) => void;
   onPressUser?: (uid: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 export default function PostCard({
@@ -70,6 +71,7 @@ export default function PostCard({
   onToggleBookmark,
   onFollowToggle,
   onPressUser,
+  onDeletePost,
 }: PostCardProps) {
   const { user: currentUser } = useUserStore();
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
@@ -78,6 +80,27 @@ export default function PostCard({
   // Image Aspect Ratio & Full View State
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [showPostOptions, setShowPostOptions] = useState(false);
+
+  const isOwner = !!post.isSelf || (!!currentUser?.uid && post.uid === currentUser.uid);
+
+  const handleDelete = () => {
+    setShowPostOptions(false);
+    const doDelete = () => {
+      onDeletePost?.(post.id);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to delete this post?')) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
 
   useEffect(() => {
     if (post.image_url) {
@@ -232,7 +255,13 @@ export default function PostCard({
           )}
           <TouchableOpacity
             style={styles.menuBtn}
-            onPress={() => onPressUser?.(post.uid)}
+            onPress={() => {
+              if (isOwner) {
+                setShowPostOptions(true);
+              } else {
+                onPressUser?.(post.uid);
+              }
+            }}
           >
             <Ionicons name="ellipsis-horizontal" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -517,6 +546,38 @@ export default function PostCard({
             />
           </TouchableOpacity>
         </View>
+      {/* ── POST OPTIONS MODAL (OWNER DELETE) ── */}
+      <Modal
+        visible={showPostOptions}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowPostOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.optionsModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPostOptions(false)}
+        >
+          <View style={styles.optionsSheet}>
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Text style={styles.deleteOptionText}>Delete Post</Text>
+            </TouchableOpacity>
+            <View style={styles.optionDivider} />
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={() => setShowPostOptions(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close-outline" size={20} color={Colors.textSecondary} />
+              <Text style={styles.cancelOptionText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -867,5 +928,40 @@ const styles = StyleSheet.create({
   fullImage: {
     width: '95%',
     height: '85%',
+  },
+
+  // ── Post Owner Options Modal ──
+  optionsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  optionsSheet: {
+    backgroundColor: '#161616',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  optionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  deleteOptionText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelOptionText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
