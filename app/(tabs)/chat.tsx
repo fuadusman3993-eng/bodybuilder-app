@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, Image, ActivityIndicator, ScrollView
+  StyleSheet, Image, ActivityIndicator, ScrollView, Alert, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,9 +82,10 @@ export default function ChatScreen() {
       const enriched: ConvItem[] = [];
       for (const conv of data) {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
-        let name = 'User';
+        let name = '';
         let avatar = '';
         let isCoach = false;
+        let userExists = false;
         try {
           const snap = await getDoc(doc(db, 'users', otherUid));
           if (snap.exists()) {
@@ -92,8 +93,14 @@ export default function ChatScreen() {
             name = d.name || d.displayName || d.username || 'User';
             avatar = d.avatar || d.photoURL || '';
             isCoach = d.role === 'coach';
+            userExists = true;
           }
         } catch (_) {}
+
+        // Skip ghost/deleted/invalid user conversations so fake "User" accounts never appear
+        if (!userExists) {
+          continue;
+        }
 
         let unreadCount = 0;
         try {
@@ -132,7 +139,33 @@ export default function ChatScreen() {
     }, [user.uid])
   );
 
+  const handleDeleteConversation = (conv: ConvItem) => {
+    const doDelete = async () => {
+      // Optimistically remove from state
+      setConversations(prev => prev.filter(c => c.id !== conv.id));
+      try {
+        await supabase.from('messages').delete().eq('conversation_id', conv.id);
+        await supabase.from('conversations').delete().eq('id', conv.id);
+      } catch (e) {
+        console.warn('Error deleting conversation:', e);
+      }
+    };
 
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`Delete conversation with ${conv.otherName}?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Conversation',
+        `Are you sure you want to delete the conversation with ${conv.otherName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
+  };
 
   let filtered = conversations.filter(c =>
     c.otherName.toLowerCase().includes(search.toLowerCase())
@@ -144,6 +177,7 @@ export default function ChatScreen() {
     <TouchableOpacity
       style={styles.convRow}
       onPress={() => router.push({ pathname: '/chat-room', params: { conversationId: item.id, otherUserUid: item.otherUid } })}
+      onLongPress={() => handleDeleteConversation(item)}
       activeOpacity={0.7}
     >
       <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: PRIMARY, borderWidth: 2 } : {}]}>
