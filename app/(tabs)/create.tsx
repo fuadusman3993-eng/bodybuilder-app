@@ -131,14 +131,7 @@ export default function CreateScreen() {
       setContent('');
       setImageUri(null);
 
-      if (Platform.OS === 'web') {
-        window.alert('Post shared successfully!');
-        router.replace('/(tabs)/community');
-      } else {
-        Alert.alert('Success', 'Your post is now live in Community!', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)/community') }
-        ]);
-      }
+      router.replace({ pathname: '/(tabs)/community', params: { justPosted: '1' } });
     } catch (e: any) {
       console.error('Post creation error:', e);
       const errMsg = e?.message || 'Failed to publish post. Please try again.';

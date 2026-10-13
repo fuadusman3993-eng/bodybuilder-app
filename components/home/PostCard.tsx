@@ -131,6 +131,12 @@ export default function PostCard({
     }
   }, [showComments]);
 
+  useEffect(() => {
+    if (typeof post.comments_count === 'number') {
+      setCommentsCount(post.comments_count);
+    }
+  }, [post.comments_count]);
+
   const loadComments = async () => {
     setLoadingComments(true);
     try {

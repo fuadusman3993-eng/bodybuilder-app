@@ -163,14 +163,7 @@ export default function CreatePostPage() {
       setUploading(false);
       invalidateCommunityCache();
 
-      if (Platform.OS === 'web') {
-        window.alert('✅ Posted! Your post is now live in the Community!');
-        router.replace('/(tabs)/community');
-      } else {
-        Alert.alert('✅ Posted!', 'Your post is now live in the Community!', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)/community') }
-        ]);
-      }
+      router.replace({ pathname: '/(tabs)/community', params: { justPosted: '1' } });
     } catch (e: any) {
       console.warn('Post upload error:', e);
       setUploading(false);

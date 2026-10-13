@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, StyleSheet,
-  RefreshControl, TextInput,
+  RefreshControl, TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import PostCard, { RealPost } from '../../components/home/PostCard';
 import { useUserStore } from '../../store/userStore';
@@ -29,6 +29,7 @@ export function invalidateCommunityCache() {
 export default function CommunityScreen() {
   const router = useRouter();
   const { user } = useUserStore();
+  const params = useLocalSearchParams<{ justPosted?: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('For You');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +38,34 @@ export default function CommunityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const followingUidsRef = useRef<Set<string>>(new Set());
   const [followingUidsArr, setFollowingUidsArr] = useState<string[]>([]);
+
+  // ── In-App Success Toast ──
+  const [showToast, setShowToast] = useState(false);
+  const toastY = useRef(new Animated.Value(-60)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (params.justPosted === '1') {
+      fetchPosts(false);
+      setShowToast(true);
+      Animated.parallel([
+        Animated.timing(toastY, { toValue: 16, duration: 320, useNativeDriver: true }),
+        Animated.timing(toastOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+      ]).start();
+
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(toastY, { toValue: -60, duration: 280, useNativeDriver: true }),
+          Animated.timing(toastOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
+        ]).start(() => {
+          setShowToast(false);
+        });
+      }, 2600);
+
+      router.setParams({ justPosted: '' });
+      return () => clearTimeout(timer);
+    }
+  }, [params.justPosted]);
 
   const fetchFollowing = async (): Promise<Set<string>> => {
     if (!user?.uid) return new Set();
@@ -94,6 +123,19 @@ export default function CommunityScreen() {
         ? followingUidsRef.current
         : await fetchFollowing();
 
+      // 4.5. Comments count map from post_comments
+      const commentCountMap: Record<string, number> = {};
+      try {
+        const { data: commentRows } = await supabase
+          .from('post_comments')
+          .select('post_id');
+        if (commentRows) {
+          for (const c of commentRows) {
+            commentCountMap[c.post_id] = (commentCountMap[c.post_id] || 0) + 1;
+          }
+        }
+      } catch (_) {}
+
       // 5. Enrich posts with Firebase author info
       const enriched: RealPost[] = [];
       for (const p of dbPosts || []) {
@@ -137,6 +179,7 @@ export default function CommunityScreen() {
           image_url: p.image_url,
           caption: p.caption,
           likes_count: p.likes_count || 0,
+          comments_count: commentCountMap[p.id] || p.comments_count || 0,
           created_at: p.created_at,
           isLiked: likedSet.has(p.id),
           isBookmarked: savedSet.has(p.id),
@@ -378,6 +421,24 @@ export default function CommunityScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ── In-App Success Toast ── */}
+      {showToast && (
+        <Animated.View
+          style={[
+            styles.toastPill,
+            {
+              transform: [{ translateY: toastY }],
+              opacity: toastOpacity,
+            },
+          ]}
+        >
+          <View style={styles.toastIconWrap}>
+            <Ionicons name="checkmark" size={14} color="#000" />
+          </View>
+          <Text style={styles.toastText}>Post shared successfully!</Text>
+        </Animated.View>
+      )}
+
       {/* ── TikTok-Style Unified Top Bar ── */}
       <View style={styles.header}>
         {/* Left: FitPulse "F" Logo */}
@@ -652,5 +713,39 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '700',
     fontSize: 14,
+  },
+
+  // ── Success Toast ──
+  toastPill: {
+    position: 'absolute',
+    top: 10,
+    alignSelf: 'center',
+    zIndex: 9999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#00E676',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  toastIconWrap: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#000',
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
 });
