@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, StyleSheet,
-  RefreshControl,
+  RefreshControl, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,8 +13,9 @@ import { supabase } from '../../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Skeleton from '../../components/ui/Skeleton';
+import BrandLogo from '../../components/ui/BrandLogo';
 
-const tabs = ['For You', 'Following', 'Recent'];
+type TabType = 'Following' | 'For You';
 
 let cachedPosts: RealPost[] = [];
 let cacheTimestamp = 0;
@@ -28,7 +29,9 @@ export function invalidateCommunityCache() {
 export default function CommunityScreen() {
   const router = useRouter();
   const { user } = useUserStore();
-  const [activeTab, setActiveTab] = useState('For You');
+  const [activeTab, setActiveTab] = useState<TabType>('For You');
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<RealPost[]>(cachedPosts);
   const [loading, setLoading] = useState(cachedPosts.length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -311,16 +314,32 @@ export default function CommunityScreen() {
     }
   };
 
-  // ── Feed Sorting ──
+  // ── Feed Filtering & Sorting ──
   const getFilteredPosts = () => {
+    let list = posts;
+
+    // 1. Tab filter
     if (activeTab === 'Following') {
-      return posts.filter(p => followingUidsArr.includes(p.uid) || !!p.isSelf);
+      list = list.filter(p => followingUidsArr.includes(p.uid) || !!p.isSelf);
     }
-    if (activeTab === 'Recent') {
-      return [...posts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // 2. Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(p =>
+        (p.caption && p.caption.toLowerCase().includes(q)) ||
+        (p.username && p.username.toLowerCase().includes(q)) ||
+        (p.city && p.city.toLowerCase().includes(q))
+      );
     }
+
+    // 3. Chronological for Following, Algorithmic for For You
+    if (activeTab === 'Following') {
+      return [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
     const now = Date.now();
-    return [...posts].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const aScore = (a.isCoach ? 30 : 0) + (a.likes_count || 0) * 3
         - Math.max(0, (now - new Date(a.created_at).getTime()) / 3600000) * 0.4;
       const bScore = (b.isCoach ? 30 : 0) + (b.likes_count || 0) * 3
@@ -337,34 +356,76 @@ export default function CommunityScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* ── TikTok-Style Unified Top Bar ── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
-        <TouchableOpacity
-          style={styles.createBtn}
-          activeOpacity={0.8}
-          onPress={() => router.push('/create-post')}
-        >
-          <Ionicons name="add" size={20} color="#000" />
-          <Text style={styles.createBtnText}>Post</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Left: FitPulse "F" Logo */}
+        <View style={styles.headerLeft}>
+          <BrandLogo size="small" showText={false} />
+        </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {tabs.map((tab) => (
+        {/* Center: Following | For You */}
+        <View style={styles.headerCenter}>
           <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
+            style={styles.tiktokTab}
+            onPress={() => setActiveTab('Following')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab}
+            <Text style={[styles.tiktokTabText, activeTab === 'Following' && styles.tiktokTabTextActive]}>
+              Following
             </Text>
+            {activeTab === 'Following' && <View style={styles.activeTabIndicator} />}
           </TouchableOpacity>
-        ))}
+
+          <TouchableOpacity
+            style={styles.tiktokTab}
+            onPress={() => setActiveTab('For You')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tiktokTabText, activeTab === 'For You' && styles.tiktokTabTextActive]}>
+              For You
+            </Text>
+            {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
+          </TouchableOpacity>
+        </View>
+
+        {/* Right: Search Icon */}
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => {
+              setShowSearch(prev => !prev);
+              if (showSearch) setSearchQuery('');
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={showSearch ? 'close' : 'search'}
+              size={22}
+              color={Colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Collapsible Search Input */}
+      {showSearch && (
+        <View style={styles.searchBarWrap}>
+          <Ionicons name="search" size={17} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchBarInput}
+            placeholder="Search athletes, coaches or posts..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+          {!!searchQuery && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Feed */}
       {loading ? (
@@ -445,64 +506,76 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     maxWidth: 580,
     width: '100%',
     alignSelf: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.textPrimary,
+  headerLeft: {
+    width: 44,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  savedBtn: {
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  tiktokTab: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  tiktokTabText: {
+    fontSize: 16.5,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.55)',
+    letterSpacing: 0.2,
+  },
+  tiktokTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  activeTabIndicator: {
+    width: 24,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.primary,
+    marginTop: 4,
+  },
+  headerRight: {
+    width: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  headerIconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(16,185,129,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  createBtn: {
+  searchBarWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 20,
-  },
-  createBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
     gap: 10,
     maxWidth: 580,
-    width: '100%',
     alignSelf: 'center',
+    width: '92%',
   },
-  tab: {
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-  },
-  activeTab: {
-    backgroundColor: Colors.primary,
-  },
-  tabText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  activeTabText: {
-    color: '#000',
-    fontWeight: '700',
+  searchBarInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: 14,
+    padding: 0,
   },
   feedContainer: {
     paddingBottom: 40,
