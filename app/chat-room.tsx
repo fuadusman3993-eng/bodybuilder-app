@@ -126,11 +126,11 @@ export default function ChatRoom() {
     if (!conversationId) return;
     const channel = supabase.channel(`messages_${conversationId}_${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
-        setMessages(prev => {
+        setMessages((prev: any[]) => {
           // If we already have this exact ID, skip
-          if (prev.some(m => m.id === payload.new.id)) return prev;
+          if (prev.some((m: any) => m.id === payload.new.id)) return prev;
           // Remove any optimistic (temp) message with same sender+type+text to avoid duplicates
-          const withoutOptimistic = prev.filter(m => {
+          const withoutOptimistic = prev.filter((m: any) => {
             if (!m.isUploading) return true;
             const sameType = m.type === payload.new.type;
             const sameSender = m.sender_uid === payload.new.sender_uid;
@@ -144,7 +144,7 @@ export default function ChatRoom() {
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
-        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
+        setMessages((prev: any[]) => prev.map((m: any) => m.id === payload.new.id ? payload.new : m));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -624,6 +624,8 @@ export default function ChatRoom() {
     const isAudio = item.type === 'audio' && item.audio_url;
     const isImage = item.type === 'image' && item.media_url;
     const isVideo = item.type === 'video' && item.media_url;
+    const isCall = item.type === 'call' || (typeof item.text === 'string' && item.text.startsWith('📞'));
+    const isMissed = isCall && item.text?.toLowerCase().includes('missed');
     const isPlaying = playingId === item.id;
     const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
     const progressRatio = isPlaying && item.audio_duration ? playbackPosition / item.audio_duration : 0;
@@ -696,6 +698,35 @@ export default function ChatRoom() {
                    <Ionicons name="play-circle" size={52} color="#00E676" />
                 )}
                 <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
+              </View>
+            ) : isCall ? (
+              <View style={styles.callCard}>
+                <View style={styles.callCardHeader}>
+                  <View style={[styles.callIconBadge, isMissed ? styles.callBadgeMissed : styles.callBadgeSuccess]}>
+                    <Ionicons
+                      name={isMissed ? 'call-outline' : 'call'}
+                      size={18}
+                      color={isMissed ? '#EF4444' : '#00E676'}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.callTitle, isMissed && styles.callTitleMissed]}>
+                      {isMissed ? 'Missed Call' : item.text.replace('📞', '').trim()}
+                    </Text>
+                    <Text style={styles.callSubtitle}>
+                      {isMissed ? (isMe ? 'Outgoing missed call' : 'Tap Call Back to connect') : 'Call finished'}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.callBackBtn}
+                  activeOpacity={0.8}
+                  onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } })}
+                >
+                  <Ionicons name="call" size={14} color="#000" />
+                  <Text style={styles.callBackBtnText}>Call Back</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <Text style={styles.bubbleText}>
@@ -1077,4 +1108,58 @@ const styles = StyleSheet.create({
   modalOption: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16 },
   modalOptionText: { color: '#FFF', fontSize: 16, fontWeight: '500' },
   modalDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginVertical: 8 },
+
+  // Call Card styles
+  callCard: {
+    minWidth: 210,
+    maxWidth: 270,
+    padding: 6,
+    gap: 10,
+  },
+  callCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  callIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callBadgeMissed: {
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+  },
+  callBadgeSuccess: {
+    backgroundColor: 'rgba(0, 230, 118, 0.18)',
+  },
+  callTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  callTitleMissed: {
+    color: '#EF4444',
+  },
+  callSubtitle: {
+    fontSize: 11,
+    color: '#A0A0A0',
+    marginTop: 2,
+  },
+  callBackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00E676',
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  callBackBtnText: {
+    color: '#000',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
 });

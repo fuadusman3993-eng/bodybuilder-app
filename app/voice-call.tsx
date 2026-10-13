@@ -436,19 +436,33 @@ export default function VoiceCallScreen() {
         if (finalDuration > 0) {
           const callLog = `📞 Voice/Video call (${fmt(finalDuration)})`;
           await supabase.from('messages').insert({
-            conversation_id: channelId, sender_uid: user.uid,
-            text: callLog, is_read: false, type: 'text',
+            conversation_id: channelId,
+            sender_uid: user.uid,
+            text: callLog,
+            is_read: false,
+            type: 'call',
           });
-          await supabase.from('conversations').update({ last_message: callLog, last_message_at: new Date().toISOString() }).eq('id', channelId);
-        } else if (finalState === 'calling') {
+          await supabase.from('conversations').update({
+            last_message: callLog,
+            last_message_at: new Date().toISOString(),
+          }).eq('id', channelId);
+        } else {
           const missedLog = `📞 Missed call`;
           await supabase.from('messages').insert({
-            conversation_id: channelId, sender_uid: user.uid,
-            text: missedLog, is_read: false, type: 'text',
+            conversation_id: channelId,
+            sender_uid: user.uid,
+            text: missedLog,
+            is_read: false,
+            type: 'call',
           });
-          await supabase.from('conversations').update({ last_message: missedLog, last_message_at: new Date().toISOString() }).eq('id', channelId);
+          await supabase.from('conversations').update({
+            last_message: missedLog,
+            last_message_at: new Date().toISOString(),
+          }).eq('id', channelId);
         }
-      } catch (e: any) { console.warn('Call log error:', e.message); }
+      } catch (e: any) {
+        console.warn('Call log error:', e.message);
+      }
     }
     router.back();
   };

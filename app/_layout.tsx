@@ -83,8 +83,16 @@ export default function RootLayout() {
           setUser({ tier: UserTier.FREE, name: firebaseUser.displayName || 'User', uid: firebaseUser.uid });
         }
       } else {
-        // No user logged in — keep as GUEST
-        setUser({ tier: UserTier.GUEST });
+        // No user logged in — keep as GUEST and clear all fields
+        setUser({
+          tier: UserTier.GUEST,
+          uid: undefined,
+          name: undefined,
+          email: undefined,
+          avatar: undefined,
+          role: undefined,
+          city: undefined,
+        });
       }
     });
     return () => unsubscribe();

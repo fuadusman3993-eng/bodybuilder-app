@@ -142,7 +142,7 @@ export default function ChatScreen() {
   const handleDeleteConversation = (conv: ConvItem) => {
     const doDelete = async () => {
       // Optimistically remove from state
-      setConversations(prev => prev.filter(c => c.id !== conv.id));
+      setConversations((prev: ConvItem[]) => prev.filter((c: ConvItem) => c.id !== conv.id));
       try {
         await supabase.from('messages').delete().eq('conversation_id', conv.id);
         await supabase.from('conversations').delete().eq('id', conv.id);
@@ -195,9 +195,23 @@ export default function ChatScreen() {
           <Text style={[styles.convTime, item.unreadCount ? { color: PRIMARY } : {}]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
-          <Text style={[styles.convLast, item.unreadCount ? { color: TEXT, fontWeight: '500' } : {}]} numberOfLines={1}>
-            {item.lastMessage || 'Start a conversation...'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
+            {item.lastMessage?.includes('Missed call') ? (
+              <Ionicons name="call-outline" size={14} color="#EF4444" />
+            ) : item.lastMessage?.includes('Voice/Video call') ? (
+              <Ionicons name="call-outline" size={14} color="#00E676" />
+            ) : null}
+            <Text
+              style={[
+                styles.convLast,
+                item.lastMessage?.includes('Missed call') && { color: '#EF4444', fontWeight: '500' },
+                item.unreadCount ? { color: TEXT, fontWeight: '500' } : {}
+              ]}
+              numberOfLines={1}
+            >
+              {item.lastMessage || 'Start a conversation...'}
+            </Text>
+          </View>
           {!!item.unreadCount && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
@@ -207,6 +221,15 @@ export default function ChatScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  // ── Guest Guard ───────────────────────────────────────────
+  if (user.tier === UserTier.GUEST || !user.uid) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <GuestBlocker feature="chat" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

@@ -140,15 +140,20 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       await signOut();
-      setUser({ tier: UserTier.GUEST });
+      setUser({
+        tier: UserTier.GUEST,
+        uid: undefined,
+        name: undefined,
+        email: undefined,
+        avatar: undefined,
+        role: undefined,
+        city: undefined,
+      });
       router.replace('/login');
     } catch (e) {
       console.error('Logout failed', e);
     }
   };
-
-
-
 
   // ── Data ──────────────────────────────────────────────────
   const name = profileData?.name || profileData?.username || user.name || 'User';
@@ -167,8 +172,6 @@ export default function ProfileScreen() {
   const stat3Label = 'Following';
   const stat3Value = following;
 
-
-
   const [unreadCount, setUnreadCount] = useState(0);
   
   useFocusEffect(
@@ -185,6 +188,15 @@ export default function ProfileScreen() {
       }
     }, [user.uid])
   );
+
+  // ── Guest Guard ───────────────────────────────────────────
+  if (user.tier === UserTier.GUEST || !user.uid) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <GuestBlocker feature="profile" />
+      </SafeAreaView>
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────
   return (
