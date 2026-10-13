@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -71,6 +72,29 @@ export default function LoginScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    // Android hardware back: prevent navigating back to tabs / keep on login
+    const onBackPress = () => {
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    // Web browser back button: keep user on login
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.history.pushState(null, '', window.location.href);
+      const onPopState = () => {
+        window.history.pushState(null, '', window.location.href);
+      };
+      window.addEventListener('popstate', onPopState);
+      return () => {
+        sub.remove();
+        window.removeEventListener('popstate', onPopState);
+      };
+    }
+
+    return () => sub.remove();
+  }, []);
 
   const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
 

@@ -189,13 +189,15 @@ export default function ProfileScreen() {
     }, [user.uid])
   );
 
-  // ── Guest Guard ───────────────────────────────────────────
+  // ── Guest Guard: immediately redirect to login page ─────────
+  useEffect(() => {
+    if (user.tier === UserTier.GUEST || !user.uid) {
+      router.replace('/login');
+    }
+  }, [user.tier, user.uid]);
+
   if (user.tier === UserTier.GUEST || !user.uid) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <GuestBlocker feature="profile" />
-      </SafeAreaView>
-    );
+    return null;
   }
 
   // ── Render ────────────────────────────────────────────────

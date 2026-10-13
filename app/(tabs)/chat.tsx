@@ -209,7 +209,7 @@ export default function ChatScreen() {
               ]}
               numberOfLines={1}
             >
-              {item.lastMessage || 'Start a conversation...'}
+              {(item.lastMessage || '').replace(/[📞📵]/g, '').trim() || 'Start a conversation...'}
             </Text>
           </View>
           {!!item.unreadCount && (

@@ -624,7 +624,7 @@ export default function ChatRoom() {
     const isAudio = item.type === 'audio' && item.audio_url;
     const isImage = item.type === 'image' && item.media_url;
     const isVideo = item.type === 'video' && item.media_url;
-    const isCall = item.type === 'call' || (typeof item.text === 'string' && item.text.startsWith('📞'));
+    const isCall = item.type === 'call' || (typeof item.text === 'string' && (item.text.startsWith('📞') || item.text.includes('Missed call') || item.text.includes('Voice/Video call')));
     const isMissed = isCall && item.text?.toLowerCase().includes('missed');
     const isPlaying = playingId === item.id;
     const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
@@ -711,22 +711,13 @@ export default function ChatRoom() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.callTitle, isMissed && styles.callTitleMissed]}>
-                      {isMissed ? 'Missed Call' : item.text.replace('📞', '').trim()}
+                      {isMissed ? 'Missed Call' : item.text?.replace(/[📞]/g, '').trim()}
                     </Text>
                     <Text style={styles.callSubtitle}>
-                      {isMissed ? (isMe ? 'Outgoing missed call' : 'Tap Call Back to connect') : 'Call finished'}
+                      {isMissed ? (isMe ? 'Outgoing missed call' : 'Incoming missed call') : 'Call finished'}
                     </Text>
                   </View>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.callBackBtn}
-                  activeOpacity={0.8}
-                  onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } })}
-                >
-                  <Ionicons name="call" size={14} color="#000" />
-                  <Text style={styles.callBackBtnText}>Call Back</Text>
-                </TouchableOpacity>
               </View>
             ) : (
               <Text style={styles.bubbleText}>

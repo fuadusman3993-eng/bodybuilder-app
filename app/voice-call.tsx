@@ -434,7 +434,7 @@ export default function VoiceCallScreen() {
     if (channelId && !incoming) {
       try {
         if (finalDuration > 0) {
-          const callLog = `📞 Voice/Video call (${fmt(finalDuration)})`;
+          const callLog = `Voice/Video call (${fmt(finalDuration)})`;
           await supabase.from('messages').insert({
             conversation_id: channelId,
             sender_uid: user.uid,
@@ -447,7 +447,7 @@ export default function VoiceCallScreen() {
             last_message_at: new Date().toISOString(),
           }).eq('id', channelId);
         } else {
-          const missedLog = `📞 Missed call`;
+          const missedLog = `Missed call`;
           await supabase.from('messages').insert({
             conversation_id: channelId,
             sender_uid: user.uid,
