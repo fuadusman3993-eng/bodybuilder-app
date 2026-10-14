@@ -25,8 +25,8 @@ export default function ProfileScreen() {
 
   const isCoach = user.role === 'coach';
   const defaultTabs = isCoach
-    ? ['Posts', 'Clients', 'Saved']
-    : ['Posts', 'Progress', 'Saved'];
+    ? ['Posts', 'Reposts', 'Clients', 'Saved']
+    : ['Posts', 'Reposts', 'Progress', 'Saved'];
 
   const [activeTab, setActiveTab] = useState('Posts');
   const [profileData, setProfileData] = useState<any>(null);
@@ -34,6 +34,8 @@ export default function ProfileScreen() {
   const [posts, setPosts] = useState<any[]>([]);
   const [savedPosts, setSavedPosts] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [repostedPosts, setRepostedPosts] = useState<any[]>([]);
+  const [loadingReposts, setLoadingReposts] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
 
@@ -44,7 +46,7 @@ export default function ProfileScreen() {
   );
 
   const loadAll = async () => {
-    await Promise.all([fetchProfile(), fetchSupabaseStats(), fetchSavedPosts()]);
+    await Promise.all([fetchProfile(), fetchSupabaseStats(), fetchSavedPosts(), fetchRepostedPosts()]);
   };
 
   const fetchProfile = async () => {
@@ -125,9 +127,47 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchRepostedPosts = async () => {
+    const uid = user.uid;
+    if (!uid) return;
+    setLoadingReposts(true);
+    try {
+      const { data: reposts, error } = await supabase
+        .from('post_reposts')
+        .select('post_id, created_at')
+        .eq('uid', uid)
+        .order('created_at', { ascending: false });
+
+      if (error || !reposts || reposts.length === 0) {
+        setRepostedPosts([]);
+        setLoadingReposts(false);
+        return;
+      }
+
+      const postIds = reposts.map((r: any) => r.post_id);
+      const { data: dbPosts } = await supabase
+        .from('posts')
+        .select('*')
+        .in('id', postIds);
+
+      if (dbPosts) {
+        const ordered = postIds
+          .map((id: string) => dbPosts.find((p: any) => p.id === id))
+          .filter(Boolean);
+        setRepostedPosts(ordered);
+      }
+    } catch (e) {
+      console.warn('Error fetching reposted posts in profile:', e);
+    } finally {
+      setLoadingReposts(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'Saved') {
       fetchSavedPosts();
+    } else if (activeTab === 'Reposts') {
+      fetchRepostedPosts();
     }
   }, [activeTab]);
 
@@ -309,6 +349,8 @@ export default function ProfileScreen() {
             const active = activeTab === tab;
             const icon: any = tab === 'Posts'
               ? 'grid-outline'
+              : tab === 'Reposts'
+              ? 'repeat-outline'
               : tab === 'Saved'
               ? 'bookmark-outline'
               : 'stats-chart-outline';
@@ -341,6 +383,38 @@ export default function ProfileScreen() {
                   <View style={styles.gridOverlay}>
                     <Ionicons name="heart" size={12} color="#FFF" />
                     <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
+        )}
+
+        {/* ── Reposted Posts Grid ── */}
+        {activeTab === 'Reposts' && (
+          loadingReposts ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.primary} />
+            </View>
+          ) : repostedPosts.length === 0 ? (
+            <View style={styles.emptyPosts}>
+              <Ionicons name="repeat-outline" size={44} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No reposts yet</Text>
+              <Text style={styles.emptySubtitle}>Posts you repost from the community will appear here.</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {repostedPosts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.gridItem}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/(tabs)/community')}
+                >
+                  <Image source={{ uri: post.image_url }} style={styles.gridImg} />
+                  <View style={styles.gridOverlay}>
+                    <Ionicons name="repeat" size={12} color={Colors.primary} />
+                    <Text style={[styles.gridLikesText, { color: Colors.primary }]}>Repost</Text>
                   </View>
                 </TouchableOpacity>
               ))}

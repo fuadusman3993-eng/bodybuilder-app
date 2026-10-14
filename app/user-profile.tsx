@@ -51,6 +51,9 @@ export default function UserProfilePage() {
   const [isFollowing, setIsFollowing] = useState(cached?.isFollowing || false);
   const [requestSent, setRequestSent] = useState(cached?.requestSent || false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [profileTab, setProfileTab] = useState<'posts' | 'reposts'>('posts');
+  const [reposts, setReposts] = useState<any[]>([]);
+  const [loadingReposts, setLoadingReposts] = useState(false);
 
   const isOwnProfile = uid === currentUser.uid;
 
@@ -169,6 +172,35 @@ export default function UserProfilePage() {
     } finally {
       if (showLoading) setLoading(false);
     }
+  };
+
+  const fetchUserReposts = async () => {
+    if (!uid) return;
+    setLoadingReposts(true);
+    try {
+      const { data: repData } = await supabase
+        .from('post_reposts')
+        .select('post_id, created_at')
+        .eq('uid', uid)
+        .order('created_at', { ascending: false });
+
+      if (!repData || repData.length === 0) {
+        setReposts([]);
+      } else {
+        const postIds = repData.map((r: any) => r.post_id);
+        const { data: dbPosts } = await supabase
+          .from('posts')
+          .select('*')
+          .in('id', postIds);
+        if (dbPosts) {
+          const ordered = postIds
+            .map((id: string) => dbPosts.find((p: any) => p.id === id))
+            .filter(Boolean);
+          setReposts(ordered);
+        }
+      }
+    } catch (_) {}
+    setLoadingReposts(false);
   };
 
   const handleFollow = async () => {
@@ -478,33 +510,97 @@ export default function UserProfilePage() {
           </View>
         )}
 
-        {/* Posts Grid */}
+        {/* Posts & Reposts Tabs */}
         <View style={styles.gridHeader}>
-          <Ionicons name="grid-outline" size={20} color={Colors.textMuted} />
+          <TouchableOpacity
+            style={[styles.tabButton, profileTab === 'posts' && styles.tabButtonActive]}
+            onPress={() => setProfileTab('posts')}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={18}
+              color={profileTab === 'posts' ? Colors.primary : Colors.textMuted}
+            />
+            <Text style={[styles.tabButtonText, profileTab === 'posts' && styles.tabButtonTextActive]}>
+              Posts ({posts.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, profileTab === 'reposts' && styles.tabButtonActive]}
+            onPress={() => {
+              setProfileTab('reposts');
+              if (reposts.length === 0) fetchUserReposts();
+            }}
+          >
+            <Ionicons
+              name="repeat-outline"
+              size={18}
+              color={profileTab === 'reposts' ? Colors.primary : Colors.textMuted}
+            />
+            <Text style={[styles.tabButtonText, profileTab === 'reposts' && styles.tabButtonTextActive]}>
+              Reposts
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {posts.length === 0 ? (
-          <View style={styles.emptyPosts}>
-            <Ionicons name="images-outline" size={40} color={Colors.textMuted} />
-            <Text style={styles.emptyText}>No posts yet</Text>
-          </View>
+        {profileTab === 'posts' ? (
+          posts.length === 0 ? (
+            <View style={styles.emptyPosts}>
+              <Ionicons name="images-outline" size={40} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No posts yet</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {posts.map((post) => (
+                <TouchableOpacity key={post.id} style={styles.gridItem} activeOpacity={0.85}>
+                  <Image
+                    source={post.image_url}
+                    cachePolicy="memory-disk"
+                    contentFit="cover"
+                    style={styles.gridImg}
+                  />
+                  <View style={styles.gridLikes}>
+                    <Ionicons name="heart" size={12} color="#FFF" />
+                    <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         ) : (
-          <View style={styles.grid}>
-            {posts.map((post) => (
-              <TouchableOpacity key={post.id} style={styles.gridItem} activeOpacity={0.85}>
-                <Image
-                  source={post.image_url}
-                  cachePolicy="memory-disk"
-                  contentFit="cover"
-                  style={styles.gridImg}
-                />
-                <View style={styles.gridLikes}>
-                  <Ionicons name="heart" size={12} color="#FFF" />
-                  <Text style={styles.gridLikesText}>{post.likes_count || 0}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+          loadingReposts ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.primary} />
+            </View>
+          ) : reposts.length === 0 ? (
+            <View style={styles.emptyPosts}>
+              <Ionicons name="repeat-outline" size={40} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No reposts yet</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {reposts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.gridItem}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/(tabs)/community')}
+                >
+                  <Image
+                    source={post.image_url}
+                    cachePolicy="memory-disk"
+                    contentFit="cover"
+                    style={styles.gridImg}
+                  />
+                  <View style={styles.gridLikes}>
+                    <Ionicons name="repeat" size={12} color={Colors.primary} />
+                    <Text style={[styles.gridLikesText, { color: Colors.primary }]}>Repost</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         )}
       </ScrollView>
     </SafeAreaView>
@@ -547,7 +643,11 @@ const styles = StyleSheet.create({
   coachStat: { alignItems: 'center', gap: 4 },
   coachStatText: { color: Colors.textPrimary, fontSize: 12, fontWeight: '600' },
 
-  gridHeader: { flexDirection: 'row', justifyContent: 'center', paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER, marginTop: 16 },
+  gridHeader: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingVertical: 10, borderTopWidth: 1, borderTopColor: BORDER, marginTop: 16 },
+  tabButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabButtonActive: { borderBottomColor: Colors.primary },
+  tabButtonText: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+  tabButtonTextActive: { color: Colors.primary },
 
   emptyPosts: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   emptyText: { color: Colors.textMuted, fontSize: 14 },

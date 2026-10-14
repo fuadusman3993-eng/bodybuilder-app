@@ -171,19 +171,32 @@ export default function CommunityScreen() {
           }
         } catch (_) {}
 
-        // Fetch most recent liker name (for "Liked by X" row)
+        // Fetch most recent liker name & avatar from Firestore (for "Liked by X" row)
         let recentLikerAvatar: string | undefined;
         if ((p.likes_count || 0) > 0) {
           try {
             const { data: likerRows } = await supabase
               .from('post_likes')
-              .select('uid, username, avatar_url')
+              .select('uid, created_at')
               .eq('post_id', p.id)
-              .neq('uid', user?.uid || '')
-              .limit(1);
+              .order('created_at', { ascending: false })
+              .limit(5);
+
             if (likerRows && likerRows.length > 0) {
-              recentLikerName = likerRows[0].username || undefined;
-              recentLikerAvatar = likerRows[0].avatar_url || undefined;
+              const otherLiker = likerRows.find((r: any) => r.uid !== user?.uid);
+              const chosenUid = otherLiker ? otherLiker.uid : likerRows[0].uid;
+
+              if (chosenUid === user?.uid) {
+                recentLikerName = 'you';
+                recentLikerAvatar = user?.avatar;
+              } else {
+                const uSnap = await getDoc(doc(db, 'users', chosenUid));
+                if (uSnap.exists()) {
+                  const u = uSnap.data();
+                  recentLikerName = u.name || u.displayName || u.username || 'Someone';
+                  recentLikerAvatar = u.avatar || u.photoURL || undefined;
+                }
+              }
             }
           } catch (_) {}
         }

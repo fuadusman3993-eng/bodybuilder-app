@@ -10,6 +10,7 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
+import SharePostModal from './SharePostModal';
 
 export interface RealPost {
   id: string;
@@ -86,24 +87,8 @@ export default function PostCard({
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showPostOptions, setShowPostOptions] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
-  const handleShare = async () => {
-    const url = 'https://bodybuilder-app-phi.vercel.app';
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof navigator !== 'undefined' && navigator.share) {
-          await navigator.share({ title: 'FitPulse Post', url });
-        } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-          await navigator.clipboard.writeText(url);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        }
-      } else {
-        await Share.share({ message: url });
-      }
-    } catch (_) {}
-  };
 
   const isOwner = !!post.isSelf || (!!currentUser?.uid && post.uid === currentUser.uid);
 
@@ -370,12 +355,12 @@ export default function PostCard({
           <TouchableOpacity
             style={styles.actionButton}
             activeOpacity={0.7}
-            onPress={handleShare}
+            onPress={() => setShowShareModal(true)}
           >
             <Ionicons
-              name={copied ? 'checkmark-circle-outline' : 'paper-plane-outline'}
+              name="paper-plane-outline"
               size={24}
-              color={copied ? Colors.primary : Colors.textPrimary}
+              color={Colors.textPrimary}
             />
           </TouchableOpacity>
         </View>
@@ -395,7 +380,7 @@ export default function PostCard({
       </View>
 
       {/* ── 4. LIKED BY ROW (Overlapping Avatars + Text) ── */}
-      {(post.likes_count || 0) > 0 && !!post.recentLikerName && (
+      {(post.likes_count || 0) > 0 && (
         <View style={styles.likedByRow}>
           <View style={styles.likedAvatars}>
             <Image
@@ -416,7 +401,7 @@ export default function PostCard({
           <Text style={styles.likedByText}>
             Liked by{' '}
             <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>
-              {post.recentLikerName}
+              {post.recentLikerName || 'someone'}
             </Text>
             {(post.likes_count || 0) > 1 ? ' and others' : ''}
           </Text>
@@ -632,6 +617,14 @@ export default function PostCard({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── SHARE POST MODAL (TIKTOK STYLE) ── */}
+      <SharePostModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        post={post}
+        onToggleRepost={onToggleRepost}
+      />
     </View>
   );
 }
