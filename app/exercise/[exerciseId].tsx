@@ -1,256 +1,580 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Share, Modal, Platform, Alert
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/colors';
-import { EXERCISES } from '../../constants/exercises';
-import { WORKOUTS } from '../../constants/workouts';
-import { CHALLENGES } from '../../constants/challenges';
-import { useChallengeStore } from '../../store/challengeStore';
-import FormCameraRecorder from '../../components/workout/FormCameraRecorder';
+import { EXERCISES, Exercise } from '../../constants/exercises';
+import { useUserStore } from '../../store/userStore';
+import { supabase } from '../../lib/supabase';
+import AnatomicalVisualizer from '../../components/workout/AnatomicalVisualizer';
+import RepsHistoryChart, { HistorySession } from '../../components/workout/RepsHistoryChart';
 
-export default function ExerciseExecutionScreen() {
+export default function ExerciseDetailScreen() {
   const { exerciseId, day, index } = useLocalSearchParams();
   const router = useRouter();
-  
-  const dayNumber = parseInt(day as string, 10);
-  const exerciseIndex = parseInt(index as string, 10);
-  
-  const challenge = CHALLENGES['14-day-muscle'];
-  const dayData = challenge.days.find(d => d.day === dayNumber);
-  const workout = WORKOUTS[dayData?.workoutId || ''];
-  const workoutEx = workout?.exercises[exerciseIndex];
-  const exData = EXERCISES[exerciseId as string];
+  const { user } = useUserStore();
 
-  const { currentWorkoutProgress, saveSetProgress } = useChallengeStore();
-  const currentSets = currentWorkoutProgress[exerciseId as string] || [];
+  const id = (exerciseId as string) || 'pushup';
+  const exData: Exercise = EXERCISES[id] || EXERCISES['pushup'];
 
-  // State for Rest Timer
-  const [restTimeRemaining, setRestTimeRemaining] = useState(0);
-  const [isResting, setIsResting] = useState(false);
-  const timerRef = useRef<any>(null);
+  const [gender, setGender] = useState<'M' | 'F'>('M');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [note, setNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [showLevelWhy, setShowLevelWhy] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [historySessions, setHistorySessions] = useState<HistorySession[]>([]);
 
-  // State for Camera Form Record
-  const [showCamera, setShowCamera] = useState(false);
-
+  // ── Load Note & History from Supabase / AsyncStorage ──────────
   useEffect(() => {
-    if (isResting && restTimeRemaining > 0) {
-      timerRef.current = setTimeout(() => {
-        setRestTimeRemaining(prev => prev - 1);
-      }, 1000);
-    } else if (isResting && restTimeRemaining === 0) {
-      setIsResting(false);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+    let isMounted = true;
+
+    // 1. Load Note
+    const loadNote = async () => {
+      const cacheKey = `exercise_note_${user?.uid || 'guest'}_${id}`;
+      try {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached && isMounted) setNote(cached);
+
+        if (user?.uid) {
+          const { data } = await supabase
+            .from('exercise_notes')
+            .select('note')
+            .eq('user_uid', user.uid)
+            .eq('exercise_id', id)
+            .maybeSingle();
+
+          if (data?.note && isMounted) {
+            setNote(data.note);
+            AsyncStorage.setItem(cacheKey, data.note).catch(() => {});
+          }
+        }
+      } catch (_) {}
     };
-  }, [isResting, restTimeRemaining]);
 
-  if (!exData || !workoutEx) return null;
+    // 2. Load History Sessions for Chart
+    const loadHistory = async () => {
+      const cacheKey = `exercise_history_${user?.uid || 'guest'}_${id}`;
+      try {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached && isMounted) {
+          try { setHistorySessions(JSON.parse(cached)); } catch (_) {}
+        }
 
-  const handleCompleteSet = (setIndex: number, reps: number, weight: number) => {
-    saveSetProgress(exData.id, setIndex, { reps, weight, completed: true });
-    // Start Rest Timer
-    if (setIndex < workoutEx.sets - 1) {
-      setRestTimeRemaining(workoutEx.restSeconds);
-      setIsResting(true);
-    }
+        if (user?.uid) {
+          const { data } = await supabase
+            .from('exercise_set_logs')
+            .select('reps, created_at')
+            .eq('user_uid', user.uid)
+            .eq('exercise_id', id)
+            .order('created_at', { ascending: true })
+            .limit(20);
+
+          if (data && data.length > 0 && isMounted) {
+            // Group into sessions by date
+            const grouped: Record<string, number[]> = {};
+            data.forEach((row: any) => {
+              const d = new Date(row.created_at);
+              const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+              if (!grouped[dayStr]) grouped[dayStr] = [];
+              grouped[dayStr].push(row.reps || 0);
+            });
+
+            const parsedSessions: HistorySession[] = Object.keys(grouped).map(dayLabel => {
+              const repsList = grouped[dayLabel];
+              const maxReps = Math.max(...repsList, 0);
+              const totalReps = repsList.reduce((a, b) => a + b, 0);
+              return { date: dayLabel, maxReps, totalReps };
+            });
+
+            if (parsedSessions.length > 0) {
+              setHistorySessions(parsedSessions);
+              AsyncStorage.setItem(cacheKey, JSON.stringify(parsedSessions)).catch(() => {});
+            }
+          }
+        }
+      } catch (_) {}
+    };
+
+    loadNote();
+    loadHistory();
+
+    return () => { isMounted = false; };
+  }, [id, user?.uid]);
+
+  // ── Save Note to Supabase ─────────────────────────────────
+  const handleSaveNote = async (text: string) => {
+    setNote(text);
+    const cacheKey = `exercise_note_${user?.uid || 'guest'}_${id}`;
+    AsyncStorage.setItem(cacheKey, text).catch(() => {});
+
+    if (!user?.uid) return;
+    setSavingNote(true);
+    try {
+      await supabase.from('exercise_notes').upsert({
+        user_uid: user.uid,
+        exercise_id: id,
+        note: text,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_uid,exercise_id' });
+    } catch (_) {}
+    finally { setSavingNote(false); }
   };
 
-  const skipRest = () => {
-    setIsResting(false);
-    setRestTimeRemaining(0);
-    if (timerRef.current) clearTimeout(timerRef.current);
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: exData.name,
+        message: `Check out ${exData.name} on BodyBuilder! ${exData.muscleGroup} exercise.`,
+      });
+    } catch (_) {}
   };
 
-  const handleNext = () => {
-    const nextIndex = exerciseIndex + 1;
-    if (nextIndex < workout.exercises.length) {
-      const nextEx = workout.exercises[nextIndex];
-      router.replace(`/exercise/${nextEx.exerciseId}?day=${dayNumber}&index=${nextIndex}`);
-    } else {
-      router.replace(`/workout/complete?day=${dayNumber}`);
-    }
-  };
-
-  const openCamera = () => {
-    setShowCamera(true);
+  const handleStartWorkout = () => {
+    router.push({
+      pathname: '/workout/session',
+      params: {
+        exerciseId: id,
+        day: day || '1',
+        index: index || '0',
+      },
+    });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ── Top Header (Matching Image 2) ────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <View style={styles.progressHeader}>
-          <Text style={styles.headerTitle}>Exercise {exerciseIndex + 1} of {workout.exercises.length}</Text>
-          <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${((exerciseIndex + 1) / workout.exercises.length) * 100}%` }]} />
-          </View>
+
+        <Text style={styles.headerTitle}>{exData.name}</Text>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setIsFavorite(prev => !prev)}
+          >
+            <Ionicons
+              name={isFavorite ? 'star' : 'star-outline'}
+              size={22}
+              color={isFavorite ? '#FBBF24' : '#FFF'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setShowInfoModal(true)}
+          >
+            <Ionicons name="information-circle-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={handleShare}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color="#FFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={openCamera}>
-          <Ionicons name="videocam-outline" size={22} color="#FFF" />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* Video Player */}
-        <View style={styles.videoContainer}>
-          <Video
-            source={{ uri: exData.videoUrl }}
-            style={styles.video}
-            useNativeControls
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay
-            posterSource={{ uri: exData.thumbnail }}
-            usePoster
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        {/* Sub Header: Share & Level 3 indicator */}
+        <View style={styles.subHeaderRow}>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+            <Ionicons name="share-outline" size={18} color="#3B82F6" />
+            <Text style={styles.shareText}>Share</Text>
+          </TouchableOpacity>
+
+          <View style={styles.levelWrap}>
+            <Text style={styles.levelText}>{exData.levelLabel}</Text>
+            <View style={styles.levelBars}>
+              {[1, 2, 3, 4, 5].map(lvl => (
+                <View
+                  key={lvl}
+                  style={[
+                    styles.levelBar,
+                    lvl <= exData.level && styles.levelBarFilled,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Anatomical 3D Visualizer with M/F & Speed ──────────── */}
+        <AnatomicalVisualizer
+          exercise={exData}
+          gender={gender}
+          onGenderChange={setGender}
+          onStartWorkout={handleStartWorkout}
+          showStartButton={true}
+        />
+
+        {/* ── Detail Chips Row ─────────────────────────────────── */}
+        <View style={styles.chipsRow}>
+          <TouchableOpacity
+            style={styles.chip}
+            onPress={() => setShowLevelWhy(true)}
+          >
+            <Ionicons name="bar-chart-outline" size={14} color="#818CF8" />
+            <Text style={styles.chipText}>
+              {exData.levelLabel} · <Text style={{ color: '#3B82F6' }}>why?</Text>
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.chip}>
+            <Ionicons name="swap-horizontal-outline" size={14} color="#34D399" />
+            <Text style={styles.chipText}>{exData.movementType}</Text>
+          </View>
+
+          <View style={styles.chip}>
+            <Ionicons name="trending-up-outline" size={14} color="#FBBF24" />
+            <Text style={styles.chipText}>{exData.trackingType}</Text>
+          </View>
+        </View>
+
+        {/* Also known as */}
+        {exData.altName && (
+          <Text style={styles.altNameText}>Also known as: {exData.altName}</Text>
+        )}
+
+        {/* ── Exercise Note (Matching Image 2) ─────────────────── */}
+        <View style={styles.noteCard}>
+          <View style={styles.noteHeader}>
+            <Ionicons name="create-outline" size={18} color="#FFF" />
+            <Text style={styles.noteTitle}>Exercise Note</Text>
+            {savingNote && (
+              <Text style={styles.savingBadge}>Saving...</Text>
+            )}
+          </View>
+          <TextInput
+            style={styles.noteInput}
+            placeholder="Write your personal notes and tips"
+            placeholderTextColor="#64748B"
+            multiline
+            value={note}
+            onChangeText={handleSaveNote}
           />
         </View>
 
-        <View style={styles.infoSection}>
-          <Text style={styles.exName}>{exData.name}</Text>
-          <Text style={styles.exMeta}>{exData.muscleGroup} • {exData.level}</Text>
-          <Text style={styles.exGoal}>{workoutEx.sets} Sets × {workoutEx.reps} Reps</Text>
-        </View>
+        {/* ── Reps History Bar Chart (Matching Image 2) ────────── */}
+        <RepsHistoryChart sessions={historySessions} />
 
-        <View style={styles.instructionsSection}>
-          <Text style={styles.sectionTitle}>How to perform</Text>
-          {exData.instructions.map((inst, i) => (
-            <View key={i} style={styles.instructionRow}>
-              <Text style={styles.instructionNum}>{i + 1}</Text>
-              <Text style={styles.instructionText}>{inst}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.setsSection}>
-          <View style={styles.setRowHeader}>
-            <Text style={[styles.setColHeader, { flex: 0.5 }]}>SET</Text>
-            <Text style={[styles.setColHeader, { flex: 1 }]}>KG</Text>
-            <Text style={[styles.setColHeader, { flex: 1 }]}>REPS</Text>
-            <Text style={[styles.setColHeader, { flex: 1, textAlign: 'center' }]}>DONE</Text>
-          </View>
-
-          {Array.from({ length: workoutEx.sets }).map((_, i) => {
-            const isCompleted = currentSets[i]?.completed;
-            return (
-              <SetRow 
-                key={i} 
-                index={i} 
-                defaultReps={typeof workoutEx.reps === 'number' ? workoutEx.reps : 0} 
-                isCompleted={isCompleted}
-                onComplete={(reps, weight) => handleCompleteSet(i, reps, weight)}
-              />
-            );
-          })}
-        </View>
-        
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>
-            {exerciseIndex + 1 === workout.exercises.length ? 'Finish Workout' : 'Next Exercise'}
-          </Text>
-        </TouchableOpacity>
+        {/* Bottom Spacing */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Rest Timer Overlay */}
-      {isResting && (
-        <View style={styles.restOverlay}>
-          <View style={styles.restCard}>
-            <Text style={styles.restTitle}>REST</Text>
-            <Text style={styles.restTime}>{restTimeRemaining}</Text>
-            <Text style={styles.restSub}>seconds</Text>
-            
-            <TouchableOpacity style={styles.skipRestBtn} onPress={skipRest}>
-              <Text style={styles.skipRestText}>Skip Rest</Text>
+      {/* Floating AI Coach Assistant Button (Bottom Right) */}
+      <TouchableOpacity
+        style={styles.floatingAiBtn}
+        activeOpacity={0.85}
+        onPress={() => setShowAiModal(true)}
+      >
+        <Ionicons name="sparkles" size={24} color="#FFF" />
+      </TouchableOpacity>
+
+      {/* ── Level Why Modal ────────────────────────────────────── */}
+      <Modal visible={showLevelWhy} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{exData.levelLabel} Difficulty</Text>
+            <Text style={styles.modalDesc}>{exData.levelWhy}</Text>
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setShowLevelWhy(false)}
+            >
+              <Text style={styles.modalCloseText}>Got It</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
 
-      {/* Camera Form Recorder */}
-      <FormCameraRecorder visible={showCamera} onClose={() => setShowCamera(false)} />
+      {/* ── How to Perform Info Modal ──────────────────────────── */}
+      <Modal visible={showInfoModal} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>How to Perform {exData.name}</Text>
+              <TouchableOpacity onPress={() => setShowInfoModal(false)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.instructionHeading}>Execution Steps</Text>
+              {exData.instructions.map((step, idx) => (
+                <View key={idx} style={styles.stepRow}>
+                  <View style={styles.stepNum}>
+                    <Text style={styles.stepNumText}>{idx + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))}
+
+              <Text style={[styles.instructionHeading, { marginTop: 16 }]}>Pro Form Tips</Text>
+              {exData.formTips.map((tip, idx) => (
+                <View key={idx} style={styles.stepRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
+                  <Text style={styles.stepText}>{tip}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── AI Coach Assistant Modal ───────────────────────────── */}
+      <Modal visible={showAiModal} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="sparkles" size={20} color={Colors.primary} />
+                <Text style={styles.modalTitle}>AI Coach Advice</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAiModal(false)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalDesc}>
+              "For {exData.name}, prioritize full range of motion over speed. Inhale on the descent, engage your core like a solid steel plank, and press explosively while exhaling!"
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalCloseBtn, { backgroundColor: Colors.primary }]}
+              onPress={() => {
+                setShowAiModal(false);
+                handleStartWorkout();
+              }}
+            >
+              <Text style={[styles.modalCloseText, { color: '#000' }]}>Start Session with Coach</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-function SetRow({ index, defaultReps, isCompleted, onComplete }: { index: number, defaultReps: number, isCompleted: boolean, onComplete: (reps: number, weight: number) => void }) {
-  const [reps, setReps] = useState(defaultReps.toString());
-  const [weight, setWeight] = useState('');
-
-  return (
-    <View style={[styles.setRow, isCompleted && styles.setRowCompleted]}>
-      <Text style={[styles.setNum, { flex: 0.5 }]}>{index + 1}</Text>
-      <TextInput
-        style={[styles.input, { flex: 1 }]}
-        keyboardType="numeric"
-        placeholder="-"
-        placeholderTextColor="#555"
-        value={weight}
-        onChangeText={setWeight}
-        editable={!isCompleted}
-      />
-      <TextInput
-        style={[styles.input, { flex: 1 }]}
-        keyboardType="numeric"
-        placeholder={defaultReps.toString()}
-        placeholderTextColor="#555"
-        value={reps}
-        onChangeText={setReps}
-        editable={!isCompleted}
-      />
-      <View style={{ flex: 1, alignItems: 'center' }}>
-        <TouchableOpacity 
-          style={[styles.checkBtn, isCompleted && styles.checkBtnActive]}
-          onPress={() => !isCompleted && onComplete(parseInt(reps) || 0, parseInt(weight) || 0)}
-          disabled={isCompleted}
-        >
-          <Ionicons name="checkmark" size={18} color={isCompleted ? "#000" : "#888"} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 56, borderBottomWidth: 1, borderBottomColor: '#222' },
-  iconBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  progressHeader: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#888', fontSize: 12, fontWeight: '600', marginBottom: 6 },
-  progressBarBg: { width: 120, height: 4, backgroundColor: '#222', borderRadius: 2, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: Colors.primary },
-  content: { paddingBottom: 100 },
-  videoContainer: { width: '100%', aspectRatio: 16/9, backgroundColor: '#111' },
-  video: { width: '100%', height: '100%' },
-  infoSection: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#111' },
-  exName: { color: '#FFF', fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  exMeta: { color: Colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 12 },
-  exGoal: { color: '#CCC', fontSize: 16, fontWeight: '500' },
-  instructionsSection: { padding: 20 },
-  sectionTitle: { color: '#FFF', fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  instructionRow: { flexDirection: 'row', marginBottom: 12, paddingRight: 20 },
-  instructionNum: { color: '#888', fontSize: 14, fontWeight: '700', width: 24 },
-  instructionText: { color: '#CCC', fontSize: 14, lineHeight: 20, flex: 1 },
-  setsSection: { padding: 20, paddingTop: 0 },
-  setRowHeader: { flexDirection: 'row', marginBottom: 12, paddingHorizontal: 12 },
-  setColHeader: { color: '#888', fontSize: 12, fontWeight: '600' },
-  setRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 12, padding: 8, marginBottom: 8 },
-  setRowCompleted: { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-  setNum: { color: '#FFF', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  input: { backgroundColor: '#222', borderRadius: 8, color: '#FFF', fontSize: 16, fontWeight: '600', textAlign: 'center', height: 40, marginHorizontal: 4 },
-  checkBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },
-  checkBtnActive: { backgroundColor: Colors.primary },
-  nextBtn: { backgroundColor: '#FFF', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', margin: 20, marginTop: 10 },
-  nextBtnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  restOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-  restCard: { alignItems: 'center' },
-  restTitle: { color: Colors.primary, fontSize: 20, fontWeight: '800', letterSpacing: 2, marginBottom: 20 },
-  restTime: { color: '#FFF', fontSize: 72, fontWeight: '900' },
-  restSub: { color: '#888', fontSize: 16, marginTop: -10, marginBottom: 40 },
-  skipRestBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30, borderWidth: 1, borderColor: '#444' },
-  skipRestText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    padding: 6,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  subHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  shareText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  levelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  levelText: {
+    color: '#3B82F6',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  levelBars: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  levelBar: {
+    width: 8,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  levelBarFilled: {
+    backgroundColor: '#3B82F6',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  chipText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  altNameText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 12,
+  },
+  noteCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  noteTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  savingBadge: {
+    color: '#64748B',
+    fontSize: 11,
+    marginLeft: 'auto',
+  },
+  noteInput: {
+    color: '#FFF',
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 50,
+  },
+  floatingAiBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#0F172A',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalDesc: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  modalCloseBtn: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  instructionHeading: {
+    color: '#38BDF8',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  stepNum: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepNumText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  stepText: {
+    flex: 1,
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 18,
+  },
 });

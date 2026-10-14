@@ -58,17 +58,20 @@ export default function ChallengeScreen() {
 
   const handleJoinOrContinue = () => {
     if (!isJoined) {
-      if (user.tier === UserTier.GUEST) {
-        // Need to login first
-        router.push('/');
+      if (user.tier === UserTier.GUEST && !user.uid) {
+        router.push('/login');
         return;
       }
       joinChallenge(CHALLENGE_ID);
+      const firstDay = challengeData.days[0];
+      if (firstDay && firstDay.workoutId) {
+        router.push(`/workout/${firstDay.day}`);
+      }
       return;
     }
     
     // Already joined, continue to current day
-    handleDayPress(challengeData.days[currentDay - 1]);
+    handleDayPress(challengeData.days[currentDay - 1] || challengeData.days[0]);
   };
 
   const handleDayPress = (dayData: any) => {

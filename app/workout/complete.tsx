@@ -9,21 +9,29 @@ import { WORKOUTS } from '../../constants/workouts';
 import { useChallengeStore } from '../../store/challengeStore';
 
 export default function WorkoutCompleteScreen() {
-  const { day } = useLocalSearchParams();
+  const { day, time, sets: completedSetsParam, reps: totalRepsParam } = useLocalSearchParams();
   const router = useRouter();
   const { completeDay } = useChallengeStore();
   
-  const dayNumber = parseInt(day as string, 10);
+  const dayNumber = parseInt(day as string, 10) || 1;
   const challenge = CHALLENGES['14-day-muscle'];
-  const dayData = challenge.days.find(d => d.day === dayNumber);
-  const workout = WORKOUTS[dayData?.workoutId || ''];
+  const dayData = challenge?.days.find(d => d.day === dayNumber);
+  const workout = WORKOUTS[dayData?.workoutId || ''] || WORKOUTS['wk-1-upper'];
 
-  const totalSets = workout?.exercises.reduce((acc, ex) => acc + ex.sets, 0) || 0;
+  const totalSets = workout?.exercises.reduce((acc, ex) => acc + ex.sets, 0) || 3;
+  const displaySets = completedSetsParam ? `${completedSetsParam} Sets` : `${totalSets} / ${totalSets}`;
+  
+  let displayDuration = workout?.duration || '15 min';
+  if (time) {
+    const s = parseInt(time as string, 10) || 0;
+    const mins = Math.floor(s / 60);
+    const remSecs = s % 60;
+    displayDuration = mins > 0 ? `${mins}m ${remSecs}s` : `${remSecs}s`;
+  }
 
   const handleCompleteDay = () => {
     completeDay(dayNumber);
-    router.dismissAll();
-    router.replace('/challenge');
+    router.replace('/(tabs)/index');
   };
 
   return (
@@ -39,22 +47,22 @@ export default function WorkoutCompleteScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Duration</Text>
-            <Text style={styles.statValue}>{workout?.duration}</Text>
+            <Text style={styles.statValue}>{displayDuration}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Exercises</Text>
-            <Text style={styles.statValue}>{workout?.exercises.length} / {workout?.exercises.length}</Text>
+            <Text style={styles.statValue}>{workout?.exercises.length || 1} Completed</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Sets Completed</Text>
-            <Text style={styles.statValue}>{totalSets} / {totalSets}</Text>
+            <Text style={styles.statLabel}>Sets Logged</Text>
+            <Text style={styles.statValue}>{displaySets}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Calories Burned</Text>
-            <Text style={styles.statValue}>~{workout?.estimatedCalories} kcal</Text>
+            <Text style={styles.statValue}>~{workout?.estimatedCalories || 180} kcal</Text>
           </View>
         </View>
       </View>
