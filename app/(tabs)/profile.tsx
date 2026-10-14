@@ -12,6 +12,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import BrandLogo from '../../components/ui/BrandLogo';
+import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
@@ -36,6 +37,7 @@ export default function ProfileScreen() {
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [repostedPosts, setRepostedPosts] = useState<any[]>([]);
   const [loadingReposts, setLoadingReposts] = useState(false);
+  const [showMoreModal, setShowMoreModal] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
 
@@ -257,7 +259,7 @@ export default function ProfileScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setShowMoreModal(true)}>
             <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -454,13 +456,19 @@ export default function ProfileScreen() {
           )
         )}
 
-        {activeTab !== 'Posts' && activeTab !== 'Saved' && (
+        {activeTab !== 'Posts' && activeTab !== 'Saved' && activeTab !== 'Reposts' && (
           <View style={styles.emptyPosts}>
             <Ionicons name="construct-outline" size={40} color={Colors.textMuted} />
             <Text style={styles.emptySubtitle}>Coming soon</Text>
           </View>
         )}
       </ScrollView>
+
+      {/* ── TIKTOK-STYLE MORE MENU MODAL ── */}
+      <ProfileMoreModal
+        visible={showMoreModal}
+        onClose={() => setShowMoreModal(false)}
+      />
     </SafeAreaView>
   );
 }
