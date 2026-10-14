@@ -27,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
-  const { setUser } = useUserStore();
+  const { setUser, setAuthInitialized } = useUserStore();
 
   useEffect(() => {
     async function loadAssetsAsync() {
@@ -94,6 +94,7 @@ export default function RootLayout() {
           city: undefined,
         });
       }
+      setAuthInitialized(true);
     });
     return () => unsubscribe();
   }, []);

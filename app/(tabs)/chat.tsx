@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, Image, ActivityIndicator, ScrollView, Alert, Platform
@@ -10,7 +10,6 @@ import { supabase } from '../../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
-import GuestBlocker from '../../components/ui/GuestBlocker';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 
@@ -54,7 +53,7 @@ import { useCachedState } from '../../lib/useCachedState';
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, authInitialized } = useUserStore();
   const [conversations, setConversations, cacheLoaded] = useCachedState<ConvItem[]>(user?.uid ? `chats_${user.uid}` : '', []);
   const [loading, setLoading] = useState(true);
   
@@ -67,6 +66,20 @@ export default function ChatScreen() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Coaches' | 'Groups'>('All');
+
+  // If definitely not logged in after auth check, redirect to login
+  useEffect(() => {
+    if (authInitialized && (!user.uid || user.tier === UserTier.GUEST)) {
+      router.replace('/login');
+    }
+  }, [authInitialized, user.uid, user.tier]);
+
+  // Ensure conversations are fetched when user.uid becomes ready
+  useEffect(() => {
+    if (user.uid && user.tier !== UserTier.GUEST) {
+      fetchConversations();
+    }
+  }, [user.uid]);
 
   const fetchConversations = async () => {
     if (!user.uid || user.tier === UserTier.GUEST) return;
@@ -221,15 +234,6 @@ export default function ChatScreen() {
       </View>
     </TouchableOpacity>
   );
-
-  // ── Guest Guard ───────────────────────────────────────────
-  if (user.tier === UserTier.GUEST || !user.uid) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <GuestBlocker feature="chat" />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

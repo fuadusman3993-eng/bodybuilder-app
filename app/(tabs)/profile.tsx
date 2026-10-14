@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
-import GuestBlocker from '../../components/ui/GuestBlocker';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { signOut } from '../../lib/authService';
@@ -22,7 +21,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, setUser } = useUserStore();
+  const { user, setUser, authInitialized } = useUserStore();
 
   const isCoach = user.role === 'coach';
   const defaultTabs = isCoach
@@ -231,14 +230,14 @@ export default function ProfileScreen() {
     }, [user.uid])
   );
 
-  // ── Guest Guard: immediately redirect to login page ─────────
+  // ── Guest Guard: immediately redirect to login page only when auth is done ─────────
   useEffect(() => {
-    if (user.tier === UserTier.GUEST || !user.uid) {
+    if (authInitialized && (user.tier === UserTier.GUEST || !user.uid)) {
       router.replace('/login');
     }
-  }, [user.tier, user.uid]);
+  }, [authInitialized, user.tier, user.uid]);
 
-  if (user.tier === UserTier.GUEST || !user.uid) {
+  if (authInitialized && (user.tier === UserTier.GUEST || !user.uid)) {
     return null;
   }
 

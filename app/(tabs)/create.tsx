@@ -16,13 +16,23 @@ import { invalidateCommunityCache } from './community';
 
 export default function CreateScreen() {
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, authInitialized } = useUserStore();
 
   const [content, setContent] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
 
   // ── Guest Guard ───────────────────────────────────────────
+  if (!authInitialized) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (user.tier === UserTier.GUEST || !user.uid) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
