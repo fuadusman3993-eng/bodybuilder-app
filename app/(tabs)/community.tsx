@@ -136,6 +136,21 @@ export default function CommunityScreen() {
         }
       } catch (_) {}
 
+      // 4.6. Repost count map + my reposts
+      const repostCountMap: Record<string, number> = {};
+      let myRepostSet = new Set<string>();
+      try {
+        const { data: repostRows } = await supabase
+          .from('post_reposts')
+          .select('post_id, uid');
+        if (repostRows) {
+          for (const r of repostRows) {
+            repostCountMap[r.post_id] = (repostCountMap[r.post_id] || 0) + 1;
+            if (r.uid === user?.uid) myRepostSet.add(r.post_id);
+          }
+        }
+      } catch (_) {}
+
       // 5. Enrich posts with Firebase author info
       const enriched: RealPost[] = [];
       for (const p of dbPosts || []) {
@@ -157,16 +172,18 @@ export default function CommunityScreen() {
         } catch (_) {}
 
         // Fetch most recent liker name (for "Liked by X" row)
+        let recentLikerAvatar: string | undefined;
         if ((p.likes_count || 0) > 0) {
           try {
             const { data: likerRows } = await supabase
               .from('post_likes')
-              .select('uid, username')
+              .select('uid, username, avatar_url')
               .eq('post_id', p.id)
               .neq('uid', user?.uid || '')
               .limit(1);
             if (likerRows && likerRows.length > 0) {
               recentLikerName = likerRows[0].username || undefined;
+              recentLikerAvatar = likerRows[0].avatar_url || undefined;
             }
           } catch (_) {}
         }
@@ -186,6 +203,9 @@ export default function CommunityScreen() {
           isCoach,
           city,
           recentLikerName,
+          recentLikerAvatar,
+          reposts_count: repostCountMap[p.id] || 0,
+          isReposted: myRepostSet.has(p.id),
           isFollowing: followingSet.has(p.uid),
           isSelf: p.uid === user?.uid,
         });
@@ -320,6 +340,55 @@ export default function CommunityScreen() {
     } catch (e: any) {
       console.warn('Delete post error:', e);
       fetchPosts(false);
+    }
+  };
+
+  // ── Repost Toggle ──
+  const handleToggleRepost = async (postId: string) => {
+    if (!user?.uid) { router.push('/login'); return; }
+
+    const targetPost = posts.find(p => p.id === postId);
+    if (!targetPost) return;
+    const willRepost = !targetPost.isReposted;
+
+    // Optimistic update
+    setPosts(prev => {
+      const next = prev.map(p => {
+        if (p.id !== postId) return p;
+        const wasReposted = !!p.isReposted;
+        return {
+          ...p,
+          isReposted: !wasReposted,
+          reposts_count: wasReposted
+            ? Math.max(0, (p.reposts_count || 0) - 1)
+            : (p.reposts_count || 0) + 1,
+        };
+      });
+      cachedPosts = next;
+      return next;
+    });
+
+    try {
+      if (willRepost) {
+        await supabase.from('post_reposts').insert({ post_id: postId, uid: user.uid });
+      } else {
+        await supabase.from('post_reposts').delete()
+          .eq('post_id', postId).eq('uid', user.uid);
+      }
+    } catch (e) {
+      // Rollback on error
+      setPosts(prev => {
+        const rolled = prev.map(p =>
+          p.id !== postId ? p : {
+            ...p,
+            isReposted: targetPost.isReposted,
+            reposts_count: targetPost.reposts_count,
+          }
+        );
+        cachedPosts = rolled;
+        return rolled;
+      });
+      console.warn('Repost toggle error:', e);
     }
   };
 
@@ -559,6 +628,7 @@ export default function CommunityScreen() {
               post={item}
               onToggleLike={handleToggleLike}
               onToggleBookmark={handleToggleBookmark}
+              onToggleRepost={handleToggleRepost}
               onFollowToggle={handleFollowToggle}
               onPressUser={handlePressUser}
               onDeletePost={handleDeletePost}

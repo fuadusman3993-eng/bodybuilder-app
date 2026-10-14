@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   TextInput, FlatList, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Image as RNImage, Alert,
+  ActivityIndicator, Image as RNImage, Alert, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,9 @@ export interface RealPost {
   isCoach?: boolean;
   city?: string;
   recentLikerName?: string;
+  recentLikerAvatar?: string;
+  reposts_count?: number;
+  isReposted?: boolean;
   isFollowing?: boolean;
   isSelf?: boolean;
 }
@@ -60,6 +63,7 @@ interface PostCardProps {
   post: RealPost;
   onToggleLike?: (postId: string) => void;
   onToggleBookmark?: (postId: string) => void;
+  onToggleRepost?: (postId: string) => void;
   onFollowToggle?: (uid: string, isFollowing: boolean) => void;
   onPressUser?: (uid: string) => void;
   onDeletePost?: (postId: string) => void;
@@ -69,6 +73,7 @@ export default function PostCard({
   post,
   onToggleLike,
   onToggleBookmark,
+  onToggleRepost,
   onFollowToggle,
   onPressUser,
   onDeletePost,
@@ -81,6 +86,24 @@ export default function PostCard({
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showPostOptions, setShowPostOptions] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = 'https://bodybuilder-app-phi.vercel.app';
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({ title: 'FitPulse Post', url });
+        } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(url);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }
+      } else {
+        await Share.share({ message: url });
+      }
+    } catch (_) {}
+  };
 
   const isOwner = !!post.isSelf || (!!currentUser?.uid && post.uid === currentUser.uid);
 
@@ -326,13 +349,34 @@ export default function PostCard({
           </TouchableOpacity>
 
           {/* Repost */}
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-            <Ionicons name="repeat-outline" size={24} color={Colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.actionButton}
+            activeOpacity={0.7}
+            onPress={() => onToggleRepost?.(post.id)}
+          >
+            <Ionicons
+              name="repeat-outline"
+              size={24}
+              color={post.isReposted ? Colors.primary : Colors.textPrimary}
+            />
+            {(post.reposts_count || 0) > 0 && (
+              <Text style={[styles.actionText, post.isReposted && { color: Colors.primary }]}>
+                {post.reposts_count}
+              </Text>
+            )}
           </TouchableOpacity>
 
-          {/* Send */}
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-            <Ionicons name="paper-plane-outline" size={24} color={Colors.textPrimary} />
+          {/* Send / Share */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            activeOpacity={0.7}
+            onPress={handleShare}
+          >
+            <Ionicons
+              name={copied ? 'checkmark-circle-outline' : 'paper-plane-outline'}
+              size={24}
+              color={copied ? Colors.primary : Colors.textPrimary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -351,18 +395,18 @@ export default function PostCard({
       </View>
 
       {/* ── 4. LIKED BY ROW (Overlapping Avatars + Text) ── */}
-      {(post.likes_count || 0) > 0 && (
+      {(post.likes_count || 0) > 0 && !!post.recentLikerName && (
         <View style={styles.likedByRow}>
           <View style={styles.likedAvatars}>
             <Image
-              source={defaultAvatar}
+              source={post.recentLikerAvatar || defaultAvatar}
               placeholder={defaultAvatar}
               cachePolicy="memory-disk"
               contentFit="cover"
               style={styles.likedAvatar1}
             />
             <Image
-              source={currentAvatar}
+              source={post.avatar_url || defaultAvatar}
               placeholder={defaultAvatar}
               cachePolicy="memory-disk"
               contentFit="cover"
@@ -372,12 +416,13 @@ export default function PostCard({
           <Text style={styles.likedByText}>
             Liked by{' '}
             <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>
-              {post.recentLikerName || 'remuabu'}
+              {post.recentLikerName}
             </Text>
             {(post.likes_count || 0) > 1 ? ' and others' : ''}
           </Text>
         </View>
       )}
+
 
       {/* ── 5. CAPTION ── */}
       {!!post.caption && (
