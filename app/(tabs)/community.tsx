@@ -283,7 +283,6 @@ export default function CommunityScreen() {
           await supabase.from('post_likes').insert({
             post_id: postId,
             uid: user.uid,
-            username: user.name || 'User',
           });
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: (targetPost.likes_count || 0) + 1 }).eq('id', postId);

@@ -623,6 +623,7 @@ export default function ChatRoom() {
     const isMe = item.sender_uid === user.uid;
     const isAudio = item.type === 'audio' && item.audio_url;
     const isImage = item.type === 'image' && item.media_url;
+    const isSharedPost = isImage && typeof item.text === 'string' && item.text.includes('Shared a post');
     const isVideo = item.type === 'video' && item.media_url;
     const isCall = item.type === 'call' || (typeof item.text === 'string' && (item.text.startsWith('📞') || item.text.includes('Missed call') || item.text.includes('Voice/Video call')));
     const isMissed = isCall && item.text?.toLowerCase().includes('missed');
@@ -677,6 +678,39 @@ export default function ChatRoom() {
                   )}
                 </View>
               </View>
+            ) : isSharedPost ? (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/community')}
+                activeOpacity={0.88}
+                style={styles.sharedPostCard}
+              >
+                <View style={styles.sharedPostHeader}>
+                  <View style={styles.sharedPostBadge}>
+                    <Ionicons name="paper-plane" size={11} color="#000" />
+                  </View>
+                  <Text style={styles.sharedPostAuthor} numberOfLines={1}>
+                    {item.text.split(':')[0]?.replace('📷 ', '') || 'Shared Post'}
+                  </Text>
+                </View>
+
+                {item.media_url ? (
+                  <Image
+                    source={{ uri: item.media_url }}
+                    style={styles.sharedPostPhoto}
+                    resizeMode="cover"
+                  />
+                ) : null}
+
+                <View style={styles.sharedPostFooter}>
+                  <Text style={styles.sharedPostCaption} numberOfLines={2}>
+                    {item.text.includes(':') ? item.text.split(':').slice(1).join(':').replace(/["']/g, '').trim() : ''}
+                  </Text>
+                  <View style={styles.sharedPostLinkRow}>
+                    <Text style={styles.sharedPostLinkText}>View in Community</Text>
+                    <Ionicons name="arrow-forward-circle" size={16} color="#00E676" />
+                  </View>
+                </View>
+              </TouchableOpacity>
             ) : isImage ? (
               <TouchableOpacity onPress={() => item.isUploading ? null : setFullscreenImg(item.media_url)} activeOpacity={0.9} style={{ position: 'relative' }}>
                 <Image
@@ -1068,6 +1102,64 @@ const styles = StyleSheet.create({
   // Media bubbles
   mediaBubble: {
     width: 220, height: 200, borderRadius: 16,
+  },
+  sharedPostCard: {
+    width: 230,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  sharedPostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  sharedPostBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#00E676',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sharedPostAuthor: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    flex: 1,
+  },
+  sharedPostPhoto: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#1E293B',
+  },
+  sharedPostFooter: {
+    padding: 8,
+    gap: 6,
+  },
+  sharedPostCaption: {
+    fontSize: 12,
+    color: '#E0E0E0',
+    lineHeight: 16,
+  },
+  sharedPostLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  sharedPostLinkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#00E676',
   },
   videoBubbleWrap: {
     width: 160, height: 100, borderRadius: 16,

@@ -380,7 +380,7 @@ export default function PostCard({
       </View>
 
       {/* ── 4. LIKED BY ROW (Overlapping Avatars + Text) ── */}
-      {(post.likes_count || 0) > 0 && (
+      {(post.likes_count || 0) > 0 && !!post.recentLikerName && (
         <View style={styles.likedByRow}>
           <View style={styles.likedAvatars}>
             <Image
@@ -401,7 +401,7 @@ export default function PostCard({
           <Text style={styles.likedByText}>
             Liked by{' '}
             <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>
-              {post.recentLikerName || 'someone'}
+              {post.recentLikerName}
             </Text>
             {(post.likes_count || 0) > 1 ? ' and others' : ''}
           </Text>
