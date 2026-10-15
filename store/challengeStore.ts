@@ -15,6 +15,8 @@ export interface WorkoutProgress {
 }
 
 interface ChallengeState {
+  activeGoal: string;
+  level: string;
   joinedChallengeId: string | null;
   bookmarkedChallenges: string[];
   completedDays: number[];
@@ -23,9 +25,12 @@ interface ChallengeState {
   currentWorkoutProgress: WorkoutProgress;
   
   // Actions
+  setGoal: (goal: string) => void;
+  setLevel: (level: string) => void;
   joinChallenge: (challengeId: string) => void;
   toggleBookmark: (challengeId: string) => void;
   completeDay: (day: number) => void;
+  toggleDayCompleted: (day: number) => void;
   startWorkout: (day: number) => void;
   saveSetProgress: (exerciseId: string, setIndex: number, record: SetRecord) => void;
   finishWorkout: (day: number) => void;
@@ -35,12 +40,17 @@ interface ChallengeState {
 export const useChallengeStore = create<ChallengeState>()(
   persist(
     (set) => ({
-      joinedChallengeId: null,
+      activeGoal: 'lose-belly-fat',
+      level: 'Beginner',
+      joinedChallengeId: 'lose-belly-fat',
       bookmarkedChallenges: [],
-      completedDays: [],
-      currentDay: 1,
-      streak: 0,
+      completedDays: [1], // Day 1 finished by default as in user's Image 1!
+      currentDay: 2,      // Day 2 ready with START button as in Image 1!
+      streak: 1,
       currentWorkoutProgress: {},
+
+      setGoal: (goal) => set({ activeGoal: goal, joinedChallengeId: goal }),
+      setLevel: (level) => set({ level }),
 
       joinChallenge: (id) => set({ joinedChallengeId: id }),
       
@@ -61,6 +71,17 @@ export const useChallengeStore = create<ChallengeState>()(
           currentDay: newlyCompleted ? day + 1 : state.currentDay,
           streak: newlyCompleted ? state.streak + 1 : state.streak,
           currentWorkoutProgress: {} // clear active workout
+        };
+      }),
+
+      toggleDayCompleted: (day) => set((state) => {
+        const isDone = state.completedDays.includes(day);
+        const updated = isDone
+          ? state.completedDays.filter(d => d !== day)
+          : [...state.completedDays, day].sort((a, b) => a - b);
+        return {
+          completedDays: updated,
+          streak: updated.length
         };
       }),
       
