@@ -6,626 +6,314 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Modal,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { CHALLENGES } from '../constants/challenges';
 import { useChallengeStore } from '../store/challengeStore';
-import { Colors } from '../constants/colors';
 
-export default function ChallengeScreen() {
+export default function SelectTrainingPlanScreen() {
   const router = useRouter();
-  const {
-    activeGoal,
-    level,
-    completedDays,
-    setGoal,
-    setLevel,
-    toggleDayCompleted,
-  } = useChallengeStore();
+  const { setGoal, setLevel } = useChallengeStore();
 
-  const [showGoalModal, setShowGoalModal] = useState(false);
+  const handleSelectPlan = (goalId: string, levelName: string, directToDay1: boolean = false) => {
+    setGoal(goalId);
+    setLevel(levelName);
 
-  // Active challenge data
-  const challenge = CHALLENGES[activeGoal] || CHALLENGES['lose-belly-fat'];
-  const totalDays = challenge.totalDays || 30;
-  const completedCount = completedDays.length;
-  const daysLeft = Math.max(0, totalDays - completedCount);
-  const progressPercent = Math.min(100, Math.round((completedCount / totalDays) * 100));
-
-  const handleDayPress = (dayNumber: number, isRest: boolean) => {
-    if (isRest) {
-      alert(`Day ${dayNumber} is a scheduled Rest & Recovery day! Drink plenty of water and sleep well.`);
-      return;
+    if (directToDay1) {
+      // Go directly to Day 1 Workout Preview (Image 2 style)
+      router.push({
+        pathname: '/workout/day/[dayId]',
+        params: { dayId: '1' },
+      } as any);
+    } else {
+      // Open 30-Day Challenge Calendar
+      router.push({
+        pathname: '/workout/calendar',
+        params: { goal: goalId },
+      } as any);
     }
-    router.push({
-      pathname: '/workout/day/[dayId]',
-      params: { dayId: dayNumber.toString() },
-    } as any);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
 
-      {/* TOP HERO HEADER (Blue matching Image 1) */}
-      <View style={styles.heroSection}>
-        <SafeAreaView edges={['top']} style={styles.safeTop}>
-          {/* Top navigation row */}
-          <View style={styles.navRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.changeGoalPill}
-              onPress={() => setShowGoalModal(true)}
-            >
-              <Ionicons name="options-outline" size={16} color="#FFF" />
-              <Text style={styles.changeGoalText}>Change Plan</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Hero text & Image */}
-          <View style={styles.heroContentRow}>
-            <View style={styles.heroTextCol}>
-              <View style={styles.levelRow}>
-                <Ionicons name="flash" size={14} color="#60A5FA" />
-                <Ionicons name="flash" size={14} color="#60A5FA" />
-                <Ionicons name="flash" size={14} color="#60A5FA" />
-                <Text style={styles.levelText}>{level}</Text>
-              </View>
-
-              <Text style={styles.heroTitle}>{challenge.title}</Text>
-              <Text style={styles.heroSubtitle}>
-                {challenge.id === 'lose-belly-fat'
-                  ? 'Burn stubborn fat & sculpt lean abs'
-                  : 'Hypertrophy & strength progression'}
-              </Text>
-            </View>
-
-            {/* Athlete Hero Graphic */}
-            <View style={styles.heroImageWrapper}>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&q=80',
-                }}
-                style={styles.heroAthleteImage}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-        </SafeAreaView>
+      {/* HEADER: ← Select Training Plan */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Select Training Plan</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* BOTTOM SHEET / DAYS LIST (White curved card matching Image 1) */}
-      <View style={styles.daysSheet}>
-        {/* Progress header: '29 days left' */}
-        <View style={styles.progressHeader}>
-          <Text style={styles.daysLeftText}>
-            <Text style={styles.daysLeftNumber}>{daysLeft} </Text>
-            days left
-          </Text>
-
-          <View style={styles.progressBarTrack}>
-            <View
-              style={[
-                styles.progressBarFill,
-                { width: `${Math.max(5, progressPercent)}%` },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* 30-Day Scroll List */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {challenge.days.map((item) => {
-            const isCompleted = completedDays.includes(item.day);
-            const isNextActive = !isCompleted && (item.day === 1 || completedDays.includes(item.day - 1));
-
-            // REST DAY
-            if (item.isRest) {
-              return (
-                <View key={item.day} style={styles.restCard}>
-                  <View>
-                    <Text style={styles.restTitle}>Day {item.day}</Text>
-                    <Text style={styles.restSubtitle}>Rest & Recovery</Text>
-                  </View>
-                  <View style={styles.restIconCircle}>
-                    <Ionicons name="cafe-outline" size={24} color="#3B82F6" />
-                  </View>
-                </View>
-              );
-            }
-
-            // ACTIVE NEXT DAY (Big Blue Card with START Button — e.g. Day 2 in Image 1!)
-            if (isNextActive) {
-              return (
-                <View key={item.day} style={styles.activeDayCard}>
-                  <View style={styles.activeDayLeft}>
-                    <Text style={styles.activeDayTitle}>Day {item.day}</Text>
-                    <Text style={styles.activeDaySub}>{item.exerciseCount || 15} Exercises</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.startBtn}
-                    activeOpacity={0.85}
-                    onPress={() => handleDayPress(item.day, false)}
-                  >
-                    <Text style={styles.startBtnText}>START</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-
-            // REGULAR CARD (Completed OR Future)
-            return (
-              <TouchableOpacity
-                key={item.day}
-                style={[styles.dayCard, isCompleted && styles.dayCardCompleted]}
-                activeOpacity={0.7}
-                onPress={() => handleDayPress(item.day, false)}
-              >
-                <View>
-                  <Text style={[styles.dayCardTitle, isCompleted && styles.dayCardTitleCompleted]}>
-                    Day {item.day}
-                  </Text>
-                  <Text style={styles.dayCardSub}>
-                    {isCompleted ? 'Finished' : `${item.exerciseCount || 15} Exercises`}
-                  </Text>
-                </View>
-
-                {isCompleted ? (
-                  <TouchableOpacity
-                    onPress={() => toggleDayCompleted(item.day)}
-                    style={styles.checkCircle}
-                  >
-                    <Ionicons name="checkmark" size={18} color="#3B82F6" />
-                  </TouchableOpacity>
-                ) : (
-                  <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* PLAN SELECTION MODAL */}
-      <Modal
-        visible={showGoalModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowGoalModal(false)}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Workout Plan</Text>
-              <TouchableOpacity onPress={() => setShowGoalModal(false)}>
-                <Ionicons name="close" size={24} color="#0F172A" />
-              </TouchableOpacity>
+        {/* TOP FEATURED CARD: LOSE BELLY FAT (Matches Image 1 exactly!) */}
+        <View style={styles.featuredCard}>
+          {/* Athlete Sit-up Background Photo */}
+          <Image
+            source={{
+              uri: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+            }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+
+          {/* Dark Overlay for Readability */}
+          <View style={styles.featuredOverlay} />
+
+          {/* Top Right: 8,958,192+ Users Badge */}
+          <View style={styles.usersBadge}>
+            <Text style={styles.usersBadgeNumber}>8,958,192+</Text>
+            <Text style={styles.usersBadgeLabel}>Users</Text>
+          </View>
+
+          {/* Card Body */}
+          <View style={styles.featuredBody}>
+            <Text style={styles.featuredTitle}>Lose Belly Fat</Text>
+
+            <View style={styles.levelRow}>
+              <Text style={styles.featuredLevelText}>Beginner</Text>
+              <Ionicons name="flash" size={14} color="#FFF" />
+              <Ionicons name="flash" size={14} color="#FFF" />
+              <Ionicons name="flash" size={14} color="rgba(255,255,255,0.4)" />
             </View>
 
-            <Text style={styles.modalSub}>Select your primary fitness objective:</Text>
+            <Text style={styles.featuredDesc}>
+              Start your journey to be stronger! Just 7 minutes to shed belly fat easily.
+            </Text>
 
-            {/* Goal 1: Lose Belly Fat */}
+            {/* Start Day 1 Button (White pill matching Image 1) */}
             <TouchableOpacity
-              style={[
-                styles.goalOption,
-                activeGoal === 'lose-belly-fat' && styles.goalOptionActive,
-              ]}
-              onPress={() => {
-                setGoal('lose-belly-fat');
-                setShowGoalModal(false);
-              }}
+              style={styles.startDay1Btn}
+              activeOpacity={0.9}
+              onPress={() => handleSelectPlan('lose-belly-fat', 'Beginner', true)}
             >
-              <View style={styles.goalIconCircle}>
-                <Ionicons name="flame" size={24} color="#EF4444" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.goalOptionTitle}>Lose Belly Fat</Text>
-                <Text style={styles.goalOptionDesc}>
-                  Targeted high-intensity bodyweight circuits to burn visceral fat.
-                </Text>
-              </View>
-              {activeGoal === 'lose-belly-fat' && (
-                <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
-              )}
+              <Text style={styles.startDay1Text}>Start Day 1</Text>
             </TouchableOpacity>
-
-            {/* Goal 2: Build Muscle */}
-            <TouchableOpacity
-              style={[
-                styles.goalOption,
-                activeGoal === 'build-muscle' && styles.goalOptionActive,
-              ]}
-              onPress={() => {
-                setGoal('build-muscle');
-                setShowGoalModal(false);
-              }}
-            >
-              <View style={styles.goalIconCircle}>
-                <Ionicons name="barbell" size={24} color="#10B981" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.goalOptionTitle}>Build Muscle</Text>
-                <Text style={styles.goalOptionDesc}>
-                  Hypertrophy focused volume for chest, back, and leg growth.
-                </Text>
-              </View>
-              {activeGoal === 'build-muscle' && (
-                <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
-              )}
-            </TouchableOpacity>
-
-            {/* Level Selector */}
-            <View style={styles.levelSelectorContainer}>
-              <Text style={styles.levelSelectorLabel}>Fitness Level:</Text>
-              <View style={styles.levelBtnRow}>
-                {['Beginner', 'Intermediate', 'Advanced'].map((lvl) => (
-                  <TouchableOpacity
-                    key={lvl}
-                    style={[
-                      styles.levelOptionBtn,
-                      level === lvl && styles.levelOptionBtnActive,
-                    ]}
-                    onPress={() => setLevel(lvl)}
-                  >
-                    <Text
-                      style={[
-                        styles.levelOptionText,
-                        level === lvl && styles.levelOptionTextActive,
-                      ]}
-                    >
-                      {lvl}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
           </View>
         </View>
-      </Modal>
-    </View>
+
+        {/* CARD 2: ROCK HARD ABS (Purple Gradient matching Image 1) */}
+        <TouchableOpacity
+          style={styles.purpleCard}
+          activeOpacity={0.88}
+          onPress={() => handleSelectPlan('lose-belly-fat', 'Intermediate', false)}
+        >
+          <View style={styles.gradientCardContent}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gradientTitle}>Rock Hard Abs</Text>
+              <View style={styles.gradientLevelRow}>
+                <Text style={styles.gradientLevelText}>Intermediate</Text>
+                <Ionicons name="flash" size={13} color="#DDD6FE" />
+                <Ionicons name="flash" size={13} color="#DDD6FE" />
+                <Ionicons name="flash" size={13} color="rgba(255,255,255,0.4)" />
+              </View>
+            </View>
+
+            <View style={styles.circleArrowBtn}>
+              <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* CARD 3: SIX PACK ABS (Red-Orange Gradient matching Image 1) */}
+        <TouchableOpacity
+          style={styles.orangeCard}
+          activeOpacity={0.88}
+          onPress={() => handleSelectPlan('build-muscle', 'Advanced', false)}
+        >
+          <View style={styles.gradientCardContent}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gradientTitle}>Six Pack Abs</Text>
+              <View style={styles.gradientLevelRow}>
+                <Text style={styles.gradientLevelText}>Advanced</Text>
+                <Ionicons name="flash" size={13} color="#FED7AA" />
+                <Ionicons name="flash" size={13} color="#FED7AA" />
+                <Ionicons name="flash" size={13} color="#FED7AA" />
+              </View>
+            </View>
+
+            <View style={styles.circleArrowBtn}>
+              <Ionicons name="chevron-forward" size={20} color="#EA580C" />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1D4ED8', // Rich blue matching Image 1
+    backgroundColor: '#FFFFFF',
   },
-  heroSection: {
-    backgroundColor: '#1D4ED8',
-    paddingBottom: 20,
-  },
-  safeTop: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  navRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
+  backBtn: {
+    padding: 6,
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  changeGoalPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 32,
+    gap: 16,
   },
-  changeGoalText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
+
+  // FEATURED CARD (Lose Belly Fat)
+  featuredCard: {
+    height: 380,
+    borderRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'flex-end',
+    padding: 22,
+    backgroundColor: '#1E293B',
   },
-  heroContentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  featuredOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  usersBadge: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
     alignItems: 'flex-end',
-    marginTop: 8,
   },
-  heroTextCol: {
-    flex: 1,
-    paddingRight: 8,
+  usersBadgeNumber: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  usersBadgeLabel: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  featuredBody: {
+    zIndex: 1,
+  },
+  featuredTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
   levelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    marginBottom: 6,
+    gap: 4,
+    marginBottom: 10,
   },
-  levelText: {
-    color: '#BFDBFE',
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  heroTitle: {
-    color: '#FFF',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  heroSubtitle: {
-    color: '#93C5FD',
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-  },
-  heroImageWrapper: {
-    width: 100,
-    height: 110,
-    borderRadius: 50,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  heroAthleteImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  // DAYS SHEET
-  daysSheet: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 20,
-    overflow: 'hidden',
-  },
-  progressHeader: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  daysLeftText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  daysLeftNumber: {
-    color: '#1D4ED8',
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  progressBarTrack: {
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#2563EB',
-    borderRadius: 3,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-    gap: 12,
-  },
-
-  // CARDS
-  activeDayCard: {
-    backgroundColor: '#2563EB',
-    borderRadius: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  activeDayLeft: {
-    flex: 1,
-  },
-  activeDayTitle: {
-    color: '#FFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  activeDaySub: {
-    color: '#BFDBFE',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  startBtn: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  startBtnText: {
-    color: '#1D4ED8',
+  featuredLevelText: {
     fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 1,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 4,
   },
-
-  // Regular & Finished Day Card
-  dayCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  dayCardCompleted: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#E2E8F0',
-  },
-  dayCardTitle: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  dayCardTitleCompleted: {
-    color: '#475569',
-  },
-  dayCardSub: {
-    color: '#94A3B8',
+  featuredDesc: {
     fontSize: 13,
-    fontWeight: '600',
+    color: '#CBD5E1',
+    lineHeight: 18,
+    marginBottom: 20,
+    maxWidth: '90%',
   },
-  checkCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#EFF6FF',
+  startDay1Btn: {
+    backgroundColor: '#FFFFFF',
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  startDay1Text: {
+    color: '#0F172A',
+    fontSize: 17,
+    fontWeight: '800',
   },
 
-  // Rest Card
-  restCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  // PURPLE CARD (Rock Hard Abs)
+  purpleCard: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  restTitle: {
-    color: '#0F172A',
-    fontSize: 18,
+
+  // ORANGE CARD (Six Pack Abs)
+  orangeCard: {
+    backgroundColor: '#F97316',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  gradientCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  gradientTitle: {
+    fontSize: 22,
     fontWeight: '800',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
-  restSubtitle: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
+  gradientLevelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
-  restIconCircle: {
+  gradientLevelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 4,
+  },
+  circleArrowBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  // MODAL
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    gap: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  modalSub: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  goalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    gap: 14,
-  },
-  goalOptionActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-  },
-  goalIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  goalOptionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  goalOptionDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  levelSelectorContainer: {
-    marginTop: 8,
-  },
-  levelSelectorLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
-  },
-  levelBtnRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  levelOptionBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-  },
-  levelOptionBtnActive: {
-    backgroundColor: '#2563EB',
-  },
-  levelOptionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  levelOptionTextActive: {
-    color: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
