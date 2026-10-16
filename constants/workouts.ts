@@ -28,6 +28,7 @@ export const WORKOUTS: Record<string, Workout> = {
       { exerciseId: 'mountain-climbers', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
       { exerciseId: 'pushup', sets: 1, reps: 15, restSeconds: 25 },
       { exerciseId: 'plank', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'side-plank-right', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
       { exerciseId: 'butt-bridge', sets: 1, reps: 15, restSeconds: 20 },
       { exerciseId: 'russian-twists', sets: 1, reps: 20, restSeconds: 25 },
       { exerciseId: 'squat', sets: 1, reps: 15, restSeconds: 25 },
