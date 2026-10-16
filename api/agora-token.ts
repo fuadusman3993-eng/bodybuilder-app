@@ -1,10 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { RtcTokenBuilder, RtcRole } from 'agora-token';
 
 const APP_ID = '511e8cc7f06a4bd89ba9e4aad921c158';
 const APP_CERTIFICATE = '3f20e89041df418bbf9753b11eb5b470';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: any, res: any) {
   // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
