@@ -51,7 +51,6 @@
   "devDependencies": {
     "@babel/core": "^7.25.0",
     "@types/react": "~19.0.0",
-    "@vercel/node": "^3.2.35",
     "typescript": "~5.8.0"
   },
   "private": true
