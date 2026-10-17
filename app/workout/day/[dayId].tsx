@@ -15,6 +15,8 @@ import { useChallengeStore } from '../../../store/challengeStore';
 import { getWorkoutForDay } from '../../../constants/workouts';
 import { EXERCISES } from '../../../constants/exercises';
 import { Colors } from '../../../constants/colors';
+import { Image as ExpoImage } from 'expo-image';
+import { getExerciseAnimation } from '../../../constants/exerciseAnimations';
 
 export default function DayWorkoutPreviewScreen() {
   const router = useRouter();
@@ -170,6 +172,8 @@ export default function DayWorkoutPreviewScreen() {
                 ? item.reps
                 : `x ${item.reps}`;
 
+            const anim = getExerciseAnimation(item.exerciseId);
+
             return (
               <TouchableOpacity
                 key={`${item.exerciseId}-${index}`}
@@ -177,12 +181,13 @@ export default function DayWorkoutPreviewScreen() {
                 activeOpacity={0.7}
                 onPress={() => handleExercisePress(item.exerciseId, index)}
               >
-                {/* Mini Preview Image */}
+                {/* Mini Preview 2D Character */}
                 <View style={styles.exerciseThumbWrapper}>
-                  <Image
-                    source={{ uri: exData.thumbnail }}
+                  <ExpoImage
+                    source={anim.source}
                     style={styles.exerciseThumb}
-                    resizeMode="cover"
+                    contentFit="contain"
+                    autoplay={false}
                   />
                 </View>
 

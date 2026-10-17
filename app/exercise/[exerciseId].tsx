@@ -15,6 +15,9 @@ import { EXERCISES } from '../../constants/exercises';
 import { getWorkoutForDay } from '../../constants/workouts';
 import { useChallengeStore } from '../../store/challengeStore';
 import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter';
+import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
+import WorkoutCountdownOverlay from '../../components/workout/WorkoutCountdownOverlay';
+import { Audio } from 'expo-av';
 
 export default function LeapFitnessWorkoutPlayer() {
   const router = useRouter();
@@ -42,33 +45,42 @@ export default function LeapFitnessWorkoutPlayer() {
   const [showInfo, setShowInfo] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Rest Screen State
+  // Rest Screen & Countdown State
   const [isResting, setIsResting] = useState(false);
-  const [restSeconds, setRestSeconds] = useState(20);
+  const [isCountingDown, setIsCountingDown] = useState(true);
 
   const timerRef = useRef<any>(null);
 
-  // Countdown Timer Effect
+  const playTakeRestSound = async () => {
+    if (!soundEnabled) return;
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('@/assets/sounds/take_rest.mp3'),
+        { shouldPlay: true, volume: 1.0 }
+      );
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (e) {
+      // audio error non-blocking
+    }
+  };
+
+  // Reset timer when exercise changes
   useEffect(() => {
-    // Reset timer when exercise changes
     setSecondsRemaining(targetSeconds);
     setIsPaused(false);
     setIsResting(false);
+    setIsCountingDown(true);
     setFeedback(null);
   }, [exerciseIndex, exerciseId, targetSeconds]);
 
+  // Main exercise countdown timer
   useEffect(() => {
-    if (isResting) {
-      if (restSeconds > 0 && !isPaused) {
-        timerRef.current = setTimeout(() => {
-          setRestSeconds((prev) => prev - 1);
-        }, 1000);
-      } else if (restSeconds === 0) {
-        handleEndRest();
-      }
-      return () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-      };
+    if (isResting || isCountingDown) {
+      return;
     }
 
     if (isTimeBased && !isPaused && secondsRemaining > 0) {
@@ -83,12 +95,12 @@ export default function LeapFitnessWorkoutPlayer() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isPaused, secondsRemaining, isResting, restSeconds, isTimeBased]);
+  }, [isPaused, secondsRemaining, isResting, isCountingDown, isTimeBased]);
 
   const handleTriggerRest = () => {
     if (exerciseIndex + 1 < totalExercises) {
+      playTakeRestSound();
       setIsResting(true);
-      setRestSeconds(20);
     } else {
       // Last exercise finished! Finish Workout!
       handleFinishWorkout();
@@ -346,37 +358,33 @@ export default function LeapFitnessWorkoutPlayer() {
         </View>
       </View>
 
-      {/* REST SCREEN OVERLAY ("TAKE A REST 00:20") */}
-      {isResting && (
-        <View style={styles.restOverlay}>
-          <Text style={styles.restTitle}>TAKE A REST</Text>
-          <Text style={styles.restCountdown}>
-            00:{restSeconds < 10 ? `0${restSeconds}` : restSeconds}
-          </Text>
-
-          <View style={styles.restActionsRow}>
-            <TouchableOpacity
-              style={styles.addTimeBtn}
-              onPress={() => setRestSeconds((prev) => prev + 20)}
-            >
-              <Text style={styles.addTimeText}>+20s</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.skipBtn}
-              onPress={handleEndRest}
-            >
-              <Text style={styles.skipText}>SKIP</Text>
-            </TouchableOpacity>
-          </View>
-
-          {nextExData && (
-            <View style={styles.nextPreviewBox}>
-              <Text style={styles.nextLabel}>NEXT {exerciseIndex + 2}/{totalExercises}</Text>
-              <Text style={styles.nextExName}>{nextExData.name.toUpperCase()}</Text>
-            </View>
-          )}
+      {/* AUTHENTIC LEAP FITNESS BLUE REST SCREEN */}
+      {isResting && nextExData && (
+        <View style={styles.fullScreenRestContainer}>
+          <WorkoutRestScreen
+            nextExerciseIndex={exerciseIndex + 1}
+            totalExercises={totalExercises}
+            nextExerciseId={workout?.exercises[exerciseIndex + 1]?.exerciseId || 'pushup'}
+            nextExerciseName={nextExData.name}
+            nextExerciseDuration={
+              workout?.exercises[exerciseIndex + 1]?.durationSeconds ||
+              (typeof workout?.exercises[exerciseIndex + 1]?.reps === 'number'
+                ? (workout?.exercises[exerciseIndex + 1]?.reps as number) * 2
+                : 20)
+            }
+            initialRestSeconds={workoutEx?.restSeconds || 15}
+            onSkip={handleEndRest}
+            onFinishRest={handleEndRest}
+          />
         </View>
+      )}
+
+      {/* 3-2-1 COUNTDOWN OVERLAY BEFORE EXERCISE */}
+      {isCountingDown && (
+        <WorkoutCountdownOverlay
+          soundEnabled={soundEnabled}
+          onCountdownComplete={() => setIsCountingDown(false)}
+        />
       )}
 
       {/* INSTRUCTIONS MODAL (?) */}
@@ -615,70 +623,11 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
 
-  // REST OVERLAY
-  restOverlay: {
+  // FULL SCREEN REST CONTAINER
+  fullScreenRestContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-    padding: 24,
-  },
-  restTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#2563EB',
-    letterSpacing: 2,
-    marginBottom: 10,
-  },
-  restCountdown: {
-    fontSize: 72,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginBottom: 30,
-    fontVariant: ['tabular-nums'],
-  },
-  restActionsRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 40,
-  },
-  addTimeBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: '#F1F5F9',
-  },
-  addTimeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  skipBtn: {
-    paddingHorizontal: 36,
-    paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: '#2563EB',
-  },
-  skipText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  nextPreviewBox: {
-    alignItems: 'center',
-  },
-  nextLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-    marginBottom: 4,
-  },
-  nextExName: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0F172A',
+    backgroundColor: '#0D66FF',
+    zIndex: 150,
   },
 
   // MODALS

@@ -15,28 +15,27 @@ export interface Workout {
 }
 
 export const WORKOUTS: Record<string, Workout> = {
-  // Day 1 - Lose Belly Fat (15 Exercises, 11 min, 159.3 kcal) - Matches Image 2!
+  // Day 1 - Lose Belly Fat (15 Exercises, 12 min, 165 kcal) - Authentic Leap Fitness + GIFs
   'wk-belly-1': {
     id: 'wk-belly-1',
     title: 'Lose Belly Fat - Day 1',
-    duration: '11 min',
-    estimatedCalories: 159,
+    duration: '12 min',
+    estimatedCalories: 165,
     exercises: [
-      { exerciseId: 'high-stepping', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
+      { exerciseId: 'arm-circles', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
+      { exerciseId: 'dynamic-chest', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
       { exerciseId: 'jumping-jacks', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
-      { exerciseId: 'standing-bicycle-crunches', sets: 1, reps: 20, restSeconds: 20 },
+      { exerciseId: 'chest-press-pulse', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
+      { exerciseId: 'pushup', sets: 1, reps: 15, restSeconds: 20 },
+      { exerciseId: 'half-bending', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
+      { exerciseId: 'wide-arm-pushups', sets: 1, reps: 12, restSeconds: 25 },
       { exerciseId: 'mountain-climbers', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'pushup', sets: 1, reps: 15, restSeconds: 25 },
+      { exerciseId: 'standing-bicycle-crunches', sets: 1, reps: 20, restSeconds: 20 },
       { exerciseId: 'plank', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'side-plank-right', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
       { exerciseId: 'butt-bridge', sets: 1, reps: 15, restSeconds: 20 },
       { exerciseId: 'russian-twists', sets: 1, reps: 20, restSeconds: 25 },
       { exerciseId: 'squat', sets: 1, reps: 15, restSeconds: 25 },
-      { exerciseId: 'high-stepping', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
-      { exerciseId: 'jumping-jacks', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
-      { exerciseId: 'standing-bicycle-crunches', sets: 1, reps: 20, restSeconds: 20 },
-      { exerciseId: 'mountain-climbers', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'plank', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'pushup', sets: 1, reps: 12, restSeconds: 20 },
       { exerciseId: 'cobra-stretch', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },

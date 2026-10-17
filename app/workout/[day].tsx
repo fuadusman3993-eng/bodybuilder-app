@@ -8,6 +8,8 @@ import { CHALLENGES } from '../../constants/challenges';
 import { WORKOUTS } from '../../constants/workouts';
 import { EXERCISES } from '../../constants/exercises';
 import { useUserStore, UserTier } from '../../store/userStore';
+import { Image as ExpoImage } from 'expo-image';
+import { getExerciseAnimation } from '../../constants/exerciseAnimations';
 
 export default function WorkoutOverviewScreen() {
   const { day } = useLocalSearchParams();
@@ -77,7 +79,8 @@ export default function WorkoutOverviewScreen() {
         
         <View style={styles.exerciseList}>
           {workout.exercises.map((workoutEx, index) => {
-            const exData = EXERCISES[workoutEx.exerciseId];
+            const exData = EXERCISES[workoutEx.exerciseId] || EXERCISES['pushup'];
+            const anim = getExerciseAnimation(workoutEx.exerciseId);
             return (
               <TouchableOpacity 
                 key={index} 
@@ -85,7 +88,7 @@ export default function WorkoutOverviewScreen() {
                 activeOpacity={0.7}
                 onPress={() => router.push(`/exercise/${workoutEx.exerciseId}?day=${dayNumber}&index=${index}`)}
               >
-                <Image source={{ uri: exData.thumbnail }} style={styles.exImage} resizeMode="cover" />
+                <ExpoImage source={anim.source} style={styles.exImage} contentFit="contain" />
                 <View style={styles.exDetails}>
                   <Text style={styles.exName}>{exData.name}</Text>
                   <Text style={styles.exTarget}>{exData.muscleGroup}</Text>
