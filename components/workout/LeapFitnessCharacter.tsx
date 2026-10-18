@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Image } from 'expo-image';
 import { getExerciseAnimation } from '@/constants/exerciseAnimations';
@@ -12,9 +12,22 @@ export default function LeapFitnessCharacter({
   exerciseId,
   isPaused = false,
 }: LeapFitnessCharacterProps) {
+  const [frame, setFrame] = useState<'start' | 'peak'>('start');
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const animAsset = getExerciseAnimation(exerciseId);
 
+  // Toggle between start and peak frames for 2D animation loop
+  useEffect(() => {
+    if (isPaused) return;
+
+    const frameInterval = setInterval(() => {
+      setFrame((prev) => (prev === 'start' ? 'peak' : 'start'));
+    }, 700);
+
+    return () => clearInterval(frameInterval);
+  }, [isPaused, exerciseId]);
+
+  // Gentle rhythmic bounce effect
   useEffect(() => {
     let animLoop: Animated.CompositeAnimation | null = null;
     if (!isPaused) {
@@ -22,13 +35,13 @@ export default function LeapFitnessCharacter({
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 800,
+            duration: 700,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 0,
-            duration: 800,
+            duration: 700,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -45,18 +58,19 @@ export default function LeapFitnessCharacter({
 
   const translateY = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -4],
+    outputRange: [0, -3],
   });
+
+  const activeSource = frame === 'start' ? animAsset.start : animAsset.peak;
 
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.imageWrapper, { transform: [{ translateY }] }]}>
         <Image
-          source={animAsset.source}
+          source={activeSource}
           style={styles.animationImage}
           contentFit="contain"
-          autoplay={!isPaused}
-          transition={200}
+          transition={150}
         />
       </Animated.View>
     </View>

@@ -447,6 +447,13 @@ export default function LeapFitnessWorkoutPlayer() {
               </Text>
             </TouchableOpacity>
 
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Illustrations</Text>
+              <Text style={[styles.settingStatus, { color: '#64748B', fontSize: 13, fontWeight: '600' }]}>
+                RepDB (repdb.co)
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={styles.closeModalBtn}
               onPress={() => setShowSettings(false)}

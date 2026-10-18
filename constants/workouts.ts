@@ -15,27 +15,26 @@ export interface Workout {
 }
 
 export const WORKOUTS: Record<string, Workout> = {
-  // Day 1 - Lose Belly Fat (15 Exercises, 12 min, 165 kcal) - Authentic Leap Fitness + GIFs
+  // Day 1 - Lose Belly Fat (14 Exercises, 12 min, 160 kcal) - Clean 2D Vector Animations
   'wk-belly-1': {
     id: 'wk-belly-1',
     title: 'Lose Belly Fat - Day 1',
     duration: '12 min',
-    estimatedCalories: 165,
+    estimatedCalories: 160,
     exercises: [
-      { exerciseId: 'arm-circles', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
-      { exerciseId: 'dynamic-chest', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
       { exerciseId: 'jumping-jacks', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
-      { exerciseId: 'chest-press-pulse', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
-      { exerciseId: 'pushup', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'half-bending', sets: 1, reps: '00:20', durationSeconds: 20, restSeconds: 15 },
-      { exerciseId: 'wide-arm-pushups', sets: 1, reps: 12, restSeconds: 25 },
+      { exerciseId: 'pushup', sets: 1, reps: 12, restSeconds: 20 },
+      { exerciseId: 'squat', sets: 1, reps: 15, restSeconds: 20 },
       { exerciseId: 'mountain-climbers', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'standing-bicycle-crunches', sets: 1, reps: 20, restSeconds: 20 },
+      { exerciseId: 'standing-bicycle-crunches', sets: 1, reps: 16, restSeconds: 20 },
       { exerciseId: 'plank', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
       { exerciseId: 'butt-bridge', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'russian-twists', sets: 1, reps: 20, restSeconds: 25 },
-      { exerciseId: 'squat', sets: 1, reps: 15, restSeconds: 25 },
-      { exerciseId: 'pushup', sets: 1, reps: 12, restSeconds: 20 },
+      { exerciseId: 'russian-twists', sets: 1, reps: 20, restSeconds: 20 },
+      { exerciseId: 'wide-arm-pushups', sets: 1, reps: 10, restSeconds: 20 },
+      { exerciseId: 'jump-squat', sets: 1, reps: 12, restSeconds: 25 },
+      { exerciseId: 'bench-dips', sets: 1, reps: 12, restSeconds: 20 },
+      { exerciseId: 'jumping-jacks', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
+      { exerciseId: 'plank', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
       { exerciseId: 'cobra-stretch', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
