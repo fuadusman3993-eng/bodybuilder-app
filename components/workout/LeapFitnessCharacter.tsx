@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import React, { useRef } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
 import { getExerciseAnimation } from '@/constants/exerciseAnimations';
 
@@ -12,67 +13,32 @@ export default function LeapFitnessCharacter({
   exerciseId,
   isPaused = false,
 }: LeapFitnessCharacterProps) {
-  const [frame, setFrame] = useState<'start' | 'peak'>('start');
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef<Video>(null);
   const animAsset = getExerciseAnimation(exerciseId);
-
-  // Toggle between start and peak frames for 2D animation loop
-  useEffect(() => {
-    if (isPaused) return;
-
-    const frameInterval = setInterval(() => {
-      setFrame((prev) => (prev === 'start' ? 'peak' : 'start'));
-    }, 700);
-
-    return () => clearInterval(frameInterval);
-  }, [isPaused, exerciseId]);
-
-  // Gentle rhythmic bounce effect
-  useEffect(() => {
-    let animLoop: Animated.CompositeAnimation | null = null;
-    if (!isPaused) {
-      animLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 700,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 0,
-            duration: 700,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      animLoop.start();
-    } else {
-      pulseAnim.stopAnimation();
-    }
-    return () => {
-      if (animLoop) animLoop.stop();
-    };
-  }, [isPaused, exerciseId]);
-
-  const translateY = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -3],
-  });
-
-  const activeSource = frame === 'start' ? animAsset.start : animAsset.peak;
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.imageWrapper, { transform: [{ translateY }] }]}>
+      {animAsset.video ? (
+        <Video
+          ref={videoRef as any}
+          source={animAsset.video}
+          style={styles.videoPlayer}
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping
+          shouldPlay={!isPaused}
+          isMuted
+          usePoster
+          posterSource={animAsset.thumbnail}
+          posterStyle={styles.posterImage}
+        />
+      ) : (
         <Image
-          source={activeSource}
-          style={styles.animationImage}
+          source={animAsset.thumbnail}
+          style={styles.fallbackImage}
           contentFit="contain"
           transition={150}
         />
-      </Animated.View>
+      )}
     </View>
   );
 }
@@ -80,22 +46,28 @@ export default function LeapFitnessCharacter({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 310,
+    height: 330,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
-  imageWrapper: {
+  videoPlayer: {
     width: '100%',
     height: '100%',
     maxWidth: 420,
-    maxHeight: 290,
-    alignItems: 'center',
-    justifyContent: 'center',
+    maxHeight: 330,
+    backgroundColor: '#FFFFFF',
   },
-  animationImage: {
+  posterImage: {
+    resizeMode: 'contain',
+    backgroundColor: '#FFFFFF',
+  },
+  fallbackImage: {
     width: '100%',
     height: '100%',
+    maxWidth: 420,
+    maxHeight: 330,
+    backgroundColor: '#FFFFFF',
   },
 });
