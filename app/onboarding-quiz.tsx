@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,21 @@ import {
   Platform,
   TextInput,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
+import {
+  MaleAthleteGraphic,
+  FemaleAthleteGraphic,
+  GoalBadgeGraphic,
+  LevelBadgeGraphic,
+} from '../components/ui/AthleticCharacterIcons';
+import AnimatedSelectionCard from '../components/ui/AnimatedSelectionCard';
 
 const { width } = Dimensions.get('window');
 
@@ -54,9 +63,64 @@ export default function OnboardingQuizScreen() {
 
   const totalSteps = 4;
 
+  // ── Liquid Progress Bar Animation ──
+  const progressAnim = useRef(new Animated.Value(0.25)).current;
+
+  // ── Step Slide & Fade Animation ──
+  const stepSlideAnim = useRef(new Animated.Value(0)).current;
+  const stepOpacityAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Smooth liquid expansion of progress bar
+    Animated.timing(progressAnim, {
+      toValue: step / totalSteps,
+      duration: 350,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [step]);
+
+  const animateTransition = (direction: 'next' | 'back', callback: () => void) => {
+    const exitX = direction === 'next' ? -35 : 35;
+    const enterX = direction === 'next' ? 35 : -35;
+
+    Animated.parallel([
+      Animated.timing(stepSlideAnim, {
+        toValue: exitX,
+        duration: 140,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(stepOpacityAnim, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]).start(() => {
+      callback();
+      stepSlideAnim.setValue(enterX);
+
+      Animated.parallel([
+        Animated.spring(stepSlideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 70,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(stepOpacityAnim, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    });
+  };
+
   const handleNext = () => {
     if (step < totalSteps) {
-      setStep(step + 1);
+      animateTransition('next', () => setStep(prev => prev + 1));
     } else {
       finishOnboarding();
     }
@@ -64,7 +128,7 @@ export default function OnboardingQuizScreen() {
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1);
+      animateTransition('back', () => setStep(prev => prev - 1));
     } else {
       router.back();
     }
@@ -73,7 +137,6 @@ export default function OnboardingQuizScreen() {
   const finishOnboarding = () => {
     const finalCity = country === 'Ethiopia' ? city : customCity.trim() || city;
 
-    // Cache onboarding data in local session
     const quizData = {
       gender,
       goal,
@@ -89,14 +152,13 @@ export default function OnboardingQuizScreen() {
       } catch (_) {}
     }
 
-    // Set guest user state
     setUser({
       tier: UserTier.GUEST,
       name: 'Guest Athlete',
       city: finalCity,
+      country,
     });
 
-    // Enter app home screen directly
     router.replace('/(tabs)');
   };
 
@@ -111,37 +173,29 @@ export default function OnboardingQuizScreen() {
     return false;
   };
 
+  const progressPercent = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      {/* Background ambient glow */}
+      {/* Background ambient radial glow */}
       <View style={styles.ambientGlow} pointerEvents="none" />
 
-      {/* ── Top Bar with Segmented Progress ── */}
+      {/* ── Top Bar with Liquid Progress Bar ── */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          {[1, 2, 3, 4].map((s) => (
-            <View
-              key={s}
-              style={[
-                styles.progressSegment,
-                s <= step && styles.progressSegmentActive,
-                s === step && styles.progressSegmentCurrent,
-              ]}
-            />
-          ))}
+        {/* Continuous Liquid Progress Bar */}
+        <View style={styles.liquidProgressTrack}>
+          <Animated.View style={[styles.liquidProgressFill, { width: progressPercent }]} />
         </View>
 
         {/* Skip button */}
-        <TouchableOpacity
-          style={styles.skipBtn}
-          onPress={finishOnboarding}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.skipBtn} onPress={finishOnboarding} activeOpacity={0.7}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
@@ -150,265 +204,270 @@ export default function OnboardingQuizScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Step 1: Gender ── */}
-        {step === 1 && (
-          <View style={styles.stepWrapper}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepCategory}>STEP 1 OF 4</Text>
-              <Text style={styles.stepTitle}>What is your gender?</Text>
-              <Text style={styles.stepSubtitle}>
-                This helps our algorithm tailor calorie expenditure and workout intensity.
-              </Text>
-            </View>
-
-            <View style={styles.cardsStack}>
-              <TouchableOpacity
-                style={[styles.quizCard, gender === 'male' && styles.quizCardSelected]}
-                onPress={() => setGender('male')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.iconCircle, gender === 'male' && styles.iconCircleActive]}>
-                  <Ionicons
-                    name="male"
-                    size={36}
-                    color={gender === 'male' ? Colors.primary : '#FFFFFF'}
-                  />
+        <Animated.View
+          style={[
+            styles.animatedStepContainer,
+            {
+              transform: [{ translateX: stepSlideAnim }],
+              opacity: stepOpacityAnim,
+            },
+          ]}
+        >
+          {/* ── Step 1: Real Athletic Vector Icons ── */}
+          {step === 1 && (
+            <View style={styles.stepWrapper}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepPill}>
+                  <Text style={styles.stepCategory}>STEP 1 OF 4</Text>
                 </View>
-                <View style={styles.cardInfo}>
-                  <Text style={[styles.cardTitle, gender === 'male' && styles.cardTitleActive]}>
-                    Male
-                  </Text>
-                  <Text style={styles.cardDesc}>Optimal strength & muscle building plans</Text>
-                </View>
-                <View style={[styles.radioCircle, gender === 'male' && styles.radioCircleActive]}>
-                  {gender === 'male' && <View style={styles.radioDot} />}
-                </View>
-              </TouchableOpacity>
+                <Text style={styles.stepTitle}>What is your gender?</Text>
+                <Text style={styles.stepSubtitle}>
+                  Tailors calorie calculation, hormonal baseline, and athletic workout splits.
+                </Text>
+              </View>
 
-              <TouchableOpacity
-                style={[styles.quizCard, gender === 'female' && styles.quizCardSelected]}
-                onPress={() => setGender('female')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.iconCircle, gender === 'female' && styles.iconCircleActive]}>
-                  <Ionicons
-                    name="female"
-                    size={36}
-                    color={gender === 'female' ? Colors.primary : '#FFFFFF'}
-                  />
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={[styles.cardTitle, gender === 'female' && styles.cardTitleActive]}>
-                    Female
-                  </Text>
-                  <Text style={styles.cardDesc}>Toning, fat burn & sculpting programs</Text>
-                </View>
-                <View style={[styles.radioCircle, gender === 'female' && styles.radioCircleActive]}>
-                  {gender === 'female' && <View style={styles.radioDot} />}
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* ── Step 2: Goal ── */}
-        {step === 2 && (
-          <View style={styles.stepWrapper}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepCategory}>STEP 2 OF 4</Text>
-              <Text style={styles.stepTitle}>What's your primary goal?</Text>
-              <Text style={styles.stepSubtitle}>
-                Select what you want to achieve most in your fitness journey.
-              </Text>
-            </View>
-
-            <View style={styles.cardsStack}>
-              {[
-                {
-                  id: 'muscle',
-                  title: 'Build Muscle & Bulk',
-                  desc: 'Hypertrophy workouts, heavy lifting & size gains',
-                  icon: 'barbell-outline',
-                },
-                {
-                  id: 'fatloss',
-                  title: 'Burn Fat & Lean Out',
-                  desc: 'High calorie burn, HIIT & athletic conditioning',
-                  icon: 'flame-outline',
-                },
-                {
-                  id: 'tone',
-                  title: 'Tone & Athletic Shape',
-                  desc: 'Core definition, agility & functional strength',
-                  icon: 'flash-outline',
-                },
-                {
-                  id: 'health',
-                  title: 'Stay Fit & Healthy',
-                  desc: 'Overall mobility, daily energy & healthy lifestyle',
-                  icon: 'heart-outline',
-                },
-              ].map((item) => {
-                const isSelected = goal === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.quizCard, isSelected && styles.quizCardSelected]}
-                    onPress={() => setGoal(item.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.iconCircle, isSelected && styles.iconCircleActive]}>
-                      <Ionicons
-                        name={item.icon as any}
-                        size={28}
-                        color={isSelected ? Colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <View style={styles.cardInfo}>
-                      <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
-                        {item.title}
-                      </Text>
-                      <Text style={styles.cardDesc}>{item.desc}</Text>
-                    </View>
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                      {isSelected && <View style={styles.radioDot} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* ── Step 3: Experience Level ── */}
-        {step === 3 && (
-          <View style={styles.stepWrapper}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepCategory}>STEP 3 OF 4</Text>
-              <Text style={styles.stepTitle}>Your experience level?</Text>
-              <Text style={styles.stepSubtitle}>
-                We'll calibrate exercise difficulty so you stay challenged without burnout.
-              </Text>
-            </View>
-
-            <View style={styles.cardsStack}>
-              {[
-                {
-                  id: 'beginner',
-                  title: 'Beginner',
-                  badge: '🌱 Level 1',
-                  desc: 'New to working out or returning after a break',
-                },
-                {
-                  id: 'intermediate',
-                  title: 'Intermediate',
-                  badge: '⚡ Level 2',
-                  desc: 'Working out regularly for 1 to 2 years',
-                },
-                {
-                  id: 'advanced',
-                  title: 'Advanced / Athlete',
-                  badge: '🏆 Level 3',
-                  desc: 'Consistent heavy lifter, training 4+ times a week',
-                },
-              ].map((item) => {
-                const isSelected = level === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.quizCard, isSelected && styles.quizCardSelected]}
-                    onPress={() => setLevel(item.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.cardInfo}>
-                      <View style={styles.badgeRow}>
-                        <Text style={styles.badgeText}>{item.badge}</Text>
-                      </View>
-                      <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
-                        {item.title}
-                      </Text>
-                      <Text style={styles.cardDesc}>{item.desc}</Text>
-                    </View>
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                      {isSelected && <View style={styles.radioDot} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* ── Step 4: Country & City ── */}
-        {step === 4 && (
-          <View style={styles.stepWrapper}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepCategory}>STEP 4 OF 4</Text>
-              <Text style={styles.stepTitle}>Where are you located?</Text>
-              <Text style={styles.stepSubtitle}>
-                Connect with local gyms, fitness buddies, and coaches in your area.
-              </Text>
-            </View>
-
-            {/* Country Selector */}
-            <Text style={styles.sectionLabel}>Select Country</Text>
-            <View style={styles.chipsRow}>
-              {COUNTRIES.map((c) => {
-                const isSelected = country === c.name;
-                return (
-                  <TouchableOpacity
-                    key={c.name}
-                    style={[styles.chip, isSelected && styles.chipActive]}
-                    onPress={() => {
-                      setCountry(c.name);
-                      if (c.name === 'Ethiopia') setCity('Addis Ababa');
-                      else setCity('');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.chipFlag}>{c.flag}</Text>
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {c.name}
+              <View style={styles.cardsStack}>
+                <AnimatedSelectionCard
+                  selected={gender === 'male'}
+                  onPress={() => setGender('male')}
+                >
+                  <View style={[styles.graphicWrap, gender === 'male' && styles.graphicWrapActive]}>
+                    <MaleAthleteGraphic size={58} selected={gender === 'male'} />
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={[styles.cardTitle, gender === 'male' && styles.cardTitleActive]}>
+                      Male
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                    <Text style={styles.cardDesc}>
+                      Upper & lower hypertrophy splits, strength & muscle mass
+                    </Text>
+                  </View>
+                  <View style={[styles.radioCircle, gender === 'male' && styles.radioCircleActive]}>
+                    {gender === 'male' && <View style={styles.radioDot} />}
+                  </View>
+                </AnimatedSelectionCard>
 
-            {/* City Selector */}
-            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Select City</Text>
-            {country === 'Ethiopia' ? (
+                <AnimatedSelectionCard
+                  selected={gender === 'female'}
+                  onPress={() => setGender('female')}
+                >
+                  <View style={[styles.graphicWrap, gender === 'female' && styles.graphicWrapActive]}>
+                    <FemaleAthleteGraphic size={58} selected={gender === 'female'} />
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={[styles.cardTitle, gender === 'female' && styles.cardTitleActive]}>
+                      Female
+                    </Text>
+                    <Text style={styles.cardDesc}>
+                      Glute sculpting, core tone, metabolic burn & endurance
+                    </Text>
+                  </View>
+                  <View style={[styles.radioCircle, gender === 'female' && styles.radioCircleActive]}>
+                    {gender === 'female' && <View style={styles.radioDot} />}
+                  </View>
+                </AnimatedSelectionCard>
+              </View>
+            </View>
+          )}
+
+          {/* ── Step 2: Goal with Rich Visual Badges ── */}
+          {step === 2 && (
+            <View style={styles.stepWrapper}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepPill}>
+                  <Text style={styles.stepCategory}>STEP 2 OF 4</Text>
+                </View>
+                <Text style={styles.stepTitle}>What is your primary goal?</Text>
+                <Text style={styles.stepSubtitle}>
+                  We'll customize your daily workouts and nutrition cues accordingly.
+                </Text>
+              </View>
+
+              <View style={styles.cardsStack}>
+                {[
+                  {
+                    id: 'muscle',
+                    title: 'Build Muscle & Strength',
+                    desc: 'Hypertrophy lifting, progressive overload & mass gains',
+                  },
+                  {
+                    id: 'fatloss',
+                    title: 'Burn Fat & Lean Out',
+                    desc: 'High-octane calorie burn, HIIT & athletic definition',
+                  },
+                  {
+                    id: 'tone',
+                    title: 'Tone & Athletic Conditioning',
+                    desc: 'Functional mobility, speed & core stability',
+                  },
+                  {
+                    id: 'health',
+                    title: 'Stay Fit & Healthy',
+                    desc: 'Daily vitality, cardiovascular health & longevity',
+                  },
+                ].map((item) => {
+                  const isSelected = goal === item.id;
+                  return (
+                    <AnimatedSelectionCard
+                      key={item.id}
+                      selected={isSelected}
+                      onPress={() => setGoal(item.id)}
+                    >
+                      <View style={[styles.graphicWrap, isSelected && styles.graphicWrapActive]}>
+                        <GoalBadgeGraphic type={item.id} size={46} selected={isSelected} />
+                      </View>
+                      <View style={styles.cardInfo}>
+                        <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.cardDesc}>{item.desc}</Text>
+                      </View>
+                      <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                        {isSelected && <View style={styles.radioDot} />}
+                      </View>
+                    </AnimatedSelectionCard>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* ── Step 3: Experience Level with Tiered Badges ── */}
+          {step === 3 && (
+            <View style={styles.stepWrapper}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepPill}>
+                  <Text style={styles.stepCategory}>STEP 3 OF 4</Text>
+                </View>
+                <Text style={styles.stepTitle}>Your experience level?</Text>
+                <Text style={styles.stepSubtitle}>
+                  Sets the starting weight, rest duration, and technical exercise complexity.
+                </Text>
+              </View>
+
+              <View style={styles.cardsStack}>
+                {[
+                  {
+                    id: 'beginner',
+                    title: 'Beginner',
+                    badge: '🌱 Level 1 • Foundations',
+                    desc: 'Learning proper exercise form or restarting gym habits',
+                  },
+                  {
+                    id: 'intermediate',
+                    title: 'Intermediate',
+                    badge: '⚡ Level 2 • Active Lifter',
+                    desc: 'Consistent training 2 to 3 times a week for 1+ years',
+                  },
+                  {
+                    id: 'advanced',
+                    title: 'Advanced / Athlete',
+                    badge: '🏆 Level 3 • Pro Intensity',
+                    desc: 'Heavy lifter, training 4+ days a week with maximum focus',
+                  },
+                ].map((item) => {
+                  const isSelected = level === item.id;
+                  return (
+                    <AnimatedSelectionCard
+                      key={item.id}
+                      selected={isSelected}
+                      onPress={() => setLevel(item.id)}
+                    >
+                      <View style={[styles.graphicWrap, isSelected && styles.graphicWrapActive]}>
+                        <LevelBadgeGraphic level={item.id} size={46} selected={isSelected} />
+                      </View>
+                      <View style={styles.cardInfo}>
+                        <View style={styles.badgeRow}>
+                          <Text style={styles.badgeText}>{item.badge}</Text>
+                        </View>
+                        <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.cardDesc}>{item.desc}</Text>
+                      </View>
+                      <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                        {isSelected && <View style={styles.radioDot} />}
+                      </View>
+                    </AnimatedSelectionCard>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* ── Step 4: Location (Country & City) ── */}
+          {step === 4 && (
+            <View style={styles.stepWrapper}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepPill}>
+                  <Text style={styles.stepCategory}>STEP 4 OF 4</Text>
+                </View>
+                <Text style={styles.stepTitle}>Where are you located?</Text>
+                <Text style={styles.stepSubtitle}>
+                  Connects you with local gyms, verified fitness coaches, and athletic events.
+                </Text>
+              </View>
+
+              {/* Country Selector */}
+              <Text style={styles.sectionLabel}>Select Country</Text>
               <View style={styles.chipsRow}>
-                {ETHIOPIA_CITIES.map((ct) => {
-                  const isSelected = city === ct;
+                {COUNTRIES.map((c) => {
+                  const isSelected = country === c.name;
                   return (
                     <TouchableOpacity
-                      key={ct}
+                      key={c.name}
                       style={[styles.chip, isSelected && styles.chipActive]}
-                      onPress={() => setCity(ct)}
+                      onPress={() => {
+                        setCountry(c.name);
+                        if (c.name === 'Ethiopia') setCity('Addis Ababa');
+                        else setCity('');
+                      }}
                       activeOpacity={0.7}
                     >
+                      <Text style={styles.chipFlag}>{c.flag}</Text>
                       <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                        {ct}
+                        {c.name}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-            ) : (
-              <View style={styles.inputWrap}>
-                <Ionicons name="location-outline" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter your city name..."
-                  placeholderTextColor="#6B7280"
-                  value={customCity}
-                  onChangeText={setCustomCity}
-                />
-              </View>
-            )}
-          </View>
-        )}
+
+              {/* City Selector */}
+              <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Select City</Text>
+              {country === 'Ethiopia' ? (
+                <View style={styles.chipsRow}>
+                  {ETHIOPIA_CITIES.map((ct) => {
+                    const isSelected = city === ct;
+                    return (
+                      <TouchableOpacity
+                        key={ct}
+                        style={[styles.chip, isSelected && styles.chipActive]}
+                        onPress={() => setCity(ct)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                          {ct}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.inputWrap}>
+                  <Ionicons name="location-outline" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter your city name..."
+                    placeholderTextColor="#6B7280"
+                    value={customCity}
+                    onChangeText={setCustomCity}
+                  />
+                </View>
+              )}
+            </View>
+          )}
+        </Animated.View>
       </ScrollView>
 
       {/* ── Bottom Fixed CTA Button ── */}
@@ -438,16 +497,16 @@ const styles = StyleSheet.create({
   },
   ambientGlow: {
     position: 'absolute',
-    top: '10%',
+    top: '5%',
     left: '50%',
-    width: 320,
-    height: 320,
-    marginLeft: -160,
-    borderRadius: 160,
+    width: 360,
+    height: 360,
+    marginLeft: -180,
+    borderRadius: 180,
     backgroundColor: Colors.primary,
     opacity: 0.08,
     ...(Platform.OS === 'web'
-      ? { filter: 'blur(100px)' }
+      ? { filter: 'blur(110px)' }
       : { shadowColor: Colors.primary, shadowRadius: 90, shadowOpacity: 0.5 }),
   },
   header: {
@@ -466,27 +525,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  progressContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  liquidProgressTrack: {
     flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginHorizontal: 16,
+    overflow: 'hidden',
   },
-  progressSegment: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  progressSegmentActive: {
-    backgroundColor: Colors.primary,
-  },
-  progressSegmentCurrent: {
+  liquidProgressFill: {
+    height: '100%',
+    borderRadius: 3,
     backgroundColor: Colors.primary,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
   },
   skipBtn: {
     paddingVertical: 8,
@@ -498,72 +552,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingHorizontal: 22,
+    paddingBottom: 110,
   },
-  stepWrapper: {
+  animatedStepContainer: {
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
+  },
+  stepWrapper: {
+    width: '100%',
   },
   stepHeader: {
-    marginBottom: 28,
+    marginBottom: 24,
+  },
+  stepPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    marginBottom: 10,
   },
   stepCategory: {
     color: Colors.primary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 8,
+    letterSpacing: 1.2,
   },
   stepTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: '900',
     marginBottom: 8,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   stepSubtitle: {
     color: '#9CA3AF',
-    fontSize: 15,
+    fontSize: 14.5,
     lineHeight: 22,
   },
   cardsStack: {
     gap: 14,
   },
-  quizCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#121826',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  quizCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-  },
-  iconCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  graphicWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  iconCircleActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  graphicWrapActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    borderColor: Colors.primary,
   },
   cardInfo: {
     flex: 1,
@@ -583,7 +631,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   badgeRow: {
-    marginBottom: 6,
+    marginBottom: 4,
   },
   badgeText: {
     color: Colors.primary,
@@ -596,7 +644,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
