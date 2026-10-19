@@ -159,10 +159,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   btnText: {
-    color: '#064E3B', // Deepest emerald forest contrast on neon green
+    color: '#000000',
     fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0.4,
+    fontWeight: '900',
+    letterSpacing: 0.3,
     textAlign: 'center',
     zIndex: 2,
   },

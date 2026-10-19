@@ -273,10 +273,6 @@ export default function ChatScreen() {
             <View style={styles.guestGlowCircle} />
             <Ionicons name="chatbubbles-outline" size={54} color={Colors.primary} />
           </View>
-          <Text style={styles.guestTitle}>Direct Messages</Text>
-          <Text style={styles.guestSub}>
-            Log in or sign up to message personal trainers, ask fitness questions, and connect with gym partners.
-          </Text>
           <View style={styles.guestBtnStack}>
             <TouchableOpacity
               style={styles.guestPrimaryBtn}
@@ -452,22 +448,6 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: Colors.primary,
     opacity: 0.15,
-  },
-  guestTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 10,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  guestSub: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 28,
-    maxWidth: 320,
   },
   guestBtnStack: {
     width: '100%',

@@ -263,10 +263,6 @@ export default function ProfileScreen() {
             <View style={styles.guestGlowCircle} />
             <Ionicons name="person-circle-outline" size={60} color={Colors.primary} />
           </View>
-          <Text style={styles.guestTitle}>Your Fitness Profile</Text>
-          <Text style={styles.guestSub}>
-            Sign in or create an account to track workout history, log muscle gains, save favorite exercises, and customize your profile.
-          </Text>
           <View style={styles.guestBtnStack}>
             <TouchableOpacity
               style={styles.guestPrimaryBtn}
@@ -584,22 +580,6 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: Colors.primary,
     opacity: 0.15,
-  },
-  guestTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 10,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  guestSub: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 28,
-    maxWidth: 320,
   },
   guestBtnStack: {
     width: '100%',
