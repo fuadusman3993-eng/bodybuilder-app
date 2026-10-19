@@ -302,7 +302,7 @@ export default function ChatRoom() {
           created_at: new Date().toISOString(),
           isUploading: true,
         };
-        setMessages(prev => [...prev, optimisticMsg]);
+        setMessages((prev: any[]) => [...prev, optimisticMsg]);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
 
         const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
@@ -325,14 +325,14 @@ export default function ChatRoom() {
 
         if (insertErr) throw insertErr;
 
-        setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+        setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
 
         await supabase.from('conversations')
           .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
           .eq('id', conversationId);
       } catch (e: any) {
         Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
-        setMessages(prev => prev.filter(m => m.id !== tempId));
+        setMessages((prev: any[]) => prev.filter((m: any) => m.id !== tempId));
       }
     };
 
@@ -392,7 +392,7 @@ export default function ChatRoom() {
         created_at: new Date().toISOString(),
         isUploading: true,
       };
-      setMessages(prev => [...prev, optimisticMsg]);
+      setMessages((prev: any[]) => [...prev, optimisticMsg]);
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
 
       const response = await fetch(uri);
@@ -417,7 +417,7 @@ export default function ChatRoom() {
       
       if (insertErr) throw insertErr;
 
-      setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+      setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
       
       await supabase.from('conversations')
         .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
@@ -425,7 +425,7 @@ export default function ChatRoom() {
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not send');
       if (tempId) {
-        setMessages(prev => prev.filter(m => m.id !== tempId));
+        setMessages((prev: any[]) => prev.filter((m: any) => m.id !== tempId));
       }
     }
   };
@@ -459,7 +459,7 @@ export default function ChatRoom() {
       isUploading: true,
     };
 
-    setMessages(prev => [...prev, optimisticMsg]);
+    setMessages((prev: any[]) => [...prev, optimisticMsg]);
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
@@ -487,7 +487,7 @@ export default function ChatRoom() {
 
       if (insertErr) throw insertErr;
 
-      setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m));
+      setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
 
       await supabase.from('conversations')
         .update({ last_message: type === 'image' ? '📷 Photo' : '🎥 Video', last_message_at: new Date().toISOString() })
@@ -500,7 +500,7 @@ export default function ChatRoom() {
       } else {
         Alert.alert('Upload Error', e.message || 'Could not upload file');
       }
-      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessages((prev: any[]) => prev.filter((m: any) => m.id !== tempId));
     }
   };
   // Always keep ref in sync with latest sendMedia (avoids stale closure in DOM handlers)
@@ -527,7 +527,7 @@ export default function ChatRoom() {
           if (result.canceled || !result.assets?.[0]) return;
           const asset = result.assets[0];
           const mimeType = asset.mimeType || (type === 'image' ? 'image/jpeg' : 'video/mp4');
-          await sendMedia(asset.uri, type, mimeType, (asset as any).file ?? undefined);
+          await sendMedia(asset.uri, type, mimeType);
         } catch (e: any) {
           console.error('Picker error:', e);
           Alert.alert('Error', e.message || 'Could not pick media');

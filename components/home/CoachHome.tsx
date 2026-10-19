@@ -53,7 +53,9 @@ export default function CoachHome() {
     try {
       await supabase.from('coach_requests').update({ status: action }).eq('id', id);
       if (action === 'accepted') {
-        await supabase.rpc('increment_trainees', { coach_uid_param: user.uid }).catch(() => {});
+        try {
+          await supabase.rpc('increment_trainees', { coach_uid_param: user.uid });
+        } catch {}
       }
       fetchDashboardData();
     } catch (e) {

@@ -12,6 +12,8 @@ import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
 import { registerWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
 import { sendOTPEmail, generateOTP } from '../lib/emailjs';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // ── Password strength validator ───────────────────────────────────────────────
 function getPasswordStrength(pw: string): { label: string; color: string; score: number } {
@@ -83,7 +85,6 @@ export default function TraineeRegisterScreen() {
       setUser({ uid: userResult.uid, tier: UserTier.FREE, name });
       
       // Check if they need to complete their profile
-      const { doc, getDoc } = require('firebase/firestore');
       const snap = await getDoc(doc(db, 'users', userResult.uid));
       if (!snap.exists() || !snap.data().country) {
         router.replace('/create-profile');

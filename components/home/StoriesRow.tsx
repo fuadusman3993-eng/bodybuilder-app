@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
-import { useUserStore } from '../../store/userStore';
+import { useUserStore, UserTier } from '../../store/userStore';
 import { auth } from '../../lib/firebase';
 import Skeleton from '../ui/Skeleton';
 
@@ -49,6 +49,19 @@ export default function StoriesRow() {
 
   useFocusEffect(
     React.useCallback(() => {
+      if (user.tier === UserTier.GUEST) {
+        setStoryGroups([{
+          uid: 'ai_coach',
+          username: 'FitPulse AI',
+          avatar_url: 'ai_coach',
+          isOwn: false,
+          hasStory: true,
+          viewed: viewedIds.includes('ai_coach'),
+        }]);
+        setLoading(false);
+        return;
+      }
+
       const currentUid = user.uid || auth.currentUser?.uid;
       const now = Date.now();
       // Only reuse cache if it belongs to THIS user and is fresh
@@ -63,11 +76,23 @@ export default function StoriesRow() {
         return;
       }
       fetchStories();
-    }, [user.uid, user.avatar, user.role])
+    }, [user.uid, user.avatar, user.role, user.tier])
   );
 
   const fetchStories = async () => {
     try {
+      if (user.tier === UserTier.GUEST) {
+        setStoryGroups([{
+          uid: 'ai_coach',
+          username: 'FitPulse AI',
+          avatar_url: 'ai_coach',
+          isOwn: false,
+          hasStory: true,
+          viewed: viewedIds.includes('ai_coach'),
+        }]);
+        setLoading(false);
+        return;
+      }
       const activeUid = user.uid || auth.currentUser?.uid;
       if (cachedStories.length === 0 || cachedUserUid !== activeUid) setLoading(true);
       const now = new Date().toISOString();
@@ -253,23 +278,42 @@ export default function StoriesRow() {
 
   const storyFallback = 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150';
 
-  const StoryAvatar = ({ url }: { url: string }) => (
-    <Image
-      source={url || storyFallback}
-      placeholder={storyFallback}
-      cachePolicy="memory-disk"
-      contentFit="cover"
-      style={{
-        width: avatarInner,
-        height: avatarInner,
-        borderRadius: avatarInner / 2,
-        backgroundColor: Colors.surface,
-      }}
-    />
-  );
+  const StoryAvatar = ({ url }: { url: string }) => {
+    if (url === 'ai_coach') {
+      return (
+        <View
+          style={{
+            width: avatarInner,
+            height: avatarInner,
+            borderRadius: avatarInner / 2,
+            backgroundColor: '#064E3B',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Ionicons name="sparkles" size={avatarInner * 0.48} color={Colors.primary} />
+        </View>
+      );
+    }
+    return (
+      <Image
+        source={url || storyFallback}
+        placeholder={storyFallback}
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        style={{
+          width: avatarInner,
+          height: avatarInner,
+          borderRadius: avatarInner / 2,
+          backgroundColor: Colors.surface,
+        }}
+      />
+    );
+  };
 
   const renderItem = ({ item }: { item: StoryGroup }) => {
     const isViewed = viewedIds.includes(item.uid);
+    const isAiCoach = item.uid === 'ai_coach';
     return (
       <TouchableOpacity
         style={styles.storyItem}
@@ -283,6 +327,7 @@ export default function StoriesRow() {
             !item.hasStory && styles.storyRingEmpty,
             isViewed && styles.storyRingViewed,
             item.isOwn && !item.hasStory && styles.storyRingOwn,
+            isAiCoach && { borderColor: Colors.primary, shadowColor: Colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
           ]}
         >
           <StoryAvatar url={item.avatar_url} />
@@ -291,8 +336,13 @@ export default function StoriesRow() {
               <Ionicons name="add" size={12} color={Colors.textPrimary} />
             </View>
           )}
+          {isAiCoach && (
+            <View style={[styles.addBadge, { backgroundColor: Colors.primary }]}>
+              <Ionicons name="flash" size={10} color="#000" />
+            </View>
+          )}
         </View>
-        <Text style={styles.storyName} numberOfLines={1}>
+        <Text style={[styles.storyName, isAiCoach && { color: Colors.primary, fontWeight: '700' }]} numberOfLines={1}>
           {item.isOwn ? 'Your story' : item.username}
         </Text>
       </TouchableOpacity>
@@ -302,37 +352,46 @@ export default function StoriesRow() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 16, gap: 14 }]}>
-          {/* "Your story" — real button, loads immediately */}
-          <View style={styles.storyItem}>
-            <View style={[
-              styles.storyRing,
-              { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
-              styles.storyRingEmpty,
-              styles.storyRingOwn,
-            ]}>
-              <Image
-                source={ownAvatar || fallbackAvatar}
-                placeholder={fallbackAvatar}
-                cachePolicy="memory-disk"
-                contentFit="cover"
-                style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
-              />
-              <View style={styles.addBadge}>
-                <Ionicons name="add" size={12} color={Colors.textPrimary} />
-              </View>
-            </View>
-            <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
-          </View>
-
-          {/* 4 skeleton placeholders — same size/spacing as real story items */}
-          {[1, 2, 3, 4].map(i => (
-            <View key={i} style={styles.storyItem}>
+        user.tier === UserTier.GUEST ? (
+          <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 16 }]}>
+            <View style={styles.storyItem}>
               <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
-              <Skeleton width={44} height={10} borderRadius={4} style={{ marginTop: 1 }} />
+              <Skeleton width={56} height={10} borderRadius={4} style={{ marginTop: 4 }} />
             </View>
-          ))}
-        </View>
+          </View>
+        ) : (
+          <View style={[styles.loadingRow, { flexDirection: 'row', paddingHorizontal: 16, gap: 14 }]}>
+            {/* "Your story" — real button, loads immediately */}
+            <View style={styles.storyItem}>
+              <View style={[
+                styles.storyRing,
+                { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
+                styles.storyRingEmpty,
+                styles.storyRingOwn,
+              ]}>
+                <Image
+                  source={ownAvatar || fallbackAvatar}
+                  placeholder={fallbackAvatar}
+                  cachePolicy="memory-disk"
+                  contentFit="cover"
+                  style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
+                />
+                <View style={styles.addBadge}>
+                  <Ionicons name="add" size={12} color={Colors.textPrimary} />
+                </View>
+              </View>
+              <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
+            </View>
+
+            {/* 4 skeleton placeholders — same size/spacing as real story items */}
+            {[1, 2, 3, 4].map(i => (
+              <View key={i} style={styles.storyItem}>
+                <Skeleton width={avatarOuter} height={avatarOuter} borderRadius={avatarOuter / 2} />
+                <Skeleton width={44} height={10} borderRadius={4} style={{ marginTop: 1 }} />
+              </View>
+            ))}
+          </View>
+        )
       ) : (
         <>
           {errorMsg && (

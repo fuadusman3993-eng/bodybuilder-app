@@ -190,8 +190,10 @@ export default function OnboardingQuizScreen() {
     }
 
     setUser({
+      uid: `guest_${Date.now()}`,
       tier: UserTier.GUEST,
       name: 'Guest Athlete',
+      avatar: undefined,
       city: finalCity,
       country,
     });

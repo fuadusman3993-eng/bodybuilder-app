@@ -2,11 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { onAuthStateChanged } from 'firebase/auth';
 import BrandLogo from '../components/ui/BrandLogo';
 import { auth } from '../lib/firebase';
+import { useUserStore, UserTier } from '../store/userStore';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { user } = useUserStore();
   
   // Clean micro-animations like Instagram / TikTok
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
@@ -29,17 +32,48 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    // Fast, responsive splash hold (~1.2s) matching top-tier apps
-    const timer = setTimeout(() => {
-      if (auth.currentUser) {
-        router.replace('/(tabs)');
-      } else {
-        router.replace('/welcome');
-      }
-    }, 1200);
+    let hasNavigated = false;
+    const startTime = Date.now();
+    const MIN_SPLASH_MS = 1000;
 
-    return () => clearTimeout(timer);
-  }, [router, scaleAnim, opacityAnim]);
+    const navigateTo = (route: string) => {
+      if (hasNavigated) return;
+      hasNavigated = true;
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, MIN_SPLASH_MS - elapsed);
+      setTimeout(() => {
+        router.replace(route as any);
+      }, remainingDelay);
+    };
+
+    // Listen for Firebase auth state resolution to directly route authenticated users
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // Authenticated user exists -> Go DIRECTLY to app tabs!
+        navigateTo('/(tabs)');
+      } else if (user?.uid && user.tier !== UserTier.GUEST) {
+        // Persistent non-guest user in store -> Go DIRECTLY to app tabs!
+        navigateTo('/(tabs)');
+      } else {
+        // No account session -> Go to welcome
+        navigateTo('/welcome');
+      }
+    });
+
+    // Fallback safety timer if auth resolution is delayed
+    const fallbackTimer = setTimeout(() => {
+      if (auth.currentUser || (user?.uid && user.tier !== UserTier.GUEST)) {
+        navigateTo('/(tabs)');
+      } else {
+        navigateTo('/welcome');
+      }
+    }, 2200);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(fallbackTimer);
+    };
+  }, [router, scaleAnim, opacityAnim, user]);
 
   return (
     <SafeAreaView style={styles.container}>

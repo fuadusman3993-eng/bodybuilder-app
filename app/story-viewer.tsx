@@ -68,6 +68,40 @@ export default function StoryViewer() {
   const loadStories = async () => {
     try {
       setLoading(true);
+      if (uid === 'ai_coach') {
+        setUserStories([
+          {
+            id: 'ai_story_1',
+            uid: 'ai_coach',
+            username: 'FitPulse AI',
+            avatar_url: 'https://ui-avatars.com/api/?name=AI&background=10B981&color=000&size=150',
+            image_url: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&auto=format&fit=crop&q=80',
+            caption: '🔥 Consistency beats intensity every time. Show up today and crush your routine!',
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+          },
+          {
+            id: 'ai_story_2',
+            uid: 'ai_coach',
+            username: 'FitPulse AI',
+            avatar_url: 'https://ui-avatars.com/api/?name=AI&background=10B981&color=000&size=150',
+            image_url: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1080&auto=format&fit=crop&q=80',
+            caption: '⚡ Progressive overload is the secret: aim to add 1 rep or small weight each week.',
+            created_at: new Date(Date.now() - 7200000).toISOString(),
+          },
+          {
+            id: 'ai_story_3',
+            uid: 'ai_coach',
+            username: 'FitPulse AI',
+            avatar_url: 'https://ui-avatars.com/api/?name=AI&background=10B981&color=000&size=150',
+            image_url: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=1080&auto=format&fit=crop&q=80',
+            caption: '🥗 Fuel your recovery: maintain hydration and get quality protein after every session.',
+            created_at: new Date(Date.now() - 10800000).toISOString(),
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('stories')
@@ -94,6 +128,12 @@ export default function StoryViewer() {
     const fetchStats = async () => {
       if (userStories.length > 0 && userStories[storyIndex]) {
         const story = userStories[storyIndex];
+
+        if (story.uid === 'ai_coach') {
+          setLikes(148);
+          setViews(920);
+          return;
+        }
         
         if (user.uid && story.uid !== user.uid) {
           // Record view — skip if owner views their own story
@@ -137,8 +177,16 @@ export default function StoryViewer() {
   }, [storyIndex, userStories, user.uid]);
 
   const handleLike = async () => {
-    if (!user.uid) return;
     const story = userStories[storyIndex];
+    if (!story) return;
+
+    if (story.uid === 'ai_coach') {
+      setIsLiked(!isLiked);
+      setLikes(l => (isLiked ? l - 1 : l + 1));
+      return;
+    }
+
+    if (!user.uid) return;
     if (isLiked) {
       await supabase.from('story_likes').delete().eq('story_id', story.id).eq('uid', user.uid);
       setIsLiked(false);
@@ -465,7 +513,9 @@ const styles = StyleSheet.create({
   image: { ...StyleSheet.absoluteFillObject },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   safeArea: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  topSafe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   progressContainer: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: Platform.OS === 'android' ? 40 : 10, gap: 4 },
+  progressBars: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: Platform.OS === 'android' ? 40 : 10, gap: 4 },
   progressTrack: { flex: 1, height: 2.5, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#FFF', borderRadius: 2 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, gap: 10 },

@@ -81,7 +81,9 @@ export default function CoachDashboard() {
 
       if (action === 'accepted') {
         // Update coach total_trainees count
-        await supabase.rpc('increment_trainees', { coach_uid_param: user.uid }).catch(() => {});
+        try {
+          await supabase.rpc('increment_trainees', { coach_uid_param: user.uid });
+        } catch {}
         Alert.alert('✅ Accepted!', 'Trainee has been added to your roster.');
       } else {
         Alert.alert('Rejected', 'Request has been declined.');
