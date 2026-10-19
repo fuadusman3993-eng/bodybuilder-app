@@ -14,17 +14,74 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
-import {
-  MaleAthleteGraphic,
-  FemaleAthleteGraphic,
-  GoalBadgeGraphic,
-  LevelBadgeGraphic,
-} from '../components/ui/AthleticCharacterIcons';
 import AnimatedSelectionCard from '../components/ui/AnimatedSelectionCard';
+import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
 
 const { width } = Dimensions.get('window');
+
+// High-definition athletic photography (100% real human athletes)
+const ATHLETE_PHOTOS = {
+  male: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&auto=format&fit=crop&q=80',
+  female: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&auto=format&fit=crop&q=80',
+};
+
+const GOAL_OPTIONS = [
+  {
+    id: 'muscle',
+    title: 'Build Muscle & Strength',
+    desc: 'Hypertrophy lifting, progressive overload & mass gains',
+    photo: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=300&auto=format&fit=crop&q=80',
+    tag: 'STRENGTH',
+  },
+  {
+    id: 'fatloss',
+    title: 'Burn Fat & Lean Out',
+    desc: 'High-octane calorie burn, HIIT & athletic definition',
+    photo: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&auto=format&fit=crop&q=80',
+    tag: 'FAT BURN',
+  },
+  {
+    id: 'tone',
+    title: 'Tone & Athletic Conditioning',
+    desc: 'Functional mobility, speed & core stability',
+    photo: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&auto=format&fit=crop&q=80',
+    tag: 'AGILITY',
+  },
+  {
+    id: 'health',
+    title: 'Stay Fit & Healthy',
+    desc: 'Daily vitality, cardiovascular health & longevity',
+    photo: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=300&auto=format&fit=crop&q=80',
+    tag: 'VITALITY',
+  },
+];
+
+const LEVEL_OPTIONS = [
+  {
+    id: 'beginner',
+    title: 'Beginner',
+    badge: '🌱 Level 1 • Foundations',
+    desc: 'Learning proper exercise form or restarting gym habits',
+    photo: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'intermediate',
+    title: 'Intermediate',
+    badge: '⚡ Level 2 • Active Lifter',
+    desc: 'Consistent training 2 to 3 times a week for 1+ years',
+    photo: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'advanced',
+    title: 'Advanced / Athlete',
+    badge: '🏆 Level 3 • Pro Intensity',
+    desc: 'Heavy lifter, training 4+ days a week with maximum focus',
+    photo: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=300&auto=format&fit=crop&q=80',
+  },
+];
 
 const COUNTRIES = [
   { name: 'Ethiopia', flag: '🇪🇹' },
@@ -231,8 +288,13 @@ export default function OnboardingQuizScreen() {
                   selected={gender === 'male'}
                   onPress={() => setGender('male')}
                 >
-                  <View style={[styles.graphicWrap, gender === 'male' && styles.graphicWrapActive]}>
-                    <MaleAthleteGraphic size={58} selected={gender === 'male'} />
+                  <View style={[styles.avatarWrap, gender === 'male' && styles.avatarWrapActive]}>
+                    <Image
+                      source={{ uri: ATHLETE_PHOTOS.male }}
+                      style={styles.athleteAvatar}
+                      contentFit="cover"
+                      transition={200}
+                    />
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={[styles.cardTitle, gender === 'male' && styles.cardTitleActive]}>
@@ -251,8 +313,13 @@ export default function OnboardingQuizScreen() {
                   selected={gender === 'female'}
                   onPress={() => setGender('female')}
                 >
-                  <View style={[styles.graphicWrap, gender === 'female' && styles.graphicWrapActive]}>
-                    <FemaleAthleteGraphic size={58} selected={gender === 'female'} />
+                  <View style={[styles.avatarWrap, gender === 'female' && styles.avatarWrapActive]}>
+                    <Image
+                      source={{ uri: ATHLETE_PHOTOS.female }}
+                      style={styles.athleteAvatar}
+                      contentFit="cover"
+                      transition={200}
+                    />
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={[styles.cardTitle, gender === 'female' && styles.cardTitleActive]}>
@@ -270,7 +337,7 @@ export default function OnboardingQuizScreen() {
             </View>
           )}
 
-          {/* ── Step 2: Goal with Rich Visual Badges ── */}
+          {/* ── Step 2: Goal with Real Fitness Photography Badges ── */}
           {step === 2 && (
             <View style={styles.stepWrapper}>
               <View style={styles.stepHeader}>
@@ -284,28 +351,7 @@ export default function OnboardingQuizScreen() {
               </View>
 
               <View style={styles.cardsStack}>
-                {[
-                  {
-                    id: 'muscle',
-                    title: 'Build Muscle & Strength',
-                    desc: 'Hypertrophy lifting, progressive overload & mass gains',
-                  },
-                  {
-                    id: 'fatloss',
-                    title: 'Burn Fat & Lean Out',
-                    desc: 'High-octane calorie burn, HIIT & athletic definition',
-                  },
-                  {
-                    id: 'tone',
-                    title: 'Tone & Athletic Conditioning',
-                    desc: 'Functional mobility, speed & core stability',
-                  },
-                  {
-                    id: 'health',
-                    title: 'Stay Fit & Healthy',
-                    desc: 'Daily vitality, cardiovascular health & longevity',
-                  },
-                ].map((item) => {
+                {GOAL_OPTIONS.map((item) => {
                   const isSelected = goal === item.id;
                   return (
                     <AnimatedSelectionCard
@@ -313,8 +359,13 @@ export default function OnboardingQuizScreen() {
                       selected={isSelected}
                       onPress={() => setGoal(item.id)}
                     >
-                      <View style={[styles.graphicWrap, isSelected && styles.graphicWrapActive]}>
-                        <GoalBadgeGraphic type={item.id} size={46} selected={isSelected} />
+                      <View style={[styles.photoBadgeWrap, isSelected && styles.photoBadgeWrapActive]}>
+                        <Image
+                          source={{ uri: item.photo }}
+                          style={styles.photoBadge}
+                          contentFit="cover"
+                          transition={200}
+                        />
                       </View>
                       <View style={styles.cardInfo}>
                         <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
@@ -332,7 +383,7 @@ export default function OnboardingQuizScreen() {
             </View>
           )}
 
-          {/* ── Step 3: Experience Level with Tiered Badges ── */}
+          {/* ── Step 3: Experience Level with Tiered Photo Badges ── */}
           {step === 3 && (
             <View style={styles.stepWrapper}>
               <View style={styles.stepHeader}>
@@ -346,26 +397,7 @@ export default function OnboardingQuizScreen() {
               </View>
 
               <View style={styles.cardsStack}>
-                {[
-                  {
-                    id: 'beginner',
-                    title: 'Beginner',
-                    badge: '🌱 Level 1 • Foundations',
-                    desc: 'Learning proper exercise form or restarting gym habits',
-                  },
-                  {
-                    id: 'intermediate',
-                    title: 'Intermediate',
-                    badge: '⚡ Level 2 • Active Lifter',
-                    desc: 'Consistent training 2 to 3 times a week for 1+ years',
-                  },
-                  {
-                    id: 'advanced',
-                    title: 'Advanced / Athlete',
-                    badge: '🏆 Level 3 • Pro Intensity',
-                    desc: 'Heavy lifter, training 4+ days a week with maximum focus',
-                  },
-                ].map((item) => {
+                {LEVEL_OPTIONS.map((item) => {
                   const isSelected = level === item.id;
                   return (
                     <AnimatedSelectionCard
@@ -373,8 +405,13 @@ export default function OnboardingQuizScreen() {
                       selected={isSelected}
                       onPress={() => setLevel(item.id)}
                     >
-                      <View style={[styles.graphicWrap, isSelected && styles.graphicWrapActive]}>
-                        <LevelBadgeGraphic level={item.id} size={46} selected={isSelected} />
+                      <View style={[styles.photoBadgeWrap, isSelected && styles.photoBadgeWrapActive]}>
+                        <Image
+                          source={{ uri: item.photo }}
+                          style={styles.photoBadge}
+                          contentFit="cover"
+                          transition={200}
+                        />
                       </View>
                       <View style={styles.cardInfo}>
                         <View style={styles.badgeRow}>
@@ -470,21 +507,15 @@ export default function OnboardingQuizScreen() {
         </Animated.View>
       </ScrollView>
 
-      {/* ── Bottom Fixed CTA Button ── */}
+      {/* ── Bottom Fixed CTA Button with Radiant Shimmer Beam ── */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.continueBtn, isNextDisabled() && styles.continueBtnDisabled]}
-          disabled={isNextDisabled()}
-          onPress={handleNext}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.continueBtnText}>
-            {step === totalSteps ? 'Explore FitPulse 🚀' : 'Continue'}
-          </Text>
-          {step < totalSteps && (
-            <Ionicons name="arrow-forward" size={18} color="#000000" style={{ marginLeft: 6 }} />
-          )}
-        </TouchableOpacity>
+        <View style={styles.footerInner}>
+          <ShimmerGlowButton
+            title={step === totalSteps ? 'Explore FitPulse 🚀' : 'Continue'}
+            disabled={isNextDisabled()}
+            onPress={handleNext}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -598,20 +629,51 @@ const styles = StyleSheet.create({
   cardsStack: {
     gap: 14,
   },
-  graphicWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     marginRight: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1E293B',
   },
-  graphicWrapActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+  avatarWrapActive: {
     borderColor: Colors.primary,
+    borderWidth: 2.5,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.65,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  athleteAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  photoBadgeWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    marginRight: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#1E293B',
+  },
+  photoBadgeWrapActive: {
+    borderColor: Colors.primary,
+    borderWidth: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  photoBadge: {
+    width: '100%',
+    height: '100%',
   },
   cardInfo: {
     flex: 1,
@@ -722,30 +784,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
-  continueBtn: {
-    backgroundColor: Colors.primary,
-    height: 54,
-    borderRadius: 27,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  footerInner: {
     maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  continueBtnDisabled: {
-    opacity: 0.4,
-    shadowOpacity: 0,
-  },
-  continueBtnText: {
-    color: '#000000',
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0.2,
   },
 });

@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BrandLogo from '../components/ui/BrandLogo';
+import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
 import { Colors } from '../constants/colors';
 
 const { width } = Dimensions.get('window');
@@ -44,13 +45,10 @@ export default function WelcomeScreen() {
 
         {/* Bottom CTA Actions */}
         <View style={styles.footerContainer}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            activeOpacity={0.85}
+          <ShimmerGlowButton
+            title="Get Started"
             onPress={() => router.push('/onboarding-quiz')}
-          >
-            <Text style={styles.primaryBtnText}>Get Started</Text>
-          </TouchableOpacity>
+          />
 
           <TouchableOpacity
             style={styles.secondaryBtn}
