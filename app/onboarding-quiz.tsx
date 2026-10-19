@@ -34,28 +34,24 @@ const GOAL_OPTIONS = [
     title: 'Build Muscle & Strength',
     desc: 'Hypertrophy lifting, progressive overload & mass gains',
     photo: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=300&auto=format&fit=crop&q=80',
-    tag: 'STRENGTH',
   },
   {
     id: 'fatloss',
     title: 'Burn Fat & Lean Out',
     desc: 'High-octane calorie burn, HIIT & athletic definition',
     photo: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&auto=format&fit=crop&q=80',
-    tag: 'FAT BURN',
   },
   {
     id: 'tone',
     title: 'Tone & Athletic Conditioning',
     desc: 'Functional mobility, speed & core stability',
     photo: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&auto=format&fit=crop&q=80',
-    tag: 'AGILITY',
   },
   {
     id: 'health',
     title: 'Stay Fit & Healthy',
     desc: 'Daily vitality, cardiovascular health & longevity',
     photo: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=300&auto=format&fit=crop&q=80',
-    tag: 'VITALITY',
   },
 ];
 

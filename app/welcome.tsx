@@ -132,25 +132,6 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: 'center',
   },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    width: '100%',
-    height: 56,
-    borderRadius: 28, // Pill shape
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  primaryBtnText: {
-    color: '#000000',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
   secondaryBtn: {
     paddingVertical: 12,
     paddingHorizontal: 20,
