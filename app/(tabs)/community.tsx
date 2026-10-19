@@ -8,12 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import PostCard, { RealPost } from '../../components/home/PostCard';
-import { useUserStore } from '../../store/userStore';
+import { useUserStore, UserTier } from '../../store/userStore';
 import { supabase } from '../../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
+import AuthRequiredModal from '../../components/auth/AuthRequiredModal';
 
 type TabType = 'Following' | 'For You';
 
@@ -38,6 +39,18 @@ export default function CommunityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const followingUidsRef = useRef<Set<string>>(new Set());
   const [followingUidsArr, setFollowingUidsArr] = useState<string[]>([]);
+
+  // ── Auth Required Prompt Modal ──
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalConfig, setAuthModalConfig] = useState({ title: '', description: '' });
+
+  const triggerAuthModal = (title?: string, description?: string) => {
+    setAuthModalConfig({
+      title: title || 'Join the FitPulse Community',
+      description: description || 'Log in or sign up to interact with posts, athletes, and coaches.',
+    });
+    setShowAuthModal(true);
+  };
 
   // ── In-App Success Toast ──
   const [showToast, setShowToast] = useState(false);
@@ -257,7 +270,10 @@ export default function CommunityScreen() {
 
   // ── Like Toggle ──
   const handleToggleLike = async (postId: string) => {
-    if (!user?.uid) { router.push('/login'); return; }
+    if (!user?.uid || user.tier === UserTier.GUEST) {
+      triggerAuthModal('Like this Workout Post', 'Log in or sign up to like posts and encourage athletes.');
+      return;
+    }
 
     setPosts(prev => {
       const next = prev.map(p => {
@@ -309,7 +325,10 @@ export default function CommunityScreen() {
 
   // ── Bookmark Toggle ──
   const handleToggleBookmark = async (postId: string) => {
-    if (!user?.uid) { router.push('/login'); return; }
+    if (!user?.uid || user.tier === UserTier.GUEST) {
+      triggerAuthModal('Save to Bookmarks', 'Log in or sign up to save workouts and helpful guides.');
+      return;
+    }
 
     setPosts(prev => {
       const next = prev.map(p =>
@@ -357,7 +376,10 @@ export default function CommunityScreen() {
 
   // ── Repost Toggle ──
   const handleToggleRepost = async (postId: string) => {
-    if (!user?.uid) { router.push('/login'); return; }
+    if (!user?.uid || user.tier === UserTier.GUEST) {
+      triggerAuthModal('Repost to Your Profile', 'Log in or sign up to share workouts with your followers.');
+      return;
+    }
 
     const targetPost = posts.find(p => p.id === postId);
     if (!targetPost) return;
@@ -406,7 +428,10 @@ export default function CommunityScreen() {
 
   // ── Follow Toggle ──
   const handleFollowToggle = async (targetUid: string, isCurrentlyFollowing: boolean) => {
-    if (!user?.uid) return;
+    if (!user?.uid || user.tier === UserTier.GUEST) {
+      triggerAuthModal('Follow this Athlete', 'Log in or sign up to follow coaches and stay updated.');
+      return;
+    }
 
     // Optimistic: flip isFollowing on all posts by this user
     setPosts(prev => {
@@ -624,7 +649,13 @@ export default function CommunityScreen() {
           </Text>
           <TouchableOpacity
             style={styles.emptyActionBtn}
-            onPress={() => router.push('/create-post')}
+            onPress={() => {
+              if (!user?.uid || user.tier === UserTier.GUEST) {
+                triggerAuthModal('Share a Workout Post', 'Log in or sign up to share workouts with the community.');
+                return;
+              }
+              router.push('/create-post');
+            }}
             activeOpacity={0.85}
           >
             <Ionicons name="add-circle-outline" size={18} color="#000" />
@@ -644,6 +675,7 @@ export default function CommunityScreen() {
               onFollowToggle={handleFollowToggle}
               onPressUser={handlePressUser}
               onDeletePost={handleDeletePost}
+              onRequireAuth={triggerAuthModal}
             />
           )}
           contentContainerStyle={styles.feedContainer}
@@ -658,6 +690,14 @@ export default function CommunityScreen() {
           }
         />
       )}
+
+      {/* ── Guest Auth Required Modal ── */}
+      <AuthRequiredModal
+        visible={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title={authModalConfig.title}
+        description={authModalConfig.description}
+      />
     </SafeAreaView>
   );
 }

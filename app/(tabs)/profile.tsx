@@ -230,16 +230,7 @@ export default function ProfileScreen() {
     }, [user.uid])
   );
 
-  // ── Guest Guard: immediately redirect to login page only when auth is done ─────────
-  useEffect(() => {
-    if (authInitialized && (user.tier === UserTier.GUEST || !user.uid)) {
-      router.replace('/login');
-    }
-  }, [authInitialized, user.tier, user.uid]);
-
-  if (authInitialized && (user.tier === UserTier.GUEST || !user.uid)) {
-    return null;
-  }
+  // Note: Guest users view the TikTok-style login/signup state in-place without forced redirect
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -249,30 +240,61 @@ export default function ProfileScreen() {
         <View style={styles.headerBrand}>
           <BrandLogo size="small" showText={false} />
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-            {unreadCount > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => setShowMoreModal(true)}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        {(!user?.uid || user.tier === UserTier.GUEST) ? null : (
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
+              <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setShowMoreModal(true)}>
+              <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
-      >
-        {/* ── Top row: Avatar & Stats ── */}
-        <View style={styles.topRow}>
-          {/* Avatar */}
-          <View style={styles.avatarWrap}>
+      {(!user?.uid || user.tier === UserTier.GUEST) ? (
+        <View style={styles.guestCenterWrap}>
+          <View style={styles.guestIconWrap}>
+            <View style={styles.guestGlowCircle} />
+            <Ionicons name="person-circle-outline" size={60} color={Colors.primary} />
+          </View>
+          <Text style={styles.guestTitle}>Your Fitness Profile</Text>
+          <Text style={styles.guestSub}>
+            Sign in or create an account to track workout history, log muscle gains, save favorite exercises, and customize your profile.
+          </Text>
+          <View style={styles.guestBtnStack}>
+            <TouchableOpacity
+              style={styles.guestPrimaryBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/login')}
+            >
+              <Text style={styles.guestPrimaryBtnText}>Log In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.guestSecondaryBtn}
+              activeOpacity={0.75}
+              onPress={() => router.push('/role-selection')}
+            >
+              <Text style={styles.guestSecondaryBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        >
+          {/* ── Top row: Avatar & Stats ── */}
+          <View style={styles.topRow}>
+            {/* Avatar */}
+            <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
               <Image
                 source={{ uri: avatarUri }}
@@ -462,6 +484,7 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
+      )}
 
       {/* ── TIKTOK-STYLE MORE MENU MODAL ── */}
       <ProfileMoreModal
@@ -533,4 +556,85 @@ const styles = StyleSheet.create({
   emptyPosts: { alignItems: 'center', paddingVertical: 50, gap: 10 },
   emptyTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
   emptySubtitle: { color: Colors.textMuted, fontSize: 13 },
+
+  /* TikTok Guest State */
+  guestCenterWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    marginTop: -40,
+  },
+  guestIconWrap: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  guestGlowCircle: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: Colors.primary,
+    opacity: 0.15,
+  },
+  guestTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  guestSub: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 28,
+    maxWidth: 320,
+  },
+  guestBtnStack: {
+    width: '100%',
+    maxWidth: 280,
+    gap: 12,
+  },
+  guestPrimaryBtn: {
+    backgroundColor: Colors.primary,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  guestPrimaryBtnText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  guestSecondaryBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  guestSecondaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

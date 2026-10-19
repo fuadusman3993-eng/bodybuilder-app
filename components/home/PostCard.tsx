@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { supabase } from '../../lib/supabase';
-import { useUserStore } from '../../store/userStore';
+import { useUserStore, UserTier } from '../../store/userStore';
 import SharePostModal from './SharePostModal';
 
 export interface RealPost {
@@ -68,6 +68,7 @@ interface PostCardProps {
   onFollowToggle?: (uid: string, isFollowing: boolean) => void;
   onPressUser?: (uid: string) => void;
   onDeletePost?: (postId: string) => void;
+  onRequireAuth?: (title?: string, description?: string) => void;
 }
 
 export default function PostCard({
@@ -78,6 +79,7 @@ export default function PostCard({
   onFollowToggle,
   onPressUser,
   onDeletePost,
+  onRequireAuth,
 }: PostCardProps) {
   const { user: currentUser } = useUserStore();
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
@@ -327,7 +329,13 @@ export default function PostCard({
           <TouchableOpacity
             style={styles.actionButton}
             activeOpacity={0.7}
-            onPress={() => setShowComments(true)}
+            onPress={() => {
+              if (!currentUser?.uid || currentUser.tier === UserTier.GUEST) {
+                onRequireAuth?.('Comment on this Post', 'Log in or sign up to leave comments and connect with athletes.');
+                return;
+              }
+              setShowComments(true);
+            }}
           >
             <Ionicons name="chatbubble-outline" size={24} color={Colors.textPrimary} />
             <Text style={styles.actionText}>{commentsCount}</Text>
@@ -355,7 +363,13 @@ export default function PostCard({
           <TouchableOpacity
             style={styles.actionButton}
             activeOpacity={0.7}
-            onPress={() => setShowShareModal(true)}
+            onPress={() => {
+              if (!currentUser?.uid || currentUser.tier === UserTier.GUEST) {
+                onRequireAuth?.('Share with Friends', 'Log in or sign up to share posts with friends.');
+                return;
+              }
+              setShowShareModal(true);
+            }}
           >
             <Ionicons
               name="paper-plane-outline"

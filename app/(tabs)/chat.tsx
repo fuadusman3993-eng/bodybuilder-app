@@ -12,6 +12,7 @@ import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
+import { Colors } from '../../constants/colors';
 
 const BG = '#0a0a0a';
 const PRIMARY = '#00E676';
@@ -67,12 +68,7 @@ export default function ChatScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Coaches' | 'Groups'>('All');
 
-  // If definitely not logged in after auth check, redirect to login
-  useEffect(() => {
-    if (authInitialized && (!user.uid || user.tier === UserTier.GUEST)) {
-      router.replace('/login');
-    }
-  }, [authInitialized, user.uid, user.tier]);
+  // Note: Guest users view the TikTok-style login/signup state in-place without forced redirect
 
   // Ensure conversations are fetched when user.uid becomes ready
   useEffect(() => {
@@ -270,56 +266,89 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Filters */}
-      <View style={styles.filtersWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
-          {['All', 'Coaches', 'Groups'].map(filter => (
-            <TouchableOpacity 
-              key={filter} 
-              style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
-              onPress={() => setActiveFilter(filter as any)}
+      {/* ── Guest TikTok-Style State ── */}
+      {(!user?.uid || user.tier === UserTier.GUEST) ? (
+        <View style={styles.guestCenterWrap}>
+          <View style={styles.guestIconWrap}>
+            <View style={styles.guestGlowCircle} />
+            <Ionicons name="chatbubbles-outline" size={54} color={Colors.primary} />
+          </View>
+          <Text style={styles.guestTitle}>Direct Messages</Text>
+          <Text style={styles.guestSub}>
+            Log in or sign up to message personal trainers, ask fitness questions, and connect with gym partners.
+          </Text>
+          <View style={styles.guestBtnStack}>
+            <TouchableOpacity
+              style={styles.guestPrimaryBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/login')}
             >
-              <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
-                {filter}
-              </Text>
+              <Text style={styles.guestPrimaryBtnText}>Log In</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
 
-      {loading ? (
-        <View style={{ flex: 1 }}>
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <View key={i} style={styles.convRow}>
-              <View style={styles.avatarWrap}>
-                <Skeleton width={52} height={52} borderRadius={26} />
-              </View>
-              <View style={styles.convInfo}>
-                <View style={styles.convTop}>
-                  <Skeleton width={120} height={16} />
-                  <Skeleton width={40} height={12} />
-                </View>
-                <View style={styles.convBottom}>
-                  <Skeleton width={200} height={14} />
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="chatbubble-ellipses-outline" size={64} color={SURFACE} />
-          <Text style={styles.emptyTitle}>No messages</Text>
-          <Text style={styles.emptyText}>Find coaches or groups to start chatting.</Text>
+            <TouchableOpacity
+              style={styles.guestSecondaryBtn}
+              activeOpacity={0.75}
+              onPress={() => router.push('/role-selection')}
+            >
+              <Text style={styles.guestSecondaryBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          {/* Filters */}
+          <View style={styles.filtersWrap}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
+              {['All', 'Coaches', 'Groups'].map(filter => (
+                <TouchableOpacity 
+                  key={filter} 
+                  style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+                  onPress={() => setActiveFilter(filter as any)}
+                >
+                  <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
+                    {filter}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {loading ? (
+            <View style={{ flex: 1 }}>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <View key={i} style={styles.convRow}>
+                  <View style={styles.avatarWrap}>
+                    <Skeleton width={52} height={52} borderRadius={26} />
+                  </View>
+                  <View style={styles.convInfo}>
+                    <View style={styles.convTop}>
+                      <Skeleton width={120} height={16} />
+                      <Skeleton width={40} height={12} />
+                    </View>
+                    <View style={styles.convBottom}>
+                      <Skeleton width={200} height={14} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubble-ellipses-outline" size={64} color={SURFACE} />
+              <Text style={styles.emptyTitle}>No messages</Text>
+              <Text style={styles.emptyText}>Find coaches or groups to start chatting.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={item => item.id}
+              renderItem={renderItem}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -395,4 +424,85 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyTitle: { color: TEXT, fontSize: 18, fontWeight: '700' },
   emptyText: { color: MUTED, fontSize: 14 },
+
+  /* TikTok Guest State */
+  guestCenterWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    marginTop: -40,
+  },
+  guestIconWrap: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  guestGlowCircle: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: Colors.primary,
+    opacity: 0.15,
+  },
+  guestTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  guestSub: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 28,
+    maxWidth: 320,
+  },
+  guestBtnStack: {
+    width: '100%',
+    maxWidth: 280,
+    gap: 12,
+  },
+  guestPrimaryBtn: {
+    backgroundColor: Colors.primary,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  guestPrimaryBtnText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  guestSecondaryBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  guestSecondaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

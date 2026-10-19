@@ -124,6 +124,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="onboarding-quiz" options={{ headerShown: false, animation: 'slide_from_right' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="challenge" options={{ headerShown: false }} />
           <Stack.Screen name="workout/index" options={{ headerShown: false }} />

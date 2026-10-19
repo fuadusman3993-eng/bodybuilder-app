@@ -47,7 +47,7 @@ export default function WelcomeScreen() {
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.85}
-            onPress={() => router.push('/role-selection')}
+            onPress={() => router.push('/onboarding-quiz')}
           >
             <Text style={styles.primaryBtnText}>Get Started</Text>
           </TouchableOpacity>

@@ -17,6 +17,7 @@ export interface UserModel {
   role?: UserRole;
   avatar?: string;
   city?: string;
+  country?: string;
 }
 
 interface UserState {
