@@ -17,6 +17,7 @@ import { useChallengeStore } from '../../store/challengeStore';
 import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter';
 import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
 import WorkoutCountdownOverlay from '../../components/workout/WorkoutCountdownOverlay';
+import { voiceCoach } from '../../lib/voiceCoach';
 import { Audio } from 'expo-av';
 
 export default function LeapFitnessWorkoutPlayer() {
@@ -77,6 +78,11 @@ export default function LeapFitnessWorkoutPlayer() {
     setFeedback(null);
   }, [exerciseIndex, exerciseId, targetSeconds]);
 
+  // Sync soundEnabled with voiceCoach
+  useEffect(() => {
+    voiceCoach.setEnabled(soundEnabled);
+  }, [soundEnabled]);
+
   // Main exercise countdown timer
   useEffect(() => {
     if (isResting || isCountingDown) {
@@ -84,6 +90,11 @@ export default function LeapFitnessWorkoutPlayer() {
     }
 
     if (isTimeBased && !isPaused && secondsRemaining > 0) {
+      if (secondsRemaining === Math.floor(targetSeconds / 2) && targetSeconds >= 20) {
+        voiceCoach.announceHalfway();
+      } else if (secondsRemaining <= 3) {
+        voiceCoach.playTone(720, 100);
+      }
       timerRef.current = setTimeout(() => {
         setSecondsRemaining((prev) => prev - 1);
       }, 1000);
@@ -95,7 +106,7 @@ export default function LeapFitnessWorkoutPlayer() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isPaused, secondsRemaining, isResting, isCountingDown, isTimeBased]);
+  }, [isPaused, secondsRemaining, isResting, isCountingDown, isTimeBased, targetSeconds]);
 
   const handleTriggerRest = () => {
     if (exerciseIndex + 1 < totalExercises) {
@@ -145,6 +156,7 @@ export default function LeapFitnessWorkoutPlayer() {
   };
 
   const handleFinishWorkout = () => {
+    voiceCoach.announceComplete();
     completeDay(dayNumber);
     Alert.alert(
       '🎉 Workout Complete!',
@@ -519,9 +531,11 @@ const styles = StyleSheet.create({
   // CENTER CHARACTER
   characterCenterContainer: {
     flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
   },
 
   // BOTTOM SECTION

@@ -7,13 +7,12 @@ import {
   Easing,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import { voiceCoach } from '@/lib/voiceCoach';
 
 interface WorkoutCountdownOverlayProps {
   onCountdownComplete: () => void;
   soundEnabled?: boolean;
 }
-
-const COUNT_SEQUENCE = [3, 2, 1, 0]; // 0 = "GO!"
 
 export default function WorkoutCountdownOverlay({
   onCountdownComplete,
@@ -23,29 +22,11 @@ export default function WorkoutCountdownOverlay({
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
-  const hasStarted = useRef(false);
 
-  // Play countdown sound once on mount
+  // Play countdown sound / voice cues on mount and count change
   useEffect(() => {
-    if (soundEnabled) {
-      const loadAndPlay = async () => {
-        try {
-          const { sound } = await Audio.Sound.createAsync(
-            require('@/assets/sounds/countdown_321.mp3'),
-            { shouldPlay: true, volume: 1.0 }
-          );
-          soundRef.current = sound;
-        } catch (e) {
-          // silent fail - audio not critical
-        }
-      };
-      loadAndPlay();
-    }
-
-    return () => {
-      soundRef.current?.unloadAsync();
-    };
-  }, []);
+    voiceCoach.setEnabled(soundEnabled);
+  }, [soundEnabled]);
 
   // Animate number in on each count change
   const animateIn = () => {
@@ -69,20 +50,24 @@ export default function WorkoutCountdownOverlay({
   useEffect(() => {
     animateIn();
 
+    if (soundEnabled) {
+      voiceCoach.announceCountdownStep(currentCount);
+    }
+
     if (currentCount === 0) {
-      // "GO!" — wait 600ms then finish
+      // "GO!" — wait 650ms then finish
       const t = setTimeout(() => {
         onCountdownComplete();
-      }, 650);
+      }, 700);
       return () => clearTimeout(t);
     }
 
     const t = setTimeout(() => {
       setCurrentCount((prev) => prev - 1);
-    }, 900);
+    }, 1000);
 
     return () => clearTimeout(t);
-  }, [currentCount]);
+  }, [currentCount, soundEnabled]);
 
   const label = currentCount === 0 ? 'GO!' : `${currentCount}`;
   const isGo = currentCount === 0;
@@ -101,6 +86,9 @@ export default function WorkoutCountdownOverlay({
       >
         {label}
       </Animated.Text>
+      <Text style={styles.readyText}>
+        {isGo ? 'START EXERCISING!' : 'GET READY'}
+      </Text>
     </View>
   );
 }
@@ -108,26 +96,27 @@ export default function WorkoutCountdownOverlay({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.82)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     alignItems: 'center',
-    zIndex: 200,
+    justifyContent: 'center',
+    zIndex: 999,
   },
   countText: {
-    fontSize: 120,
+    fontSize: 100,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -4,
-    textShadowColor: 'rgba(37, 99, 235, 0.6)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 20,
+    color: '#1E3A8A', // Deep Athletic Blue
+    letterSpacing: -2,
+    fontVariant: ['tabular-nums'],
   },
   goText: {
-    fontSize: 80,
-    color: '#22C55E',
-    letterSpacing: 0,
-    textShadowColor: 'rgba(34, 197, 94, 0.5)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 20,
+    color: '#2563EB',
+    fontSize: 88,
+  },
+  readyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 2,
+    marginTop: 12,
   },
 });

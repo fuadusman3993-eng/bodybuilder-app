@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions } fr
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { getExerciseAnimation } from '@/constants/exerciseAnimations';
+import { voiceCoach } from '@/lib/voiceCoach';
 
 interface WorkoutRestScreenProps {
   nextExerciseIndex: number;
@@ -27,6 +28,18 @@ export default function WorkoutRestScreen({
 }: WorkoutRestScreenProps) {
   const [secondsLeft, setSecondsLeft] = useState(initialRestSeconds);
   const nextAnim = getExerciseAnimation(nextExerciseId);
+
+  // Announce rest and next exercise upon entering rest screen
+  useEffect(() => {
+    voiceCoach.announceRest(nextExerciseName);
+  }, []);
+
+  // Audio countdown for last 3 seconds of rest
+  useEffect(() => {
+    if (secondsLeft <= 3 && secondsLeft > 0) {
+      voiceCoach.announceCountdownStep(secondsLeft);
+    }
+  }, [secondsLeft]);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
