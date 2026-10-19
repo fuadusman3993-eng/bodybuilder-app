@@ -34,7 +34,7 @@ export default function SplashScreen() {
       if (auth.currentUser) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/permissions');
+        router.replace('/welcome');
       }
     }, 1200);
 
