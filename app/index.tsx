@@ -1,52 +1,60 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Logo from '../components/auth/Logo';
-import { Colors } from '../constants/colors';
+import BrandLogo from '../components/ui/BrandLogo';
 import { auth } from '../lib/firebase';
 
 export default function SplashScreen() {
   const router = useRouter();
-  const progressAnim = React.useRef(new Animated.Value(0)).current;
+  
+  // Clean micro-animations like Instagram / TikTok
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animate the progress bar
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 2500,
-      useNativeDriver: false,
-    }).start();
+    // Smooth entrance: Scale from 0.85 -> 1.0 & Fade in
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 650,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== 'web' ? true : false,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: Platform.OS !== 'web' ? true : false,
+      }),
+    ]).start();
 
-    // Navigate to tabs if logged in, else permissions, after 2.5 seconds
+    // Fast, responsive splash hold (~1.2s) matching top-tier apps
     const timer = setTimeout(() => {
       if (auth.currentUser) {
         router.replace('/(tabs)');
       } else {
         router.replace('/permissions');
       }
-    }, 2500);
+    }, 1200);
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const progressBarWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%']
-  });
+  }, [router, scaleAnim, opacityAnim]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Logo size="large" />
-        <Text style={styles.tagline}>Empowering your fitness & health</Text>
-        <Text style={styles.subTagline}>Simpler. Faster. Better.</Text>
-      </View>
-      
-      <View style={styles.footer}>
-        <View style={styles.progressBarContainer}>
-          <Animated.View style={[styles.progressBarFill, { width: progressBarWidth }]} />
-        </View>
+      <View style={styles.centerContainer}>
+        <Animated.View
+          style={[
+            styles.logoWrapper,
+            {
+              transform: [{ scale: scaleAnim }],
+              opacity: opacityAnim,
+            },
+          ]}
+        >
+          <BrandLogo size="splash" showText={false} />
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
@@ -57,39 +65,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  content: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tagline: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 24,
-    letterSpacing: 0.5,
-  },
-  subTagline: {
-    color: '#888888',
-    fontSize: 14,
-    marginTop: 12,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 80,
-    width: '100%',
+  logoWrapper: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  progressBarContainer: {
-    width: 140,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  }
 });

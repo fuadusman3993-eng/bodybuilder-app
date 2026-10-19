@@ -4,15 +4,25 @@ import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
 
 interface BrandLogoProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'xlarge' | 'splash';
+  customScale?: number;
   showText?: boolean;
   layout?: 'row' | 'column';
 }
 
-export default function BrandLogo({ size = 'medium', showText = true, layout = 'row' }: BrandLogoProps) {
+export default function BrandLogo({ size = 'medium', customScale, showText = true, layout = 'row' }: BrandLogoProps) {
   let scale = 1;
-  if (size === 'small') scale = 0.65;
-  if (size === 'large') scale = 1.6;
+  if (customScale) {
+    scale = customScale;
+  } else if (size === 'small') {
+    scale = 0.65;
+  } else if (size === 'large') {
+    scale = 1.6;
+  } else if (size === 'xlarge') {
+    scale = 2.0;
+  } else if (size === 'splash') {
+    scale = 2.4;
+  }
 
   // The actual FitPulse "F" logo exact SVG replica
   const LogoSVG = () => (
