@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import { Audio } from 'expo-av';
 
 class VoiceCoach {
   private isEnabled: boolean = true;
@@ -32,29 +31,32 @@ class VoiceCoach {
   }
 
   /**
-   * Speak a motivational trainer phrase using natural energetic English speech
+   * Speak using Amharic text with best available voice
+   * Falls back to any available voice if no Amharic voice found
    */
   public speak(text: string, options: { rate?: number; pitch?: number } = {}) {
     if (!this.isEnabled) return;
 
     if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
-        window.speechSynthesis.cancel(); // Stop any pending utterance
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = options.rate ?? 1.05; // Slightly upbeat trainer pace
-        utterance.pitch = options.pitch ?? 1.0;
-        utterance.lang = 'en-US';
+        utterance.rate = options.rate ?? 0.9; // Slightly slower for Amharic clarity
+        utterance.pitch = options.pitch ?? 1.05;
+        utterance.lang = 'am-ET'; // Amharic (Ethiopia)
 
-        // Select the most natural English voice available in the browser
         const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(
-          v =>
-            (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.name.includes('Guy')) &&
-            v.lang.startsWith('en')
-        ) || voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en'));
 
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
+        // Try Amharic voice first, then any Ethiopian locale, then fallback to any
+        const amharicVoice =
+          voices.find(v => v.lang === 'am-ET') ||
+          voices.find(v => v.lang.startsWith('am')) ||
+          voices.find(v => v.lang === 'en-US') ||
+          voices.find(v => v.lang.startsWith('en')) ||
+          voices[0];
+
+        if (amharicVoice) {
+          utterance.voice = amharicVoice;
         }
 
         window.speechSynthesis.speak(utterance);
@@ -94,64 +96,63 @@ class VoiceCoach {
   }
 
   /**
-   * 3-2-1 Countdown Audio & Vocal Cue
+   * 3-2-1 Countdown — Amharic numbers
    */
   public announceCountdownStep(count: number) {
     if (!this.isEnabled) return;
 
     if (count === 3) {
       this.playTone(660, 150);
-      this.speak('3');
+      this.speak('ሦስት'); // "Sost" = 3
     } else if (count === 2) {
       this.playTone(660, 150);
-      this.speak('2');
+      this.speak('ሁለት'); // "Hulet" = 2
     } else if (count === 1) {
       this.playTone(660, 150);
-      this.speak('1');
+      this.speak('አንድ'); // "And" = 1
     } else if (count === 0) {
-      // GO! High energy chime
       this.playTone(1050, 280);
-      this.speak('Go!');
+      this.speak('ጀምር!'); // "Jemr!" = Start / Go!
     }
   }
 
   /**
-   * Announce upcoming exercise
+   * Announce upcoming exercise — Amharic
    */
   public announceExercise(exerciseName: string) {
     if (!this.isEnabled) return;
-    this.speak(`Next exercise: ${exerciseName}.`);
+    this.speak(`ቀጣይ እንቅስቃሴ: ${exerciseName}`); // "Next exercise: ..."
   }
 
   /**
-   * Halfway encouragement
+   * Halfway encouragement — Amharic
    */
   public announceHalfway() {
     if (!this.isEnabled) return;
     this.playTone(740, 180);
-    this.speak('Halfway there! Keep it up!');
+    this.speak('እኩሌታ ደርሰሃል! ቀጥል!'); // "You've reached halfway! Keep going!"
   }
 
   /**
-   * Rest Screen Trigger
+   * Rest Screen — Amharic
    */
   public announceRest(nextExerciseName?: string) {
     if (!this.isEnabled) return;
     this.playTone(520, 250);
     if (nextExerciseName) {
-      this.speak(`Take a rest! Next is ${nextExerciseName}.`);
+      this.speak(`አርፍ! ቀጣዩ ${nextExerciseName} ነው።`); // "Rest! Next is ..."
     } else {
-      this.speak('Take a rest!');
+      this.speak('አርፍ!'); // "Rest!"
     }
   }
 
   /**
-   * Workout Complete celebration
+   * Workout Complete — Amharic
    */
   public announceComplete() {
     if (!this.isEnabled) return;
     this.playTone(980, 400);
-    this.speak('Awesome workout! You crushed it!');
+    this.speak('እንኳን ደስ አለህ! ዛሬ አሸነፍክ!'); // "Congratulations! You won today!"
   }
 }
 
