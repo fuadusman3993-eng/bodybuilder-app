@@ -5,15 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BrandLogo from '../components/ui/BrandLogo';
 import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
 import { Colors } from '../constants/colors';
-
-const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -134,14 +131,18 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.22)',
   },
   secondaryBtnText: {
-    color: '#9CA3AF',
+    color: '#E5E7EB',
     fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
 });

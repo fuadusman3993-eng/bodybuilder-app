@@ -7,7 +7,6 @@ import {
   ScrollView,
   Platform,
   TextInput,
-  Dimensions,
   Animated,
   Easing,
 } from 'react-native';
@@ -19,8 +18,6 @@ import { useUserStore, UserTier } from '../store/userStore';
 import AnimatedSelectionCard from '../components/ui/AnimatedSelectionCard';
 import AnimatedFitnessIcon, { FitnessIconType } from '../components/ui/AnimatedFitnessIcon';
 import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
-
-const { width } = Dimensions.get('window');
 
 const GOAL_OPTIONS: { id: FitnessIconType; title: string; desc: string }[] = [
   {

@@ -119,7 +119,7 @@ export default function ShimmerGlowButton({
           disabled && styles.btnDisabled,
         ]}
       >
-        {/* In-place rich gradient shine luster */}
+        {/* In-place seamless rich gradient shine */}
         {!disabled ? (
           <LinearGradient
             colors={['#34D399', '#10B981', '#059669']}
@@ -129,18 +129,7 @@ export default function ShimmerGlowButton({
           />
         ) : null}
 
-        {/* Subtle glass reflection on the top half for rich physical depth */}
-        {!disabled && (
-          <View
-            style={[
-              styles.glassHighlight,
-              { height: height / 2, borderTopLeftRadius: height / 2, borderTopRightRadius: height / 2 },
-            ]}
-            pointerEvents="none"
-          />
-        )}
-
-        {/* Clean, bold, centered title */}
+        {/* Clean, bold, centered title with sharp high-contrast clarity */}
         <Text style={[styles.btnText, disabled && styles.btnTextDisabled, textStyle]}>
           {title}
         </Text>
@@ -169,18 +158,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
     opacity: 0.5,
   },
-  glassHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
   btnText: {
-    color: '#000000',
+    color: '#064E3B', // Deepest emerald forest contrast on neon green
     fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     textAlign: 'center',
     zIndex: 2,
   },
