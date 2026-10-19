@@ -31,8 +31,7 @@ class VoiceCoach {
   }
 
   /**
-   * Speak using Amharic text with best available voice
-   * Falls back to any available voice if no Amharic voice found
+   * Speak using English text with best available voice
    */
   public speak(text: string, options: { rate?: number; pitch?: number } = {}) {
     if (!this.isEnabled) return;
@@ -41,22 +40,20 @@ class VoiceCoach {
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = options.rate ?? 0.9; // Slightly slower for Amharic clarity
-        utterance.pitch = options.pitch ?? 1.05;
-        utterance.lang = 'am-ET'; // Amharic (Ethiopia)
+        utterance.rate = options.rate ?? 1.0; // Clean natural English speed
+        utterance.pitch = options.pitch ?? 1.0;
+        utterance.lang = 'en-US'; // English (United States)
 
         const voices = window.speechSynthesis.getVoices();
 
-        // Try Amharic voice first, then any Ethiopian locale, then fallback to any
-        const amharicVoice =
-          voices.find(v => v.lang === 'am-ET') ||
-          voices.find(v => v.lang.startsWith('am')) ||
-          voices.find(v => v.lang === 'en-US') ||
+        // Prefer clean natural US/English voice
+        const englishVoice =
+          voices.find(v => v.lang === 'en-US' && !v.name.includes('Bad')) ||
           voices.find(v => v.lang.startsWith('en')) ||
           voices[0];
 
-        if (amharicVoice) {
-          utterance.voice = amharicVoice;
+        if (englishVoice) {
+          utterance.voice = englishVoice;
         }
 
         window.speechSynthesis.speak(utterance);
@@ -96,63 +93,63 @@ class VoiceCoach {
   }
 
   /**
-   * 3-2-1 Countdown — Amharic numbers
+   * 3-2-1 Countdown — English
    */
   public announceCountdownStep(count: number) {
     if (!this.isEnabled) return;
 
     if (count === 3) {
       this.playTone(660, 150);
-      this.speak('ሦስት'); // "Sost" = 3
+      this.speak('Three');
     } else if (count === 2) {
       this.playTone(660, 150);
-      this.speak('ሁለት'); // "Hulet" = 2
+      this.speak('Two');
     } else if (count === 1) {
       this.playTone(660, 150);
-      this.speak('አንድ'); // "And" = 1
+      this.speak('One');
     } else if (count === 0) {
       this.playTone(1050, 280);
-      this.speak('ጀምር!'); // "Jemr!" = Start / Go!
+      this.speak('Go!');
     }
   }
 
   /**
-   * Announce upcoming exercise — Amharic
+   * Announce upcoming exercise — English
    */
   public announceExercise(exerciseName: string) {
     if (!this.isEnabled) return;
-    this.speak(`ቀጣይ እንቅስቃሴ: ${exerciseName}`); // "Next exercise: ..."
+    this.speak(`Next exercise: ${exerciseName}`);
   }
 
   /**
-   * Halfway encouragement — Amharic
+   * Halfway encouragement — English
    */
   public announceHalfway() {
     if (!this.isEnabled) return;
     this.playTone(740, 180);
-    this.speak('እኩሌታ ደርሰሃል! ቀጥል!'); // "You've reached halfway! Keep going!"
+    this.speak('Halfway there! Keep pushing!');
   }
 
   /**
-   * Rest Screen — Amharic
+   * Rest Screen — English
    */
   public announceRest(nextExerciseName?: string) {
     if (!this.isEnabled) return;
     this.playTone(520, 250);
     if (nextExerciseName) {
-      this.speak(`አርፍ! ቀጣዩ ${nextExerciseName} ነው።`); // "Rest! Next is ..."
+      this.speak(`Take a rest. Next is ${nextExerciseName}.`);
     } else {
-      this.speak('አርፍ!'); // "Rest!"
+      this.speak('Take a rest.');
     }
   }
 
   /**
-   * Workout Complete — Amharic
+   * Workout Complete — English
    */
   public announceComplete() {
     if (!this.isEnabled) return;
     this.playTone(980, 400);
-    this.speak('እንኳን ደስ አለህ! ዛሬ አሸነፍክ!'); // "Congratulations! You won today!"
+    this.speak('Workout completed! Fantastic work!');
   }
 }
 

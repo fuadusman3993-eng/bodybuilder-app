@@ -75,7 +75,11 @@ export default function WorkoutScreen() {
           </View>
 
           {/* Start Button */}
-          <TouchableOpacity style={styles.startButton} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.startButton}
+            activeOpacity={0.8}
+            onPress={() => router.push('/workout/day/1')}
+          >
             <Text style={styles.startButtonText}>Start Workout</Text>
             <Ionicons name="arrow-forward" size={18} color={Colors.background} />
           </TouchableOpacity>
@@ -83,7 +87,11 @@ export default function WorkoutScreen() {
 
         {/* This Week Section */}
         <Text style={styles.sectionTitle}>This Week</Text>
-        <TouchableOpacity style={styles.weeklyRoutineCard} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.weeklyRoutineCard}
+          activeOpacity={0.8}
+          onPress={() => router.push('/workout/calendar')}
+        >
           <View style={styles.weeklyRoutineLeft}>
             <View style={[styles.iconBox, { backgroundColor: Colors.info + '20' }]}>
               <Ionicons name="calendar" size={20} color={Colors.info} />

@@ -110,7 +110,7 @@ export default function LeapFitnessWorkoutPlayer() {
 
   const handleTriggerRest = () => {
     if (exerciseIndex + 1 < totalExercises) {
-      playTakeRestSound();
+      voiceCoach.playTone(520, 150);
       setIsResting(true);
     } else {
       // Last exercise finished! Finish Workout!
@@ -340,25 +340,36 @@ export default function LeapFitnessWorkoutPlayer() {
             />
           </TouchableOpacity>
 
-          {/* Pause / Resume Pill Button (with internal blue progress fill!) */}
-          <TouchableOpacity
-            style={styles.pausePillBtn}
-            activeOpacity={0.88}
-            onPress={() => setIsPaused(!isPaused)}
-          >
-            {/* Animated Blue Progress Fill */}
-            <View
-              style={[
-                styles.pausePillFill,
-                { width: `${progressRatio * 100}%` },
-              ]}
-            />
-            <Ionicons
-              name={isPaused ? 'play' : 'pause'}
-              size={26}
-              color="#0F172A"
-            />
-          </TouchableOpacity>
+          {/* Pause / Resume Pill Button (timed) OR Glowing DONE button (rep-based) */}
+          {isTimeBased ? (
+            <TouchableOpacity
+              style={styles.pausePillBtn}
+              activeOpacity={0.88}
+              onPress={() => setIsPaused(!isPaused)}
+            >
+              {/* Animated Blue Progress Fill */}
+              <View
+                style={[
+                  styles.pausePillFill,
+                  { width: `${progressRatio * 100}%` },
+                ]}
+              />
+              <Ionicons
+                name={isPaused ? 'play' : 'pause'}
+                size={26}
+                color="#0F172A"
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.donePillBtn}
+              activeOpacity={0.85}
+              onPress={handleTriggerRest}
+            >
+              <Ionicons name="checkmark-sharp" size={24} color="#000000" />
+              <Text style={styles.doneBtnText}>DONE</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Next / Skip Button */}
           <TouchableOpacity
@@ -642,6 +653,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#3B82F6',
     opacity: 0.2,
+  },
+  donePillBtn: {
+    flex: 1,
+    height: 60,
+    marginHorizontal: 16,
+    borderRadius: 30,
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  doneBtnText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: 0.5,
   },
 
   // FULL SCREEN REST CONTAINER

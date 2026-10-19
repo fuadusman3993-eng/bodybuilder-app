@@ -19,27 +19,11 @@ import AnimatedSelectionCard from '../components/ui/AnimatedSelectionCard';
 import AnimatedFitnessIcon, { FitnessIconType } from '../components/ui/AnimatedFitnessIcon';
 import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
 
-const GOAL_OPTIONS: { id: FitnessIconType; title: string; desc: string }[] = [
-  {
-    id: 'muscle',
-    title: 'Build Muscle & Strength',
-    desc: 'Hypertrophy lifting, progressive overload & mass gains',
-  },
-  {
-    id: 'fatloss',
-    title: 'Burn Fat & Lean Out',
-    desc: 'High-octane calorie burn, HIIT & athletic definition',
-  },
-  {
-    id: 'tone',
-    title: 'Tone & Athletic Conditioning',
-    desc: 'Functional mobility, speed & core stability',
-  },
-  {
-    id: 'health',
-    title: 'Stay Fit & Healthy',
-    desc: 'Daily vitality, cardiovascular health & longevity',
-  },
+const GOAL_OPTIONS: { id: FitnessIconType; title: string }[] = [
+  { id: 'muscle', title: 'Build Muscle & Strength' },
+  { id: 'fatloss', title: 'Burn Fat & Lean Out' },
+  { id: 'tone', title: 'Tone & Athletic Conditioning' },
+  { id: 'health', title: 'Stay Fit & Healthy' },
 ];
 
 const LEVEL_OPTIONS: { id: FitnessIconType; title: string; badge: string; desc: string }[] = [
@@ -327,12 +311,11 @@ export default function OnboardingQuizScreen() {
                       selected={isSelected}
                       onPress={() => setGoal(item.id)}
                     >
-                      <AnimatedFitnessIcon type={item.id} selected={isSelected} size={50} />
+                      <AnimatedFitnessIcon type={item.id} selected={isSelected} size={42} />
                       <View style={styles.cardInfo}>
                         <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
                           {item.title}
                         </Text>
-                        <Text style={styles.cardDesc}>{item.desc}</Text>
                       </View>
                       <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
                         {isSelected && <View style={styles.radioDot} />}
@@ -538,7 +521,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 22,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
   animatedStepContainer: {
     width: '100%',
@@ -550,7 +533,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   stepHeader: {
-    marginBottom: 24,
+    marginBottom: 14,
   },
   stepPill: {
     alignSelf: 'flex-start',
@@ -560,7 +543,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.25)',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   stepCategory: {
     color: Colors.primary,
@@ -570,27 +553,26 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     color: '#FFFFFF',
-    fontSize: 27,
+    fontSize: 24,
     fontWeight: '900',
-    marginBottom: 8,
+    marginBottom: 4,
     letterSpacing: -0.4,
   },
   stepSubtitle: {
     color: '#9CA3AF',
-    fontSize: 14.5,
-    lineHeight: 22,
+    fontSize: 13.5,
+    lineHeight: 19,
   },
   cardsStack: {
-    gap: 14,
+    gap: 10,
   },
   cardInfo: {
     flex: 1,
   },
   cardTitle: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 4,
   },
   cardTitleActive: {
     color: Colors.primary,
