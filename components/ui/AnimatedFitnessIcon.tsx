@@ -227,7 +227,7 @@ export default function AnimatedFitnessIcon({
 
   switch (type) {
     case 'male':
-      iconName = 'male';
+      iconName = 'man';
       defaultColor = '#60A5FA'; // Athletic Sky Blue
       activeColor = '#38BDF8';
       animatedStyle = {
@@ -243,7 +243,7 @@ export default function AnimatedFitnessIcon({
       break;
 
     case 'female':
-      iconName = 'female';
+      iconName = 'woman';
       defaultColor = '#F472B6'; // Athletic Rose
       activeColor = '#FB7185';
       animatedStyle = {
