@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   BackHandler,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/auth/Logo';
@@ -18,6 +18,7 @@ import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
 import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
+import { saveLastAccount } from '../lib/savedAccountService';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -88,9 +89,10 @@ const saveAndCheckUser = async (uid: string, name: string, email: string) => {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { prefillEmail } = useLocalSearchParams<{ prefillEmail?: string }>();
   const { setUser } = useUserStore();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
 
   const [emailError, setEmailError] = useState('');
@@ -143,6 +145,14 @@ export default function LoginScreen() {
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
+
+      // Save for quick One-Tap login suggestion next time
+      await saveLastAccount({
+        uid: user.uid,
+        name,
+        email: user.email || email,
+        authProvider: 'password',
+      });
       
       if (isComplete) {
         router.replace('/(tabs)');
@@ -164,6 +174,15 @@ export default function LoginScreen() {
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
+
+      // Save for quick One-Tap login suggestion next time
+      await saveLastAccount({
+        uid: user.uid,
+        name,
+        email: user.email || '',
+        avatar: user.photoURL || undefined,
+        authProvider: 'google',
+      });
       
       // On the login page, Google sign-in always takes the user straight to the app
       router.replace('/(tabs)');

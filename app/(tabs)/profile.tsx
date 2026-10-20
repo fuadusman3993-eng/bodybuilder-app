@@ -12,6 +12,8 @@ import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
+import TikTokAuthModal from '../../components/auth/TikTokAuthModal';
+import { saveLastAccount } from '../../lib/savedAccountService';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
@@ -37,6 +39,7 @@ export default function ProfileScreen() {
   const [repostedPosts, setRepostedPosts] = useState<any[]>([]);
   const [loadingReposts, setLoadingReposts] = useState(false);
   const [showMoreModal, setShowMoreModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
 
@@ -180,6 +183,16 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
+      if (user.uid) {
+        await saveLastAccount({
+          uid: user.uid,
+          name: user.name || 'User',
+          email: user.email || '',
+          avatar: user.avatar,
+          role: user.role,
+          authProvider: 'google',
+        });
+      }
       await signOut();
       setUser({
         tier: UserTier.GUEST,
@@ -190,7 +203,6 @@ export default function ProfileScreen() {
         role: undefined,
         city: undefined,
       });
-      router.replace('/login');
     } catch (e) {
       console.error('Logout failed', e);
     }
@@ -259,27 +271,20 @@ export default function ProfileScreen() {
 
       {(!user?.uid || user.tier === UserTier.GUEST) ? (
         <View style={styles.guestCenterWrap}>
-          <View style={styles.guestIconWrap}>
-            <View style={styles.guestGlowCircle} />
-            <Ionicons name="person-circle-outline" size={60} color={Colors.primary} />
+          {/* User Outline Icon matching Image 1 */}
+          <View style={styles.guestOutlineIconWrap}>
+            <Ionicons name="person-outline" size={70} color="#757575" />
           </View>
-          <View style={styles.guestBtnStack}>
-            <TouchableOpacity
-              style={styles.guestPrimaryBtn}
-              activeOpacity={0.85}
-              onPress={() => router.push('/login')}
-            >
-              <Text style={styles.guestPrimaryBtnText}>Log In</Text>
-            </TouchableOpacity>
+          
+          <Text style={styles.guestSubtitle}>Log in to existing account</Text>
 
-            <TouchableOpacity
-              style={styles.guestSecondaryBtn}
-              activeOpacity={0.75}
-              onPress={() => router.push('/role-selection')}
-            >
-              <Text style={styles.guestSecondaryBtnText}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.guestLoginPillBtn}
+            activeOpacity={0.85}
+            onPress={() => setShowAuthModal(true)}
+          >
+            <Text style={styles.guestLoginPillBtnText}>Login</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
@@ -487,6 +492,12 @@ export default function ProfileScreen() {
         visible={showMoreModal}
         onClose={() => setShowMoreModal(false)}
       />
+
+      {/* ── TIKTOK-STYLE AUTH BOTTOM SHEET MODAL (Image 2 & 3) ── */}
+      <TikTokAuthModal
+        visible={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -553,7 +564,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
   emptySubtitle: { color: Colors.textMuted, fontSize: 13 },
 
-  /* TikTok Guest State */
+  /* TikTok Guest State (Image 1) */
   guestCenterWrap: {
     flex: 1,
     justifyContent: 'center',
@@ -561,33 +572,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     marginTop: -40,
   },
-  guestIconWrap: {
-    position: 'relative',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+  guestOutlineIconWrap: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.2)',
   },
-  guestGlowCircle: {
-    position: 'absolute',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  guestSubtitle: {
+    fontSize: 15,
+    color: '#A0A0A0',
+    fontWeight: '500',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  guestLoginPillBtn: {
     backgroundColor: Colors.primary,
-    opacity: 0.15,
-  },
-  guestBtnStack: {
     width: '100%',
-    maxWidth: 280,
-    gap: 12,
-  },
-  guestPrimaryBtn: {
-    backgroundColor: Colors.primary,
+    maxWidth: 240,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
@@ -598,23 +604,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  guestPrimaryBtnText: {
+  guestLoginPillBtnText: {
     color: '#000000',
     fontSize: 16,
-    fontWeight: '700',
-  },
-  guestSecondaryBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  guestSecondaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
 });
