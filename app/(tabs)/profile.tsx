@@ -12,7 +12,7 @@ import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
-import TikTokAuthModal from '../../components/auth/TikTokAuthModal';
+import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 import { saveLastAccount } from '../../lib/savedAccountService';
 
 const { width } = Dimensions.get('window');
@@ -493,8 +493,8 @@ export default function ProfileScreen() {
         onClose={() => setShowMoreModal(false)}
       />
 
-      {/* ── TIKTOK-STYLE AUTH BOTTOM SHEET MODAL (Image 2 & 3) ── */}
-      <TikTokAuthModal
+      {/* ── AUTH BOTTOM SHEET MODAL (Image 2 & 3) ── */}
+      <AuthBottomSheetModal
         visible={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />

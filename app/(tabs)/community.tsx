@@ -14,7 +14,7 @@ import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
-import TikTokAuthModal from '../../components/auth/TikTokAuthModal';
+import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 
 type TabType = 'Following' | 'For You';
 
@@ -691,8 +691,8 @@ export default function CommunityScreen() {
         />
       )}
 
-      {/* ── TikTok Auth Required Modal (Image 2 & 3) ── */}
-      <TikTokAuthModal
+      {/* ── Auth Required Bottom Sheet Modal (Image 2 & 3) ── */}
+      <AuthBottomSheetModal
         visible={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />

@@ -22,7 +22,7 @@ import { getLastSavedAccount, saveLastAccount, removeSavedAccount, SavedAccount 
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
-interface TikTokAuthModalProps {
+interface AuthBottomSheetModalProps {
   visible: boolean;
   onClose: () => void;
   initialMode?: 'login' | 'signup';
@@ -52,11 +52,11 @@ function GoogleIcon() {
   );
 }
 
-export default function TikTokAuthModal({
+export default function AuthBottomSheetModal({
   visible,
   onClose,
   initialMode = 'login',
-}: TikTokAuthModalProps) {
+}: AuthBottomSheetModalProps) {
   const router = useRouter();
   const { setUser } = useUserStore();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
@@ -86,10 +86,15 @@ export default function TikTokAuthModal({
 
   const handleUseEmail = () => {
     onClose();
-    if (mode === 'signup') {
-      router.push('/role-selection');
+    router.push('/login');
+  };
+
+  const handleSelectRole = (role: 'user' | 'coach') => {
+    onClose();
+    if (role === 'user') {
+      router.push('/register-trainee');
     } else {
-      router.push('/login');
+      router.push('/register-coach');
     }
   };
 
@@ -225,92 +230,149 @@ export default function TikTokAuthModal({
                 </TouchableOpacity>
               </View>
 
-              {/* Title (Matching Image 2: "Log in to FitPulse" / "Sign up for FitPulse") */}
+              {/* Title */}
               <Text style={styles.sheetTitle}>
                 {mode === 'login' ? 'Log in to FitPulse' : 'Sign up for FitPulse'}
               </Text>
-
-              {/* SAVED ACCOUNT ONE-TAP CARD (Matching Image 3 Google One Tap Style) */}
-              {savedAccount && mode === 'login' && (
-                <View style={styles.savedAccountContainer}>
-                  <TouchableOpacity
-                    style={styles.savedAccountCard}
-                    activeOpacity={0.82}
-                    onPress={handleContinueAsSaved}
-                  >
-                    {/* User Avatar */}
-                    {savedAccount.avatar ? (
-                      <Image
-                        source={{ uri: savedAccount.avatar }}
-                        style={styles.savedAvatar}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={styles.savedAvatarFallback}>
-                        <Text style={styles.savedAvatarInitial}>
-                          {(savedAccount.name || 'U').charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* User Info */}
-                    <View style={styles.savedAccountTextWrap}>
-                      <Text style={styles.savedAccountName} numberOfLines={1}>
-                        Continue as {savedAccount.name}
-                      </Text>
-                      <Text style={styles.savedAccountEmail} numberOfLines={1}>
-                        {savedAccount.email}
-                      </Text>
-                    </View>
-
-                    <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.forgetAccountBtn}
-                    onPress={handleForgetSavedAccount}
-                  >
-                    <Text style={styles.forgetAccountText}>Remove saved account</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.orDividerRow}>
-                    <View style={styles.orDividerLine} />
-                    <Text style={styles.orText}>OR</Text>
-                    <View style={styles.orDividerLine} />
-                  </View>
-                </View>
+              {mode === 'signup' && (
+                <Text style={styles.sheetSubtitle}>
+                  Choose your role to get started
+                </Text>
               )}
 
-              {/* ACTION BUTTON 1: Use phone/email/username */}
-              <TouchableOpacity
-                style={styles.actionBtn}
-                activeOpacity={0.85}
-                onPress={handleUseEmail}
-              >
-                <View style={styles.actionIconLeft}>
-                  <Ionicons name="person-outline" size={20} color="#FFFFFF" />
-                </View>
-                <Text style={styles.actionBtnText}>Use phone / email / username</Text>
-                <View style={styles.actionIconSpacer} />
-              </TouchableOpacity>
+              {mode === 'login' ? (
+                <>
+                  {/* SAVED ACCOUNT ONE-TAP CARD (Matching Image 3 Google One Tap Style) */}
+                  {savedAccount && (
+                    <View style={styles.savedAccountContainer}>
+                      <TouchableOpacity
+                        style={styles.savedAccountCard}
+                        activeOpacity={0.82}
+                        onPress={handleContinueAsSaved}
+                      >
+                        {/* User Avatar */}
+                        {savedAccount.avatar ? (
+                          <Image
+                            source={{ uri: savedAccount.avatar }}
+                            style={styles.savedAvatar}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View style={styles.savedAvatarFallback}>
+                            <Text style={styles.savedAvatarInitial}>
+                              {(savedAccount.name || 'U').charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
 
-              {/* ACTION BUTTON 2: Continue with Google */}
-              <TouchableOpacity
-                style={styles.actionBtn}
-                activeOpacity={0.85}
-                onPress={handleGoogleAuth}
-                disabled={isGoogleLoading}
-              >
-                <View style={styles.actionIconLeft}>
-                  {isGoogleLoading ? (
-                    <ActivityIndicator size="small" color={Colors.primary} />
-                  ) : (
-                    <GoogleIcon />
+                        {/* User Info */}
+                        <View style={styles.savedAccountTextWrap}>
+                          <Text style={styles.savedAccountName} numberOfLines={1}>
+                            Continue as {savedAccount.name}
+                          </Text>
+                          <Text style={styles.savedAccountEmail} numberOfLines={1}>
+                            {savedAccount.email}
+                          </Text>
+                        </View>
+
+                        <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.forgetAccountBtn}
+                        onPress={handleForgetSavedAccount}
+                      >
+                        <Text style={styles.forgetAccountText}>Remove saved account</Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.orDividerRow}>
+                        <View style={styles.orDividerLine} />
+                        <Text style={styles.orText}>OR</Text>
+                        <View style={styles.orDividerLine} />
+                      </View>
+                    </View>
                   )}
-                </View>
-                <Text style={styles.actionBtnText}>Continue with Google</Text>
-                <View style={styles.actionIconSpacer} />
-              </TouchableOpacity>
+
+                  {/* ACTION BUTTON 1: Use phone/email/username */}
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    activeOpacity={0.85}
+                    onPress={handleUseEmail}
+                  >
+                    <View style={styles.actionIconLeft}>
+                      <Ionicons name="person-outline" size={20} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.actionBtnText}>Use phone / email / username</Text>
+                    <View style={styles.actionIconSpacer} />
+                  </TouchableOpacity>
+
+                  {/* ACTION BUTTON 2: Continue with Google */}
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    activeOpacity={0.85}
+                    onPress={handleGoogleAuth}
+                    disabled={isGoogleLoading}
+                  >
+                    <View style={styles.actionIconLeft}>
+                      {isGoogleLoading ? (
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      ) : (
+                        <GoogleIcon />
+                      )}
+                    </View>
+                    <Text style={styles.actionBtnText}>Continue with Google</Text>
+                    <View style={styles.actionIconSpacer} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  {/* ROLE OPTION 1: As a Trainee */}
+                  <TouchableOpacity
+                    style={styles.roleCardBtn}
+                    activeOpacity={0.85}
+                    onPress={() => handleSelectRole('user')}
+                  >
+                    <View style={styles.roleIconCircle}>
+                      <Ionicons name="person" size={22} color={Colors.primary} />
+                    </View>
+                    <View style={styles.roleTextWrap}>
+                      <View style={styles.roleTitleRow}>
+                        <Text style={styles.roleTitle}>As a Trainee</Text>
+                        <View style={styles.roleBadge}>
+                          <Text style={styles.roleBadgeText}>User</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.roleSubtitle}>
+                        Workouts, progress tracking & community
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#666" />
+                  </TouchableOpacity>
+
+                  {/* ROLE OPTION 2: As a Coach */}
+                  <TouchableOpacity
+                    style={styles.roleCardBtn}
+                    activeOpacity={0.85}
+                    onPress={() => handleSelectRole('coach')}
+                  >
+                    <View style={styles.roleIconCircle}>
+                      <Ionicons name="stopwatch" size={22} color={Colors.primary} />
+                    </View>
+                    <View style={styles.roleTextWrap}>
+                      <View style={styles.roleTitleRow}>
+                        <Text style={styles.roleTitle}>As a Coach</Text>
+                        <View style={styles.roleBadge}>
+                          <Text style={styles.roleBadgeText}>Trainer</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.roleSubtitle}>
+                        Create programs & coach clients
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#666" />
+                  </TouchableOpacity>
+                </>
+              )}
 
               {/* Disclaimer matching Image 2 */}
               <Text style={styles.disclaimerText}>
@@ -395,7 +457,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: -0.4,
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  sheetSubtitle: {
+    fontSize: 13.5,
+    color: '#9E9E9E',
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 20,
   },
 
   // ── Saved Account Suggestion Card (Image 3) ──
@@ -499,6 +568,62 @@ const styles = StyleSheet.create({
   },
   actionIconSpacer: {
     width: 24,
+  },
+
+  // ── Role Selection Cards (Sign Up Mode) ──
+  roleCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#181818',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#262626',
+    gap: 14,
+  },
+  roleIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleTextWrap: {
+    flex: 1,
+  },
+  roleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  roleTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  roleBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  roleBadgeText: {
+    color: '#CCCCCC',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  roleSubtitle: {
+    color: '#8A8A8A',
+    fontSize: 12.5,
+    marginTop: 3,
+    lineHeight: 16,
   },
 
   // ── Terms & Disclaimer ──

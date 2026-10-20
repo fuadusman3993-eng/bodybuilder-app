@@ -12,7 +12,7 @@ import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { supabase } from '../../lib/supabase';
 import { invalidateCommunityCache } from './community';
-import TikTokAuthModal from '../../components/auth/TikTokAuthModal';
+import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 
 export default function CreateScreen() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function CreateScreen() {
           </TouchableOpacity>
         </View>
 
-        <TikTokAuthModal
+        <AuthBottomSheetModal
           visible={showAuthModal}
           onClose={() => setShowAuthModal(false)}
         />

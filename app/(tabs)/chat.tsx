@@ -12,7 +12,7 @@ import { db } from '../../lib/firebase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
-import TikTokAuthModal from '../../components/auth/TikTokAuthModal';
+import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 import { Colors } from '../../constants/colors';
 
 const BG = '#0a0a0a';
@@ -348,8 +348,8 @@ export default function ChatScreen() {
         </>
       )}
 
-      {/* ── TIKTOK-STYLE AUTH BOTTOM SHEET MODAL (Image 2 & 3) ── */}
-      <TikTokAuthModal
+      {/* ── AUTH BOTTOM SHEET MODAL (Image 2 & 3) ── */}
+      <AuthBottomSheetModal
         visible={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
