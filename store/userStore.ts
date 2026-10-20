@@ -18,6 +18,10 @@ export interface UserModel {
   avatar?: string;
   city?: string;
   country?: string;
+  // Wallet & coin economy
+  coinsBalance?: number;
+  isCoachVerified?: boolean;
+  premiumUntil?: string | null;
 }
 
 interface UserState {
@@ -25,9 +29,13 @@ interface UserState {
   authInitialized: boolean;
   setUser: (user: UserModel) => void;
   setAuthInitialized: (val: boolean) => void;
+  updateCoins: (balance: number) => void;
+  setTier: (tier: UserTier) => void;
   isGuest: () => boolean;
   isFree: () => boolean;
   isPremium: () => boolean;
+  isCoach: () => boolean;
+  isPaidCoach: () => boolean;
 }
 
 // Synchronously restore cached session on web to prevent auth flashing on page reload
@@ -61,7 +69,19 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ user });
   },
   setAuthInitialized: (val: boolean) => set({ authInitialized: val }),
-  isGuest: () => get().user.tier === UserTier.GUEST,
-  isFree: () => get().user.tier === UserTier.FREE,
-  isPremium: () => get().user.tier === UserTier.PREMIUM,
+  updateCoins: (balance: number) => set((state) => ({ user: { ...state.user, coinsBalance: balance } })),
+  setTier: (tier: UserTier) => {
+    set((state) => {
+      const updated = { ...state.user, tier };
+      if (typeof window !== 'undefined' && window.localStorage && updated.uid) {
+        try { window.localStorage.setItem('user_session', JSON.stringify(updated)); } catch (_) {}
+      }
+      return { user: updated };
+    });
+  },
+  isGuest:    () => get().user.tier === UserTier.GUEST,
+  isFree:     () => get().user.tier === UserTier.FREE,
+  isPremium:  () => get().user.tier === UserTier.PREMIUM,
+  isCoach:    () => get().user.role === 'coach',
+  isPaidCoach:() => get().user.role === 'coach' && get().user.isCoachVerified === true,
 }));

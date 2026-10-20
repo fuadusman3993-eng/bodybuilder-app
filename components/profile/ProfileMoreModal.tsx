@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   ScrollView, Platform, Alert, ActivityIndicator,
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { signOut } from '../../lib/authService';
+import { getWallet } from '../../lib/walletService';
 
 interface ProfileMoreModalProps {
   visible: boolean;
@@ -16,8 +17,9 @@ interface ProfileMoreModalProps {
 
 export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalProps) {
   const router = useRouter();
-  const { user, setUser } = useUserStore();
+  const { user, setUser, updateCoins } = useUserStore();
   const isCoach = user.role === 'coach';
+  const coinsBalance = user.coinsBalance ?? 0;
 
   // Theme Mode: 'auto' | 'dark' | 'light'
   const [themeMode, setThemeMode] = useState<'auto' | 'dark' | 'light'>('dark');
@@ -31,6 +33,17 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
   // Logout Confirm State
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Load coins when modal opens
+  useEffect(() => {
+    if (visible && user.uid) {
+      import('../../lib/walletService').then(({ getWallet }) => {
+        getWallet(user.uid!).then((w) => {
+          if (w) updateCoins(w.balance_coins);
+        });
+      });
+    }
+  }, [visible, user.uid]);
 
   const handleNavigate = (path: any) => {
     onClose();
@@ -119,6 +132,21 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
               {/* ── 1. SETTINGS ── */}
               <View style={styles.sectionWrap}>
                 <Text style={styles.sectionTitle}>Settings</Text>
+
+                {/* FitPulse Wallet & Coins */}
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleNavigate('/wallet')}
+                >
+                  <View style={styles.menuItemLeft}>
+                    <Ionicons name="wallet-outline" size={22} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>FitPulse Wallet & Coins</Text>
+                  </View>
+                  <View style={styles.coinBadgePill}>
+                    <Text style={styles.coinBadgePillText}>🪙 {coinsBalance}</Text>
+                  </View>
+                </TouchableOpacity>
 
                 {/* General (Account / Profile Edit) */}
                 <TouchableOpacity
@@ -523,6 +551,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginVertical: 10,
+  },
+  coinBadgePill: {
+    backgroundColor: 'rgba(0,230,118,0.12)',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,230,118,0.25)',
+  },
+  coinBadgePillText: {
+    color: Colors.primary, fontSize: 12.5, fontWeight: '700',
   },
 
   // Help Modal styles
