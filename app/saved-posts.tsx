@@ -14,7 +14,7 @@ import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Skeleton from '../components/ui/Skeleton';
 
-const BG = '#0A0F1A';
+const BG = Colors.background;
 
 interface SavedPost {
   id: string;
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   postCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,

@@ -25,7 +25,7 @@ function getPasswordStrength(pw: string): { label: string; color: string; score:
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   if (score <= 1) return { label: 'Weak',   color: '#EF4444', score };
   if (score <= 3) return { label: 'Medium', color: '#F59E0B', score };
-  return                     { label: 'Strong', color: '#10B981', score };
+  return                     { label: 'Strong', color: '#00E676', score };
 }
 
 export default function TraineeRegisterScreen() {

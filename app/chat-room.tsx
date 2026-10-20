@@ -22,7 +22,7 @@ if (Platform.OS !== 'web') {
 
 import * as ImagePicker from 'expo-image-picker';
 
-const BG = '#0A0F1A';
+const BG = Colors.background;
 
 function timeStr(dateStr: string) {
   const d = new Date(dateStr);
@@ -1136,7 +1136,7 @@ const styles = StyleSheet.create({
   sharedPostPhoto: {
     width: '100%',
     height: 180,
-    backgroundColor: '#1E293B',
+    backgroundColor: Colors.surface,
   },
   sharedPostFooter: {
     padding: 8,

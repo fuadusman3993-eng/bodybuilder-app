@@ -18,6 +18,7 @@ import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter'
 import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
 import WorkoutCountdownOverlay from '../../components/workout/WorkoutCountdownOverlay';
 import { voiceCoach } from '../../lib/voiceCoach';
+import { Colors } from '../../constants/colors';
 
 export default function LeapFitnessWorkoutPlayer() {
   const router = useRouter();
@@ -638,12 +639,12 @@ const styles = StyleSheet.create({
     height: 60,
     marginHorizontal: 16,
     borderRadius: 30,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#10B981',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
