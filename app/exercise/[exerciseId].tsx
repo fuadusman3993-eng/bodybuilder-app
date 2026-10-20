@@ -32,9 +32,9 @@ export default function LeapFitnessWorkoutPlayer() {
   const workoutEx = workout?.exercises[exerciseIndex];
   const exData = EXERCISES[(exerciseId as string) || 'high-stepping'] || EXERCISES['high-stepping'];
 
-  // Timer & Play/Pause State
-  const isTimeBased = exData.isTimeBased || typeof workoutEx?.reps === 'string';
-  const targetSeconds = workoutEx?.durationSeconds || exData.defaultDurationSeconds || 20;
+  // Timer & Play/Pause State - All exercises count down 30s hands-free
+  const isTimeBased = true;
+  const targetSeconds = workoutEx?.durationSeconds || (typeof workoutEx?.reps === 'number' ? 30 : exData.defaultDurationSeconds || 30);
 
   const [secondsRemaining, setSecondsRemaining] = useState(targetSeconds);
   const [isPaused, setIsPaused] = useState(false);
@@ -372,10 +372,7 @@ export default function LeapFitnessWorkoutPlayer() {
             nextExerciseId={workout?.exercises[exerciseIndex + 1]?.exerciseId || 'pushup'}
             nextExerciseName={nextExData.name}
             nextExerciseDuration={
-              workout?.exercises[exerciseIndex + 1]?.durationSeconds ||
-              (typeof workout?.exercises[exerciseIndex + 1]?.reps === 'number'
-                ? (workout?.exercises[exerciseIndex + 1]?.reps as number) * 2
-                : 20)
+              workout?.exercises[exerciseIndex + 1]?.durationSeconds || 30
             }
             initialRestSeconds={workoutEx?.restSeconds || 15}
             onSkip={handleEndRest}

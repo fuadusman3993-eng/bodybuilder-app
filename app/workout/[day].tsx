@@ -93,9 +93,9 @@ export default function WorkoutOverviewScreen() {
                   <Text style={styles.exName}>{exData.name}</Text>
                   <Text style={styles.exTarget}>{exData.muscleGroup}</Text>
                   <View style={styles.exMetaRow}>
-                    <Text style={styles.exMeta}>{workoutEx.sets} Sets</Text>
+                    <Text style={styles.exMeta}>{workoutEx.sets} Set{workoutEx.sets > 1 ? 's' : ''}</Text>
                     <Text style={styles.exMetaDot}>•</Text>
-                    <Text style={styles.exMeta}>{workoutEx.reps} Reps</Text>
+                    <Text style={styles.exMeta}>{typeof workoutEx.reps === 'string' ? workoutEx.reps : `${workoutEx.reps}s`}</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#333" />

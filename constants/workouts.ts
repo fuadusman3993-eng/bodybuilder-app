@@ -15,7 +15,7 @@ export interface Workout {
 }
 
 export const WORKOUTS: Record<string, Workout> = {
-  // Day 1 - Full Body Athletic Workout (12 Exercises in proper steps, 12 min, 180 kcal)
+  // Day 1 - Full Body Athletic Workout (12 Exercises, 30s each, 12 min, 180 kcal)
   'wk-belly-1': {
     id: 'wk-belly-1',
     title: 'Full Body Athletic - Day 1',
@@ -24,20 +24,20 @@ export const WORKOUTS: Record<string, Workout> = {
     exercises: [
       { exerciseId: 'jump-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
       { exerciseId: 'kettlebell-swing', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'barbell-squat', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'goblet-squat', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'reverse-lunges', sets: 1, reps: 14, restSeconds: 20 },
-      { exerciseId: 'hip-thrust', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'pec-deck-fly', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'svend-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'overhead-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'arnold-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'lateral-raises', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'triceps-pushdown', sets: 1, reps: 15, restSeconds: 0 },
+      { exerciseId: 'barbell-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'goblet-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'reverse-lunges', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'hip-thrust', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'pec-deck-fly', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'svend-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'overhead-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'arnold-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'lateral-raises', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'triceps-pushdown', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
 
-  // Day 2 - Lower Body & Explosive Power (8 Exercises, 10 min, 160 kcal)
+  // Day 2 - Lower Body & Explosive Power (8 Exercises, 30s each, 10 min, 160 kcal)
   'wk-belly-2': {
     id: 'wk-belly-2',
     title: 'Lower Body & Power - Day 2',
@@ -45,17 +45,17 @@ export const WORKOUTS: Record<string, Workout> = {
     estimatedCalories: 160,
     exercises: [
       { exerciseId: 'jump-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
-      { exerciseId: 'barbell-squat', sets: 1, reps: 15, restSeconds: 25 },
+      { exerciseId: 'barbell-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 25 },
       { exerciseId: 'kettlebell-swing', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
-      { exerciseId: 'goblet-squat', sets: 1, reps: 14, restSeconds: 20 },
-      { exerciseId: 'reverse-lunges', sets: 1, reps: 16, restSeconds: 25 },
-      { exerciseId: 'hip-thrust', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'jump-squat', sets: 1, reps: '00:25', durationSeconds: 25, restSeconds: 15 },
+      { exerciseId: 'goblet-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'reverse-lunges', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 25 },
+      { exerciseId: 'hip-thrust', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'jump-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
       { exerciseId: 'kettlebell-swing', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
 
-  // Day 3 - Upper Body & Delts Sculpt (8 Exercises, 10 min, 150 kcal)
+  // Day 3 - Upper Body & Delts Sculpt (8 Exercises, 30s each, 10 min, 150 kcal)
   'wk-belly-3': {
     id: 'wk-belly-3',
     title: 'Upper Body Sculpt - Day 3',
@@ -63,12 +63,12 @@ export const WORKOUTS: Record<string, Workout> = {
     estimatedCalories: 150,
     exercises: [
       { exerciseId: 'jump-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
-      { exerciseId: 'pec-deck-fly', sets: 1, reps: 14, restSeconds: 20 },
-      { exerciseId: 'svend-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'overhead-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'arnold-press', sets: 1, reps: 12, restSeconds: 20 },
-      { exerciseId: 'lateral-raises', sets: 1, reps: 15, restSeconds: 20 },
-      { exerciseId: 'triceps-pushdown', sets: 1, reps: 15, restSeconds: 20 },
+      { exerciseId: 'pec-deck-fly', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'svend-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'overhead-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'arnold-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'lateral-raises', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'triceps-pushdown', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
       { exerciseId: 'kettlebell-swing', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
@@ -80,12 +80,12 @@ export const WORKOUTS: Record<string, Workout> = {
     duration: '35 min',
     estimatedCalories: 280,
     exercises: [
-      { exerciseId: 'pec-deck-fly', sets: 4, reps: 12, restSeconds: 60 },
-      { exerciseId: 'svend-press', sets: 3, reps: 12, restSeconds: 45 },
-      { exerciseId: 'overhead-press', sets: 4, reps: 12, restSeconds: 60 },
-      { exerciseId: 'arnold-press', sets: 3, reps: 12, restSeconds: 45 },
-      { exerciseId: 'lateral-raises', sets: 3, reps: 15, restSeconds: 45 },
-      { exerciseId: 'triceps-pushdown', sets: 4, reps: 15, restSeconds: 45 },
+      { exerciseId: 'pec-deck-fly', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'svend-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'overhead-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'arnold-press', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'lateral-raises', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'triceps-pushdown', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
 
@@ -96,12 +96,12 @@ export const WORKOUTS: Record<string, Workout> = {
     duration: '35 min',
     estimatedCalories: 310,
     exercises: [
-      { exerciseId: 'jump-squat', sets: 3, reps: '00:30', durationSeconds: 30, restSeconds: 45 },
-      { exerciseId: 'barbell-squat', sets: 4, reps: 12, restSeconds: 75 },
-      { exerciseId: 'goblet-squat', sets: 3, reps: 12, restSeconds: 60 },
-      { exerciseId: 'reverse-lunges', sets: 3, reps: 14, restSeconds: 60 },
-      { exerciseId: 'hip-thrust', sets: 4, reps: 15, restSeconds: 60 },
-      { exerciseId: 'kettlebell-swing', sets: 3, reps: '00:35', durationSeconds: 35, restSeconds: 45 },
+      { exerciseId: 'jump-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'barbell-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'goblet-squat', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'reverse-lunges', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'hip-thrust', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 30 },
+      { exerciseId: 'kettlebell-swing', sets: 1, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
     ],
   },
 };
