@@ -10,7 +10,6 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
-import GuestBlocker from '../../components/ui/GuestBlocker';
 import { supabase } from '../../lib/supabase';
 import { invalidateCommunityCache } from './community';
 
@@ -36,7 +35,29 @@ export default function CreateScreen() {
   if (user.tier === UserTier.GUEST || !user.uid) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <GuestBlocker feature="create" />
+        <View style={styles.guestCenterWrap}>
+          <View style={styles.guestIconWrap}>
+            <View style={styles.guestGlowCircle} />
+            <Ionicons name="create-outline" size={54} color={Colors.primary} />
+          </View>
+          <View style={styles.guestBtnStack}>
+            <TouchableOpacity
+              style={styles.guestPrimaryBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/login')}
+            >
+              <Text style={styles.guestPrimaryBtnText}>Log In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.guestSecondaryBtn}
+              activeOpacity={0.75}
+              onPress={() => router.push('/role-selection')}
+            >
+              <Text style={styles.guestSecondaryBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
@@ -376,6 +397,69 @@ const styles = StyleSheet.create({
   previewActionText: {
     color: '#FFF',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  guestCenterWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: -40,
+  },
+  guestIconWrap: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  guestGlowCircle: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: Colors.primary,
+    opacity: 0.15,
+  },
+  guestBtnStack: {
+    width: '100%',
+    maxWidth: 280,
+    gap: 12,
+  },
+  guestPrimaryBtn: {
+    backgroundColor: Colors.primary,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  guestPrimaryBtnText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  guestSecondaryBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  guestSecondaryBtnText: {
+    color: Colors.textPrimary,
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -18,7 +18,6 @@ import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter'
 import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
 import WorkoutCountdownOverlay from '../../components/workout/WorkoutCountdownOverlay';
 import { voiceCoach } from '../../lib/voiceCoach';
-import { Audio } from 'expo-av';
 
 export default function LeapFitnessWorkoutPlayer() {
   const router = useRouter();
@@ -51,23 +50,6 @@ export default function LeapFitnessWorkoutPlayer() {
   const [isCountingDown, setIsCountingDown] = useState(true);
 
   const timerRef = useRef<any>(null);
-
-  const playTakeRestSound = async () => {
-    if (!soundEnabled) return;
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@/assets/sounds/take_rest.mp3'),
-        { shouldPlay: true, volume: 1.0 }
-      );
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
-        }
-      });
-    } catch (e) {
-      // audio error non-blocking
-    }
-  };
 
   // Reset timer when exercise changes
   useEffect(() => {
