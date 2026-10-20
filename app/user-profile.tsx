@@ -15,9 +15,9 @@ import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 
 const { width } = Dimensions.get('window');
-const BG = '#0A0F1A';
-const CARD_BG = 'rgba(30, 41, 59, 0.5)';
-const BORDER = 'rgba(255,255,255,0.06)';
+const BG = Colors.background;
+const CARD_BG = Colors.surface;
+const BORDER = Colors.border;
 const GRID_SIZE = (width - 28 - 16) / 3;
 
 interface CachedUserProfile {

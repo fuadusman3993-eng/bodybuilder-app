@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#141A26',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#1E293B',
+    backgroundColor: Colors.surfaceLight,
   },
   sentCheckBadge: {
     position: 'absolute',
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#141A26',
+    borderColor: Colors.surface,
   },
   friendName: {
     fontSize: 11,

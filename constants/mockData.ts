@@ -9,7 +9,7 @@ export const stories = [
 
 export const quickActions = [
   { id: '1', title: 'My Workout', subtitle: "Today's plan", icon: 'fitness', color: '#3B82F6', route: '/workout' },
-  { id: '2', title: 'Nutrition', subtitle: 'Meal plan', icon: 'nutrition', color: '#10B981', route: '/nutrition' },
+  { id: '2', title: 'Nutrition', subtitle: 'Meal plan', icon: 'nutrition', color: '#00E676', route: '/nutrition' },
   { id: '3', title: 'Progress', subtitle: 'Track results', icon: 'trending-up', color: '#8B5CF6', route: '/progress' },
   { id: '4', title: 'AI Assistant', subtitle: 'Ask anything', icon: 'sparkles', color: '#F59E0B', route: '/ai' },
   { id: '5', title: 'Chat with Coach', subtitle: 'Get advice', icon: 'chatbubble-ellipses', color: '#EF4444', route: '/chat' },

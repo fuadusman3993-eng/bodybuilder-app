@@ -286,7 +286,7 @@ export default function StoriesRow() {
             width: avatarInner,
             height: avatarInner,
             borderRadius: avatarInner / 2,
-            backgroundColor: '#064E3B',
+            backgroundColor: '#0B2E1D',
             justifyContent: 'center',
             alignItems: 'center',
           }}

@@ -15,7 +15,7 @@ import Skeleton from '../components/ui/Skeleton';
 
 import { db } from '../lib/firebase';
 
-const BG = '#0A0F1A';
+const BG = Colors.background;
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#1E293B',
+    backgroundColor: Colors.surface,
   },
   textWrap: { flex: 1 },
   msgText: { color: Colors.textPrimary, fontSize: 13.5, lineHeight: 20 },
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   confirmText: { color: '#000', fontWeight: '700', fontSize: 13 },
   deleteBtn: {
-    backgroundColor: '#1E293B', paddingHorizontal: 14,
+    backgroundColor: Colors.surfaceLight, paddingHorizontal: 14,
     paddingVertical: 7, borderRadius: 8,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -421,14 +421,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(0, 230, 118, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   acceptedText: {
-    color: '#10B981',
+    color: Colors.primary,
     fontWeight: '700',
     fontSize: 12.5,
   },

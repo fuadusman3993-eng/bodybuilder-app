@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#0F141F',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '85%',
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   themePillBtnActive: {
-    backgroundColor: '#384358',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   sectionDivider: {
     height: 1,
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
 
   // Help Modal styles
   helpCard: {
-    backgroundColor: '#161D2A',
+    backgroundColor: Colors.surfaceLight,
     width: '90%',
     maxWidth: 420,
     alignSelf: 'center',
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
 
   // Logout Confirmation styles
   logoutCard: {
-    backgroundColor: '#161D2A',
+    backgroundColor: Colors.surfaceLight,
     width: '85%',
     maxWidth: 380,
     alignSelf: 'center',

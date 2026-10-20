@@ -15,9 +15,9 @@ import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
-const BG = '#0A0F1A';
-const CARD_BG = 'rgba(30, 41, 59, 0.5)';
-const BORDER = 'rgba(255,255,255,0.06)';
+const BG = Colors.background;
+const CARD_BG = Colors.surface;
+const BORDER = Colors.border;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   // Tabs
   tabsWrap: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 14, backgroundColor: CARD_BG, borderRadius: 30, borderWidth: 1, borderColor: BORDER, padding: 4 },
   tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 26, gap: 5 },
-  tabBtnActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
+  tabBtnActive: { backgroundColor: 'rgba(0, 230, 118, 0.15)' },
   tabText: { color: Colors.textMuted, fontSize: 12, fontWeight: '600' },
   tabTextActive: { color: Colors.textPrimary },
 
@@ -566,12 +566,12 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: 'rgba(0, 230, 118, 0.2)',
   },
   guestGlowCircle: {
     position: 'absolute',

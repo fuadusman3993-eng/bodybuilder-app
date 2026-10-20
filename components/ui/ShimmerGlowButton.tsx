@@ -102,7 +102,7 @@ export default function ShimmerGlowButton({
         },
         Platform.OS === 'web' &&
           !disabled && {
-            filter: 'drop-shadow(0px 0px 16px rgba(16, 185, 129, 0.75))',
+            filter: 'drop-shadow(0px 0px 16px rgba(0, 230, 118, 0.75))',
           },
         style,
       ]}
@@ -122,7 +122,7 @@ export default function ShimmerGlowButton({
         {/* In-place seamless rich gradient shine */}
         {!disabled ? (
           <LinearGradient
-            colors={['#34D399', '#10B981', '#059669']}
+            colors={['#69F0AE', '#00E676', '#00C853']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[StyleSheet.absoluteFillObject, { borderRadius: height / 2 }]}

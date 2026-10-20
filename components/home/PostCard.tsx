@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: '#0A0F1A',
+    borderColor: Colors.background,
   },
   likedAvatar2: {
     width: 18,
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     marginLeft: -6,
     borderWidth: 1.5,
-    borderColor: '#0A0F1A',
+    borderColor: Colors.background,
   },
   likedByText: {
     fontSize: 12.5,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   backdropDismiss: { flex: 1 },
   modalSheet: {
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     maxHeight: '82%',
@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: '#0B1120',
+    backgroundColor: Colors.surface,
   },
   inputAvatar: { width: 30, height: 30, borderRadius: 15 },
   commentInput: {
@@ -997,7 +997,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   optionsSheet: {
-    backgroundColor: '#161616',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
