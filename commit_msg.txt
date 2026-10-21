@@ -1,1 +1,1 @@
-feat: circular 3D gold coin with white FitPulse brand logo and refined custom input typography
+fix: eliminate white screen on web startup with +html.tsx dark root and instant appReady

@@ -34,7 +34,7 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    const MIN_SPLASH_MS = 1000;
+    const MIN_SPLASH_MS = Platform.OS === 'web' ? 300 : 800;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
@@ -67,7 +67,7 @@ export default function SplashScreen() {
       } else {
         navigateTo('/welcome');
       }
-    }, 2200);
+    }, Platform.OS === 'web' ? 800 : 2000);
 
     return () => {
       unsubscribe();

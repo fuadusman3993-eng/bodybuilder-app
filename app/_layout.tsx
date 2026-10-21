@@ -16,17 +16,17 @@ import GlobalPresence from '../components/GlobalPresence';
 
 if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
-    document.body.style.backgroundColor = '#000000';
-    document.documentElement.style.backgroundColor = '#000000';
+    document.body.style.backgroundColor = '#050B0E';
+    document.documentElement.style.backgroundColor = '#050B0E';
   }
+} else {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
 }
-
-SplashScreen.preventAutoHideAsync();
 
 import { Ionicons } from '@expo/vector-icons';
 
 export default function RootLayout() {
-  const [appReady, setAppReady] = useState(false);
+  const [appReady, setAppReady] = useState(Platform.OS === 'web');
   const { setUser, setAuthInitialized } = useUserStore();
 
   useEffect(() => {
@@ -100,8 +100,10 @@ export default function RootLayout() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appReady) {
-      await SplashScreen.hideAsync();
+    if (appReady && Platform.OS !== 'web') {
+      try {
+        await SplashScreen.hideAsync();
+      } catch {}
     }
   }, [appReady]);
 
@@ -111,8 +113,8 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: '#000000' }} onLayout={onLayoutRootView}>
-        <StatusBar style="light" backgroundColor="#000000" />
+      <View style={{ flex: 1, backgroundColor: '#050B0E' }} onLayout={onLayoutRootView}>
+        <StatusBar style="light" backgroundColor="#050B0E" />
         <GlobalCallListener />
         <GlobalPresence />
         <Stack
