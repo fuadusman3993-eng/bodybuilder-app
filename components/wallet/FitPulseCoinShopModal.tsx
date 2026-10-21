@@ -164,7 +164,7 @@ export default function FitPulseCoinShopModal({
                   {user.name || user.email?.split('@')[0] || 'FitPulse Athlete'}
                 </Text>
                 <View style={s.accountBalancePill}>
-                  <FitPulseCoinSvg size={15} />
+                  <FitPulseCoinSvg size={13} />
                   <Text style={s.accountBalanceText}>{coinsBalance.toLocaleString()} Coins</Text>
                 </View>
               </View>
@@ -215,7 +215,7 @@ export default function FitPulseCoinShopModal({
                     onPress={() => handleSelectBundle(bundle.id)}
                   >
                     <View style={s.bundleCoinRow}>
-                      <FitPulseCoinSvg size={22} />
+                      <FitPulseCoinSvg size={18} />
                       <Text style={s.bundleCoinNum}>{bundle.coins}</Text>
                     </View>
                     <Text style={s.bundlePrice}>{priceFormatted}</Text>
@@ -232,28 +232,28 @@ export default function FitPulseCoinShopModal({
                 {isCustomSelected ? (
                   <View style={s.customInputBox}>
                     <View style={s.bundleCoinRow}>
-                      <FitPulseCoinSvg size={20} />
+                      <FitPulseCoinSvg size={16} />
                       <TextInput
                         style={s.customTextInput}
                         value={customCoins}
                         onChangeText={setCustomCoins}
                         keyboardType="numeric"
                         placeholder="30+"
-                        placeholderTextColor="#666"
+                        placeholderTextColor="#555"
                         autoFocus
                       />
                     </View>
                     <Text style={s.customMinText}>
-                      {currentCoins < 30 ? 'Min: 30' : formatCurrency(currentPrice, currency)}
+                      {currentCoins < 30 ? '⚠ Min 30' : formatCurrency(currentPrice, currency)}
                     </Text>
                   </View>
                 ) : (
                   <>
                     <View style={s.bundleCoinRow}>
-                      <FitPulseCoinSvg size={22} />
+                      <FitPulseCoinSvg size={18} />
                       <Text style={s.bundleCoinNum}>Custom</Text>
                     </View>
-                    <Text style={s.bundleCustomSub}>Large amounts</Text>
+                    <Text style={s.bundleCustomSub}>Any amount</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -551,20 +551,20 @@ const s = StyleSheet.create({
   bundlesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginBottom: 14,
   },
   bundleBox: {
-    width: Platform.OS === 'web' ? '23.4%' : '30.8%',
+    width: Platform.OS === 'web' ? '23.5%' : '31%',
     backgroundColor: '#101C26',
     borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#192C3C',
-    position: 'relative',
-    minHeight: 82,
+    overflow: 'hidden',
+    minHeight: 76,
     justifyContent: 'center',
   },
   bundleBoxActive: {
@@ -574,42 +574,48 @@ const s = StyleSheet.create({
   bundleCoinRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
+    gap: 4,
+    marginBottom: 4,
   },
   bundleCoinNum: {
-    fontSize: 16.5,
+    fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
+    flexShrink: 1,
   },
   bundlePrice: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#8A95A5',
     fontWeight: '600',
+    textAlign: 'center',
   },
   bundleCustomSub: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: '#64748B',
     textAlign: 'center',
+    marginTop: 2,
   },
   customInputBox: {
     alignItems: 'center',
     width: '100%',
+    paddingHorizontal: 4,
   },
   customTextInput: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     borderBottomColor: '#00E676',
-    paddingVertical: 1,
-    minWidth: 40,
+    paddingVertical: 2,
+    width: '80%',
     textAlign: 'center',
+    backgroundColor: 'transparent',
   },
   customMinText: {
     fontSize: 10,
     color: '#8A95A5',
     marginTop: 4,
+    textAlign: 'center',
   },
 
   // Cashback card
