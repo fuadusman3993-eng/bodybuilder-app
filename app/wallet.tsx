@@ -39,6 +39,8 @@ import {
 } from '../lib/walletService';
 import CardPaymentModal from '../components/wallet/CardPaymentModal';
 import ProUpgradeModal from '../components/wallet/ProUpgradeModal';
+import FitPulseCoinSvg from '../components/ui/FitPulseCoinSvg';
+import FitPulseCoinShopModal from '../components/wallet/FitPulseCoinShopModal';
 
 const { width } = Dimensions.get('window');
 
@@ -66,6 +68,9 @@ export default function WalletScreen() {
 
   // Card Payment Modal
   const [showCardModal, setShowCardModal] = useState(false);
+  const [checkoutCoins, setCheckoutCoins] = useState<number>(350);
+  const [checkoutPrice, setCheckoutPrice] = useState<number>(3.65);
+  const [checkoutCurrency, setCheckoutCurrency] = useState<CurrencyCode>('USD');
 
   // Pro Upgrade Modal
   const [showProModal, setShowProModal] = useState(false);
@@ -179,21 +184,53 @@ export default function WalletScreen() {
     if (!user.uid) return;
     const res = await topupWalletWithGateway({
       uid: user.uid,
-      coins: selectedBundle.coins,
-      fiatAmount: selectedBundle.price,
-      currency,
+      coins: checkoutCoins,
+      fiatAmount: checkoutPrice,
+      currency: checkoutCurrency,
       gateway: 'stripe_card',
       reference: ref,
     });
 
     if (res.success) {
-      const newBal = res.newBalance ?? (wallet?.balance_coins ?? 0) + selectedBundle.coins;
+      const newBal = res.newBalance ?? (wallet?.balance_coins ?? 0) + checkoutCoins;
       setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
       updateCoins(newBal);
-      const msg = `✅ ${selectedBundle.coins} Coins added!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
+      setShowCardModal(false);
+      const msg = `✅ ${checkoutCoins.toLocaleString()} Coins added successfully via Card!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
       if (Platform.OS === 'web') window.alert(msg);
       else Alert.alert('Payment Successful', msg);
       fetchAll();
+    }
+  };
+
+  const handleConfirmShopRecharge = async (
+    coins: number,
+    price: number,
+    curr: CurrencyCode,
+    method: string
+  ) => {
+    if (!user.uid) return;
+    const ref = `${method.toUpperCase()}-${Date.now()}`;
+    const res = await topupWalletWithGateway({
+      uid: user.uid,
+      coins,
+      fiatAmount: price,
+      currency: curr,
+      gateway: method,
+      reference: ref,
+    });
+
+    if (res.success) {
+      const newBal = res.newBalance ?? (wallet?.balance_coins ?? 0) + coins;
+      setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
+      updateCoins(newBal);
+      setShowTopup(false);
+      const msg = `✅ ${coins.toLocaleString()} Coins added!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Top-Up Successful', msg);
+      fetchAll();
+    } else {
+      throw new Error(res.error || 'Failed to complete recharge.');
     }
   };
 
@@ -314,12 +351,8 @@ export default function WalletScreen() {
 
             {/* Top Left Coin Badge & Balance */}
             <View style={styles.heroTopRow}>
-              {/* 3D Gold FitPulse Coin Badge */}
-              <Image
-                source={require('../assets/images/fitpulse-coin-3d.png')}
-                style={styles.coin3dBadge}
-                contentFit="contain"
-              />
+              {/* 3D Gold FitPulse Coin Badge (SVG - no black box) */}
+              <FitPulseCoinSvg size={52} />
 
               <View style={styles.heroBalanceTextWrap}>
                 <Text style={styles.heroCoinLabel}>FitPulse Coins</Text>
@@ -526,121 +559,29 @@ export default function WalletScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ── TOP-UP MODAL (Adaptive by Currency) ────────────────────────── */}
-      <Modal visible={showTopup} transparent animationType="slide" onRequestClose={() => setShowTopup(false)}>
-        <TouchableOpacity style={mStyles.overlay} activeOpacity={1} onPress={() => setShowTopup(false)}>
-          <TouchableOpacity style={mStyles.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={mStyles.handle} />
-            <Text style={mStyles.title}>Top Up Coins</Text>
-            <Text style={mStyles.subtitle}>
-              Current Rate: <Text style={{ color: Colors.primary, fontWeight: '700' }}>{getRateDisplay(currency)}</Text>
-            </Text>
-
-            {/* Dynamic Coin Bundles */}
-            <Text style={mStyles.sectionLabel}>Select Coin Bundle</Text>
-            <View style={mStyles.bundleRow}>
-              {availableBundles.map((b) => {
-                const isSelected = selectedBundle.id === b.id;
-                return (
-                  <TouchableOpacity
-                    key={b.id}
-                    style={[mStyles.bundleCard, isSelected && mStyles.bundleCardActive]}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedBundle(b)}
-                  >
-                    {b.badge && (
-                      <View style={mStyles.bundleBadge}>
-                        <Text style={mStyles.bundleBadgeText}>{b.badge}</Text>
-                      </View>
-                    )}
-                    <Text style={mStyles.bundleCoins}>🪙 {b.coins}</Text>
-                    <Text style={mStyles.bundleLabel}>{b.label}</Text>
-                    <Text style={mStyles.bundlePrice}>{formatCurrency(b.price, currency)}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Payment Method Selector */}
-            <Text style={mStyles.sectionLabel}>Payment Method</Text>
-            <View style={mStyles.methodRow}>
-              {currency === 'ETB' ? (
-                <>
-                  <MethodPill
-                    label="📱 Telebirr"
-                    selected={selectedMethod === 'telebirr'}
-                    onPress={() => setSelectedMethod('telebirr')}
-                  />
-                  <MethodPill
-                    label="🏦 CBE Birr"
-                    selected={selectedMethod === 'cbe_birr'}
-                    onPress={() => setSelectedMethod('cbe_birr')}
-                  />
-                  <MethodPill
-                    label="💳 Chapa"
-                    selected={selectedMethod === 'chapa'}
-                    onPress={() => setSelectedMethod('chapa')}
-                  />
-                </>
-              ) : (
-                <>
-                  <MethodPill
-                    label="💳 Credit/Debit Card"
-                    selected={selectedMethod === 'card'}
-                    onPress={() => setSelectedMethod('card')}
-                  />
-                  <MethodPill
-                    label="🅿️ PayPal"
-                    selected={selectedMethod === 'paypal'}
-                    onPress={() => setSelectedMethod('paypal')}
-                  />
-                </>
-              )}
-            </View>
-
-            {/* Summary */}
-            <View style={mStyles.summaryRow}>
-              <Text style={mStyles.summaryLabel}>Total to Pay:</Text>
-              <Text style={mStyles.summaryValue}>{formatCurrency(selectedBundle.price, currency)}</Text>
-            </View>
-            <View style={mStyles.summaryRow}>
-              <Text style={mStyles.summaryLabel}>Coins Received:</Text>
-              <Text style={[mStyles.summaryValue, { color: Colors.primary }]}>
-                🪙 {selectedBundle.coins.toLocaleString()} Coins
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[mStyles.confirmBtn, toppingUp && { opacity: 0.6 }]}
-              activeOpacity={0.88}
-              onPress={handleStartTopup}
-              disabled={toppingUp}
-            >
-              {toppingUp ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={mStyles.confirmBtnText}>
-                  {selectedMethod === 'card'
-                    ? 'Continue to Card Details'
-                    : `Pay ${formatCurrency(selectedBundle.price, currency)}`}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <Text style={mStyles.sandboxNote}>
-              🔒 Secure SSL Encrypted Checkout • Supported Globally
-            </Text>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      {/* ── FITPULSE COIN SHOP MODAL (TikTok-Style Recharge) ───────────── */}
+      <FitPulseCoinShopModal
+        visible={showTopup}
+        onClose={() => setShowTopup(false)}
+        coinsBalance={balance}
+        initialCurrency={currency}
+        onSelectCardPayment={(coins, price, curr) => {
+          setCheckoutCoins(coins);
+          setCheckoutPrice(price);
+          setCheckoutCurrency(curr);
+          setShowCardModal(true);
+        }}
+        onConfirmLocalPayment={handleConfirmShopRecharge}
+        onViewHistory={() => {}}
+      />
 
       {/* ── CREDIT CARD PAYMENT MODAL ──────────────────────────────────── */}
       <CardPaymentModal
         visible={showCardModal}
         onClose={() => setShowCardModal(false)}
-        coins={selectedBundle.coins}
-        price={selectedBundle.price}
-        currency={currency}
+        coins={checkoutCoins}
+        price={checkoutPrice}
+        currency={checkoutCurrency}
         onSuccess={handleCardSuccess}
       />
 
