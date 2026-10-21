@@ -1,1 +1,0 @@
-fix: coin icon overflow and custom card font issues in FitPulseCoinShopModal

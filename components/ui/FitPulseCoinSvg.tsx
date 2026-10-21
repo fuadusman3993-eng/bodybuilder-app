@@ -5,7 +5,6 @@ import Svg, {
   LinearGradient,
   RadialGradient,
   Stop,
-  Polygon,
   Circle,
   G,
 } from 'react-native-svg';
@@ -18,86 +17,93 @@ export default function FitPulseCoinSvg({ size = 48 }: FitPulseCoinSvgProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
       <Defs>
-        {/* Outer Metallic Gold Gradient */}
-        <LinearGradient id="goldOuter" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor="#FDE68A" />
-          <Stop offset="25%" stopColor="#F59E0B" />
-          <Stop offset="50%" stopColor="#D97706" />
-          <Stop offset="75%" stopColor="#FBBF24" />
+        {/* Outer Metallic 3D Gold Gradient */}
+        <LinearGradient id="goldOuterRim" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#FFF08A" />
+          <Stop offset="25%" stopColor="#FBBF24" />
+          <Stop offset="55%" stopColor="#F59E0B" />
+          <Stop offset="80%" stopColor="#D97706" />
           <Stop offset="100%" stopColor="#92400E" />
         </LinearGradient>
 
-        {/* Inner Gold Rim Gradient */}
-        <LinearGradient id="goldInner" x1="0%" y1="100%" x2="100%" y2="0%">
+        {/* Inner Gold Rim Bevel Gradient */}
+        <LinearGradient id="goldInnerRim" x1="0%" y1="100%" x2="100%" y2="0%">
           <Stop offset="0%" stopColor="#B45309" />
-          <Stop offset="40%" stopColor="#F59E0B" />
+          <Stop offset="35%" stopColor="#F59E0B" />
           <Stop offset="70%" stopColor="#FEF08A" />
           <Stop offset="100%" stopColor="#78350F" />
         </LinearGradient>
 
-        {/* Coin Core Dark Radial Fill */}
-        <RadialGradient id="coreRadial" cx="50%" cy="50%" r="50%">
-          <Stop offset="0%" stopColor="#1E293B" stopOpacity="0.95" />
-          <Stop offset="65%" stopColor="#0F172A" stopOpacity="0.98" />
-          <Stop offset="100%" stopColor="#0B131F" stopOpacity="1" />
+        {/* Coin Face Warm Gold Radial Gradient */}
+        <RadialGradient id="goldCoinFace" cx="42%" cy="38%" r="62%">
+          <Stop offset="0%" stopColor="#FEF9C3" />
+          <Stop offset="35%" stopColor="#FDE047" />
+          <Stop offset="70%" stopColor="#F59E0B" />
+          <Stop offset="100%" stopColor="#D97706" />
         </RadialGradient>
-
-        {/* Neon Green Glow for Heartbeat */}
-        <LinearGradient id="pulseGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-          <Stop offset="0%" stopColor="#00E676" />
-          <Stop offset="50%" stopColor="#69F0AE" />
-          <Stop offset="100%" stopColor="#00E676" />
-        </LinearGradient>
       </Defs>
 
-      {/* ── Outer 3D Gold Hexagon ── */}
-      <Polygon
-        points="50,4 90,27 90,73 50,96 10,73 10,27"
-        fill="url(#goldOuter)"
-      />
+      {/* ── 1. Outer 3D Gold Coin Circle ── */}
+      <Circle cx="50" cy="50" r="48" fill="url(#goldOuterRim)" />
 
-      {/* ── Outer Rim Bevel Highlight ── */}
-      <Polygon
-        points="50,8 86,29 86,71 50,92 14,71 14,29"
-        fill="url(#goldInner)"
-      />
-
-      {/* ── Coin Face Inset Hexagon (Dark Metallic Core) ── */}
-      <Polygon
-        points="50,13 81,31 81,69 50,87 19,69 19,31"
-        fill="url(#coreRadial)"
-      />
-
-      {/* ── Embossed Inner Gold Ring ── */}
+      {/* ── 2. Subtle Outer Depth Ring ── */}
       <Circle
         cx="50"
         cy="50"
-        r="28"
-        stroke="url(#goldOuter)"
-        strokeWidth="2.5"
-        strokeDasharray="3 3"
+        r="46.5"
+        stroke="#92400E"
+        strokeWidth="0.8"
         fill="none"
-        opacity={0.65}
+        opacity={0.6}
       />
 
-      {/* ── Glowing FitPulse Heartbeat ECG Pulse Waveform ── */}
-      <G>
-        {/* Subtle Ambient Pulse Glow */}
+      {/* ── 3. Inner Bevel Rim ── */}
+      <Circle cx="50" cy="50" r="43.5" fill="url(#goldInnerRim)" />
+
+      {/* ── 4. Coin Face (Smooth Warm Gold Center) ── */}
+      <Circle
+        cx="50"
+        cy="50"
+        r="40"
+        fill="url(#goldCoinFace)"
+        stroke="#B45309"
+        strokeWidth="1"
+      />
+
+      {/* ── 5. Milled Inner Coin Ridge ── */}
+      <Circle
+        cx="50"
+        cy="50"
+        r="37.5"
+        stroke="#FEF08A"
+        strokeWidth="0.8"
+        strokeDasharray="3 2"
+        fill="none"
+        opacity={0.5}
+      />
+
+      {/* ── 6. Official FitPulse Brand Logo (Crisp Solid White) ── */}
+      {/* Embossed Drop Shadow Layer */}
+      <G transform="translate(50, 51.3) scale(1.16) translate(-26.25, -20)">
         <Path
-          d="M 22 50 L 36 50 L 43 32 L 50 68 L 57 39 L 64 50 L 78 50"
-          stroke="#00E676"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={0.3}
+          d="M6.5 34 L17 13.5 C19 9 22 6 27 6 L46 6 L42.5 13.5 L27 13.5 C24 13.5 22 15 20.5 18 L12.5 34 Z"
+          fill="rgba(146, 64, 14, 0.45)"
         />
-        {/* Sharp Foreground Neon Heartbeat Line */}
         <Path
-          d="M 22 50 L 36 50 L 43 32 L 50 68 L 57 39 L 64 50 L 78 50"
-          stroke="url(#pulseGlow)"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          d="M20 34 L26 22 C27.5 18.5 30 16 34 16 L44.5 16 L41 23.5 L34 23.5 C31.5 23.5 30 25 28.5 28 L25.5 34 Z"
+          fill="rgba(146, 64, 14, 0.45)"
+        />
+      </G>
+
+      {/* Pure White Foreground FitPulse Logo */}
+      <G transform="translate(50, 50) scale(1.16) translate(-26.25, -20)">
+        <Path
+          d="M6.5 34 L17 13.5 C19 9 22 6 27 6 L46 6 L42.5 13.5 L27 13.5 C24 13.5 22 15 20.5 18 L12.5 34 Z"
+          fill="#FFFFFF"
+        />
+        <Path
+          d="M20 34 L26 22 C27.5 18.5 30 16 34 16 L44.5 16 L41 23.5 L34 23.5 C31.5 23.5 30 25 28.5 28 L25.5 34 Z"
+          fill="#FFFFFF"
         />
       </G>
     </Svg>

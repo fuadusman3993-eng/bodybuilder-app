@@ -231,7 +231,7 @@ export default function FitPulseCoinShopModal({
               >
                 {isCustomSelected ? (
                   <View style={s.customInputBox}>
-                    <View style={s.bundleCoinRow}>
+                    <View style={s.customInputRow}>
                       <FitPulseCoinSvg size={16} />
                       <TextInput
                         style={s.customTextInput}
@@ -239,12 +239,12 @@ export default function FitPulseCoinShopModal({
                         onChangeText={setCustomCoins}
                         keyboardType="numeric"
                         placeholder="30+"
-                        placeholderTextColor="#555"
+                        placeholderTextColor="#64748B"
                         autoFocus
                       />
                     </View>
-                    <Text style={s.customMinText}>
-                      {currentCoins < 30 ? '⚠ Min 30' : formatCurrency(currentPrice, currency)}
+                    <Text style={[s.customMinText, currentCoins < 30 && s.customMinTextWarn]}>
+                      {currentCoins < 30 ? 'Min: 30' : formatCurrency(currentPrice, currency)}
                     </Text>
                   </View>
                 ) : (
@@ -597,25 +597,41 @@ const s = StyleSheet.create({
   },
   customInputBox: {
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
+  },
+  customInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginBottom: 2,
+    maxWidth: '100%',
   },
   customTextInput: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
     borderBottomWidth: 1.5,
     borderBottomColor: '#00E676',
-    paddingVertical: 2,
-    width: '80%',
+    paddingVertical: 1,
+    paddingHorizontal: 2,
+    minWidth: 42,
+    maxWidth: 68,
     textAlign: 'center',
     backgroundColor: 'transparent',
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
   },
   customMinText: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
     color: '#8A95A5',
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
+  },
+  customMinTextWarn: {
+    color: '#EF4444',
   },
 
   // Cashback card

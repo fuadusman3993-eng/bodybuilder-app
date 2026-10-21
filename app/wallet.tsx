@@ -298,30 +298,32 @@ export default function WalletScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* ── TOP HEADER (Matching Image Header) ─────────────────────────── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+        <View style={styles.headerInner}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+
+            {/* Glowing Green Rounded-Square Wallet Badge */}
+            <View style={styles.walletHeaderIconWrap}>
+              <Ionicons name="wallet" size={22} color="#00E676" />
+            </View>
+
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.headerTitle}>Wallet</Text>
+              <Text style={styles.headerSubtitle}>Manage your FitPulse coins and earnings</Text>
+            </View>
+          </View>
+
+          {/* Currency Rate Pill Badge */}
+          <TouchableOpacity
+            style={styles.currencyPill}
+            activeOpacity={0.8}
+            onPress={() => setShowCurrencyModal(true)}
+          >
+            <Text style={styles.currencyPillText}>{getRateDisplay(currency)}</Text>
           </TouchableOpacity>
-
-          {/* Glowing Green Rounded-Square Wallet Badge */}
-          <View style={styles.walletHeaderIconWrap}>
-            <Ionicons name="wallet" size={22} color="#00E676" />
-          </View>
-
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerTitle}>Wallet</Text>
-            <Text style={styles.headerSubtitle}>Manage your FitPulse coins and earnings</Text>
-          </View>
         </View>
-
-        {/* Currency Rate Pill Badge */}
-        <TouchableOpacity
-          style={styles.currencyPill}
-          activeOpacity={0.8}
-          onPress={() => setShowCurrencyModal(true)}
-        >
-          <Text style={styles.currencyPillText}>{getRateDisplay(currency)}</Text>
-        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -337,7 +339,8 @@ export default function WalletScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
           }
         >
-          {/* ── HERO BALANCE CARD (Matching Reference Image) ─────────────── */}
+          <View style={styles.pageInner}>
+            {/* ── HERO BALANCE CARD (Matching Reference Image) ─────────────── */}
           <View style={styles.heroCard}>
             {/* Background Athlete Illustration */}
             <Image
@@ -523,7 +526,8 @@ export default function WalletScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
       )}
 
       {/* ── CURRENCY SELECTOR MODAL ────────────────────────────────────── */}
@@ -722,11 +726,24 @@ const styles = StyleSheet.create({
 
   // Header matching image
   header: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#0E1922',
+  },
+  headerInner: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  pageInner: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -815,7 +832,8 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    width: width * 0.58,
+    width: 260,
+    maxWidth: '52%',
     height: '100%',
     opacity: 0.88,
   },
