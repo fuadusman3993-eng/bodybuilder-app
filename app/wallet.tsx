@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../constants/colors';
-import { useUserStore } from '../store/userStore';
+import { useUserStore, UserTier } from '../store/userStore';
 import {
   CurrencyCode,
   CURRENCIES,
@@ -147,16 +147,29 @@ export default function WalletScreen() {
 
   // ── Auto-Verify Chapa Payment on Return from Checkout ────────────────────
   useEffect(() => {
-    if (params.chapa_status === 'verify' && params.tx_ref && user.uid) {
+    // Robust query extraction handling both clean & and HTML-encoded &amp;
+    let chapaStatus = params.chapa_status || (params as any)['amp;chapa_status'];
+    let txRef = params.tx_ref || (params as any)['amp;tx_ref'];
+    let coinsParam = params.coins || (params as any)['amp;coins'];
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search) {
+      const cleanSearch = window.location.search.replace(/&amp;/g, '&');
+      const sp = new URLSearchParams(cleanSearch);
+      if (!chapaStatus) chapaStatus = sp.get('chapa_status') || undefined;
+      if (!txRef) txRef = sp.get('tx_ref') || undefined;
+      if (!coinsParam) coinsParam = sp.get('coins') || undefined;
+    }
+
+    if (chapaStatus === 'verify' && txRef && user.uid) {
       async function verifyChapa() {
         try {
           const verifyRes = await fetch(
-            `/api/chapa-verify?tx_ref=${params.tx_ref}&uid=${user.uid}&coins=${params.coins || ''}`
+            `/api/chapa-verify?tx_ref=${txRef}&uid=${user.uid}&coins=${coinsParam || ''}`
           );
           const data = await verifyRes.json();
 
           if (data.success && data.verified) {
-            const addedCoins = data.coins || parseInt(params.coins || '0', 10);
+            const addedCoins = data.coins || parseInt(coinsParam || '0', 10);
             const newBal = data.newBalance ?? ((wallet?.balance_coins ?? 0) + addedCoins);
             setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
             updateCoins(newBal);
@@ -552,18 +565,30 @@ export default function WalletScreen() {
 
           {/* ── PRO TIER CALLOUT BANNER (Matching Reference Image) ───────── */}
           <TouchableOpacity
-            style={styles.proCalloutBanner}
+            style={[styles.proCalloutBanner, user.tier === UserTier.PREMIUM && { borderColor: '#EAB308', backgroundColor: 'rgba(234, 179, 8, 0.08)' }]}
             activeOpacity={0.85}
             onPress={() => setShowProModal(true)}
           >
             <View style={styles.proCalloutLeft}>
-              <Ionicons name="information-circle-outline" size={20} color="#8A95A5" />
+              <Ionicons
+                name={user.tier === UserTier.PREMIUM ? 'star' : 'information-circle-outline'}
+                size={20}
+                color={user.tier === UserTier.PREMIUM ? '#EAB308' : '#8A95A5'}
+              />
               <Text style={styles.proCalloutText}>
-                Use coins to hire coaches, buy workout plans, or upgrade to{' '}
-                <Text style={styles.proHighlight}>FitPulse Pro</Text>.
+                {user.tier === UserTier.PREMIUM ? (
+                  <>
+                    You are a <Text style={{ color: '#EAB308', fontWeight: 'bold' }}>FitPulse Pro Member ⭐</Text>. Tap to view perks.
+                  </>
+                ) : (
+                  <>
+                    Use coins to hire coaches, buy workout plans, or upgrade to{' '}
+                    <Text style={styles.proHighlight}>FitPulse Pro</Text>.
+                  </>
+                )}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#8A95A5" />
+            <Ionicons name="chevron-forward" size={18} color={user.tier === UserTier.PREMIUM ? '#EAB308' : '#8A95A5'} />
           </TouchableOpacity>
 
           {/* ── RECENT TRANSACTIONS (Matching Reference Image) ───────────── */}

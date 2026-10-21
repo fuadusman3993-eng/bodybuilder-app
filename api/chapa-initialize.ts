@@ -21,7 +21,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Missing required fields: uid, coins, amount' });
     }
 
-    const safeUid = String(uid).replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+    const safeUid = String(uid).replace(/[^a-zA-Z0-9_-]/g, '');
     const txRef = `fp-chapa-${safeUid}-${Date.now()}`;
 
     const baseUrl = req.headers.origin || 'https://bodybuilder-app-phi.vercel.app';
@@ -38,6 +38,10 @@ export default async function handler(req: any, res: any) {
       tx_ref: txRef,
       callback_url: callbackUrl,
       return_url: finalReturnUrl,
+      meta: {
+        uid: String(uid),
+        coins: String(coins),
+      },
       customization: {
         title: 'FitPulse Coins',
         description: `Purchase of ${coins} FitPulse Coins`,

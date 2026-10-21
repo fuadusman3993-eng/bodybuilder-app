@@ -63,10 +63,30 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 3. Credit coins to user wallet via Supabase RPC
-    if (uid) {
+    // 3. Resolve Full UID (from query, body, Chapa meta, or txRef prefix lookup)
+    let finalUid = uid || data.data?.meta?.uid;
+    if (!finalUid && txRef) {
+      const match = txRef.match(/^fp-chapa-([a-zA-Z0-9_-]+)-\d+$/);
+      if (match && match[1]) {
+        const candidate = match[1];
+        if (candidate.length >= 20) {
+          finalUid = candidate;
+        } else {
+          // If truncated 8-character prefix, resolve full UID from coach_profiles
+          const { data: coachMatch } = await supabase
+            .from('coach_profiles')
+            .select('uid')
+            .ilike('uid', `${candidate}%`)
+            .maybeSingle();
+          finalUid = coachMatch?.uid || candidate;
+        }
+      }
+    }
+
+    // 4. Credit coins to user wallet via Supabase RPC
+    if (finalUid) {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('topup_user_wallet', {
-        p_uid: uid,
+        p_uid: finalUid,
         p_coins: coinsToAdd,
         p_etb: verifiedAmount,
         p_payment_method: 'chapa:ETB',
@@ -81,6 +101,7 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         success: true,
         verified: true,
+        uid: finalUid,
         newBalance: rpcResult?.new_balance,
         coins: coinsToAdd,
         amount: verifiedAmount,

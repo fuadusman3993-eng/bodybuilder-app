@@ -67,7 +67,15 @@ export function etbToCoins(etb: number)   { return Math.floor(etb / ETB_PER_COIN
 // ── Fetch Wallet ──────────────────────────────────────────────────────────
 
 export async function getWallet(uid: string): Promise<Wallet | null> {
+  if (!uid) return null;
   try {
+    // 1. Try Security Definer RPC first (bypasses RLS)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_user_wallet', { p_uid: uid });
+    if (!rpcErr && rpcData && typeof rpcData === 'object' && ('balance_coins' in rpcData)) {
+      return rpcData as Wallet;
+    }
+
+    // 2. Fallback to direct table select
     const { data, error } = await supabase
       .from('wallets')
       .select('*')
@@ -86,7 +94,11 @@ export async function getWallet(uid: string): Promise<Wallet | null> {
  * Ensure a wallet row exists for user (creates with 0 balance if missing).
  */
 export async function ensureWallet(uid: string): Promise<Wallet | null> {
+  if (!uid) return null;
   try {
+    const existing = await getWallet(uid);
+    if (existing) return existing;
+
     const { data, error } = await supabase
       .from('wallets')
       .upsert({ user_id: uid, balance_coins: 0, lifetime_earnings_coins: 0, pending_payout_etb: 0 }, {
@@ -107,7 +119,18 @@ export async function ensureWallet(uid: string): Promise<Wallet | null> {
 // ── Fetch Transaction History ─────────────────────────────────────────────
 
 export async function getTransactionHistory(uid: string, limit = 20): Promise<CoinTransaction[]> {
+  if (!uid) return [];
   try {
+    // 1. Try Security Definer RPC first (bypasses RLS)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_user_coin_transactions', {
+      p_uid: uid,
+      p_limit: limit,
+    });
+    if (!rpcErr && Array.isArray(rpcData)) {
+      return rpcData as CoinTransaction[];
+    }
+
+    // 2. Fallback to direct table select
     const { data, error } = await supabase
       .from('coin_transactions')
       .select('*')

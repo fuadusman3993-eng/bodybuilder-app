@@ -1,1 +1,1 @@
-fix: ensure persistent web auth session on page refresh and loading state in profile
+feat: Chapa auto-verify fix, RPC wallet reading, and Pro/Coach badges

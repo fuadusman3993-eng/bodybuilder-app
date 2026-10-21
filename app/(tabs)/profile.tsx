@@ -331,7 +331,13 @@ export default function ProfileScreen() {
         <View style={styles.nameBlock}>
           <View style={styles.nameRow}>
             <Text style={styles.nameText}>{name}</Text>
-            {isCoach && <Ionicons name="checkmark-circle" size={15} color={Colors.textPrimary} style={{ marginLeft: 4 }} />}
+            {isCoach && <Ionicons name="checkmark-circle" size={15} color={Colors.primary} style={{ marginLeft: 4 }} />}
+            {user.tier === UserTier.PREMIUM && (
+              <View style={styles.proPillBadge}>
+                <Ionicons name="star" size={10} color="#000" />
+                <Text style={styles.proPillBadgeText}>PRO</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.bioText}>{bio}</Text>
           
@@ -530,6 +536,21 @@ const styles = StyleSheet.create({
 
   nameBlock: { paddingHorizontal: 16, marginTop: 12, marginBottom: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  proPillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAB308',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 6,
+    gap: 2,
+  },
+  proPillBadgeText: {
+    color: '#000',
+    fontSize: 9,
+    fontWeight: '800',
+  },
   nameText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
   bioText: { color: Colors.textPrimary, fontSize: 13, lineHeight: 18, marginBottom: 8 },
   badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
