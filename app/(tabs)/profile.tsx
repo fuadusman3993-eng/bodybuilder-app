@@ -269,7 +269,11 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {(!user?.uid || user.tier === UserTier.GUEST) ? (
+      {!authInitialized ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (!user?.uid || user.tier === UserTier.GUEST) ? (
         <View style={styles.guestCenterWrap}>
           {/* User Outline Icon matching Image 1 */}
           <View style={styles.guestOutlineIconWrap}>

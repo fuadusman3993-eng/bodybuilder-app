@@ -1,6 +1,7 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC35oZEHsjoFFUZkAtbWvgqusjK5cRq5GU",
@@ -13,8 +14,14 @@ const firebaseConfig = {
 };
 
 // Prevent duplicate app initialization
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
+
+// Guarantee browser local storage persistence on web across page reloads
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+}
+
 export const db = getFirestore(app);
 export default app;

@@ -1,1 +1,1 @@
-feat: Chapa ETB payment integration with auto-verify webhook
+fix: ensure persistent web auth session on page refresh and loading state in profile
