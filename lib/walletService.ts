@@ -15,6 +15,8 @@ export interface Wallet {
   balance_coins: number;
   lifetime_earnings_coins: number;
   pending_payout_etb: number;
+  preferred_currency?: string;
+  pro_until?: string | null;
   updated_at: string;
 }
 
@@ -33,6 +35,8 @@ export interface CoinTransaction {
   type: TxType;
   amount_coins: number;
   amount_etb: number;
+  currency?: string;
+  payment_gateway?: string;
   related_coach_uid?: string | null;
   related_entity_id?: string | null;
   payment_method?: string | null;
@@ -119,7 +123,65 @@ export async function getTransactionHistory(uid: string, limit = 20): Promise<Co
   }
 }
 
-// ── Top-Up Wallet (Sandbox / Simulated) ──────────────────────────────────
+// ── Top-Up Wallet (Supports International & Local Gateways) ───────────────
+
+export async function topupWalletWithGateway(params: {
+  uid: string;
+  coins: number;
+  fiatAmount: number;
+  currency: string;
+  gateway: string;
+  reference: string;
+}): Promise<{ success: boolean; newBalance?: number; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('topup_user_wallet', {
+      p_uid: params.uid,
+      p_coins: params.coins,
+      p_etb: params.fiatAmount,
+      p_payment_method: `${params.gateway}:${params.currency}`,
+      p_ref: params.reference,
+    });
+
+    if (error) throw error;
+
+    const result = data as { success: boolean; new_balance: number };
+    return { success: true, newBalance: result.new_balance };
+  } catch (e: any) {
+    console.warn('[walletService] topupWalletWithGateway error:', e);
+    return { success: false, error: e?.message ?? 'Top-up failed' };
+  }
+}
+
+// ── Activate Pro Subscription with Coins (Atomic) ─────────────────────────
+
+export async function activateProWithCoins(
+  uid: string,
+  durationDays: number = 30,
+  coinsCost: number = 500
+): Promise<{ success: boolean; remainingBalance?: number; proUntil?: string; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('activate_pro_subscription', {
+      p_uid: uid,
+      p_duration_days: durationDays,
+      p_coins_cost: coinsCost,
+    });
+
+    if (error) throw error;
+
+    const result = data as { success: boolean; remaining_balance?: number; pro_until?: string; error?: string };
+    if (!result.success) {
+      return { success: false, error: result.error ?? 'Subscription activation failed' };
+    }
+    return {
+      success: true,
+      remainingBalance: result.remaining_balance,
+      proUntil: result.pro_until,
+    };
+  } catch (e: any) {
+    console.warn('[walletService] activateProWithCoins error:', e);
+    return { success: false, error: e?.message ?? 'Subscription failed' };
+  }
+}
 
 /**
  * Simulated top-up — credits coins instantly (sandbox mode).
@@ -191,10 +253,16 @@ export async function hireCoachWithCoins(params: {
 export async function requestCoachPayout(params: {
   coachUid: string;
   coins: number;
-  amountEtb: number;
-  method: 'telebirr' | 'cbe_birr';
-  accountNumber: string;
-  accountName: string;
+  amountFiat: number;
+  currency: string;
+  method: 'telebirr' | 'cbe_birr' | 'paypal' | 'bank_wire';
+  accountDetails: {
+    accountNumber?: string;
+    accountName?: string;
+    paypalEmail?: string;
+    iban?: string;
+    swiftBic?: string;
+  };
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // Deduct from wallet
@@ -213,12 +281,17 @@ export async function requestCoachPayout(params: {
       .from('wallets')
       .update({
         balance_coins: walletData.balance_coins - params.coins,
-        pending_payout_etb: params.amountEtb,
+        pending_payout_etb: params.currency === 'ETB' ? params.amountFiat : 0,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', params.coachUid);
 
     if (deductErr) throw deductErr;
+
+    const accIdentifier = params.accountDetails.paypalEmail ||
+      params.accountDetails.accountNumber ||
+      params.accountDetails.iban ||
+      'Account';
 
     // Insert payout request
     const { error: reqErr } = await supabase
@@ -226,11 +299,15 @@ export async function requestCoachPayout(params: {
       .insert({
         coach_uid:      params.coachUid,
         coins_deducted: params.coins,
-        amount_etb:     params.amountEtb,
+        amount_etb:     params.amountFiat,
+        currency:       params.currency,
         payment_method: params.method,
-        account_number: params.accountNumber,
-        account_name:   params.accountName,
-        status: 'pending',
+        account_number: params.accountDetails.accountNumber || '',
+        account_name:   params.accountDetails.accountName || '',
+        paypal_email:   params.accountDetails.paypalEmail || null,
+        iban:           params.accountDetails.iban || null,
+        swift_bic:      params.accountDetails.swiftBic || null,
+        status:         'pending',
       });
 
     if (reqErr) throw reqErr;
@@ -240,10 +317,11 @@ export async function requestCoachPayout(params: {
       user_id:        params.coachUid,
       type:           'payout',
       amount_coins:   -params.coins,
-      amount_etb:     params.amountEtb,
+      amount_etb:     params.amountFiat,
+      currency:       params.currency,
       payment_method: params.method,
       status:         'pending',
-      description:    `Payout to ${params.method} (${params.accountNumber})`,
+      description:    `Payout via ${params.method.toUpperCase()} (${accIdentifier})`,
     });
 
     return { success: true };
