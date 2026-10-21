@@ -12,11 +12,12 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 import {
@@ -46,6 +47,12 @@ const { width } = Dimensions.get('window');
 
 export default function WalletScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    chapa_status?: string;
+    tx_ref?: string;
+    coins?: string;
+    amount?: string;
+  }>();
   const { user, updateCoins } = useUserStore();
 
   const [wallet, setWallet]         = useState<Wallet | null>(null);
@@ -138,6 +145,43 @@ export default function WalletScreen() {
     fetchAll();
   }, [fetchAll]);
 
+  // ── Auto-Verify Chapa Payment on Return from Checkout ────────────────────
+  useEffect(() => {
+    if (params.chapa_status === 'verify' && params.tx_ref && user.uid) {
+      async function verifyChapa() {
+        try {
+          const verifyRes = await fetch(
+            `/api/chapa-verify?tx_ref=${params.tx_ref}&uid=${user.uid}&coins=${params.coins || ''}`
+          );
+          const data = await verifyRes.json();
+
+          if (data.success && data.verified) {
+            const addedCoins = data.coins || parseInt(params.coins || '0', 10);
+            const newBal = data.newBalance ?? ((wallet?.balance_coins ?? 0) + addedCoins);
+            setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
+            updateCoins(newBal);
+            const msg = `🎉 Payment Successful!\n${addedCoins.toLocaleString()} FitPulse Coins added to your wallet.\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
+            if (Platform.OS === 'web') window.alert(msg);
+            else Alert.alert('Payment Successful', msg);
+            fetchAll();
+          } else if (data.alreadyProcessed) {
+            fetchAll();
+          } else {
+            const failMsg = data.message || 'Chapa payment could not be verified.';
+            if (Platform.OS === 'web') window.alert(`Payment Status: ${failMsg}`);
+            else Alert.alert('Payment Status', failMsg);
+          }
+        } catch (e: any) {
+          console.warn('[Chapa Verification error]:', e);
+        } finally {
+          // Clean URL params to avoid re-triggering on page refresh
+          router.replace('/wallet');
+        }
+      }
+      verifyChapa();
+    }
+  }, [params.chapa_status, params.tx_ref, user.uid]);
+
   // ── Top-Up Handlers ────────────────────────────────────────────────────────
 
   const handleStartTopup = () => {
@@ -209,7 +253,49 @@ export default function WalletScreen() {
     curr: CurrencyCode,
     method: string
   ) => {
-    if (!user.uid) return;
+    if (!user.uid) {
+      Alert.alert('Sign In Required', 'Please sign in to top up coins.');
+      return;
+    }
+
+    // ── Live Chapa Gateway for ETB (Telebirr, CBE Birr, Chapa) ───────────────
+    if (curr === 'ETB' || method === 'telebirr' || method === 'cbe_birr' || method === 'chapa') {
+      try {
+        const initRes = await fetch('/api/chapa-initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: user.uid,
+            coins,
+            amount: price,
+            email: user.email || 'athlete@fitpulse.app',
+            firstName: user.name?.split(' ')[0] || 'FitPulse',
+            lastName: user.name?.split(' ')[1] || 'Athlete',
+            phone: (user as any).phone || undefined,
+          }),
+        });
+
+        const initData = await initRes.json();
+
+        if (initData.success && initData.checkoutUrl) {
+          setShowTopup(false);
+          if (Platform.OS === 'web') {
+            window.location.href = initData.checkoutUrl;
+            return;
+          } else {
+            Linking.openURL(initData.checkoutUrl);
+            return;
+          }
+        } else {
+          throw new Error(initData.error || 'Failed to start Chapa checkout');
+        }
+      } catch (err: any) {
+        console.error('[Chapa Checkout Error]:', err);
+        throw new Error(err?.message || 'Could not connect to Chapa payment gateway.');
+      }
+    }
+
+    // ── Fallback / Sandbox top-up for local dev ──────────────────────────────
     const ref = `${method.toUpperCase()}-${Date.now()}`;
     const res = await topupWalletWithGateway({
       uid: user.uid,
