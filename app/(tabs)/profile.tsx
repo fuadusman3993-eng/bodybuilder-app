@@ -10,6 +10,7 @@ import { signOut } from '../../lib/authService';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
+import { getWallet } from '../../lib/walletService';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
@@ -23,7 +24,7 @@ const BORDER = Colors.border;
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, setUser, authInitialized } = useUserStore();
+  const { user, setUser, authInitialized, setTier } = useUserStore();
 
   const isCoach = user.role === 'coach';
   const defaultTabs = isCoach
@@ -43,6 +44,20 @@ export default function ProfileScreen() {
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
 
+  // Sync pro status from Supabase wallet
+  const syncProStatus = async () => {
+    const uid = auth.currentUser?.uid || user.uid;
+    if (!uid) return;
+    try {
+      const w = await getWallet(uid);
+      if (w?.pro_until && new Date(w.pro_until) > new Date()) {
+        setTier(UserTier.PREMIUM);
+      } else {
+        setTier(UserTier.FREE);
+      }
+    } catch (_) {}
+  };
+
   useFocusEffect(
     useCallback(() => {
       if (user.tier !== UserTier.GUEST) loadAll();
@@ -50,7 +65,7 @@ export default function ProfileScreen() {
   );
 
   const loadAll = async () => {
-    await Promise.all([fetchProfile(), fetchSupabaseStats(), fetchSavedPosts(), fetchRepostedPosts()]);
+    await Promise.all([fetchProfile(), fetchSupabaseStats(), fetchSavedPosts(), fetchRepostedPosts(), syncProStatus()]);
   };
 
   const fetchProfile = async () => {

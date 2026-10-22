@@ -36,6 +36,17 @@ export default async function handler(req: any, res: any) {
     const amount = parseFloat(verifyData.data.amount) || 0;
     const coins = Math.round(amount);
 
+    // Prevent duplicate crediting if already processed by chapa-verify
+    const { data: existingTx } = await supabase
+      .from('coin_transactions')
+      .select('id')
+      .ilike('description', `%${txRef}%`)
+      .limit(1);
+
+    if (existingTx && existingTx.length > 0) {
+      return res.status(200).json({ received: true, alreadyProcessed: true });
+    }
+
     // Extract uid from tx_ref: fp-[safeUid]-[timestamp] or fp-chapa-[safeUid]-[timestamp]
     const match = txRef.match(/^fp(?:-chapa)?-([a-zA-Z0-9_-]+)-\d+$/);
     const safeUid = match ? match[1] : null;

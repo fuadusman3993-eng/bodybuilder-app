@@ -47,14 +47,14 @@ export default async function handler(req: any, res: any) {
     const verifiedAmount = parseFloat(data.data.amount) || 0;
     const coinsToAdd = coinsParam ? parseInt(coinsParam, 10) : Math.round(verifiedAmount);
 
-    // 2. Prevent duplicate crediting if already credited
+    // 2. Prevent duplicate crediting if already credited (matches 'Wallet Top-up: fp-...' or any containing txRef)
     const { data: existingTx } = await supabase
       .from('coin_transactions')
       .select('id, status')
-      .eq('description', `Chapa Ref: ${txRef}`)
-      .maybeSingle();
+      .ilike('description', `%${txRef}%`)
+      .limit(1);
 
-    if (existingTx) {
+    if (existingTx && existingTx.length > 0) {
       return res.status(200).json({
         success: true,
         alreadyProcessed: true,

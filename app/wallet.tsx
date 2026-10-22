@@ -54,7 +54,7 @@ export default function WalletScreen() {
     coins?: string;
     amount?: string;
   }>();
-  const { user, updateCoins } = useUserStore();
+  const { user, updateCoins, setTier } = useUserStore();
 
   const [wallet, setWallet]         = useState<Wallet | null>(null);
   const [txs, setTxs]               = useState<CoinTransaction[]>([]);
@@ -134,7 +134,14 @@ export default function WalletScreen() {
       ]);
       setWallet(w);
       setTxs(t);
-      if (w) updateCoins(w.balance_coins);
+      if (w) {
+        updateCoins(w.balance_coins);
+        if (w.pro_until && new Date(w.pro_until) > new Date()) {
+          setTier(UserTier.PREMIUM);
+        } else {
+          setTier(UserTier.FREE);
+        }
+      }
     } catch (e) {
       console.warn('[WalletScreen] fetchAll error:', e);
     } finally {

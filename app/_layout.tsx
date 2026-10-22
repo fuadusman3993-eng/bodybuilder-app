@@ -10,6 +10,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
+import { getWallet } from '../lib/walletService';
 import { useUserStore, UserTier } from '../store/userStore';
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
@@ -56,19 +57,15 @@ export default function RootLayout() {
           const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
           const city = uData?.city || undefined;
 
-          // ── Pro persistence: check Supabase wallets.pro_until on every login/refresh ──
+          // ── Pro persistence: check Supabase wallets.pro_until via Security Definer RPC ──
           let userTier = UserTier.FREE;
           try {
-            const { data: wData } = await supabase
-              .from('wallets')
-              .select('pro_until')
-              .eq('user_id', firebaseUser.uid)
-              .maybeSingle();
-            if (wData?.pro_until && new Date(wData.pro_until) > new Date()) {
+            const w = await getWallet(firebaseUser.uid);
+            if (w?.pro_until && new Date(w.pro_until) > new Date()) {
               userTier = UserTier.PREMIUM;
             }
           } catch (_) {
-            // Silently fail — wallet may not exist yet for new users
+            // Silently fail
           }
           
           setUser({
@@ -81,21 +78,24 @@ export default function RootLayout() {
             city,
           });
 
-          // AUTO-SYNC: If user is a coach in Firebase, ensure they exist in Supabase `coach_profiles`
-          // This fixes issues if a coach was added manually via SQL with a typo in the UID
-          if (role === 'coach') {
-            await supabase.from('coach_profiles').upsert({
-              uid: firebaseUser.uid,
-              name: name,
-              // Other fields will just be defaults or remain unchanged
-            }, { onConflict: 'uid' });
-          } else {
-            await supabase.from('coach_profiles').delete().eq('uid', firebaseUser.uid);
-          }
+          // AUTO-SYNC: Safe isolated try-catch for coach_profiles
+          try {
+            if (role === 'coach') {
+              await supabase.from('coach_profiles').upsert({
+                uid: firebaseUser.uid,
+                name: name,
+              }, { onConflict: 'uid' });
+            }
+          } catch (_) {}
 
         } catch (e) {
           console.warn('Could not restore user session:', e);
-          setUser({ tier: UserTier.FREE, name: firebaseUser.displayName || 'User', uid: firebaseUser.uid });
+          const currentTier = useUserStore.getState().user.tier;
+          setUser({
+            tier: currentTier !== UserTier.GUEST ? currentTier : UserTier.FREE,
+            name: firebaseUser.displayName || 'User',
+            uid: firebaseUser.uid,
+          });
         }
       } else {
         // No user logged in — keep as GUEST and clear all fields
