@@ -22,7 +22,8 @@ export default async function handler(req: any, res: any) {
     }
 
     const safeUid = String(uid).replace(/[^a-zA-Z0-9_-]/g, '');
-    const txRef = `fp-chapa-${safeUid}-${Date.now()}`;
+    // Chapa requires tx_ref to be <= 50 characters: fp- (3) + uid (28) + - + Date.now() (13) = 45 chars max
+    const txRef = `fp-${safeUid}-${Date.now()}`;
 
     const baseUrl = req.headers.origin || 'https://bodybuilder-app-phi.vercel.app';
     const finalReturnUrl = returnUrl || `${baseUrl}/wallet?chapa_status=verify&tx_ref=${txRef}&coins=${coins}&amount=${amount}`;
@@ -60,8 +61,11 @@ export default async function handler(req: any, res: any) {
     const data = await chapaRes.json();
 
     if (data.status !== 'success' || !data.data?.checkout_url) {
+      const errMsg = typeof data.message === 'object'
+        ? Object.values(data.message).flat().join(', ')
+        : (data.message || 'Failed to initialize Chapa transaction');
       return res.status(400).json({
-        error: data.message || 'Failed to initialize Chapa transaction',
+        error: errMsg,
         details: data,
       });
     }

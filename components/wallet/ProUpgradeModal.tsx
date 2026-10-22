@@ -57,13 +57,6 @@ export default function ProUpgradeModal({
       setTier(UserTier.PREMIUM);
       onSuccess(res.remainingBalance ?? coinsBalance - cost);
       onClose();
-
-      const msg = `🎉 Congratulations! You are now a FitPulse Pro member!\nYour Pro perks and golden badge are active.`;
-      if (Platform.OS === 'web') {
-        window.alert(msg);
-      } else {
-        Alert.alert('⭐ FitPulse Pro Active!', msg);
-      }
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Could not complete upgrade.');
     } finally {

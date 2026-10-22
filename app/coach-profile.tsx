@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, Platform,
+  ActivityIndicator, Alert, Modal, Platform, Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 import { getWallet, hireCoachWithCoins, coinsToEtb } from '../lib/walletService';
+import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
 
 interface CoachProfile {
   uid: string;
@@ -36,7 +37,12 @@ const coachProfileCache: Record<string, CachedCoachProfile> = {};
 
 export default function CoachProfilePage() {
   const router = useRouter();
-  const { uid } = useLocalSearchParams<{ uid: string }>();
+  const { uid, chapa_status, tx_ref, coins } = useLocalSearchParams<{
+    uid: string;
+    chapa_status?: string;
+    tx_ref?: string;
+    coins?: string;
+  }>();
   const { user, updateCoins } = useUserStore();
 
   const cached = uid ? coachProfileCache[uid] : undefined;
@@ -47,6 +53,8 @@ export default function CoachProfilePage() {
   const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>(cached?.requestStatus || 'none');
   const [traineeBalance, setTraineeBalance] = useState<number | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [chapaLoading, setChapaLoading] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -68,6 +76,96 @@ export default function CoachProfilePage() {
       });
     }
   }, [uid]);
+
+  // ── Auto-Verify Chapa Payment on Return from Checkout ────────────────────
+  useEffect(() => {
+    let status = chapa_status;
+    let ref = tx_ref;
+    let coinsParam = coins;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search) {
+      const cleanSearch = window.location.search.replace(/&amp;/g, '&');
+      const sp = new URLSearchParams(cleanSearch);
+      if (!status) status = sp.get('chapa_status') || undefined;
+      if (!ref) ref = sp.get('tx_ref') || undefined;
+      if (!coinsParam) coinsParam = sp.get('coins') || undefined;
+    }
+
+    if (status === 'verify' && ref && user.uid && coach) {
+      async function completeChapaHire() {
+        try {
+          const verifyRes = await fetch(
+            `/api/chapa-verify?tx_ref=${ref}&uid=${user.uid}&coins=${coinsParam || coach?.price_per_month || ''}`
+          );
+          const data = await verifyRes.json();
+          if (data.success && data.verified && coach) {
+            const hireRes = await hireCoachWithCoins({
+              traineeUid: user.uid!,
+              traineeName: user.name || 'Trainee',
+              traineeAvatar: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`,
+              coachUid: coach.uid,
+              coachName: coach.name,
+              coins: coach.price_per_month,
+              message: `${user.name || 'Trainee'} hired you via Telebirr / CBE (Chapa)!`,
+            });
+            if (hireRes.success) {
+              setRequestStatus('pending');
+              if (coachProfileCache[uid!]) { coachProfileCache[uid!].requestStatus = 'pending'; }
+              updateCoins(hireRes.remainingBalance ?? 0);
+              setTraineeBalance(hireRes.remainingBalance ?? 0);
+              setShowSuccessModal(true);
+            }
+          }
+        } catch (e) {
+          console.warn('[Coach Chapa Verification Error]:', e);
+        } finally {
+          router.replace({ pathname: '/coach-profile', params: { uid } });
+        }
+      }
+      completeChapaHire();
+    }
+  }, [chapa_status, tx_ref, user.uid, coach]);
+
+  const handlePayWithChapa = async () => {
+    if (!coach || !user.uid) return;
+    setChapaLoading(true);
+    try {
+      const baseUrl = typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'https://bodybuilder-app-phi.vercel.app';
+      const returnUrl = `${baseUrl}/coach-profile?uid=${coach.uid}&chapa_status=verify&coins=${coach.price_per_month}`;
+
+      const initRes = await fetch('/api/chapa-initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          coins: coach.price_per_month,
+          amount: coach.price_per_month,
+          email: user.email || 'athlete@fitpulse.app',
+          firstName: user.name?.split(' ')[0] || 'FitPulse',
+          lastName: user.name?.split(' ')[1] || 'Athlete',
+          returnUrl,
+        }),
+      });
+
+      const initData = await initRes.json();
+      if (initData.success && initData.checkoutUrl) {
+        setShowConfirm(false);
+        if (Platform.OS === 'web') {
+          window.location.href = initData.checkoutUrl;
+        } else {
+          Linking.openURL(initData.checkoutUrl);
+        }
+      } else {
+        Alert.alert('Payment Error', initData.error || 'Failed to start Chapa checkout.');
+      }
+    } catch (e: any) {
+      Alert.alert('Payment Error', e?.message || 'Could not connect to Chapa payment gateway.');
+    } finally {
+      setChapaLoading(false);
+    }
+  };
 
   const fetchAll = async (showLoading: boolean) => {
     if (showLoading) setLoading(true);
@@ -118,26 +216,11 @@ export default function CoachProfilePage() {
 
     const priceCoins = coach?.price_per_month ?? 0;
 
-    // If coach has a coin price, use coin payment flow
+    // If coach has a coin price, re-check balance and open confirm modal
     if (priceCoins > 0) {
-      // Re-check live wallet balance before showing confirm
       const w = await getWallet(user.uid);
       const bal = w?.balance_coins ?? 0;
       setTraineeBalance(bal);
-
-      if (bal < priceCoins) {
-        const msg = `You need 🪙 ${priceCoins} coins to hire this coach.\nYour balance: 🪙 ${bal} coins.\n\nTop up your FitPulse Wallet to continue.`;
-        if (Platform.OS === 'web') {
-          const go = window.confirm(msg + '\n\nOpen Wallet now?');
-          if (go) router.push('/wallet');
-        } else {
-          Alert.alert('Insufficient Coins', msg, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Top Up Now', onPress: () => router.push('/wallet') },
-          ]);
-        }
-        return;
-      }
       setShowConfirm(true);
       return;
     }
@@ -187,7 +270,7 @@ export default function CoachProfilePage() {
         if (coachProfileCache[uid!]) { coachProfileCache[uid!].requestStatus = 'pending'; }
         updateCoins(res.remainingBalance ?? 0);
         setTraineeBalance(res.remainingBalance ?? 0);
-        Alert.alert('✅ Coach Hired!', `🪙 ${coach.price_per_month} coins paid.\nRemaining balance: 🪙 ${res.remainingBalance} coins.`);
+        setShowSuccessModal(true);
       } else {
         const errMsg = res.error === 'INSUFFICIENT_COINS'
           ? 'Not enough coins. Please top up your FitPulse Wallet.'
@@ -399,28 +482,77 @@ export default function CoachProfilePage() {
         <View style={confirmModalS.overlay}>
           <View style={confirmModalS.card}>
             <Text style={confirmModalS.icon}>🪙</Text>
-            <Text style={confirmModalS.title}>Confirm Payment</Text>
+            <Text style={confirmModalS.title}>Hire Coach</Text>
             <Text style={confirmModalS.desc}>
-              You are about to pay{' '}
-              <Text style={{ color: Colors.primary, fontWeight: '800' }}>🪙 {coach?.price_per_month} coins</Text>
-              {' '}to hire{' '}
-              <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{coach?.name}</Text>
-              {' '}for 1 month.
+              Monthly Coaching Fee:{' '}
+              <Text style={{ color: Colors.primary, fontWeight: '800' }}>🪙 {coach?.price_per_month} coins ({coach?.price_per_month} ETB)</Text>
+              {'\n'}Coach: <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{coach?.name}</Text>
             </Text>
-            <Text style={confirmModalS.balance}>
-              Your current balance: 🪙 {traineeBalance ?? 0} coins
+
+            <Text style={[
+              confirmModalS.balance,
+              (traineeBalance ?? 0) < (coach?.price_per_month ?? 0) && { color: '#F87171' }
+            ]}>
+              Your Balance: 🪙 {traineeBalance ?? 0} Coins
+              {(traineeBalance ?? 0) < (coach?.price_per_month ?? 0) ? ' (Insufficient Coins)' : ' (Sufficient)'}
             </Text>
-            <View style={confirmModalS.btnRow}>
-              <TouchableOpacity style={confirmModalS.cancelBtn} onPress={() => setShowConfirm(false)} activeOpacity={0.8}>
-                <Text style={confirmModalS.cancelText}>Cancel</Text>
+
+            {/* Chapa Direct Pay Option (Telebirr / CBE - Test Mode) */}
+            <TouchableOpacity
+              style={confirmModalS.chapaBtn}
+              onPress={handlePayWithChapa}
+              disabled={chapaLoading || requesting}
+              activeOpacity={0.85}
+            >
+              {chapaLoading ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="flash" size={17} color="#000" />
+                  <Text style={confirmModalS.chapaBtnText}>
+                    Pay with Telebirr / CBE (Chapa)
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Coins Pay Option (if sufficient balance) */}
+            {(traineeBalance ?? 0) >= (coach?.price_per_month ?? 0) && (
+              <TouchableOpacity
+                style={confirmModalS.confirmBtn}
+                onPress={doHireWithCoins}
+                disabled={requesting || chapaLoading}
+                activeOpacity={0.85}
+              >
+                {requesting ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <Text style={confirmModalS.confirmText}>Pay with Coins (🪙 {coach?.price_per_month})</Text>
+                )}
               </TouchableOpacity>
-              <TouchableOpacity style={confirmModalS.confirmBtn} onPress={doHireWithCoins} disabled={requesting} activeOpacity={0.85}>
-                {requesting ? <ActivityIndicator color="#000" size="small" /> : <Text style={confirmModalS.confirmText}>Pay & Hire</Text>}
-              </TouchableOpacity>
-            </View>
+            )}
+
+            <TouchableOpacity
+              style={confirmModalS.cancelBtn}
+              onPress={() => setShowConfirm(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={confirmModalS.cancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* ── PAYMENT SUCCESS MODAL ─────────────────────────────────────── */}
+      <PaymentSuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        coinsAdded={coach?.price_per_month ?? 0}
+        newBalance={traineeBalance ?? undefined}
+        title="Coach Hired Successfully! 🎉"
+        subtitle={`You are now training with ${coach?.name}.`}
+        paymentMethod="FitPulse / Chapa"
+      />
     </SafeAreaView>
   );
 }
@@ -483,15 +615,22 @@ const confirmModalS = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: 10 },
   desc: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', lineHeight: 21 },
   balance: { fontSize: 13, color: '#6B7280', marginTop: 10 },
-  btnRow: { flexDirection: 'row', gap: 12, marginTop: 22, width: '100%' },
-  cancelBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center',
-    backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a',
-  },
-  cancelText: { color: '#9CA3AF', fontWeight: '700', fontSize: 14 },
   confirmBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center',
-    backgroundColor: Colors.primary,
+    width: '100%', paddingVertical: 14, borderRadius: 14, alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.15)', borderWidth: 1.5, borderColor: Colors.primary,
+    marginTop: 10,
   },
-  confirmText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  confirmText: { color: Colors.primary, fontWeight: '800', fontSize: 14.5 },
+  chapaBtn: {
+    width: '100%', flexDirection: 'row', gap: 8, paddingVertical: 14, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, marginTop: 18,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+  },
+  chapaBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  cancelBtn: {
+    width: '100%', paddingVertical: 12, borderRadius: 14, alignItems: 'center',
+    backgroundColor: 'transparent', marginTop: 8,
+  },
+  cancelText: { color: '#8A95A5', fontWeight: '600', fontSize: 13.5 },
 });

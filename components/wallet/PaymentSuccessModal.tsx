@@ -30,9 +30,13 @@ export default function PaymentSuccessModal({
   newBalance,
   paymentMethod = 'Telebirr / CBE (Chapa)',
   txRef,
-  title = 'Payment Successful!',
-  subtitle = 'Your coins have been added to your FitPulse Wallet.',
+  title,
+  subtitle,
 }: PaymentSuccessModalProps) {
+  const isPro = coinsAdded === 0;
+  const displayTitle = title || (isPro ? 'FitPulse Pro Activated! ⭐' : 'Payment Successful!');
+  const displaySubtitle = subtitle || (isPro ? 'Your Pro perks and golden badge are now active.' : 'Your coins have been added to your FitPulse Wallet.');
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -47,19 +51,25 @@ export default function PaymentSuccessModal({
 
           {/* 3D FitPulse Coin Icon Badge */}
           <View style={styles.coinBadgeWrap}>
-            <FitPulseCoinSvg size={64} />
+            {isPro ? (
+              <Ionicons name="star" size={56} color="#EAB308" />
+            ) : (
+              <FitPulseCoinSvg size={64} />
+            )}
           </View>
 
           {/* Title & Celebration Header */}
-          <Text style={styles.titleText}>{title}</Text>
-          <Text style={styles.subtitleText}>{subtitle}</Text>
+          <Text style={styles.titleText}>{displayTitle}</Text>
+          <Text style={styles.subtitleText}>{displaySubtitle}</Text>
 
           {/* Coins Added Highlight Card */}
-          <View style={styles.coinsAddedCard}>
-            <Text style={styles.coinsAddedNumber}>
-              +{coinsAdded.toLocaleString()}
+          <View style={[styles.coinsAddedCard, isPro && { backgroundColor: 'rgba(234, 179, 8, 0.12)', borderColor: 'rgba(234, 179, 8, 0.3)' }]}>
+            <Text style={[styles.coinsAddedNumber, isPro && { color: '#EAB308', fontSize: 24 }]}>
+              {isPro ? '⭐ PRO ACTIVATED' : `+${coinsAdded.toLocaleString()}`}
             </Text>
-            <Text style={styles.coinsAddedLabel}>FitPulse Coins Credited</Text>
+            <Text style={styles.coinsAddedLabel}>
+              {isPro ? 'VIP Perks & Golden Badge Active' : 'FitPulse Coins Credited'}
+            </Text>
           </View>
 
           {/* Summary Details Box */}

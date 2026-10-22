@@ -36,9 +36,9 @@ export default async function handler(req: any, res: any) {
     const amount = parseFloat(verifyData.data.amount) || 0;
     const coins = Math.round(amount);
 
-    // Extract uid from tx_ref: fp-chapa-[safeUid]-[timestamp]
-    const parts = txRef.split('-');
-    const safeUid = parts.length >= 3 ? parts[2] : null;
+    // Extract uid from tx_ref: fp-[safeUid]-[timestamp] or fp-chapa-[safeUid]-[timestamp]
+    const match = txRef.match(/^fp(?:-chapa)?-([a-zA-Z0-9_-]+)-\d+$/);
+    const safeUid = match ? match[1] : null;
 
     if (safeUid) {
       // Find matching user in wallets table

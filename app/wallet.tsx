@@ -711,6 +711,10 @@ export default function WalletScreen() {
         onSuccess={(newBal) => {
           setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
           updateCoins(newBal);
+          setSuccessCoins(0);
+          setSuccessBalance(newBal);
+          setSuccessMethod('FitPulse Pro Membership ⭐');
+          setShowSuccessModal(true);
         }}
         onOpenTopup={() => setShowTopup(true)}
       />

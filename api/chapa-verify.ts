@@ -66,7 +66,7 @@ export default async function handler(req: any, res: any) {
     // 3. Resolve Full UID (from query, body, Chapa meta, or txRef prefix lookup)
     let finalUid = uid || data.data?.meta?.uid;
     if (!finalUid && txRef) {
-      const match = txRef.match(/^fp-chapa-([a-zA-Z0-9_-]+)-\d+$/);
+      const match = txRef.match(/^fp(?:-chapa)?-([a-zA-Z0-9_-]+)-\d+$/);
       if (match && match[1]) {
         const candidate = match[1];
         if (candidate.length >= 20) {
