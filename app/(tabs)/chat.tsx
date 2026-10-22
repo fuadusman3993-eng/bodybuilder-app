@@ -149,7 +149,41 @@ export default function ChatScreen() {
           } catch (_) {}
         }
 
-        // 4. Guaranteed fallbacks - NEVER drop active conversations
+        // 4. Fallback to coach_requests trainee_name (trainees who hired coach)
+        if (!name) {
+          try {
+            const { data: rData } = await supabase
+              .from('coach_requests')
+              .select('trainee_name, trainee_avatar')
+              .eq('trainee_uid', otherUid)
+              .not('trainee_name', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (rData?.trainee_name) {
+              name = rData.trainee_name;
+              avatar = rData.trainee_avatar || avatar;
+            }
+          } catch (_) {}
+        }
+
+        // 5. Fallback to follows table username via stories (cross-reference)
+        if (!name) {
+          try {
+            const { data: sData } = await supabase
+              .from('stories')
+              .select('username, avatar_url')
+              .eq('uid', otherUid)
+              .limit(1)
+              .maybeSingle();
+            if (sData?.username) {
+              name = sData.username;
+              avatar = sData.avatar_url || avatar;
+            }
+          } catch (_) {}
+        }
+
+        // 6. Guaranteed fallbacks - NEVER drop active conversations
         if (!name) {
           name = 'Athlete';
         }

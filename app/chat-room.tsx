@@ -133,6 +133,40 @@ export default function ChatRoom() {
         } catch (_) {}
       }
 
+      // 4. Fallback to coach_requests trainee_name
+      if (!name) {
+        try {
+          const { data: rData } = await supabase
+            .from('coach_requests')
+            .select('trainee_name, trainee_avatar')
+            .eq('trainee_uid', otherUserUid)
+            .not('trainee_name', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (rData?.trainee_name) {
+            name = rData.trainee_name;
+            avatar = rData.trainee_avatar || avatar;
+          }
+        } catch (_) {}
+      }
+
+      // 5. Fallback to stories
+      if (!name) {
+        try {
+          const { data: sData } = await supabase
+            .from('stories')
+            .select('username, avatar_url')
+            .eq('uid', otherUserUid)
+            .limit(1)
+            .maybeSingle();
+          if (sData?.username) {
+            name = sData.username;
+            avatar = sData.avatar_url || avatar;
+          }
+        } catch (_) {}
+      }
+
       setOtherUser({
         name: name || 'Athlete',
         avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Athlete')}&background=00E676&color=000&size=120`,
