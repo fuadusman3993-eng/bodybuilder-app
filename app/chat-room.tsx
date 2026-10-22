@@ -85,16 +85,61 @@ export default function ChatRoom() {
   // Fetch other user info
   useEffect(() => {
     if (!otherUserUid) return;
-    getDoc(doc(db, 'users', otherUserUid)).then(snap => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setOtherUser({ 
-          name: d.name || d.displayName || d.username || 'User', 
-          avatar: d.avatar || d.photoURL || '',
-          isCoach: d.role === 'coach'
-        });
+    async function loadOtherUser() {
+      let name = '';
+      let avatar = '';
+      let isCoach = false;
+
+      // 1. Try Firestore users doc
+      try {
+        const snap = await getDoc(doc(db, 'users', otherUserUid));
+        if (snap.exists()) {
+          const d = snap.data();
+          name = d.name || d.displayName || d.username || '';
+          avatar = d.avatar || d.photoURL || '';
+          isCoach = d.role === 'coach';
+        }
+      } catch (_) {}
+
+      // 2. Fallback to Supabase coach_profiles
+      if (!name) {
+        try {
+          const { data: cData } = await supabase
+            .from('coach_profiles')
+            .select('name, avatar_url')
+            .eq('uid', otherUserUid)
+            .maybeSingle();
+          if (cData?.name) {
+            name = cData.name;
+            avatar = cData.avatar_url || avatar;
+            isCoach = true;
+          }
+        } catch (_) {}
       }
-    }).catch(() => {});
+
+      // 3. Fallback to Supabase posts
+      if (!name) {
+        try {
+          const { data: pData } = await supabase
+            .from('posts')
+            .select('username, avatar_url')
+            .eq('uid', otherUserUid)
+            .limit(1)
+            .maybeSingle();
+          if (pData?.username) {
+            name = pData.username;
+            avatar = pData.avatar_url || avatar;
+          }
+        } catch (_) {}
+      }
+
+      setOtherUser({
+        name: name || 'Athlete',
+        avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Athlete')}&background=00E676&color=000&size=120`,
+        isCoach,
+      });
+    }
+    loadOtherUser();
   }, [otherUserUid]);
 
   // Fetch messages

@@ -105,21 +105,56 @@ export default function ChatScreen() {
         let name = '';
         let avatar = '';
         let isCoach = false;
-        let userExists = false;
+
+        // 1. Try Firestore users doc
         try {
           const snap = await getDoc(doc(db, 'users', otherUid));
           if (snap.exists()) {
             const d = snap.data();
-            name = d.name || d.displayName || d.username || 'User';
+            name = d.name || d.displayName || d.username || '';
             avatar = d.avatar || d.photoURL || '';
             isCoach = d.role === 'coach';
-            userExists = true;
           }
         } catch (_) {}
 
-        // Skip ghost/deleted/invalid user conversations so fake "User" accounts never appear
-        if (!userExists) {
-          continue;
+        // 2. Fallback to Supabase coach_profiles
+        if (!name) {
+          try {
+            const { data: cData } = await supabase
+              .from('coach_profiles')
+              .select('name, avatar_url')
+              .eq('uid', otherUid)
+              .maybeSingle();
+            if (cData?.name) {
+              name = cData.name;
+              avatar = cData.avatar_url || avatar;
+              isCoach = true;
+            }
+          } catch (_) {}
+        }
+
+        // 3. Fallback to Supabase posts (e.g. for users who posted)
+        if (!name) {
+          try {
+            const { data: pData } = await supabase
+              .from('posts')
+              .select('username, avatar_url')
+              .eq('uid', otherUid)
+              .limit(1)
+              .maybeSingle();
+            if (pData?.username) {
+              name = pData.username;
+              avatar = pData.avatar_url || avatar;
+            }
+          } catch (_) {}
+        }
+
+        // 4. Guaranteed fallbacks - NEVER drop active conversations
+        if (!name) {
+          name = 'Athlete';
+        }
+        if (!avatar) {
+          avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
         }
 
         let unreadCount = 0;
