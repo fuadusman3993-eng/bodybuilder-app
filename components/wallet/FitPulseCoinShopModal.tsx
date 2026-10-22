@@ -38,18 +38,14 @@ export interface CoinBundleItem {
 export const FITPULSE_COIN_BUNDLES: CoinBundleItem[] = [
   { id: '30',   coins: 30,   priceUsd: 0.32,  priceEtb: 30 },
   { id: '50',   coins: 50,   priceUsd: 0.52,  priceEtb: 50 },
-  { id: '100',  coins: 100,  priceUsd: 1.05,  priceEtb: 100 },
-  { id: '200',  coins: 200,  priceUsd: 2.09,  priceEtb: 200 },
-  { id: '350',  coins: 350,  priceUsd: 3.65,  priceEtb: 350 },
-  { id: '500',  coins: 500,  priceUsd: 5.19,  priceEtb: 500 },
-  { id: '1000', coins: 1000, priceUsd: 10.39, priceEtb: 1000 },
+  { id: '150',  coins: 150,  priceUsd: 1.55,  priceEtb: 150 },
 ];
 
 export default function FitPulseCoinShopModal({
   visible,
   onClose,
   coinsBalance,
-  initialCurrency = 'USD',
+  initialCurrency = 'ETB',
   onSelectCardPayment,
   onConfirmLocalPayment,
   onViewHistory,
@@ -57,7 +53,7 @@ export default function FitPulseCoinShopModal({
   const { user } = useUserStore();
 
   const [currency, setCurrency] = useState<CurrencyCode>(initialCurrency);
-  const [selectedBundleId, setSelectedBundleId] = useState<string>('350');
+  const [selectedBundleId, setSelectedBundleId] = useState<string>('50');
   const [customCoins, setCustomCoins] = useState<string>('');
   const [isCustomSelected, setIsCustomSelected] = useState<boolean>(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'telebirr' | 'cbe_birr' | 'chapa'>(
@@ -76,8 +72,8 @@ export default function FitPulseCoinShopModal({
   };
 
   // Calculate current coins and price
-  let currentCoins = 350;
-  let currentPrice = currency === 'ETB' ? 350 : 3.65;
+  let currentCoins = 50;
+  let currentPrice = currency === 'ETB' ? 50 : 0.52;
 
   if (isCustomSelected) {
     const parsed = parseInt(customCoins, 10) || 0;
@@ -350,39 +346,39 @@ export default function FitPulseCoinShopModal({
                 </>
               )}
             </View>
-
-            {/* Order Summary Footer */}
-            <View style={s.summaryContainer}>
-              <View style={s.summaryTotalRow}>
-                <Text style={s.summaryLabel}>
-                  Total <Text style={{ color: '#8A95A5', fontSize: 13 }}>({currentCoins} Coins)</Text>
-                </Text>
-                <Text style={s.summaryAmount}>{formatCurrency(currentPrice, currency)}</Text>
-              </View>
-
-              <Text style={s.disclaimerText}>
-                By tapping Pay, you agree to our <Text style={{ color: '#A0B0C0' }}>Virtual Items Policy</Text>. By using any amount of Coins, you acknowledge and confirm that you will no longer be eligible for a refund.
-              </Text>
-
-              {/* Pay Now Button */}
-              <TouchableOpacity
-                style={[s.payNowBtn, isProcessing && { opacity: 0.6 }]}
-                activeOpacity={0.88}
-                onPress={handlePayNow}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <ActivityIndicator color="#000" />
-                ) : (
-                  <Text style={s.payNowBtnText}>
-                    {paymentMethod === 'card'
-                      ? `Pay ${formatCurrency(currentPrice, currency)} with Card`
-                      : `Recharge ${formatCurrency(currentPrice, currency)}`}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
           </ScrollView>
+
+          {/* Sticky Order Summary & Recharge Button */}
+          <View style={s.summaryContainer}>
+            <View style={s.summaryTotalRow}>
+              <Text style={s.summaryLabel}>
+                Total <Text style={{ color: '#8A95A5', fontSize: 13 }}>({currentCoins} Coins)</Text>
+              </Text>
+              <Text style={s.summaryAmount}>{formatCurrency(currentPrice, currency)}</Text>
+            </View>
+
+            <Text style={s.disclaimerText}>
+              By tapping Pay, you agree to our <Text style={{ color: '#A0B0C0' }}>Virtual Items Policy</Text>. By using any amount of Coins, you acknowledge and confirm that you will no longer be eligible for a refund.
+            </Text>
+
+            {/* Pay Now Button */}
+            <TouchableOpacity
+              style={[s.payNowBtn, isProcessing && { opacity: 0.6 }]}
+              activeOpacity={0.88}
+              onPress={handlePayNow}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={s.payNowBtnText}>
+                  {paymentMethod === 'card'
+                    ? `Pay ${formatCurrency(currentPrice, currency)} with Card`
+                    : `Recharge ${formatCurrency(currentPrice, currency)}`}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -406,7 +402,10 @@ const s = StyleSheet.create({
     maxWidth: 720,
     alignSelf: 'center',
     paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: 0,
+    flex: 1,
+    display: 'flex' as any,
+    flexDirection: 'column' as any,
   },
   headerRow: {
     flexDirection: 'row',
@@ -547,24 +546,24 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 8-Card Grid (4 per row on desktop, 2-3 on mobile)
+  // 4-Bundle Grid (2x2 layout)
   bundlesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     marginBottom: 14,
   },
   bundleBox: {
-    width: Platform.OS === 'web' ? '23.5%' : '31%',
+    width: '47.5%',
     backgroundColor: '#101C26',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#192C3C',
     overflow: 'hidden',
-    minHeight: 76,
+    minHeight: 84,
     justifyContent: 'center',
   },
   bundleBoxActive: {
@@ -578,8 +577,8 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   bundleCoinNum: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: '#FFFFFF',
     flexShrink: 1,
   },
@@ -738,12 +737,15 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Order Summary Footer
+  // Order Summary Footer — sticky at bottom, outside ScrollView
   summaryContainer: {
     borderTopWidth: 1,
     borderTopColor: '#14222D',
-    paddingTop: 16,
-    gap: 12,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    paddingHorizontal: 20,
+    gap: 10,
+    backgroundColor: '#0A1318',
   },
   summaryTotalRow: {
     flexDirection: 'row',

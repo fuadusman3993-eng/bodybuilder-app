@@ -42,6 +42,7 @@ import CardPaymentModal from '../components/wallet/CardPaymentModal';
 import ProUpgradeModal from '../components/wallet/ProUpgradeModal';
 import FitPulseCoinSvg from '../components/ui/FitPulseCoinSvg';
 import FitPulseCoinShopModal from '../components/wallet/FitPulseCoinShopModal';
+import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
 
 const { width } = Dimensions.get('window');
 
@@ -81,6 +82,12 @@ export default function WalletScreen() {
 
   // Pro Upgrade Modal
   const [showProModal, setShowProModal] = useState(false);
+
+  // Payment Success Modal (replaces browser window.alert)
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successCoins, setSuccessCoins] = useState(0);
+  const [successBalance, setSuccessBalance] = useState<number | undefined>(undefined);
+  const [successMethod, setSuccessMethod] = useState('Telebirr / CBE (Chapa)');
 
   // Coach Payout Modal
   const [showPayout, setShowPayout] = useState(false);
@@ -173,9 +180,10 @@ export default function WalletScreen() {
             const newBal = data.newBalance ?? ((wallet?.balance_coins ?? 0) + addedCoins);
             setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
             updateCoins(newBal);
-            const msg = `🎉 Payment Successful!\n${addedCoins.toLocaleString()} FitPulse Coins added to your wallet.\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
-            if (Platform.OS === 'web') window.alert(msg);
-            else Alert.alert('Payment Successful', msg);
+            setSuccessCoins(addedCoins);
+            setSuccessBalance(newBal);
+            setSuccessMethod('Telebirr / CBE (Chapa)');
+            setShowSuccessModal(true);
             fetchAll();
           } else if (data.alreadyProcessed) {
             fetchAll();
@@ -225,9 +233,10 @@ export default function WalletScreen() {
         setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
         updateCoins(newBal);
         setShowTopup(false);
-        const msg = `✅ ${selectedBundle.coins} Coins added!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
-        if (Platform.OS === 'web') window.alert(msg);
-        else Alert.alert('Top-Up Successful', msg);
+        setSuccessCoins(selectedBundle.coins);
+        setSuccessBalance(newBal);
+        setSuccessMethod(selectedMethod === 'telebirr' ? 'Telebirr' : selectedMethod === 'cbe_birr' ? 'CBE Birr' : 'Payment');
+        setShowSuccessModal(true);
         fetchAll();
       } else {
         Alert.alert('Top-Up Failed', res.error || 'Please try again.');
@@ -253,9 +262,10 @@ export default function WalletScreen() {
       setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
       updateCoins(newBal);
       setShowCardModal(false);
-      const msg = `✅ ${checkoutCoins.toLocaleString()} Coins added successfully via Card!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
-      if (Platform.OS === 'web') window.alert(msg);
-      else Alert.alert('Payment Successful', msg);
+      setSuccessCoins(checkoutCoins);
+      setSuccessBalance(newBal);
+      setSuccessMethod('Card Payment');
+      setShowSuccessModal(true);
       fetchAll();
     }
   };
@@ -324,9 +334,10 @@ export default function WalletScreen() {
       setWallet((prev) => (prev ? { ...prev, balance_coins: newBal } : null));
       updateCoins(newBal);
       setShowTopup(false);
-      const msg = `✅ ${coins.toLocaleString()} Coins added!\nNew Balance: 🪙 ${newBal.toLocaleString()}`;
-      if (Platform.OS === 'web') window.alert(msg);
-      else Alert.alert('Top-Up Successful', msg);
+      setSuccessCoins(coins);
+      setSuccessBalance(newBal);
+      setSuccessMethod(method === 'telebirr' ? 'Telebirr' : method === 'cbe_birr' ? 'CBE Birr' : method);
+      setShowSuccessModal(true);
       fetchAll();
     } else {
       throw new Error(res.error || 'Failed to complete recharge.');
@@ -433,6 +444,8 @@ export default function WalletScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
@@ -481,13 +494,8 @@ export default function WalletScreen() {
                 activeOpacity={0.88}
                 onPress={() => setShowTopup(true)}
               >
-                <View style={styles.topUpIconCircle}>
-                  <Ionicons name="add" size={18} color="#000" />
-                </View>
-                <View style={styles.actionBtnTextWrap}>
-                  <Text style={styles.topUpBtnTitle}>Top Up Coins</Text>
-                  <Text style={styles.topUpBtnSub}>Add coins to your wallet</Text>
-                </View>
+                <Ionicons name="add" size={20} color="#000" />
+                <Text style={styles.topUpBtnTitle}>Top Up</Text>
               </TouchableOpacity>
 
               {/* Withdraw (Dark Outline with Green Border) */}
@@ -496,13 +504,8 @@ export default function WalletScreen() {
                 activeOpacity={0.88}
                 onPress={() => setShowPayout(true)}
               >
-                <View style={styles.withdrawIconCircle}>
-                  <Ionicons name="arrow-up" size={16} color="#00E676" />
-                </View>
-                <View style={styles.actionBtnTextWrap}>
-                  <Text style={styles.withdrawBtnTitle}>Withdraw</Text>
-                  <Text style={styles.withdrawBtnSub}>Transfer your earnings</Text>
-                </View>
+                <Ionicons name="arrow-up" size={18} color="#00E676" />
+                <Text style={styles.withdrawBtnTitle}>Withdraw</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -712,6 +715,15 @@ export default function WalletScreen() {
         onOpenTopup={() => setShowTopup(true)}
       />
 
+      {/* ── PAYMENT SUCCESS MODAL ───────────────────────────────────────── */}
+      <PaymentSuccessModal
+        visible={showSuccessModal}
+        onClose={() => { setShowSuccessModal(false); fetchAll(); }}
+        coinsAdded={successCoins}
+        newBalance={successBalance}
+        paymentMethod={successMethod}
+      />
+
       {/* ── COACH WITHDRAWAL MODAL ─────────────────────────────────────── */}
       <Modal visible={showPayout} transparent animationType="slide" onRequestClose={() => setShowPayout(false)}>
         <TouchableOpacity style={mStyles.overlay} activeOpacity={1} onPress={() => setShowPayout(false)}>
@@ -833,6 +845,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#050B0E', // Deep charcoal background from reference
+    overflow: 'hidden',
   },
 
   // Header matching image
@@ -855,6 +868,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 680,
     alignSelf: 'center',
+    overflow: 'hidden',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -950,7 +964,7 @@ const styles = StyleSheet.create({
   },
   heroShadowOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 19, 24, 0.45)',
+    backgroundColor: 'rgba(10, 19, 24, 0.25)',
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -1022,9 +1036,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#00E676',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
     shadowColor: '#00E676',
@@ -1058,9 +1073,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#091319',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1.5,

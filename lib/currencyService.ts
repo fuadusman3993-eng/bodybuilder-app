@@ -87,7 +87,7 @@ export function detectDefaultCurrency(country?: string): CurrencyCode {
   if (c.includes('uk') || c.includes('united kingdom') || c.includes('england') || c.includes('britain')) return 'GBP';
   if (c.includes('uae') || c.includes('emirates') || c.includes('dubai')) return 'AED';
   if (c.includes('germany') || c.includes('france') || c.includes('italy') || c.includes('spain') || c.includes('europe')) return 'EUR';
-  return 'USD';
+  return 'ETB';
 }
 
 /**

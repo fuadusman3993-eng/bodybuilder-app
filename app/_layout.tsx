@@ -55,9 +55,24 @@ export default function RootLayout() {
           const name = firebaseUser.displayName || uData?.username || uData?.name || 'User';
           const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
           const city = uData?.city || undefined;
+
+          // ── Pro persistence: check Supabase wallets.pro_until on every login/refresh ──
+          let userTier = UserTier.FREE;
+          try {
+            const { data: wData } = await supabase
+              .from('wallets')
+              .select('pro_until')
+              .eq('user_id', firebaseUser.uid)
+              .maybeSingle();
+            if (wData?.pro_until && new Date(wData.pro_until) > new Date()) {
+              userTier = UserTier.PREMIUM;
+            }
+          } catch (_) {
+            // Silently fail — wallet may not exist yet for new users
+          }
           
           setUser({
-            tier: UserTier.FREE,
+            tier: userTier,
             name,
             role,
             uid: firebaseUser.uid,
