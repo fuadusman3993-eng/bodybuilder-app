@@ -44,6 +44,7 @@ import ProUpgradeModal from '../components/wallet/ProUpgradeModal';
 import FitPulseCoinSvg from '../components/ui/FitPulseCoinSvg';
 import FitPulseCoinShopModal from '../components/wallet/FitPulseCoinShopModal';
 import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
+import TransactionReceiptModal from '../components/wallet/TransactionReceiptModal';
 import { safeBack } from '../lib/navigation';
 
 const { width } = Dimensions.get('window');
@@ -66,6 +67,7 @@ export default function WalletScreen() {
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<CoinTransaction | null>(null);
 
   // Active Currency
   const [currency, setCurrency] = useState<CurrencyCode>('ETB');
@@ -425,6 +427,43 @@ export default function WalletScreen() {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const formatTxDateTime = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `${dateStr} • ${timeStr}`;
+    } catch {
+      return formatDate(iso);
+    }
+  };
+
+  const formatCleanTxTitle = (tx: CoinTransaction) => {
+    const desc = tx.description || '';
+    if (tx.type === 'topup' || desc.toLowerCase().includes('top-up') || desc.startsWith('fp-')) {
+      return 'Wallet Top-up';
+    }
+    if (tx.type === 'spend_subscription' || desc.toLowerCase().includes('fitpulse pro')) {
+      return 'FitPulse Pro (30 days)';
+    }
+    if (tx.type === 'spend_coach') {
+      return 'Coach Session Payment';
+    }
+    if (tx.type === 'spend_plan') {
+      return 'Workout Plan Purchase';
+    }
+    if (tx.type === 'payout') {
+      return 'Coach Withdrawal';
+    }
+    if (tx.type === 'coach_earning') {
+      return 'Coaching Earnings';
+    }
+    if (desc.includes(':')) {
+      return desc.split(':')[0].trim();
+    }
+    return desc || 'Transaction';
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* ── TOP HEADER — slim bar: chevron back + currency pill only ──── */}
@@ -643,7 +682,12 @@ export default function WalletScreen() {
                 {txs.map((tx) => {
                   const isCredit = tx.amount_coins > 0;
                   return (
-                    <View key={tx.id} style={styles.txRow}>
+                    <TouchableOpacity
+                      key={tx.id}
+                      style={styles.txRow}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedTx(tx)}
+                    >
                       <View style={[styles.txIconBadge, isCredit ? styles.txBadgeCredit : styles.txBadgeDebit]}>
                         <Ionicons
                           name={isCredit ? 'add-circle' : 'person-circle'}
@@ -653,14 +697,17 @@ export default function WalletScreen() {
                       </View>
                       <View style={styles.txDetails}>
                         <Text style={styles.txDesc} numberOfLines={1}>
-                          {tx.description ?? tx.type}
+                          {formatCleanTxTitle(tx)}
                         </Text>
-                        <Text style={styles.txDate}>{formatDate(tx.created_at)}</Text>
+                        <Text style={styles.txDate}>{formatTxDateTime(tx.created_at)}</Text>
                       </View>
-                      <Text style={[styles.txAmount, isCredit ? styles.txAmountCredit : styles.txAmountDebit]}>
-                        {isCredit ? '+' : ''}{tx.amount_coins} 🪙
-                      </Text>
-                    </View>
+                      <View style={styles.txAmountWrap}>
+                        <Text style={[styles.txAmount, isCredit ? styles.txAmountCredit : styles.txAmountDebit]}>
+                          {isCredit ? '+' : ''}{tx.amount_coins} 🪙
+                        </Text>
+                        <Ionicons name="chevron-forward" size={14} color="#6B7280" style={{ marginLeft: 6 }} />
+                      </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -851,6 +898,14 @@ export default function WalletScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── TRANSACTION RECEIPT MODAL (ደረሰኝ) ─────────────────────────── */}
+      <TransactionReceiptModal
+        visible={!!selectedTx}
+        tx={selectedTx}
+        onClose={() => setSelectedTx(null)}
+        currency={currency}
+      />
     </SafeAreaView>
   );
 }
@@ -1343,6 +1398,10 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#8A95A5',
     marginTop: 2,
+  },
+  txAmountWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   txAmount: {
     fontSize: 15,
