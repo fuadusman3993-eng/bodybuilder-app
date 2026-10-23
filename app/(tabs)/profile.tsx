@@ -12,6 +12,7 @@ import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import { getWallet } from '../../lib/walletService';
 import { getProfile } from '../../lib/profileService';
+import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
@@ -300,10 +301,44 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {!authInitialized ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+      {!authInitialized || (user?.uid && !profileData && user.tier !== UserTier.GUEST) ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          {/* Top row skeleton: Avatar + Stats */}
+          <View style={styles.topRow}>
+            <View style={{ width: 84, height: 84, borderRadius: 42, overflow: 'hidden' }}>
+              <Skeleton width={84} height={84} borderRadius={42} />
+            </View>
+            <View style={styles.statsRow}>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.statItem}>
+                  <Skeleton width={32} height={20} borderRadius={4} />
+                  <Skeleton width={48} height={12} borderRadius={3} style={{ marginTop: 6 }} />
+                </View>
+              ))}
+            </View>
+          </View>
+          {/* Name & Bio skeleton */}
+          <View style={styles.nameBlock}>
+            <Skeleton width={160} height={20} borderRadius={4} style={{ marginBottom: 8 }} />
+            <Skeleton width="85%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width="60%" height={14} borderRadius={4} style={{ marginBottom: 12 }} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Skeleton width={70} height={24} borderRadius={12} />
+              <Skeleton width={90} height={24} borderRadius={12} />
+            </View>
+          </View>
+          {/* Action pills skeleton */}
+          <View style={styles.pillRow}>
+            <Skeleton width="48%" height={38} borderRadius={10} />
+            <Skeleton width="48%" height={38} borderRadius={10} />
+          </View>
+          {/* Grid skeleton */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <Skeleton key={i} width={GRID_ITEM_SIZE} height={GRID_ITEM_SIZE * 1.25} borderRadius={6} />
+            ))}
+          </View>
+        </ScrollView>
       ) : (!user?.uid || user.tier === UserTier.GUEST) ? (
         <View style={styles.guestCenterWrap}>
           {/* User Outline Icon matching Image 1 */}

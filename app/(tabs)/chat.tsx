@@ -72,10 +72,10 @@ export default function ChatScreen() {
   // When guest user enters or taps the Chat tab, automatically pop up the TikTok Auth Sheet (Image 2)
   useFocusEffect(
     useCallback(() => {
-      if (!user?.uid || user.tier === UserTier.GUEST) {
+      if (authInitialized && (!user?.uid || user.tier === UserTier.GUEST)) {
         setShowAuthModal(true);
       }
-    }, [user?.uid, user?.tier])
+    }, [authInitialized, user?.uid, user?.tier])
   );
 
   // Note: Guest users view the TikTok-style login/signup state in-place without forced redirect
@@ -265,8 +265,34 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* ── Guest State matching Image 1 ── */}
-      {(!user?.uid || user.tier === UserTier.GUEST) ? (
+      {/* ── Jakob's Law Skeleton Loader while auth restores on page refresh ── */}
+      {!authInitialized ? (
+        <View style={{ flex: 1, paddingHorizontal: 14 }}>
+          {/* Filters skeleton */}
+          <View style={{ flexDirection: 'row', gap: 10, marginVertical: 14 }}>
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} width={70} height={32} borderRadius={16} />
+            ))}
+          </View>
+          {/* Conversations skeleton */}
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <View key={i} style={styles.convRow}>
+              <View style={styles.avatarWrap}>
+                <Skeleton width={52} height={52} borderRadius={26} />
+              </View>
+              <View style={styles.convInfo}>
+                <View style={styles.convTop}>
+                  <Skeleton width={120} height={16} />
+                  <Skeleton width={40} height={12} />
+                </View>
+                <View style={[styles.convBottom, { marginTop: 6 }]}>
+                  <Skeleton width={200} height={14} />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (!user?.uid || user.tier === UserTier.GUEST) ? (
         <View style={styles.guestCenterWrap}>
           <View style={styles.guestOutlineIconWrap}>
             <Ionicons name="chatbubbles-outline" size={60} color="#757575" />
