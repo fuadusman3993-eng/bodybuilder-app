@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -55,6 +55,9 @@ export default function WalletScreen() {
     amount?: string;
   }>();
   const { user, updateCoins, setTier } = useUserStore();
+
+  const isVerifyingRef = useRef(false);
+  const verifiedTxRef = useRef<string | null>(null);
 
   const [wallet, setWallet]         = useState<Wallet | null>(null);
   const [txs, setTxs]               = useState<CoinTransaction[]>([]);
@@ -125,6 +128,28 @@ export default function WalletScreen() {
     setShowCurrencyModal(false);
   };
 
+  const handleBack = () => {
+    try {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const referrer = document.referrer || '';
+        if (window.history.length > 1 && referrer && referrer.includes(window.location.host)) {
+          router.back();
+          return;
+        }
+        router.replace('/(tabs)/profile');
+        return;
+      }
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/profile');
+      }
+    } catch (_) {
+      router.replace('/(tabs)/profile');
+    }
+  };
+
   const fetchAll = useCallback(async () => {
     if (!user.uid) return;
     try {
@@ -175,6 +200,9 @@ export default function WalletScreen() {
     }
 
     if (chapaStatus === 'verify' && txRef && user.uid) {
+      if (isVerifyingRef.current || verifiedTxRef.current === txRef) return;
+      isVerifyingRef.current = true;
+      verifiedTxRef.current = txRef;
       async function verifyChapa() {
         try {
           const verifyRes = await fetch(
@@ -203,6 +231,7 @@ export default function WalletScreen() {
           console.warn('[Chapa Verification error]:', e);
         } finally {
           // Clean URL params to avoid re-triggering on page refresh
+          isVerifyingRef.current = false;
           router.replace('/wallet');
         }
       }
@@ -417,8 +446,8 @@ export default function WalletScreen() {
       <View style={styles.header}>
         <View style={styles.headerInner}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color="#FFF" />
             </TouchableOpacity>
 
             {/* Glowing Green Rounded-Square Wallet Badge */}
@@ -889,8 +918,10 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 36,
     height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   walletHeaderIconWrap: {
     width: 44,
