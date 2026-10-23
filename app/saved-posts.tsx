@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Skeleton from '../components/ui/Skeleton';
+import { safeBack } from '../lib/navigation';
 
 const BG = Colors.background;
 
@@ -203,7 +204,7 @@ export default function SavedPostsPage() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack('/(tabs)/profile')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved Posts</Text>

@@ -12,6 +12,7 @@ import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import { doc, getDoc } from 'firebase/firestore';
 import Skeleton from '../components/ui/Skeleton';
+import { safeBack } from '../lib/navigation';
 
 import { db } from '../lib/firebase';
 
@@ -335,7 +336,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack('/(tabs)/profile')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>

@@ -14,6 +14,7 @@ import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
+import { safeBack } from '../lib/navigation';
 
 const { width } = Dimensions.get('window');
 const BG = Colors.background;
@@ -355,7 +356,7 @@ export default function UserProfilePage() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack('/(tabs)/community')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>@{username}</Text>

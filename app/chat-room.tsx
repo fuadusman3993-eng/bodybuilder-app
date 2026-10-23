@@ -12,6 +12,7 @@ import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { usePresenceStore } from '../store/presenceStore';
 import { Colors } from '../constants/colors';
+import { safeBack } from '../lib/navigation';
 
 // expo-av only imported on native
 let Audio: any = null;
@@ -780,7 +781,7 @@ export default function ChatRoom() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+        <TouchableOpacity onPress={() => safeBack('/(tabs)/chat')} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={28} color="#FFF" />
         </TouchableOpacity>
         

@@ -14,6 +14,7 @@ import Skeleton from '../components/ui/Skeleton';
 import { getWallet, hireCoachWithCoins, coinsToEtb } from '../lib/walletService';
 import { getProfile } from '../lib/profileService';
 import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
+import { safeBack } from '../lib/navigation';
 
 interface CoachProfile {
   uid: string;
@@ -384,7 +385,7 @@ export default function CoachProfilePage() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => safeBack('/(tabs)/community')}>
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Coach Profile</Text>

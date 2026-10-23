@@ -44,6 +44,7 @@ import ProUpgradeModal from '../components/wallet/ProUpgradeModal';
 import FitPulseCoinSvg from '../components/ui/FitPulseCoinSvg';
 import FitPulseCoinShopModal from '../components/wallet/FitPulseCoinShopModal';
 import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
+import { safeBack } from '../lib/navigation';
 
 const { width } = Dimensions.get('window');
 
@@ -131,25 +132,7 @@ export default function WalletScreen() {
   };
 
   const handleBack = () => {
-    try {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const referrer = document.referrer || '';
-        if (window.history.length > 1 && referrer && referrer.includes(window.location.host)) {
-          router.back();
-          return;
-        }
-        router.replace('/(tabs)/profile');
-        return;
-      }
-
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)/profile');
-      }
-    } catch (_) {
-      router.replace('/(tabs)/profile');
-    }
+    safeBack('/(tabs)/profile');
   };
 
   const fetchAll = useCallback(async () => {
@@ -508,8 +491,8 @@ export default function WalletScreen() {
 
             {/* Top Left Coin Badge & Balance */}
             <View style={styles.heroTopRow}>
-              {/* 3D Gold FitPulse Coin Badge (Refined 48px) */}
-              <FitPulseCoinSvg size={48} />
+              {/* 3D Gold FitPulse Coin Badge (Refined 40px) */}
+              <FitPulseCoinSvg size={40} />
 
               <View style={styles.heroBalanceTextWrap}>
                 <View style={styles.heroCoinLabelRow}>
@@ -1042,36 +1025,37 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   heroCoinLabel: {
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#A0B0C0',
   },
   heroBalanceNumber: {
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
-    marginTop: 2,
-    lineHeight: 42,
+    letterSpacing: -0.3,
+    marginTop: 1,
+    lineHeight: 34,
   },
   heroEquivalentText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#00E676',
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.45)',
     marginTop: 2,
+    letterSpacing: 0.2,
   },
   trendPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 14,
+    gap: 4,
+    backgroundColor: 'rgba(0, 230, 118, 0.10)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 12,
     alignSelf: 'flex-start',
-    marginTop: 8,
+    marginTop: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.25)',
+    borderColor: 'rgba(0, 230, 118, 0.20)',
   },
   trendPercent: {
     fontSize: 11,
