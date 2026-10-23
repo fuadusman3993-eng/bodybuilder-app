@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -477,22 +478,37 @@ export default function WalletScreen() {
           }
         >
           <View style={styles.pageInner}>
-            {/* ── HERO BALANCE CARD (Matching Reference Image) ─────────────── */}
+            {/* ── HERO BALANCE CARD ─────────────────────────────────────── */}
           <View style={styles.heroCard}>
-            {/* Background Athlete Illustration */}
+            {/* Background Athlete — full card width, cinematic */}
             <Image
               source={require('../assets/images/wallet-hero-athlete.png')}
               style={styles.heroBgAthlete}
               contentFit="cover"
             />
 
-            {/* Gradient shadow to guarantee crisp text readability */}
-            <View style={styles.heroShadowOverlay} />
+            {/* Left-to-right dark gradient so balance text is always readable */}
+            <LinearGradient
+              colors={['rgba(10,19,24,0.97)', 'rgba(10,19,24,0.72)', 'rgba(10,19,24,0.10)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            {/* Bottom fade to blend into page background */}
+            <LinearGradient
+              colors={['transparent', 'rgba(10,19,24,0.60)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+
+            {/* Screen Title — subtle uppercase inside banner */}
+            <Text style={styles.heroScreenTitle}>WALLET</Text>
 
             {/* Top Left Coin Badge & Balance */}
             <View style={styles.heroTopRow}>
               {/* 3D Gold FitPulse Coin Badge (SVG - no black box) */}
-              <FitPulseCoinSvg size={52} />
+              <FitPulseCoinSvg size={72} />
 
               <View style={styles.heroBalanceTextWrap}>
                 <Text style={styles.heroCoinLabel}>FitPulse Coins</Text>
@@ -965,28 +981,37 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     overflow: 'hidden',
     position: 'relative',
-    paddingTop: 22,
+    paddingTop: 26,
     paddingHorizontal: 18,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   heroBgAthlete: {
     position: 'absolute',
     top: 0,
+    left: 0,
     right: 0,
     bottom: 0,
-    width: 260,
-    maxWidth: '52%',
+    width: '100%',
     height: '100%',
-    opacity: 0.88,
+    opacity: 0.75,
   },
   heroShadowOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(10, 19, 24, 0.25)',
   },
+  heroScreenTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.40)',
+    letterSpacing: 4,
+    textAlign: 'center',
+    marginBottom: 20,
+    zIndex: 2,
+  },
   heroTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 14,
+    gap: 16,
     zIndex: 2,
   },
   coin3dBadge: {
@@ -998,15 +1023,15 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   heroCoinLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#A0B0C0',
   },
   heroBalanceNumber: {
-    fontSize: 42,
+    fontSize: 62,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: -1,
+    letterSpacing: -2,
     marginTop: -2,
   },
   heroEquivalentText: {
