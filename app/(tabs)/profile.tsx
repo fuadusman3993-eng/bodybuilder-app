@@ -11,6 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import { getWallet } from '../../lib/walletService';
+import { getProfile } from '../../lib/profileService';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
@@ -72,8 +73,23 @@ export default function ProfileScreen() {
     try {
       const uid = auth.currentUser?.uid || user.uid;
       if (!uid) return;
-      const docSnap = await getDoc(doc(db, 'users', uid));
-      if (docSnap.exists()) setProfileData(docSnap.data());
+
+      // Primary: read authoritative profile from Supabase
+      const profile = await getProfile(uid);
+      if (profile) {
+        setProfileData({
+          name: profile.name,
+          username: profile.username || profile.name,
+          avatar: profile.avatar_url,
+          city: profile.city,
+          country: profile.country,
+          bio: profile.bio,
+          role: profile.role,
+        });
+      } else {
+        const docSnap = await getDoc(doc(db, 'users', uid)).catch(() => null);
+        if (docSnap?.exists()) setProfileData(docSnap.data());
+      }
     } catch (e) {
       console.error(e);
     }

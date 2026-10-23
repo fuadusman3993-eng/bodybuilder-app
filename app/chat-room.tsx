@@ -8,8 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { usePresenceStore } from '../store/presenceStore';
 import { Colors } from '../constants/colors';
@@ -82,95 +81,17 @@ export default function ChatRoom() {
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
 
-  // Fetch other user info
+  // Fetch other user info directly from Supabase Unified Profiles
   useEffect(() => {
     if (!otherUserUid) return;
     async function loadOtherUser() {
-      let name = '';
-      let avatar = '';
-      let isCoach = false;
-
-      // 1. Try Firestore users doc
-      try {
-        const snap = await getDoc(doc(db, 'users', otherUserUid));
-        if (snap.exists()) {
-          const d = snap.data();
-          name = d.name || d.displayName || d.username || '';
-          avatar = d.avatar || d.photoURL || '';
-          isCoach = d.role === 'coach';
-        }
-      } catch (_) {}
-
-      // 2. Fallback to Supabase coach_profiles
-      if (!name) {
-        try {
-          const { data: cData } = await supabase
-            .from('coach_profiles')
-            .select('name, avatar_url')
-            .eq('uid', otherUserUid)
-            .maybeSingle();
-          if (cData?.name) {
-            name = cData.name;
-            avatar = cData.avatar_url || avatar;
-            isCoach = true;
-          }
-        } catch (_) {}
-      }
-
-      // 3. Fallback to Supabase posts
-      if (!name) {
-        try {
-          const { data: pData } = await supabase
-            .from('posts')
-            .select('username, avatar_url')
-            .eq('uid', otherUserUid)
-            .limit(1)
-            .maybeSingle();
-          if (pData?.username) {
-            name = pData.username;
-            avatar = pData.avatar_url || avatar;
-          }
-        } catch (_) {}
-      }
-
-      // 4. Fallback to coach_requests trainee_name
-      if (!name) {
-        try {
-          const { data: rData } = await supabase
-            .from('coach_requests')
-            .select('trainee_name, trainee_avatar')
-            .eq('trainee_uid', otherUserUid)
-            .not('trainee_name', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (rData?.trainee_name) {
-            name = rData.trainee_name;
-            avatar = rData.trainee_avatar || avatar;
-          }
-        } catch (_) {}
-      }
-
-      // 5. Fallback to stories
-      if (!name) {
-        try {
-          const { data: sData } = await supabase
-            .from('stories')
-            .select('username, avatar_url')
-            .eq('uid', otherUserUid)
-            .limit(1)
-            .maybeSingle();
-          if (sData?.username) {
-            name = sData.username;
-            avatar = sData.avatar_url || avatar;
-          }
-        } catch (_) {}
-      }
-
+      const profile = await getProfile(otherUserUid);
+      const name = profile?.name || profile?.username || 'Athlete';
+      const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
       setOtherUser({
-        name: name || 'Athlete',
-        avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Athlete')}&background=00E676&color=000&size=120`,
-        isCoach,
+        name,
+        avatar,
+        isCoach: profile?.role === 'coach',
       });
     }
     loadOtherUser();

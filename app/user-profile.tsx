@@ -10,6 +10,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
+import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
@@ -87,6 +88,8 @@ export default function UserProfilePage() {
     try {
       const pPromise = (async () => {
         try {
+          const profile = await getProfile(uid!);
+          if (profile) return profile;
           const snap = await getDoc(doc(db, 'users', uid!));
           return snap.exists() ? snap.data() : null;
         } catch { return null; }

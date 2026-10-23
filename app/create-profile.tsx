@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { syncUserProfile, updateUserProfile } from '../lib/profileService';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 
@@ -44,11 +45,24 @@ export default function CreateProfileScreen() {
     try {
       const uid = auth.currentUser?.uid || user.uid;
       if (uid) {
-        await updateDoc(doc(db, 'users', uid), {
+        // 1. Update Supabase Unified Profile (SSOT)
+        await syncUserProfile({
+          uid,
+          name: username.trim(),
           username: username.trim(),
           country,
           city: finalCity,
+          role: user.role || 'user',
         });
+
+        // 2. Also keep Firestore in sync for backwards-compatibility
+        try {
+          await updateDoc(doc(db, 'users', uid), {
+            username: username.trim(),
+            country,
+            city: finalCity,
+          });
+        } catch (_) {}
       }
       setUser({ ...user, name: username.trim(), country, city: finalCity });
 

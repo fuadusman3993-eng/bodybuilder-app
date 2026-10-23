@@ -4,8 +4,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { getProfile } from '../lib/profileService';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 
@@ -40,13 +39,11 @@ export default function TraineeProfilePage() {
   const fetchTrainee = async (showLoading: boolean) => {
     if (showLoading) setLoading(true);
     try {
-      const docRef = doc(db, 'users', uid!);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setTrainee(data);
+      const profile = await getProfile(uid!);
+      if (profile) {
+        setTrainee(profile);
         traineeProfileCache[uid!] = {
-          trainee: data,
+          trainee: profile,
           timestamp: Date.now(),
         };
       }

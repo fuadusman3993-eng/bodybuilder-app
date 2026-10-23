@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { syncUserProfile } from './profileService';
 
 export interface AuthUser {
   uid: string;
@@ -47,6 +48,14 @@ export async function registerWithEmail(
     role,
     createdAt: serverTimestamp(),
   });
+
+  // Sync to Supabase as single source of truth
+  await syncUserProfile({
+    uid: credential.user.uid,
+    name,
+    email: credential.user.email || undefined,
+    role,
+  }).catch(() => {});
   
   return { ...toAuthUser(credential.user), role };
 }
@@ -68,6 +77,21 @@ export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
       role,
       createdAt: serverTimestamp(),
     }, { merge: true });
+
+    await syncUserProfile({
+      uid: result.user.uid,
+      name: result.user.displayName || 'User',
+      email: result.user.email || undefined,
+      avatar_url: result.user.photoURL || undefined,
+      role,
+    }).catch(() => {});
+  } else {
+    await syncUserProfile({
+      uid: result.user.uid,
+      name: result.user.displayName || 'User',
+      email: result.user.email || undefined,
+      avatar_url: result.user.photoURL || undefined,
+    }).catch(() => {});
   }
   return result.user;
 }

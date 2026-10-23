@@ -7,8 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { getProfilesBatch } from '../../lib/profileService';
 import { useUserStore, UserTier } from '../../store/userStore';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
@@ -99,97 +98,17 @@ export default function ChatScreen() {
 
       if (!data) { setLoading(false); return; }
 
+      // Batch-fetch all other participant profiles from Supabase in ONE single query
+      const otherUids = Array.from(new Set(data.map(c => c.user1_uid === user.uid ? c.user2_uid : c.user1_uid)));
+      const profileMap = await getProfilesBatch(otherUids);
+
       const enriched: ConvItem[] = [];
       for (const conv of data) {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
-        let name = '';
-        let avatar = '';
-        let isCoach = false;
-
-        // 1. Try Firestore users doc
-        try {
-          const snap = await getDoc(doc(db, 'users', otherUid));
-          if (snap.exists()) {
-            const d = snap.data();
-            name = d.name || d.displayName || d.username || '';
-            avatar = d.avatar || d.photoURL || '';
-            isCoach = d.role === 'coach';
-          }
-        } catch (_) {}
-
-        // 2. Fallback to Supabase coach_profiles
-        if (!name) {
-          try {
-            const { data: cData } = await supabase
-              .from('coach_profiles')
-              .select('name, avatar_url')
-              .eq('uid', otherUid)
-              .maybeSingle();
-            if (cData?.name) {
-              name = cData.name;
-              avatar = cData.avatar_url || avatar;
-              isCoach = true;
-            }
-          } catch (_) {}
-        }
-
-        // 3. Fallback to Supabase posts (e.g. for users who posted)
-        if (!name) {
-          try {
-            const { data: pData } = await supabase
-              .from('posts')
-              .select('username, avatar_url')
-              .eq('uid', otherUid)
-              .limit(1)
-              .maybeSingle();
-            if (pData?.username) {
-              name = pData.username;
-              avatar = pData.avatar_url || avatar;
-            }
-          } catch (_) {}
-        }
-
-        // 4. Fallback to coach_requests trainee_name (trainees who hired coach)
-        if (!name) {
-          try {
-            const { data: rData } = await supabase
-              .from('coach_requests')
-              .select('trainee_name, trainee_avatar')
-              .eq('trainee_uid', otherUid)
-              .not('trainee_name', 'is', null)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (rData?.trainee_name) {
-              name = rData.trainee_name;
-              avatar = rData.trainee_avatar || avatar;
-            }
-          } catch (_) {}
-        }
-
-        // 5. Fallback to follows table username via stories (cross-reference)
-        if (!name) {
-          try {
-            const { data: sData } = await supabase
-              .from('stories')
-              .select('username, avatar_url')
-              .eq('uid', otherUid)
-              .limit(1)
-              .maybeSingle();
-            if (sData?.username) {
-              name = sData.username;
-              avatar = sData.avatar_url || avatar;
-            }
-          } catch (_) {}
-        }
-
-        // 6. Guaranteed fallbacks - NEVER drop active conversations
-        if (!name) {
-          name = 'Athlete';
-        }
-        if (!avatar) {
-          avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
-        }
+        const profile = profileMap[otherUid];
+        const name = profile?.name || profile?.username || 'Athlete';
+        const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
+        const isCoach = profile?.role === 'coach';
 
         let unreadCount = 0;
         try {

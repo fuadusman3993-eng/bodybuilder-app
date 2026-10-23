@@ -11,6 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
 import { getWallet } from '../lib/walletService';
+import { getProfile, syncUserProfile } from '../lib/profileService';
 import { useUserStore, UserTier } from '../store/userStore';
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
@@ -50,24 +51,46 @@ export default function RootLayout() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          const uData = docSnap.exists() ? docSnap.data() : null;
-          const role = uData?.role ?? 'user';
-          const name = firebaseUser.displayName || uData?.username || uData?.name || 'User';
-          const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
-          const city = uData?.city || undefined;
+          // 1. Fetch authoritative profile from Supabase
+          let profile = await getProfile(firebaseUser.uid);
 
-          // ── Pro persistence: check Supabase wallets.pro_until via Security Definer RPC ──
+          // If profile does not exist in Supabase yet, sync from Firebase user
+          if (!profile) {
+            let uData: any = null;
+            try {
+              const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+              if (docSnap.exists()) uData = docSnap.data();
+            } catch (_) {}
+
+            const name = firebaseUser.displayName || uData?.username || uData?.name || 'User';
+            const role = (uData?.role as any) || 'user';
+            const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
+            const city = uData?.city || undefined;
+
+            profile = await syncUserProfile({
+              uid: firebaseUser.uid,
+              name,
+              email: firebaseUser.email || undefined,
+              avatar_url: avatar,
+              role,
+              city,
+            });
+          }
+
+          const name = profile?.name || firebaseUser.displayName || 'User';
+          const role = profile?.role || 'user';
+          const avatar = profile?.avatar_url || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
+          const city = profile?.city || undefined;
+
+          // 2. Pro persistence: check Supabase wallets.pro_until via Security Definer RPC
           let userTier = UserTier.FREE;
           try {
             const w = await getWallet(firebaseUser.uid);
             if (w?.pro_until && new Date(w.pro_until) > new Date()) {
               userTier = UserTier.PREMIUM;
             }
-          } catch (_) {
-            // Silently fail
-          }
-          
+          } catch (_) {}
+
           setUser({
             tier: userTier,
             name,

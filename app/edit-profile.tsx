@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
+import { getProfile, syncUserProfile } from '../lib/profileService';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 
@@ -34,18 +35,32 @@ export default function EditProfileScreen() {
     try {
       const uid = auth.currentUser?.uid || user.uid;
       if (!uid) return;
-      const docSnap = await getDoc(doc(db, 'users', uid));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setName(data.username || data.name || user.name);
-        setBio(data.bio || '');
-        setAvatar(data.avatar || null);
-        if (user.role === 'coach') {
-          setExperience(data.experience?.toString() || '');
-        } else {
-          setWeight(data.weight?.toString() || '');
-        }
+
+      // 1. Load from Supabase Unified Profile
+      const prof = await getProfile(uid);
+      if (prof) {
+        setName(prof.name || user.name || '');
+        setBio(prof.bio || '');
+        setAvatar(prof.avatar_url || null);
       }
+
+      // 2. Also check Firestore for extra fields
+      try {
+        const docSnap = await getDoc(doc(db, 'users', uid));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (!prof) {
+            setName(data.username || data.name || user.name);
+            setBio(data.bio || '');
+            setAvatar(data.avatar || null);
+          }
+          if (user.role === 'coach') {
+            setExperience(data.experience?.toString() || '');
+          } else {
+            setWeight(data.weight?.toString() || '');
+          }
+        }
+      } catch (_) {}
     } catch (e) {
       console.error(e);
     }
@@ -110,21 +125,45 @@ export default function EditProfileScreen() {
       const uid = auth.currentUser?.uid || user.uid;
       if (!uid) return;
 
-      const updateData: any = {
+      // 1. Save to Supabase Unified Profile (SSOT)
+      await syncUserProfile({
+        uid,
         name: name.trim(),
         bio: bio.trim(),
-        avatar: avatar,
-      };
+        avatar_url: avatar || undefined,
+        role: user.role || 'user',
+      });
 
+      // 2. If coach, also update coach_profiles
       if (user.role === 'coach') {
-        updateData.experience = experience;
-      } else {
-        updateData.weight = weight;
+        try {
+          await supabase
+            .from('coach_profiles')
+            .update({
+              name: name.trim(),
+              bio: bio.trim(),
+              avatar_url: avatar || undefined,
+            })
+            .eq('uid', uid);
+        } catch (_) {}
       }
 
-      await updateDoc(doc(db, 'users', uid), updateData);
-      
-      setUser({ ...user, name: name.trim() }); // Keep store in sync
+      // 3. Keep Firestore in sync for backwards-compatibility
+      try {
+        const updateData: any = {
+          name: name.trim(),
+          bio: bio.trim(),
+          avatar: avatar,
+        };
+        if (user.role === 'coach') {
+          updateData.experience = experience;
+        } else {
+          updateData.weight = weight;
+        }
+        await updateDoc(doc(db, 'users', uid), updateData);
+      } catch (_) {}
+
+      setUser({ ...user, name: name.trim(), avatar: avatar || user.avatar }); // Keep store in sync
       
       router.back();
     } catch (e: any) {
