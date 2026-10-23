@@ -442,24 +442,13 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* ── TOP HEADER (Matching Image Header) ─────────────────────────── */}
+      {/* ── TOP HEADER — slim bar: chevron back + currency pill only ──── */}
       <View style={styles.header}>
         <View style={styles.headerInner}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={22} color="#FFF" />
-            </TouchableOpacity>
-
-            {/* Glowing Green Rounded-Square Wallet Badge */}
-            <View style={styles.walletHeaderIconWrap}>
-              <Ionicons name="wallet" size={22} color="#00E676" />
-            </View>
-
-            <View style={styles.headerTextWrap}>
-              <Text style={styles.headerTitle}>Wallet</Text>
-              <Text style={styles.headerSubtitle}>Manage your FitPulse coins and earnings</Text>
-            </View>
-          </View>
+          {/* Simple chevron back (image-2 style) */}
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
 
           {/* Currency Rate Pill Badge */}
           <TouchableOpacity
@@ -546,17 +535,8 @@ export default function WalletScreen() {
             </View>
           </View>
 
-          {/* ── COACH EARNINGS SECTION (Matching Reference Image) ────────── */}
+          {/* ── COACH EARNINGS SECTION ────────────────────────────────────── */}
           <View style={styles.coachCard}>
-            <View style={styles.coachHeaderRow}>
-              <View style={styles.coachIconWrap}>
-                <Ionicons name="trending-up" size={20} color="#00E676" />
-              </View>
-              <View>
-                <Text style={styles.coachTitle}>Coach Earnings</Text>
-                <Text style={styles.coachSubtitle}>Your total earnings from coaching and activities.</Text>
-              </View>
-            </View>
 
             {/* 4-Column Grid */}
             <View style={styles.metricsGrid}>
@@ -888,11 +868,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Header matching image
+  // Header — slim transparent bar (no title, no border)
   header: {
     width: '100%',
-    borderBottomWidth: 1,
-    borderBottomColor: '#0E1922',
   },
   headerInner: {
     width: '100%',
@@ -901,8 +879,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   pageInner: {
     width: '100%',
@@ -916,10 +894,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -981,18 +957,17 @@ const styles = StyleSheet.create({
 
   // ── Hero Balance Card ───────────────────────────────────────────────────────
   heroCard: {
-    marginHorizontal: 16,
-    marginTop: 6,
+    marginHorizontal: 0,
+    marginTop: 0,
     marginBottom: 14,
-    borderRadius: 22,
+    borderRadius: 0,
     backgroundColor: '#0A1318',
-    borderWidth: 1,
-    borderColor: '#15242D',
+    borderWidth: 0,
     overflow: 'hidden',
     position: 'relative',
-    paddingTop: 18,
+    paddingTop: 22,
     paddingHorizontal: 18,
-    paddingBottom: 18,
+    paddingBottom: 20,
   },
   heroBgAthlete: {
     position: 'absolute',
