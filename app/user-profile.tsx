@@ -241,9 +241,16 @@ export default function UserProfilePage() {
     if (!currentUser.uid || actionLoading || requestSent) return;
     setActionLoading(true);
     try {
+      let effectiveSenderName = currentUser.name?.trim();
+      if (!effectiveSenderName || ['trainee', 'user', 'athlete'].includes(effectiveSenderName.toLowerCase())) {
+        const prof = await getProfile(currentUser.uid);
+        effectiveSenderName = prof?.name || prof?.username || currentUser.email?.split('@')[0] || 'Athlete';
+      }
+
       const { error } = await supabase.from('coach_requests').insert({
         coach_uid: uid,
         trainee_uid: currentUser.uid,
+        trainee_name: effectiveSenderName,
         status: 'pending',
       });
       if (error) {
@@ -258,7 +265,7 @@ export default function UserProfilePage() {
           user_uid: uid,
           sender_uid: currentUser.uid,
           type: 'request',
-          message: `${currentUser.name || 'A user'} wants you to be their coach.`,
+          message: `${effectiveSenderName} wants you to be their coach.`,
         });
         Alert.alert('✅ Request Sent!', 'The coach will review your request.');
       }
@@ -333,8 +340,10 @@ export default function UserProfilePage() {
     );
   }
 
-  const name = profile?.name || profile?.username || 'User';
-  const username = profile?.username || name.toLowerCase().replace(/\s+/g, '_');
+  const rawName = profile?.name?.trim() || '';
+  const isGeneric = !rawName || ['trainee', 'user', 'athlete', 'a user'].includes(rawName.toLowerCase());
+  const name = !isGeneric ? rawName : (profile?.username || 'Athlete');
+  const username = profile?.username || (!isGeneric ? name.toLowerCase().replace(/\s+/g, '_') : 'athlete');
   const bio = profile?.bio || (coachData ? 'Ready to train you to the next level.' : 'Fitness enthusiast.');
   const goal = profile?.goal || '';
   const city = profile?.city || '';

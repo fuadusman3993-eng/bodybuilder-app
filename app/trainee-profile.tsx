@@ -92,12 +92,12 @@ export default function TraineeProfilePage() {
         <View style={styles.header}>
           <Image
             source={avatarUrl}
-            placeholder={`https://ui-avatars.com/api/?name=${encodeURIComponent(trainee.name || 'Trainee')}&background=10B981&color=fff&size=150`}
+            placeholder={`https://ui-avatars.com/api/?name=${encodeURIComponent(trainee.name || trainee.username || 'Member')}&background=10B981&color=fff&size=150`}
             cachePolicy="memory-disk"
             contentFit="cover"
             style={styles.avatar}
           />
-          <Text style={styles.name}>{trainee.name || trainee.username || 'Trainee'}</Text>
+          <Text style={styles.name}>{trainee.name || trainee.username || 'Member'}</Text>
           <Text style={styles.location}>
             <Ionicons name="location" size={14} color={Colors.textMuted} /> {trainee.city || 'Unknown City'}
           </Text>

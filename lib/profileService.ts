@@ -26,6 +26,109 @@ export interface UserProfile {
 const profileCache: Record<string, { profile: UserProfile; timestamp: number }> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+const GENERIC_NAMES = new Set(['trainee', 'user', 'athlete', 'a user']);
+
+export function isGenericName(name?: string | null): boolean {
+  if (!name || !name.trim()) return true;
+  return GENERIC_NAMES.has(name.trim().toLowerCase());
+}
+
+/**
+ * Autonomously resolves the real identity of a user from notifications,
+ * requests, posts, stories, or email prefix if their name is generic/missing.
+ * Repositories the healed identity in Supabase so subsequent reads are instant.
+ */
+export async function autoHealProfileIdentity(uid: string, fallbackProf?: UserProfile | null): Promise<UserProfile | null> {
+  if (!uid) return null;
+
+  try {
+    // 1. Check notifications table for actual name: "X wants you to be their coach"
+    const { data: nData } = await supabase
+      .from('notifications')
+      .select('message')
+      .eq('sender_uid', uid)
+      .ilike('message', '%wants you to be their coach%')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    let recoveredName: string | null = null;
+    if (nData?.message) {
+      const match = nData.message.replace(/\s+wants you to be their coach.*/i, '').trim();
+      if (match && !isGenericName(match)) {
+        recoveredName = match;
+      }
+    }
+
+    // 2. Fallback to posts
+    if (!recoveredName) {
+      const { data: pData } = await supabase
+        .from('posts')
+        .select('username')
+        .eq('uid', uid)
+        .not('username', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (pData?.username && !isGenericName(pData.username)) {
+        recoveredName = pData.username;
+      }
+    }
+
+    // 3. Fallback to stories
+    if (!recoveredName) {
+      const { data: sData } = await supabase
+        .from('stories')
+        .select('username')
+        .eq('uid', uid)
+        .not('username', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (sData?.username && !isGenericName(sData.username)) {
+        recoveredName = sData.username;
+      }
+    }
+
+    // 4. Fallback to email prefix if available
+    if (!recoveredName && fallbackProf?.email) {
+      const prefix = fallbackProf.email.split('@')[0];
+      if (prefix && !isGenericName(prefix)) {
+        recoveredName = prefix;
+      }
+    }
+
+    if (recoveredName) {
+      const uname = fallbackProf?.username || recoveredName.toLowerCase().replace(/\s+/g, '_');
+      const updated: UserProfile = {
+        ...(fallbackProf || { uid }),
+        uid,
+        name: recoveredName,
+        username: uname,
+      };
+
+      profileCache[uid] = { profile: updated, timestamp: Date.now() };
+
+      // Asynchronously heal in database
+      try {
+        await supabase
+          .from('profiles')
+          .update({ name: recoveredName, username: uname, updated_at: new Date().toISOString() })
+          .eq('uid', uid);
+
+        await supabase
+          .from('coach_requests')
+          .update({ trainee_name: recoveredName })
+          .eq('trainee_uid', uid);
+      } catch (_) {}
+
+      return updated;
+    }
+  } catch (err) {
+    console.warn('[profileService] autoHealProfileIdentity error:', err);
+  }
+
+  return fallbackProf || null;
+}
+
 /**
  * Fetch a single user profile from Supabase
  */
@@ -46,7 +149,11 @@ export async function getProfile(uid: string, forceFresh = false): Promise<UserP
       .maybeSingle();
 
     if (!error && data && data.name) {
-      const prof: UserProfile = data as UserProfile;
+      let prof: UserProfile = data as UserProfile;
+      if (isGenericName(prof.name)) {
+        const healed = await autoHealProfileIdentity(uid, prof);
+        if (healed) prof = healed;
+      }
       profileCache[uid] = { profile: prof, timestamp: Date.now() };
       return prof;
     }
@@ -151,6 +258,14 @@ export async function getProfilesBatch(uids: string[]): Promise<Record<string, U
       for (const row of data) {
         if (row.uid) {
           const prof = row as UserProfile;
+          if (isGenericName(prof.name)) {
+            autoHealProfileIdentity(row.uid, prof).then((healed) => {
+              if (healed) {
+                result[row.uid] = healed;
+                profileCache[row.uid] = { profile: healed, timestamp: Date.now() };
+              }
+            });
+          }
           result[row.uid] = prof;
           profileCache[row.uid] = { profile: prof, timestamp: Date.now() };
         }
@@ -180,11 +295,17 @@ export async function getProfilesBatch(uids: string[]): Promise<Record<string, U
 export async function syncUserProfile(profile: Partial<UserProfile> & { uid: string }): Promise<UserProfile | null> {
   if (!profile.uid) return null;
 
+  const resolvedName = (profile.name && !isGenericName(profile.name))
+    ? profile.name.trim()
+    : (profile.username && !isGenericName(profile.username))
+      ? profile.username.trim()
+      : profile.email?.split('@')[0] || profile.name || 'Member';
+
   try {
     // 1. Try sync_user_profile RPC
     const { data: rpcData, error: rpcErr } = await supabase.rpc('sync_user_profile', {
       p_uid: profile.uid,
-      p_name: profile.name || 'User',
+      p_name: resolvedName,
       p_email: profile.email || null,
       p_avatar_url: profile.avatar_url || null,
       p_role: profile.role || 'user',
@@ -204,8 +325,8 @@ export async function syncUserProfile(profile: Partial<UserProfile> & { uid: str
       .upsert(
         {
           uid: profile.uid,
-          name: profile.name || 'User',
-          username: profile.username || undefined,
+          name: resolvedName,
+          username: profile.username || resolvedName.toLowerCase().replace(/\s+/g, '_'),
           email: profile.email || undefined,
           avatar_url: profile.avatar_url || undefined,
           role: profile.role || 'user',

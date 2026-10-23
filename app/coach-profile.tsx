@@ -12,6 +12,7 @@ import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 import { getWallet, hireCoachWithCoins, coinsToEtb } from '../lib/walletService';
+import { getProfile } from '../lib/profileService';
 import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
 
 interface CoachProfile {
@@ -99,14 +100,19 @@ export default function CoachProfilePage() {
           );
           const data = await verifyRes.json();
           if (data.success && data.verified && coach) {
+            let effectiveName = user.name?.trim();
+            if (!effectiveName || ['trainee', 'user', 'athlete'].includes(effectiveName.toLowerCase())) {
+              const prof = user.uid ? await getProfile(user.uid) : null;
+              effectiveName = prof?.name || prof?.username || user.email?.split('@')[0] || 'Athlete';
+            }
             const hireRes = await hireCoachWithCoins({
               traineeUid: user.uid!,
-              traineeName: user.name || 'Trainee',
+              traineeName: effectiveName,
               traineeAvatar: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`,
               coachUid: coach.uid,
               coachName: coach.name,
               coins: coach.price_per_month,
-              message: `${user.name || 'Trainee'} hired you via Telebirr / CBE (Chapa)!`,
+              message: `${effectiveName} hired you via Telebirr / CBE (Chapa)!`,
             });
             if (hireRes.success) {
               setRequestStatus('pending');
@@ -232,13 +238,18 @@ export default function CoachProfilePage() {
   const doSendFreeRequest = async () => {
     setRequesting(true);
     try {
+      let effectiveName = user.name?.trim();
+      if (!effectiveName || ['trainee', 'user', 'athlete'].includes(effectiveName.toLowerCase())) {
+        const prof = user.uid ? await getProfile(user.uid) : null;
+        effectiveName = prof?.name || prof?.username || user.email?.split('@')[0] || 'Athlete';
+      }
       const { error } = await supabase.from('coach_requests').insert({
         trainee_uid: user.uid,
-        trainee_name: user.name || 'Trainee',
+        trainee_name: effectiveName,
         trainee_avatar: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`,
         coach_uid: uid,
         status: 'pending',
-        message: `${user.name || 'Trainee'} wants to train with you!`,
+        message: `${effectiveName} wants to train with you!`,
       });
       if (error) throw error;
       setRequestStatus('pending');
@@ -256,14 +267,19 @@ export default function CoachProfilePage() {
     setRequesting(true);
     setShowConfirm(false);
     try {
+      let effectiveName = user.name?.trim();
+      if (!effectiveName || ['trainee', 'user', 'athlete'].includes(effectiveName.toLowerCase())) {
+        const prof = user.uid ? await getProfile(user.uid) : null;
+        effectiveName = prof?.name || prof?.username || user.email?.split('@')[0] || 'Athlete';
+      }
       const res = await hireCoachWithCoins({
         traineeUid: user.uid,
-        traineeName: user.name || 'Trainee',
+        traineeName: effectiveName,
         traineeAvatar: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`,
         coachUid: coach.uid,
         coachName: coach.name,
         coins: coach.price_per_month,
-        message: `${user.name || 'Trainee'} hired you via FitPulse Coins!`,
+        message: `${effectiveName} hired you via FitPulse Coins!`,
       });
       if (res.success) {
         setRequestStatus('pending');

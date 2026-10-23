@@ -62,14 +62,18 @@ export default function RootLayout() {
               if (docSnap.exists()) uData = docSnap.data();
             } catch (_) {}
 
-            const name = firebaseUser.displayName || uData?.username || uData?.name || 'User';
+            const realResolved = firebaseUser.displayName
+              || uData?.username
+              || uData?.name
+              || firebaseUser.email?.split('@')[0]
+              || 'Member';
             const role = (uData?.role as any) || 'user';
             const avatar = uData?.avatar || uData?.photoURL || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
             const city = uData?.city || undefined;
 
             profile = await syncUserProfile({
               uid: firebaseUser.uid,
-              name,
+              name: realResolved,
               email: firebaseUser.email || undefined,
               avatar_url: avatar,
               role,
@@ -77,7 +81,11 @@ export default function RootLayout() {
             });
           }
 
-          const name = profile?.name || firebaseUser.displayName || 'User';
+          const rawProfName = profile?.name?.trim();
+          const isGeneric = !rawProfName || ['trainee', 'user', 'athlete', 'a user'].includes(rawProfName.toLowerCase());
+          const name = !isGeneric
+            ? rawProfName
+            : (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Member');
           const role = profile?.role || 'user';
           const avatar = profile?.avatar_url || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
           const city = profile?.city || undefined;
