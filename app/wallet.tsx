@@ -64,6 +64,7 @@ export default function WalletScreen() {
   const [txs, setTxs]               = useState<CoinTransaction[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
 
   // Active Currency
   const [currency, setCurrency] = useState<CurrencyCode>('ETB');
@@ -507,14 +508,33 @@ export default function WalletScreen() {
 
             {/* Top Left Coin Badge & Balance */}
             <View style={styles.heroTopRow}>
-              {/* 3D Gold FitPulse Coin Badge (SVG - no black box) */}
-              <FitPulseCoinSvg size={72} />
+              {/* 3D Gold FitPulse Coin Badge (Refined 48px) */}
+              <FitPulseCoinSvg size={48} />
 
               <View style={styles.heroBalanceTextWrap}>
-                <Text style={styles.heroCoinLabel}>FitPulse Coins</Text>
-                <Text style={styles.heroBalanceNumber}>{balance.toLocaleString()}</Text>
+                <View style={styles.heroCoinLabelRow}>
+                  <Text style={styles.heroCoinLabel}>FitPulse Coins</Text>
+                  <TouchableOpacity
+                    onPress={() => setIsBalanceHidden((prev) => !prev)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    activeOpacity={0.7}
+                    style={styles.eyeToggleBtn}
+                  >
+                    <Ionicons
+                      name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'}
+                      size={16}
+                      color="rgba(255, 255, 255, 0.65)"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.heroBalanceNumber}>
+                  {isBalanceHidden ? '••••••' : balance.toLocaleString()}
+                </Text>
                 <Text style={styles.heroEquivalentText}>
-                  ≈ {formatCurrency(coinsToFiat(balance, currency), currency)}
+                  {isBalanceHidden
+                    ? '≈ ••••'
+                    : `≈ ${formatCurrency(coinsToFiat(balance, currency), currency)}`}
                 </Text>
 
                 {/* 7-Day Trend Pill */}
@@ -570,22 +590,13 @@ export default function WalletScreen() {
                 <View style={[styles.metricCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
                   <Ionicons name="ellipse" size={14} color="#A855F7" />
                 </View>
-                <Text style={styles.metricValue}>{balance.toLocaleString()}</Text>
+                <Text style={styles.metricValue}>
+                  {isBalanceHidden ? '••••' : balance.toLocaleString()}
+                </Text>
                 <Text style={styles.metricLabel}>Available Balance</Text>
               </View>
 
-              {/* 3. Equivalent Currency */}
-              <View style={styles.metricCol}>
-                <View style={[styles.metricCircle, { backgroundColor: 'rgba(234, 179, 8, 0.15)' }]}>
-                  <Ionicons name="card" size={15} color="#EAB308" />
-                </View>
-                <Text style={styles.metricValue}>
-                  {coinsToFiat(balance, currency).toLocaleString()}
-                </Text>
-                <Text style={styles.metricLabel}>Equivalent {currency}</Text>
-              </View>
-
-              {/* 4. Pending Payout */}
+              {/* 3. Pending Payout */}
               <View style={styles.metricCol}>
                 <View style={[styles.metricCircle, { backgroundColor: 'rgba(52, 211, 153, 0.15)' }]}>
                   <Ionicons name="calendar" size={15} color="#34D399" />
@@ -1022,23 +1033,32 @@ const styles = StyleSheet.create({
   heroBalanceTextWrap: {
     zIndex: 2,
   },
+  heroCoinLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  eyeToggleBtn: {
+    padding: 2,
+  },
   heroCoinLabel: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '600',
     color: '#A0B0C0',
   },
   heroBalanceNumber: {
-    fontSize: 62,
+    fontSize: 36,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: -2,
-    marginTop: -2,
+    letterSpacing: -0.5,
+    marginTop: 2,
+    lineHeight: 42,
   },
   heroEquivalentText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#00E676',
-    marginTop: 1,
+    marginTop: 2,
   },
   trendPill: {
     flexDirection: 'row',
