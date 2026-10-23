@@ -9,8 +9,9 @@ import { useUserStore, UserTier } from '../store/userStore';
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { user } = useUserStore();
-  
+  // Snapshot user once at mount — do NOT put user in effect deps (causes re-run loop)
+  const userRef = useRef(useUserStore.getState().user);
+
   // Clean micro-animations like Instagram / TikTok
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -34,7 +35,7 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    const MIN_SPLASH_MS = Platform.OS === 'web' ? 300 : 800;
+    const MIN_SPLASH_MS = Platform.OS === 'web' ? 400 : 800;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
@@ -48,32 +49,36 @@ export default function SplashScreen() {
 
     // Listen for Firebase auth state resolution to directly route authenticated users
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const storedUser = userRef.current;
       if (firebaseUser) {
-        // Authenticated user exists -> Go DIRECTLY to app tabs!
+        // Authenticated user -> Go to app tabs
         navigateTo('/(tabs)');
-      } else if (user?.uid && user.tier !== UserTier.GUEST) {
-        // Persistent non-guest user in store -> Go DIRECTLY to app tabs!
+      } else if (storedUser?.uid && storedUser.tier !== UserTier.GUEST) {
+        // Persistent non-guest user in store -> Go to app tabs
         navigateTo('/(tabs)');
       } else {
-        // No account session -> Go to welcome
+        // No session -> Go to welcome
         navigateTo('/welcome');
       }
     });
 
-    // Fallback safety timer if auth resolution is delayed
+    // Fallback safety timer — longer on web so Firebase has time to initialise
+    const FALLBACK_MS = Platform.OS === 'web' ? 3000 : 2000;
     const fallbackTimer = setTimeout(() => {
-      if (auth.currentUser || (user?.uid && user.tier !== UserTier.GUEST)) {
+      const storedUser = userRef.current;
+      if (auth.currentUser || (storedUser?.uid && storedUser.tier !== UserTier.GUEST)) {
         navigateTo('/(tabs)');
       } else {
         navigateTo('/welcome');
       }
-    }, Platform.OS === 'web' ? 800 : 2000);
+    }, FALLBACK_MS);
 
     return () => {
       unsubscribe();
       clearTimeout(fallbackTimer);
     };
-  }, [router, scaleAnim, opacityAnim, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
