@@ -80,6 +80,8 @@ export default function ChatRoom() {
 
   const flatRef = useRef<FlatList>(null);
   const userHasDraggedRef = useRef(false);
+  const [isChatReady, setIsChatReady] = useState(false);
+  const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
 
@@ -104,6 +106,7 @@ export default function ChatRoom() {
         }
       } catch (_) {}
     }
+    setIsChatReady(true);
   }, []);
 
   // Fetch other user info directly from Supabase Unified Profiles
@@ -200,8 +203,16 @@ export default function ChatRoom() {
         clearTimeout(t3);
         clearTimeout(t4);
       };
+    } else {
+      setIsChatReady(true);
     }
   }, [messages.length, loading, scrollToBottom]);
+
+  // Safety fallback to guarantee chat visibility
+  useEffect(() => {
+    const safety = setTimeout(() => setIsChatReady(true), 350);
+    return () => clearTimeout(safety);
+  }, []);
 
   // Keep sendMedia accessible in DOM event handlers without stale closure
   const sendMediaRef = useRef<any>(null);
@@ -896,7 +907,7 @@ export default function ChatRoom() {
         </View>
       ) : (
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={[{ flex: 1 }, !isChatReady && messages.length > 0 && { opacity: 0 }]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <FlatList
@@ -911,7 +922,8 @@ export default function ChatRoom() {
             onScroll={(e) => {
               const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - (layoutMeasurement.height + contentOffset.y);
-              if (distanceFromBottom < 60) {
+              setShowScrollDownBtn(distanceFromBottom > 160);
+              if (distanceFromBottom < 40) {
                 userHasDraggedRef.current = false;
               }
             }}
@@ -933,6 +945,21 @@ export default function ChatRoom() {
               </View>
             }
           />
+
+          {/* Floating Scroll-to-Bottom Button */}
+          {showScrollDownBtn && (
+            <TouchableOpacity
+              style={styles.floatingScrollDownBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                userHasDraggedRef.current = false;
+                scrollToBottom(true);
+                setShowScrollDownBtn(false);
+              }}
+            >
+              <Ionicons name="chevron-down" size={20} color="#00E676" />
+            </TouchableOpacity>
+          )}
 
           {/* Input / Recording Bar */}
           {isRecording ? (
@@ -1107,6 +1134,26 @@ const styles = StyleSheet.create({
   seenTick: { fontSize: 10.5, fontWeight: '700', marginLeft: 3 },
   seenSent: { color: '#71717A' },
   seenRead: { color: '#00E676' },
+
+  floatingScrollDownBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 68,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#121F2B',
+    borderWidth: 1.5,
+    borderColor: '#00E676',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
+  },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyText: { color: '#666', fontSize: 15 },
