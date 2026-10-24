@@ -363,7 +363,7 @@ export default function WalletScreen() {
       setShowSuccessModal(true);
       fetchAll();
     } else {
-      throw new Error(res.error || 'Failed to complete recharge.');
+      throw new Error(res.error || 'Failed to complete top-up.');
     }
   };
 
@@ -750,7 +750,7 @@ export default function WalletScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ── FITPULSE COIN SHOP MODAL (TikTok-Style Recharge) ───────────── */}
+      {/* ── FITPULSE COIN SHOP MODAL ────────────────────────────────────── */}
       <FitPulseCoinShopModal
         visible={showTopup}
         onClose={() => setShowTopup(false)}
