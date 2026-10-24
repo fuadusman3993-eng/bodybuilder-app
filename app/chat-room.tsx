@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, Image,
@@ -79,34 +79,16 @@ export default function ChatRoom() {
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const flatRef = useRef<FlatList>(null);
-  const userHasDraggedRef = useRef(false);
-  const [isChatReady, setIsChatReady] = useState(false);
   const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
 
-  const scrollToBottom = useCallback((animated = false) => {
-    if (!flatRef.current) return;
-    try {
-      flatRef.current.scrollToEnd({ animated });
-    } catch (_) {}
+  // Inverted list: newest message is index 0 (rendered at visual bottom)
+  // No setTimeout, no scrollToEnd, no opacity hacks needed — this is the WhatsApp/Telegram approach
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
-    // Direct Web fallback to force scroll container to the bottom immediately
-    if (Platform.OS === 'web') {
-      try {
-        const scrollNode =
-          (flatRef.current as any)?.getScrollableNode?.() ||
-          (flatRef.current as any)?._listRef?._scrollRef?.getScrollableNode?.();
-        if (scrollNode) {
-          if (animated) {
-            scrollNode.scrollTo({ top: scrollNode.scrollHeight, behavior: 'smooth' });
-          } else {
-            scrollNode.scrollTop = scrollNode.scrollHeight;
-          }
-        }
-      } catch (_) {}
-    }
-    setIsChatReady(true);
+  const scrollToNewest = useCallback((animated = true) => {
+    flatRef.current?.scrollToOffset({ offset: 0, animated });
   }, []);
 
   // Fetch other user info directly from Supabase Unified Profiles
@@ -166,8 +148,10 @@ export default function ChatRoom() {
           });
           return [...withoutOptimistic, payload.new];
         });
-        if (!userHasDraggedRef.current) {
-          setTimeout(() => scrollToBottom(true), 80);
+        // In inverted list, new messages always appear at top (visual bottom) — no scroll needed
+        // But scroll to top (offset 0) if user is viewing history (btn visible)
+        if (!showScrollDownBtn) {
+          flatRef.current?.scrollToOffset({ offset: 0, animated: false });
         }
         if (payload.new.sender_uid !== user.uid) {
           supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
@@ -178,41 +162,7 @@ export default function ChatRoom() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [conversationId, scrollToBottom]);
-
-  // Disable browser automatic scroll restoration to top on Web
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
-      try {
-        window.history.scrollRestoration = 'manual';
-      } catch (_) {}
-    }
-  }, []);
-
-  // Guaranteed bottom scroll sequence on mount, cache load, or refresh
-  useEffect(() => {
-    if (messages.length > 0 && !userHasDraggedRef.current) {
-      scrollToBottom(false);
-      const t1 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 60);
-      const t2 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 180);
-      const t3 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 400);
-      const t4 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 800);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearTimeout(t4);
-      };
-    } else {
-      setIsChatReady(true);
-    }
-  }, [messages.length, loading, scrollToBottom]);
-
-  // Safety fallback to guarantee chat visibility
-  useEffect(() => {
-    const safety = setTimeout(() => setIsChatReady(true), 350);
-    return () => clearTimeout(safety);
-  }, []);
+  }, [conversationId]);
 
   // Keep sendMedia accessible in DOM event handlers without stale closure
   const sendMediaRef = useRef<any>(null);
@@ -303,8 +253,9 @@ export default function ChatRoom() {
       await supabase.from('conversations')
         .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
-      userHasDraggedRef.current = false;
-      setTimeout(() => scrollToBottom(true), 50);
+      // Inverted list: scroll to offset 0 = newest message (visual bottom)
+      scrollToNewest(true);
+      setShowScrollDownBtn(false);
     }
     setSending(false);
   };
@@ -363,8 +314,8 @@ export default function ChatRoom() {
           isUploading: true,
         };
         setMessages((prev: any[]) => [...prev, optimisticMsg]);
-        userHasDraggedRef.current = false;
-        setTimeout(() => scrollToBottom(true), 100);
+        scrollToNewest(true);
+        setShowScrollDownBtn(false);
 
         const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
@@ -454,8 +405,8 @@ export default function ChatRoom() {
         isUploading: true,
       };
       setMessages((prev: any[]) => [...prev, optimisticMsg]);
-      userHasDraggedRef.current = false;
-      setTimeout(() => scrollToBottom(true), 100);
+      scrollToNewest(true);
+      setShowScrollDownBtn(false);
 
       const response = await fetch(uri);
       const blob = await response.blob();
@@ -522,8 +473,8 @@ export default function ChatRoom() {
     };
 
     setMessages((prev: any[]) => [...prev, optimisticMsg]);
-    userHasDraggedRef.current = false;
-    setTimeout(() => scrollToBottom(true), 100);
+    scrollToNewest(true);
+    setShowScrollDownBtn(false);
 
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
@@ -694,9 +645,11 @@ export default function ChatRoom() {
     const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
     const progressRatio = isPlaying && item.audio_duration ? playbackPosition / item.audio_duration : 0;
 
-    const nextMsg = messages[index + 1];
-    const isSameSenderAsNext = nextMsg && nextMsg.sender_uid === item.sender_uid;
-    const isLastInGroup = !isSameSenderAsNext;
+    // In inverted list, index 0 = newest. index+1 is the OLDER message (visually above current)
+    // "last in group" means no older sibling from same sender above this bubble
+    const olderMsg = reversedMessages[index + 1];
+    const isSameSenderAsOlder = olderMsg && olderMsg.sender_uid === item.sender_uid;
+    const isLastInGroup = !isSameSenderAsOlder;
 
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft, { marginBottom: isLastInGroup ? 12 : 3 }]}>
@@ -907,37 +860,23 @@ export default function ChatRoom() {
         </View>
       ) : (
         <KeyboardAvoidingView
-          style={[{ flex: 1 }, !isChatReady && messages.length > 0 && { opacity: 0 }]}
+          style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <FlatList
             ref={flatRef}
-            data={messages}
+            data={reversedMessages}
             keyExtractor={item => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
-            onScrollBeginDrag={() => {
-              userHasDraggedRef.current = true;
-            }}
+            inverted
             onScroll={(e) => {
-              const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-              const distanceFromBottom = contentSize.height - (layoutMeasurement.height + contentOffset.y);
-              setShowScrollDownBtn(distanceFromBottom > 160);
-              if (distanceFromBottom < 40) {
-                userHasDraggedRef.current = false;
-              }
+              // In inverted list: offset.y == 0 means AT the newest message (bottom)
+              // offset.y > 0 means user has scrolled up into history
+              const offsetY = e.nativeEvent.contentOffset.y;
+              setShowScrollDownBtn(offsetY > 100);
             }}
             scrollEventThrottle={32}
-            onContentSizeChange={() => {
-              if (!userHasDraggedRef.current) {
-                scrollToBottom(false);
-              }
-            }}
-            onLayout={() => {
-              if (!userHasDraggedRef.current) {
-                scrollToBottom(false);
-              }
-            }}
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Ionicons name="chatbubbles-outline" size={60} color="#333" />
@@ -952,8 +891,8 @@ export default function ChatRoom() {
               style={styles.floatingScrollDownBtn}
               activeOpacity={0.8}
               onPress={() => {
-                userHasDraggedRef.current = false;
-                scrollToBottom(true);
+                // In inverted list, offset 0 = newest message at visual bottom
+                scrollToNewest(true);
                 setShowScrollDownBtn(false);
               }}
             >
