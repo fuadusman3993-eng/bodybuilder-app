@@ -12,6 +12,7 @@ import { useUserStore, UserTier } from '../../store/userStore';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
+import FitPulseConfirmModal from '../../components/ui/FitPulseConfirmModal';
 import { Colors } from '../../constants/colors';
 
 const BG = '#0a0a0a';
@@ -68,6 +69,7 @@ export default function ChatScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Coaches' | 'Groups'>('All');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [deleteTargetConv, setDeleteTargetConv] = useState<ConvItem | null>(null);
 
   // When guest user enters or taps the Chat tab, automatically pop up the TikTok Auth Sheet (Image 2)
   useFocusEffect(
@@ -148,30 +150,19 @@ export default function ChatScreen() {
   );
 
   const handleDeleteConversation = (conv: ConvItem) => {
-    const doDelete = async () => {
-      // Optimistically remove from state
-      setConversations((prev: ConvItem[]) => prev.filter((c: ConvItem) => c.id !== conv.id));
-      try {
-        await supabase.from('messages').delete().eq('conversation_id', conv.id);
-        await supabase.from('conversations').delete().eq('id', conv.id);
-      } catch (e) {
-        console.warn('Error deleting conversation:', e);
-      }
-    };
+    setDeleteTargetConv(conv);
+  };
 
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`Delete conversation with ${conv.otherName}?`)) {
-        doDelete();
-      }
-    } else {
-      Alert.alert(
-        'Delete Conversation',
-        `Are you sure you want to delete the conversation with ${conv.otherName}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
-        ]
-      );
+  const handleConfirmDeleteConversation = async () => {
+    if (!deleteTargetConv) return;
+    const convId = deleteTargetConv.id;
+    setConversations((prev: ConvItem[]) => prev.filter((c: ConvItem) => c.id !== convId));
+    setDeleteTargetConv(null);
+    try {
+      await supabase.from('messages').delete().eq('conversation_id', convId);
+      await supabase.from('conversations').delete().eq('id', convId);
+    } catch (e) {
+      console.warn('Error deleting conversation:', e);
     }
   };
 
@@ -366,6 +357,18 @@ export default function ChatScreen() {
       <AuthBottomSheetModal
         visible={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* ── DELETE CONVERSATION CONFIRM MODAL (FITPULSE CARD) ── */}
+      <FitPulseConfirmModal
+        visible={!!deleteTargetConv}
+        title="Delete Conversation?"
+        message={`Are you sure you want to delete the conversation with ${deleteTargetConv?.otherName || 'this user'}? All messages will be permanently removed.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={handleConfirmDeleteConversation}
+        onCancel={() => setDeleteTargetConv(null)}
       />
     </SafeAreaView>
   );

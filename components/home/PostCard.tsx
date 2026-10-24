@@ -11,6 +11,7 @@ import { Layout } from '../../constants/layout';
 import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import SharePostModal from './SharePostModal';
+import FitPulseConfirmModal from '../ui/FitPulseConfirmModal';
 
 export interface RealPost {
   id: string;
@@ -89,6 +90,8 @@ export default function PostCard({
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showPostOptions, setShowPostOptions] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
 
@@ -96,19 +99,16 @@ export default function PostCard({
 
   const handleDelete = () => {
     setShowPostOptions(false);
-    const doDelete = () => {
-      onDeletePost?.(post.id);
-    };
+    setShowDeleteConfirm(true);
+  };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to delete this post?')) {
-        doDelete();
-      }
-    } else {
-      Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: doDelete },
-      ]);
+  const handleConfirmDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await onDeletePost?.(post.id);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -631,6 +631,19 @@ export default function PostCard({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── CONFIRM DELETE MODAL (FITPULSE CARD STYLE) ── */}
+      <FitPulseConfirmModal
+        visible={showDeleteConfirm}
+        title="Delete Post?"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
 
       {/* ── SHARE POST MODAL (TIKTOK STYLE) ── */}
       <SharePostModal

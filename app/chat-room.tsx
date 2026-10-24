@@ -13,6 +13,7 @@ import { useUserStore } from '../store/userStore';
 import { usePresenceStore } from '../store/presenceStore';
 import { Colors } from '../constants/colors';
 import { safeBack } from '../lib/navigation';
+import FitPulseConfirmModal from '../components/ui/FitPulseConfirmModal';
 
 // expo-av only imported on native
 let Audio: any = null;
@@ -53,6 +54,8 @@ export default function ChatRoom() {
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
   const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false;
@@ -622,15 +625,22 @@ export default function ChatRoom() {
   };
 
   const handleDeleteConversation = () => {
-    Alert.alert('Delete Conversation', 'Permanently delete all messages?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        setShowSettings(false);
-        await supabase.from('messages').delete().eq('conversation_id', conversationId);
-        await supabase.from('conversations').delete().eq('id', conversationId);
-        router.back();
-      }},
-    ]);
+    setShowSettings(false);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDeleteChat = async () => {
+    try {
+      setIsDeletingChat(true);
+      await supabase.from('messages').delete().eq('conversation_id', conversationId);
+      await supabase.from('conversations').delete().eq('id', conversationId);
+      setShowDeleteModal(false);
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not delete conversation.');
+    } finally {
+      setIsDeletingChat(false);
+    }
   };
 
   const renderMessage = ({ item, index }: { item: any; index: number }) => {
@@ -977,6 +987,19 @@ export default function ChatRoom() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── DELETE CHAT CONFIRM MODAL (FITPULSE CARD) ── */}
+      <FitPulseConfirmModal
+        visible={showDeleteModal}
+        title="Delete Conversation?"
+        message="Permanently delete all messages in this conversation? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={isDeletingChat}
+        onConfirm={handleConfirmDeleteChat}
+        onCancel={() => setShowDeleteModal(false)}
+      />
 
       {/* Attach Menu Modal */}
       <Modal visible={showAttachMenu} transparent animationType="fade" onRequestClose={() => setShowAttachMenu(false)}>
