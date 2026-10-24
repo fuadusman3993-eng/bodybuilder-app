@@ -79,6 +79,8 @@ export default function ChatRoom() {
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const flatRef = useRef<FlatList>(null);
+  const isAtBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
 
@@ -139,7 +141,7 @@ export default function ChatRoom() {
           });
           return [...withoutOptimistic, payload.new];
         });
-        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 80);
         if (payload.new.sender_uid !== user.uid) {
           supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
         }
@@ -151,11 +153,23 @@ export default function ChatRoom() {
     return () => { supabase.removeChannel(channel); };
   }, [conversationId]);
 
+  // Scroll to bottom on initial message load or updates when appropriate
   useEffect(() => {
-    if (!loading && messages.length > 0) {
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100);
+    if (messages.length > 0) {
+      if (!initialScrollDoneRef.current) {
+        const t1 = setTimeout(() => {
+          flatRef.current?.scrollToEnd({ animated: false });
+        }, 50);
+        const t2 = setTimeout(() => {
+          flatRef.current?.scrollToEnd({ animated: false });
+        }, 200);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }
     }
-  }, [loading]);
+  }, [messages.length]);
 
   // Keep sendMedia accessible in DOM event handlers without stale closure
   const sendMediaRef = useRef<any>(null);
@@ -246,6 +260,7 @@ export default function ChatRoom() {
       await supabase.from('conversations')
         .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 50);
     }
     setSending(false);
   };
@@ -620,7 +635,7 @@ export default function ChatRoom() {
     ]);
   };
 
-  const renderMessage = ({ item }: { item: any }) => {
+  const renderMessage = ({ item, index }: { item: any; index: number }) => {
     const isMe = item.sender_uid === user.uid;
     const isAudio = item.type === 'audio' && item.audio_url;
     const isImage = item.type === 'image' && item.media_url;
@@ -632,16 +647,13 @@ export default function ChatRoom() {
     const displayDuration = isPlaying ? Math.floor(playbackPosition) : (item.audio_duration || 0);
     const progressRatio = isPlaying && item.audio_duration ? playbackPosition / item.audio_duration : 0;
 
+    const nextMsg = messages[index + 1];
+    const isSameSenderAsNext = nextMsg && nextMsg.sender_uid === item.sender_uid;
+    const isLastInGroup = !isSameSenderAsNext;
+
     return (
-      <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
-        {!isMe && (
-          <View style={styles.avatarSmall}>
-            {otherUser.avatar
-              ? <Image source={{ uri: otherUser.avatar }} style={styles.avatarImg} />
-              : <Text style={styles.avatarInitial}>{otherUser.name[0]?.toUpperCase()}</Text>}
-          </View>
-        )}
-        <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+      <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft, { marginBottom: isLastInGroup ? 12 : 3 }]}>
+        <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
           <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
             {isAudio ? (
               <View style={[item.isUploading && { opacity: 0.6 }]}>
@@ -781,8 +793,8 @@ export default function ChatRoom() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => safeBack('/(tabs)/chat')} style={styles.headerBtn}>
-          <Ionicons name="chevron-back" size={28} color="#FFF" />
+        <TouchableOpacity onPress={() => safeBack('/(tabs)/chat')} style={styles.headerBackBtn}>
+          <Ionicons name="chevron-back" size={26} color="#FFF" />
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -796,11 +808,15 @@ export default function ChatRoom() {
               : <View style={styles.headerAvatarPlaceholder}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
           </View>
           <View style={styles.headerNameCol}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={styles.headerName}>{otherUser.name}</Text>
-              {otherUser.isCoach && <Ionicons name="checkmark-circle" size={14} color="#00E676" />}
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">
+                {otherUser.name}
+              </Text>
+              {otherUser.isCoach && (
+                <Ionicons name="checkmark-circle" size={14} color="#00E676" style={{ flexShrink: 0 }} />
+              )}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={styles.statusRow}>
               <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#00E676' : '#666' }]} />
               <Text style={[styles.onlineText, { color: isOnline ? '#00E676' : '#A0A0A0' }]}>
                 {isOnline ? 'Online' : 'Offline'}
@@ -811,16 +827,16 @@ export default function ChatRoom() {
 
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.headerBtn}
+            style={styles.headerActionBtn}
             onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } })}
           >
-            <Ionicons name="call" size={20} color="#FFF" />
+            <Ionicons name="call" size={19} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn}>
-            <Ionicons name="videocam" size={22} color="#FFF" />
+          <TouchableOpacity style={styles.headerActionBtn}>
+            <Ionicons name="videocam" size={21} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowSettings(true)}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#FFF" />
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
+            <Ionicons name="ellipsis-vertical" size={19} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -853,6 +869,24 @@ export default function ChatRoom() {
             keyExtractor={item => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
+            onScroll={(e) => {
+              const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+              const paddingToBottom = 60;
+              isAtBottomRef.current =
+                layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+            }}
+            scrollEventThrottle={32}
+            onContentSizeChange={() => {
+              if (!initialScrollDoneRef.current || isAtBottomRef.current) {
+                flatRef.current?.scrollToEnd({ animated: initialScrollDoneRef.current });
+                initialScrollDoneRef.current = true;
+              }
+            }}
+            onLayout={() => {
+              if (!initialScrollDoneRef.current && messages.length > 0) {
+                flatRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Ionicons name="chatbubbles-outline" size={60} color="#333" />
@@ -984,36 +1018,44 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 8, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#0a0a0a',
   },
-  headerBtn: { padding: 8, justifyContent: 'center', alignItems: 'center' },
-  headerUser: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingLeft: 4 },
-  headerAvatarWrap: { position: 'relative' },
-  headerAvatar: { width: 44, height: 44, borderRadius: 22 },
-  headerAvatarPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
-  headerInitial: { color: '#000', fontWeight: '800', fontSize: 18 },
-  headerNameCol: { justifyContent: 'center' },
-  headerName: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00E676' },
-  onlineText: { color: '#00E676', fontSize: 12, fontWeight: '500' },
+  headerBackBtn: { padding: 6, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  headerUser: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 10, 
+    flex: 1, 
+    minWidth: 0, 
+    paddingHorizontal: 4,
+    marginRight: 4,
+  },
+  headerAvatarWrap: { position: 'relative', flexShrink: 0 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20 },
+  headerAvatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
+  headerInitial: { color: '#000', fontWeight: '800', fontSize: 16 },
+  headerNameCol: { justifyContent: 'center', flex: 1, minWidth: 0 },
+  headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
+  headerName: { color: '#FFF', fontSize: 15.5, fontWeight: '700', flexShrink: 1 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00E676' },
+  onlineText: { color: '#00E676', fontSize: 11.5, fontWeight: '500' },
 
-  headerActions: { flexDirection: 'row', gap: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 1, flexShrink: 0 },
+  headerActionBtn: { padding: 7, justifyContent: 'center', alignItems: 'center' },
 
-  messagesList: { padding: 12, paddingRight: 18, paddingBottom: 24, flexGrow: 1 }, // Added paddingRight to fix overflow
+  messagesList: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
 
-  msgRow: { flexDirection: 'row', marginBottom: 16, alignItems: 'flex-end', width: '100%' },
-  msgRowRight: { justifyContent: 'flex-end', paddingRight: 4 },
+  msgRow: { flexDirection: 'row', alignItems: 'flex-end', width: '100%' },
+  msgRowRight: { justifyContent: 'flex-end' },
   msgRowLeft: { justifyContent: 'flex-start' },
-  avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  avatarImg: { width: 28, height: 28, borderRadius: 14 },
-  avatarInitial: { color: '#000', fontWeight: '700', fontSize: 12 },
 
-  bubble: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
+  bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
   bubbleMe: { backgroundColor: '#0a1f12', borderWidth: 1, borderColor: '#00E676', borderBottomRightRadius: 4 },
   bubbleThem: { backgroundColor: '#1C1C1E', borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 15, lineHeight: 22, color: '#FFF' },
+  bubbleText: { fontSize: 15, lineHeight: 21, color: '#FFF' },
 
   audioRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 180, marginBottom: 8 },
   playIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
@@ -1021,10 +1063,10 @@ const styles = StyleSheet.create({
   audioBar: { width: 2.5, borderRadius: 2 },
   audioDurMe: { fontSize: 11, fontWeight: '600', color: '#A0A0A0', alignSelf: 'flex-end' },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 4 },
-  timeLabel: { fontSize: 11, color: '#666', fontWeight: '500' },
-  seenTick: { fontSize: 11, fontWeight: '700', marginLeft: 4 },
-  seenSent: { color: '#666' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, paddingHorizontal: 4 },
+  timeLabel: { fontSize: 10.5, color: '#71717A', fontWeight: '500' },
+  seenTick: { fontSize: 10.5, fontWeight: '700', marginLeft: 3 },
+  seenSent: { color: '#71717A' },
   seenRead: { color: '#00E676' },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80, gap: 12 },
