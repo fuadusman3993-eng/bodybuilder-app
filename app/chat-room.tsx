@@ -79,10 +79,32 @@ export default function ChatRoom() {
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const flatRef = useRef<FlatList>(null);
-  const isAtBottomRef = useRef(true);
-  const initialScrollDoneRef = useRef(false);
+  const userHasDraggedRef = useRef(false);
   const webImageInputRef = useRef<any>(null);
   const webVideoInputRef = useRef<any>(null);
+
+  const scrollToBottom = useCallback((animated = false) => {
+    if (!flatRef.current) return;
+    try {
+      flatRef.current.scrollToEnd({ animated });
+    } catch (_) {}
+
+    // Direct Web fallback to force scroll container to the bottom immediately
+    if (Platform.OS === 'web') {
+      try {
+        const scrollNode =
+          (flatRef.current as any)?.getScrollableNode?.() ||
+          (flatRef.current as any)?._listRef?._scrollRef?.getScrollableNode?.();
+        if (scrollNode) {
+          if (animated) {
+            scrollNode.scrollTo({ top: scrollNode.scrollHeight, behavior: 'smooth' });
+          } else {
+            scrollNode.scrollTop = scrollNode.scrollHeight;
+          }
+        }
+      } catch (_) {}
+    }
+  }, []);
 
   // Fetch other user info directly from Supabase Unified Profiles
   useEffect(() => {
@@ -141,7 +163,9 @@ export default function ChatRoom() {
           });
           return [...withoutOptimistic, payload.new];
         });
-        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 80);
+        if (!userHasDraggedRef.current) {
+          setTimeout(() => scrollToBottom(true), 80);
+        }
         if (payload.new.sender_uid !== user.uid) {
           supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
         }
@@ -151,25 +175,33 @@ export default function ChatRoom() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [conversationId]);
+  }, [conversationId, scrollToBottom]);
 
-  // Scroll to bottom on initial message load or updates when appropriate
+  // Disable browser automatic scroll restoration to top on Web
   useEffect(() => {
-    if (messages.length > 0) {
-      if (!initialScrollDoneRef.current) {
-        const t1 = setTimeout(() => {
-          flatRef.current?.scrollToEnd({ animated: false });
-        }, 50);
-        const t2 = setTimeout(() => {
-          flatRef.current?.scrollToEnd({ animated: false });
-        }, 200);
-        return () => {
-          clearTimeout(t1);
-          clearTimeout(t2);
-        };
-      }
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      try {
+        window.history.scrollRestoration = 'manual';
+      } catch (_) {}
     }
-  }, [messages.length]);
+  }, []);
+
+  // Guaranteed bottom scroll sequence on mount, cache load, or refresh
+  useEffect(() => {
+    if (messages.length > 0 && !userHasDraggedRef.current) {
+      scrollToBottom(false);
+      const t1 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 60);
+      const t2 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 180);
+      const t3 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 400);
+      const t4 = setTimeout(() => { if (!userHasDraggedRef.current) scrollToBottom(false); }, 800);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(t4);
+      };
+    }
+  }, [messages.length, loading, scrollToBottom]);
 
   // Keep sendMedia accessible in DOM event handlers without stale closure
   const sendMediaRef = useRef<any>(null);
@@ -260,7 +292,8 @@ export default function ChatRoom() {
       await supabase.from('conversations')
         .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 50);
+      userHasDraggedRef.current = false;
+      setTimeout(() => scrollToBottom(true), 50);
     }
     setSending(false);
   };
@@ -319,7 +352,8 @@ export default function ChatRoom() {
           isUploading: true,
         };
         setMessages((prev: any[]) => [...prev, optimisticMsg]);
-        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+        userHasDraggedRef.current = false;
+        setTimeout(() => scrollToBottom(true), 100);
 
         const fileName = `voice_${user.uid}_${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
@@ -409,7 +443,8 @@ export default function ChatRoom() {
         isUploading: true,
       };
       setMessages((prev: any[]) => [...prev, optimisticMsg]);
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      userHasDraggedRef.current = false;
+      setTimeout(() => scrollToBottom(true), 100);
 
       const response = await fetch(uri);
       const blob = await response.blob();
@@ -476,7 +511,8 @@ export default function ChatRoom() {
     };
 
     setMessages((prev: any[]) => [...prev, optimisticMsg]);
-    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+    userHasDraggedRef.current = false;
+    setTimeout(() => scrollToBottom(true), 100);
 
     try {
       const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'mp4');
@@ -861,7 +897,7 @@ export default function ChatRoom() {
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <FlatList
             ref={flatRef}
@@ -869,22 +905,25 @@ export default function ChatRoom() {
             keyExtractor={item => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
+            onScrollBeginDrag={() => {
+              userHasDraggedRef.current = true;
+            }}
             onScroll={(e) => {
               const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-              const paddingToBottom = 60;
-              isAtBottomRef.current =
-                layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+              const distanceFromBottom = contentSize.height - (layoutMeasurement.height + contentOffset.y);
+              if (distanceFromBottom < 60) {
+                userHasDraggedRef.current = false;
+              }
             }}
             scrollEventThrottle={32}
             onContentSizeChange={() => {
-              if (!initialScrollDoneRef.current || isAtBottomRef.current) {
-                flatRef.current?.scrollToEnd({ animated: initialScrollDoneRef.current });
-                initialScrollDoneRef.current = true;
+              if (!userHasDraggedRef.current) {
+                scrollToBottom(false);
               }
             }}
             onLayout={() => {
-              if (!initialScrollDoneRef.current && messages.length > 0) {
-                flatRef.current?.scrollToEnd({ animated: false });
+              if (!userHasDraggedRef.current) {
+                scrollToBottom(false);
               }
             }}
             ListEmptyComponent={
