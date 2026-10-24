@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/userStore';
 import { CurrencyCode, formatCurrency } from '../../lib/currencyService';
 import FitPulseCoinSvg from '../ui/FitPulseCoinSvg';
@@ -33,12 +32,16 @@ export interface CoinBundleItem {
   coins: number;
   priceUsd: number;
   priceEtb: number;
+  badge?: string;
 }
 
 export const FITPULSE_COIN_BUNDLES: CoinBundleItem[] = [
   { id: '30',   coins: 30,   priceUsd: 0.32,  priceEtb: 30 },
-  { id: '50',   coins: 50,   priceUsd: 0.52,  priceEtb: 50 },
-  { id: '150',  coins: 150,  priceUsd: 1.55,  priceEtb: 150 },
+  { id: '50',   coins: 50,   priceUsd: 0.52,  priceEtb: 50,  badge: 'Popular' },
+  { id: '100',  coins: 100,  priceUsd: 1.00,  priceEtb: 100 },
+  { id: '150',  coins: 150,  priceUsd: 1.55,  priceEtb: 150, badge: 'Best Value' },
+  { id: '300',  coins: 300,  priceUsd: 3.10,  priceEtb: 300 },
+  { id: '500',  coins: 500,  priceUsd: 4.99,  priceEtb: 500 },
 ];
 
 export default function FitPulseCoinShopModal({
@@ -90,16 +93,12 @@ export default function FitPulseCoinShopModal({
   const handleSelectBundle = (id: string) => {
     setIsCustomSelected(false);
     setSelectedBundleId(id);
-  };
-
-  const handleSelectCustom = () => {
-    setIsCustomSelected(true);
-    if (!customCoins) setCustomCoins('100');
+    setCustomCoins('');
   };
 
   const handlePayNow = async () => {
     if (isCustomSelected && currentCoins < 30) {
-      Alert.alert('Minimum Coins', 'Minimum recharge amount is 30 coins.');
+      Alert.alert('Minimum Coins', 'Minimum top-up amount is 30 coins.');
       return;
     }
 
@@ -114,7 +113,7 @@ export default function FitPulseCoinShopModal({
       await onConfirmLocalPayment(currentCoins, currentPrice, currency, paymentMethod);
       onClose();
     } catch (e: any) {
-      Alert.alert('Payment Error', e?.message || 'Could not complete recharge.');
+      Alert.alert('Payment Error', e?.message || 'Could not complete top-up.');
     } finally {
       setIsProcessing(false);
     }
@@ -129,8 +128,10 @@ export default function FitPulseCoinShopModal({
           {/* Header Row */}
           <View style={s.headerRow}>
             <View style={s.headerTitleWrap}>
-              <Text style={s.headerTitle}>FitPulse Coin Shop</Text>
-              <Text style={s.headerSub}>Instant in-app credit</Text>
+              <Text style={s.headerTitle}>Get FitPulse Coins</Text>
+              <Text style={s.headerSub} numberOfLines={1}>
+                Unlock workouts, coaches & Pro perks
+              </Text>
             </View>
 
             <View style={s.headerRightActions}>
@@ -142,7 +143,7 @@ export default function FitPulseCoinShopModal({
                 style={s.historyLink}
               >
                 <Text style={s.historyLinkText}>History</Text>
-                <Ionicons name="time-outline" size={15} color="#8A95A5" />
+                <Ionicons name="time-outline" size={14} color="#8A95A5" />
               </TouchableOpacity>
 
               <TouchableOpacity onPress={onClose} style={s.closeBtn}>
@@ -151,7 +152,11 @@ export default function FitPulseCoinShopModal({
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollBody}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={s.scrollBody}
+            bounces={false}
+          >
             {/* User Account Card */}
             <View style={s.accountCard}>
               <Image source={{ uri: user.avatar || defaultAvatar }} style={s.accountAvatar} />
@@ -190,11 +195,14 @@ export default function FitPulseCoinShopModal({
             <View style={s.promoBanner}>
               <Ionicons name="flash" size={16} color="#00E676" />
               <Text style={s.promoText}>
-                <Text style={s.promoHighlight}>Recharge:</Text> Save around 25% with direct in-app recharge & zero third-party service fees.
+                <Text style={s.promoHighlight}>Special Offer:</Text> Save around 25% with direct in-app top-ups and zero service fees.
               </Text>
             </View>
 
-            {/* 8-Card Bundle Grid */}
+            {/* Section Header */}
+            <Text style={s.sectionHeader}>Select Coin Bundle</Text>
+
+            {/* Strict 3-Column Grid */}
             <View style={s.bundlesGrid}>
               {FITPULSE_COIN_BUNDLES.map((bundle) => {
                 const isSelected = !isCustomSelected && selectedBundleId === bundle.id;
@@ -210,6 +218,11 @@ export default function FitPulseCoinShopModal({
                     activeOpacity={0.82}
                     onPress={() => handleSelectBundle(bundle.id)}
                   >
+                    {bundle.badge && (
+                      <View style={s.bundleBadge}>
+                        <Text style={s.bundleBadgeText}>{bundle.badge}</Text>
+                      </View>
+                    )}
                     <View style={s.bundleCoinRow}>
                       <FitPulseCoinSvg size={18} />
                       <Text style={s.bundleCoinNum}>{bundle.coins}</Text>
@@ -218,42 +231,49 @@ export default function FitPulseCoinShopModal({
                   </TouchableOpacity>
                 );
               })}
-
-              {/* 8th Card: Custom Amount */}
-              <TouchableOpacity
-                style={[s.bundleBox, isCustomSelected && s.bundleBoxActive]}
-                activeOpacity={0.82}
-                onPress={handleSelectCustom}
-              >
-                {isCustomSelected ? (
-                  <View style={s.customInputBox}>
-                    <View style={s.customInputRow}>
-                      <FitPulseCoinSvg size={16} />
-                      <TextInput
-                        style={s.customTextInput}
-                        value={customCoins}
-                        onChangeText={setCustomCoins}
-                        keyboardType="numeric"
-                        placeholder="30+"
-                        placeholderTextColor="#64748B"
-                        autoFocus
-                      />
-                    </View>
-                    <Text style={[s.customMinText, currentCoins < 30 && s.customMinTextWarn]}>
-                      {currentCoins < 30 ? 'Min: 30' : formatCurrency(currentPrice, currency)}
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={s.bundleCoinRow}>
-                      <FitPulseCoinSvg size={18} />
-                      <Text style={s.bundleCoinNum}>Custom</Text>
-                    </View>
-                    <Text style={s.bundleCustomSub}>Any amount</Text>
-                  </>
-                )}
-              </TouchableOpacity>
             </View>
+
+            {/* Dedicated Custom Coin Amount Card (Separated from Grid) */}
+            <TouchableOpacity
+              style={[s.customCard, isCustomSelected && s.customCardActive]}
+              activeOpacity={0.92}
+              onPress={() => {
+                setIsCustomSelected(true);
+                if (!customCoins) setCustomCoins('100');
+              }}
+            >
+              <View style={s.customCardHeader}>
+                <Text style={s.customCardLabel}>Custom Coin Amount</Text>
+                <Text style={s.customMinHint}>Min: 30 coins</Text>
+              </View>
+
+              <View style={s.customInputRow}>
+                <View style={s.customInputLeft}>
+                  <FitPulseCoinSvg size={20} />
+                  <TextInput
+                    style={s.customInputField}
+                    value={isCustomSelected ? customCoins : ''}
+                    onChangeText={(text) => {
+                      setIsCustomSelected(true);
+                      setCustomCoins(text.replace(/[^0-9]/g, ''));
+                    }}
+                    onFocus={() => {
+                      setIsCustomSelected(true);
+                      if (!customCoins) setCustomCoins('100');
+                    }}
+                    placeholder={isCustomSelected ? '100' : 'Enter custom coins...'}
+                    placeholderTextColor="#64748B"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                {isCustomSelected && currentCoins >= 30 && (
+                  <Text style={s.customConvertedPrice}>
+                    ≈ {formatCurrency(currentPrice, currency)}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
 
             {/* Special Cashback Offer */}
             <View style={s.cashbackCard}>
@@ -261,7 +281,7 @@ export default function FitPulseCoinShopModal({
                 <Text style={s.cashbackBadgeText}>5%</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.cashbackTitle}>Recharge once to unlock 5% bonus coins</Text>
+                <Text style={s.cashbackTitle}>Top-up to unlock 5% bonus coins</Text>
                 <Text style={s.cashbackSub}>Bonus coins will be credited automatically to your wallet</Text>
               </View>
               <Ionicons name="checkmark-circle" size={18} color="#00E676" />
@@ -340,7 +360,7 @@ export default function FitPulseCoinShopModal({
                     <View style={s.radioOuter}>
                       {paymentMethod === 'chapa' && <View style={s.radioInner} />}
                     </View>
-                    <Text style={s.methodName}>Chapa (All Cards & Mobile)</Text>
+                    <Text style={s.methodName}>Chapa (Cards & Mobile)</Text>
                     <Text style={s.localPill}>💳 Chapa</Text>
                   </TouchableOpacity>
                 </>
@@ -348,20 +368,20 @@ export default function FitPulseCoinShopModal({
             </View>
           </ScrollView>
 
-          {/* Sticky Order Summary & Recharge Button */}
+          {/* Sticky Order Summary & Top Up Button */}
           <View style={s.summaryContainer}>
             <View style={s.summaryTotalRow}>
               <Text style={s.summaryLabel}>
-                Total <Text style={{ color: '#8A95A5', fontSize: 13 }}>({currentCoins} Coins)</Text>
+                Total <Text style={{ color: '#8A95A5', fontSize: 13, fontWeight: '500' }}>({currentCoins} Coins)</Text>
               </Text>
               <Text style={s.summaryAmount}>{formatCurrency(currentPrice, currency)}</Text>
             </View>
 
             <Text style={s.disclaimerText}>
-              By tapping Pay, you agree to our <Text style={{ color: '#A0B0C0' }}>Virtual Items Policy</Text>. By using any amount of Coins, you acknowledge and confirm that you will no longer be eligible for a refund.
+              By tapping Top Up, you agree to our <Text style={{ color: '#A0B0C0' }}>Virtual Items Policy</Text>. Coins are delivered instantly to your balance.
             </Text>
 
-            {/* Pay Now Button */}
+            {/* Pay / Top Up Button */}
             <TouchableOpacity
               style={[s.payNowBtn, isProcessing && { opacity: 0.6 }]}
               activeOpacity={0.88}
@@ -374,7 +394,7 @@ export default function FitPulseCoinShopModal({
                 <Text style={s.payNowBtnText}>
                   {paymentMethod === 'card'
                     ? `Pay ${formatCurrency(currentPrice, currency)} with Card`
-                    : `Recharge ${formatCurrency(currentPrice, currency)}`}
+                    : `Top Up ${formatCurrency(currentPrice, currency)}`}
                 </Text>
               )}
             </TouchableOpacity>
@@ -397,15 +417,13 @@ const s = StyleSheet.create({
     borderTopRightRadius: 26,
     borderWidth: 1,
     borderColor: '#182733',
-    maxHeight: '94%',
+    maxHeight: '90%',
     width: '100%',
-    maxWidth: 720,
+    maxWidth: 680,
     alignSelf: 'center',
     paddingTop: 16,
     paddingBottom: 0,
     flex: 1,
-    display: 'flex' as any,
-    flexDirection: 'column' as any,
   },
   headerRow: {
     flexDirection: 'row',
@@ -417,21 +435,24 @@ const s = StyleSheet.create({
     borderBottomColor: '#14222D',
   },
   headerTitleWrap: {
-    gap: 2,
+    gap: 3,
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   headerSub: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#8A95A5',
+    fontWeight: '500',
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   historyLink: {
     flexDirection: 'row',
@@ -455,7 +476,7 @@ const s = StyleSheet.create({
   scrollBody: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 36,
   },
 
   // Account Card
@@ -546,91 +567,136 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 4-Bundle Grid (2x2 layout)
+  // Section Headers
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8A95A5',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+
+  // Strict 3-Column Grid
   bundlesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 10,
     marginBottom: 14,
   },
   bundleBox: {
-    width: '47.5%',
+    width: '31%',
     backgroundColor: '#101C26',
     borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#192C3C',
-    overflow: 'hidden',
-    minHeight: 84,
-    justifyContent: 'center',
+    position: 'relative',
+    minHeight: 96,
   },
   bundleBoxActive: {
     borderColor: '#00E676',
     backgroundColor: 'rgba(0, 230, 118, 0.09)',
   },
+  bundleBadge: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    backgroundColor: '#00E676',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderTopRightRadius: 14,
+    borderBottomLeftRadius: 8,
+  },
+  bundleBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#050B0E',
+    letterSpacing: 0.2,
+  },
   bundleCoinRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     marginBottom: 4,
   },
   bundleCoinNum: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
-    flexShrink: 1,
+    letterSpacing: -0.5,
   },
   bundlePrice: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#8A95A5',
     fontWeight: '600',
+    letterSpacing: -0.2,
     textAlign: 'center',
   },
-  bundleCustomSub: {
-    fontSize: 10,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 2,
+
+  // Dedicated Custom Card
+  customCard: {
+    backgroundColor: '#101C26',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#192C3C',
+    padding: 14,
+    marginBottom: 16,
   },
-  customInputBox: {
+  customCardActive: {
+    borderColor: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.05)',
+  },
+  customCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingHorizontal: 2,
+    marginBottom: 10,
+  },
+  customCardLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  customMinHint: {
+    fontSize: 11.5,
+    color: '#8A95A5',
+    fontWeight: '500',
   },
   customInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginBottom: 2,
-    maxWidth: '100%',
+    justifyContent: 'space-between',
+    backgroundColor: '#0B151C',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#182733',
   },
-  customTextInput: {
-    fontSize: 15,
+  customInputLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  customInputField: {
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#00E676',
-    paddingVertical: 1,
-    paddingHorizontal: 2,
-    minWidth: 42,
-    maxWidth: 68,
-    textAlign: 'center',
-    backgroundColor: 'transparent',
+    flex: 1,
+    padding: 0,
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
   },
-  customMinText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8A95A5',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  customMinTextWarn: {
-    color: '#EF4444',
+  customConvertedPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#00E676',
+    marginLeft: 8,
   },
 
   // Cashback card
@@ -670,14 +736,6 @@ const s = StyleSheet.create({
   },
 
   // Payment Methods
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8A95A5',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-  },
   paymentMethodContainer: {
     gap: 8,
     marginBottom: 16,
