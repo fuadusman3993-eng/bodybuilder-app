@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Image, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Image, RefreshControl, ActivityIndicator, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -241,8 +241,9 @@ export default function ProfileScreen() {
   };
 
   // ── Data ──────────────────────────────────────────────────
-  const name = profileData?.name || profileData?.username || user.name || 'User';
-  const username = profileData?.username || name.toLowerCase().replace(/\s+/g, '_');
+  const name = profileData?.name || profileData?.username || user.name || 'Athlete';
+  const rawUsername = profileData?.username || (user as any).username || name.toLowerCase().replace(/\s+/g, '_');
+  const username = rawUsername.replace(/^@/, '');
   const bio = profileData?.bio || (isCoach ? 'Ready to train you to the next level.' : 'Fitness is not just a goal, it\'s a lifestyle.');
   const goal = profileData?.goal || 'Build a Stronger Me';
   const city = user.city || profileData?.city || 'Addis Ababa';
@@ -256,6 +257,19 @@ export default function ProfileScreen() {
   const stat2Value = followers;
   const stat3Label = 'Following';
   const stat3Value = following;
+
+  const handleShareProfile = async () => {
+    try {
+      const profileUrl = `https://bodybuilder-app-phi.vercel.app/user-profile?uid=${user.uid}`;
+      await Share.share({
+        title: `${name}'s FitPulse Profile`,
+        message: `Check out ${name} (@${username}) on FitPulse: ${profileUrl}`,
+        url: profileUrl,
+      });
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
   const [unreadCount, setUnreadCount] = useState(0);
   
@@ -303,35 +317,46 @@ export default function ProfileScreen() {
 
       {!authInitialized || (user?.uid && !profileData && user.tier !== UserTier.GUEST) ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Top row skeleton: Avatar + Stats */}
-          <View style={styles.topRow}>
-            <View style={{ width: 84, height: 84, borderRadius: 42, overflow: 'hidden' }}>
-              <Skeleton width={84} height={84} borderRadius={42} />
-            </View>
-            <View style={styles.statsRow}>
-              {[1, 2, 3].map(i => (
-                <View key={i} style={styles.statItem}>
-                  <Skeleton width={32} height={20} borderRadius={4} />
-                  <Skeleton width={48} height={12} borderRadius={3} style={{ marginTop: 6 }} />
-                </View>
-              ))}
+          {/* Centered Avatar Skeleton */}
+          <View style={styles.heroCenterWrap}>
+            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden' }}>
+              <Skeleton width={96} height={96} borderRadius={48} />
             </View>
           </View>
-          {/* Name & Bio skeleton */}
-          <View style={styles.nameBlock}>
-            <Skeleton width={160} height={20} borderRadius={4} style={{ marginBottom: 8 }} />
-            <Skeleton width="85%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
-            <Skeleton width="60%" height={14} borderRadius={4} style={{ marginBottom: 12 }} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Skeleton width={70} height={24} borderRadius={12} />
-              <Skeleton width={90} height={24} borderRadius={12} />
+
+          {/* Centered Identity Skeleton */}
+          <View style={[styles.heroIdentityBlock, { alignItems: 'center' }]}>
+            <Skeleton width={160} height={22} borderRadius={6} style={{ marginBottom: 6 }} />
+            <Skeleton width={110} height={14} borderRadius={4} style={{ marginBottom: 10 }} />
+            <Skeleton width="80%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width="55%" height={14} borderRadius={4} style={{ marginBottom: 14 }} />
+            <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+              <Skeleton width={80} height={26} borderRadius={13} />
+              <Skeleton width={110} height={26} borderRadius={13} />
             </View>
           </View>
-          {/* Action pills skeleton */}
-          <View style={styles.pillRow}>
-            <Skeleton width="48%" height={38} borderRadius={10} />
-            <Skeleton width="48%" height={38} borderRadius={10} />
+
+          {/* Stats Card Skeleton */}
+          <View style={[styles.statsCard, { justifyContent: 'space-around', paddingVertical: 18 }]}>
+            <Skeleton width={50} height={28} borderRadius={6} />
+            <View style={styles.statDivider} />
+            <Skeleton width={50} height={28} borderRadius={6} />
+            <View style={styles.statDivider} />
+            <Skeleton width={50} height={28} borderRadius={6} />
           </View>
+
+          {/* Action Buttons Skeleton */}
+          <View style={styles.actionBlock}>
+            <View style={styles.actionRow}>
+              <Skeleton width="48%" height={44} borderRadius={12} />
+              <Skeleton width="48%" height={44} borderRadius={12} />
+            </View>
+            <View style={styles.actionRow}>
+              <Skeleton width="48%" height={44} borderRadius={12} />
+              <Skeleton width="48%" height={44} borderRadius={12} />
+            </View>
+          </View>
+
           {/* Grid skeleton */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -362,86 +387,134 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         >
-          {/* ── Top row: Avatar & Stats ── */}
-          <View style={styles.topRow}>
-            {/* Avatar */}
+          {/* ── Centered Pro Hero: Avatar ── */}
+          <View style={styles.heroCenterWrap}>
             <View style={styles.avatarWrap}>
-            <View style={styles.avatarRing}>
-              <Image
-                source={{ uri: avatarUri }}
-                style={styles.avatar}
-                defaultSource={{ uri: defaultAvatar }}
-              />
-            </View>
-            <TouchableOpacity style={styles.addStoryBtn} onPress={() => router.push('/add-story')}>
-              <Ionicons name="add" size={14} color="#000" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            {[
-              { label: stat1Label, value: stat1Value },
-              { label: stat2Label, value: stat2Value },
-              { label: stat3Label, value: stat3Value },
-            ].map((s, i) => (
-              <View key={s.label} style={styles.statItem}>
-                <Text style={styles.statValue}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
+              <View style={styles.avatarRing}>
+                <Image
+                  source={{ uri: avatarUri }}
+                  style={styles.avatar}
+                  defaultSource={{ uri: defaultAvatar }}
+                />
               </View>
-            ))}
+              <TouchableOpacity
+                style={styles.addStoryBtn}
+                activeOpacity={0.85}
+                onPress={() => router.push('/add-story')}
+              >
+                <Ionicons name="add" size={16} color="#000" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* ── Name & Bio ── */}
-        <View style={styles.nameBlock}>
-          <View style={styles.nameRow}>
-            <Text style={styles.nameText}>{name}</Text>
-            {isCoach && <Ionicons name="checkmark-circle" size={15} color={Colors.primary} style={{ marginLeft: 4 }} />}
-            {user.tier === UserTier.PREMIUM && (
-              <View style={styles.proPillBadge}>
-                <Ionicons name="star" size={10} color="#000" />
-                <Text style={styles.proPillBadgeText}>PRO</Text>
+          {/* ── Centered Identity Block: Name, @Username, Bio, Badges ── */}
+          <View style={styles.heroIdentityBlock}>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText}>{name}</Text>
+              {isCoach && (
+                <Ionicons name="checkmark-circle" size={18} color={Colors.primary} style={{ marginLeft: 5 }} />
+              )}
+              {user.tier === UserTier.PREMIUM && (
+                <View style={styles.proPillBadge}>
+                  <Ionicons name="star" size={10} color="#000" />
+                  <Text style={styles.proPillBadgeText}>PRO</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.usernameText}>@{username}</Text>
+
+            {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
+
+            <View style={styles.badgesRow}>
+              {city ? (
+                <View style={styles.infoBadge}>
+                  <Ionicons name="location-outline" size={12} color={Colors.primary} />
+                  <Text style={styles.infoBadgeText}>{city}</Text>
+                </View>
+              ) : null}
+              {goal ? (
+                <View style={styles.infoBadge}>
+                  <Ionicons name="trophy-outline" size={12} color={Colors.primary} />
+                  <Text style={styles.infoBadgeText}>{goal}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {/* ── Strict 3-Column Stats Card ── */}
+          <View style={styles.statsCard}>
+            <View style={styles.statCol}>
+              <Text style={styles.statCount}>{stat1Value}</Text>
+              <Text style={styles.statName}>{stat1Label}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statCount}>{stat2Value}</Text>
+              <Text style={styles.statName}>{stat2Label}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statCount}>{stat3Value}</Text>
+              <Text style={styles.statName}>{stat3Label}</Text>
+            </View>
+          </View>
+
+          {/* ── Pro Action Buttons ── */}
+          <View style={styles.actionBlock}>
+            {/* Row 1: Edit & Share */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.actionBtnDark}
+                activeOpacity={0.8}
+                onPress={() => router.push('/edit-profile')}
+              >
+                <Ionicons name="create-outline" size={16} color="#FFF" />
+                <Text style={styles.actionBtnDarkText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionBtnDark}
+                activeOpacity={0.8}
+                onPress={handleShareProfile}
+              >
+                <Ionicons name="share-social-outline" size={16} color="#FFF" />
+                <Text style={styles.actionBtnDarkText}>Share Profile</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Row 2: Role-based actions */}
+            {isCoach ? (
+              <TouchableOpacity
+                style={styles.coachDashboardBtn}
+                activeOpacity={0.85}
+                onPress={() => router.push('/coach-dashboard')}
+              >
+                <Ionicons name="speedometer-outline" size={17} color="#000" />
+                <Text style={styles.coachDashboardBtnText}>Coach Dashboard</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.findCoachBtn}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/coaches')}
+                >
+                  <Ionicons name="search" size={16} color="#000" />
+                  <Text style={styles.findCoachBtnText}>Find Coach</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.becomeCoachBtn}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/coach-onboarding')}
+                >
+                  <Ionicons name="barbell-outline" size={16} color={Colors.primary} />
+                  <Text style={styles.becomeCoachBtnText}>Become Coach</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
-          <Text style={styles.bioText}>{bio}</Text>
-          
-          <View style={styles.badgesRow}>
-            {city ? (
-              <View style={styles.infoBadge}>
-                <Ionicons name="location-outline" size={11} color={Colors.primary} />
-                <Text style={styles.infoBadgeText}>{city}</Text>
-              </View>
-            ) : null}
-            <View style={styles.infoBadge}>
-              <Ionicons name="trophy-outline" size={11} color={Colors.primary} />
-              <Text style={styles.infoBadgeText}>{goal}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Action pills ── */}
-        <View style={styles.pillRow}>
-          <TouchableOpacity style={styles.pill} onPress={() => router.push('/edit-profile')}>
-            <Text style={styles.pillText}>Edit Profile</Text>
-          </TouchableOpacity>
-          
-          {isCoach ? (
-            <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coach-dashboard')}>
-              <Text style={styles.pillTextOutline}>Dashboard</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coaches')}>
-                <Text style={styles.pillTextOutline}>Find Coach</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.pillOutline} onPress={() => router.push('/coach-onboarding')}>
-                <Text style={styles.pillTextOutline}>Become Coach</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
 
         {/* ── Tabs ── */}
         <View style={styles.tabsWrap}>
@@ -586,62 +659,312 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
   headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   brandText: { color: Colors.primary, fontSize: 20, fontWeight: '800', fontStyle: 'italic' },
-  headerActions: { flexDirection: 'row', gap: 14 },
-  iconBtn: { position: 'relative' },
-  notifBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#EF4444', borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 2 },
+  headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#101C26',
+    borderWidth: 1,
+    borderColor: '#192C3C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: BG,
+  },
   notifBadgeText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
 
   scroll: { paddingBottom: 110 },
 
-  // Top row
-  topRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 14, gap: 12 },
-  avatarWrap: { position: 'relative' },
-  avatarRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 2, borderColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatar: { width: 74, height: 74, borderRadius: 37 },
-  addStoryBtn: { position: 'absolute', bottom: 1, right: 1, backgroundColor: Colors.primary, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG },
+  // Hero Center
+  heroCenterWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  avatarWrap: {
+    position: 'relative',
+  },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2.5,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#101C26',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  avatar: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+  },
+  addStoryBtn: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    backgroundColor: Colors.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: BG,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
+  },
 
-  nameBlock: { paddingHorizontal: 16, marginTop: 12, marginBottom: 12 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  // Identity Block
+  heroIdentityBlock: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 3,
+  },
+  nameText: {
+    color: Colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  usernameText: {
+    color: '#8A95A5',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   proPillBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EAB308',
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
-    marginLeft: 6,
-    gap: 2,
+    marginLeft: 7,
+    gap: 3,
   },
   proPillBadgeText: {
     color: '#000',
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
   },
-  nameText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  bioText: { color: Colors.textPrimary, fontSize: 13, lineHeight: 18, marginBottom: 8 },
-  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  infoBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
-  infoBadgeText: { color: Colors.textMuted, fontSize: 11 },
+  bioText: {
+    color: '#CBD5E1',
+    fontSize: 13.5,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 12,
+    maxWidth: '90%',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  infoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#101C26',
+    borderWidth: 1,
+    borderColor: '#1F3142',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 5,
+  },
+  infoBadgeText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+  },
 
-  // Stats
-  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingLeft: 10 },
-  statItem: { alignItems: 'center' },
-  statValue: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 2 },
-  statLabel: { color: Colors.textMuted, fontSize: 12 },
+  // Strict 3-Column Stats Card
+  statsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    backgroundColor: '#101C26',
+    borderWidth: 1,
+    borderColor: '#1A2E40',
+    borderRadius: 18,
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statCount: {
+    color: Colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  statName: {
+    color: '#8A95A5',
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#1E3244',
+  },
 
-  // Action pills
-  pillRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16, gap: 8 },
-  pill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 8, borderRadius: 8 },
-  pillText: { color: Colors.textPrimary, fontWeight: '600', fontSize: 13 },
-  pillOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.primary, paddingVertical: 8, borderRadius: 8 },
-  pillTextOutline: { color: '#000', fontWeight: '600', fontSize: 13 },
+  // Action Buttons Block
+  actionBlock: {
+    paddingHorizontal: 16,
+    marginBottom: 18,
+    gap: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBtnDark: {
+    flex: 1,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#15222E',
+    borderWidth: 1,
+    borderColor: '#223647',
+    borderRadius: 12,
+    gap: 6,
+  },
+  actionBtnDarkText: {
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+  findCoachBtn: {
+    flex: 1,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    gap: 6,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  findCoachBtnText: {
+    color: '#000',
+    fontWeight: '800',
+    fontSize: 13.5,
+  },
+  becomeCoachBtn: {
+    flex: 1,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#101F1B',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
+    borderRadius: 12,
+    gap: 6,
+  },
+  becomeCoachBtnText: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+  coachDashboardBtn: {
+    width: '100%',
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  coachDashboardBtnText: {
+    color: '#000',
+    fontWeight: '800',
+    fontSize: 14,
+  },
 
   // Tabs
-  tabsWrap: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 14, backgroundColor: CARD_BG, borderRadius: 30, borderWidth: 1, borderColor: BORDER, padding: 4 },
-  tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 26, gap: 5 },
-  tabBtnActive: { backgroundColor: 'rgba(0, 230, 118, 0.15)' },
-  tabText: { color: Colors.textMuted, fontSize: 12, fontWeight: '600' },
-  tabTextActive: { color: Colors.textPrimary },
+  tabsWrap: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#0D161F',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#192C3C',
+    padding: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 12,
+    gap: 5,
+  },
+  tabBtnActive: {
+    backgroundColor: '#152535',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.35)',
+  },
+  tabText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#00E676',
+    fontWeight: '700',
+  },
 
   // Grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 8 },
