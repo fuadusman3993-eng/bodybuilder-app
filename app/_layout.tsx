@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { getWallet } from '../lib/walletService';
 import { getProfile, syncUserProfile } from '../lib/profileService';
 import { useUserStore, UserTier } from '../store/userStore';
+import { captureSystemError } from '../lib/telemetryService';
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
 import OfflineNotice from '../components/ui/OfflineNotice';
@@ -45,6 +46,36 @@ export default function RootLayout() {
       }
     }
     loadAssetsAsync();
+  }, []);
+
+  // Proactive Telemetry: Capture uncaught web exceptions silently into Supabase system_errors
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleGlobalError = (event: ErrorEvent) => {
+        try {
+          captureSystemError(event.error || event.message, {
+            component: 'WebWindowOnError',
+            metadata: { filename: event.filename, lineno: event.lineno, colno: event.colno },
+          });
+        } catch (_) {}
+      };
+
+      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        try {
+          captureSystemError(event.reason || 'Unhandled Promise Rejection', {
+            component: 'WebUnhandledRejection',
+          });
+        } catch (_) {}
+      };
+
+      window.addEventListener('error', handleGlobalError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+      return () => {
+        window.removeEventListener('error', handleGlobalError);
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      };
+    }
   }, []);
 
   // Restore user session from Firebase on every app load/refresh
@@ -186,6 +217,8 @@ export default function RootLayout() {
           <Stack.Screen name="coach-dashboard" options={{ headerShown: false }} />
           <Stack.Screen name="my-coach" options={{ headerShown: false }} />
           <Stack.Screen name="create-plan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="ceo/index" options={{ headerShown: false }} />
+          <Stack.Screen name="ceo/login" options={{ headerShown: false }} />
         </Stack>
       </View>
     </SafeAreaProvider>
