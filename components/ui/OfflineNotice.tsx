@@ -1,32 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import BrandLogo from './BrandLogo';
 
 export default function OfflineNotice() {
-  const [isOffline, setIsOffline] = useState(() => {
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
-      return !navigator.onLine;
-    }
-    return false;
-  });
+  // Never default to offline on initial mount to eliminate reload/refresh flashes
+  const [isOffline, setIsOffline] = useState(false);
+  const offlineTimerRef = useRef<any>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    const clearPendingTimer = () => {
+      if (offlineTimerRef.current) {
+        clearTimeout(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+    };
+
+    // Active probe to verify real connectivity before triggering the offline screen
+    const verifyConnectivity = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        await fetch(`/favicon.ico?_ping=${Date.now()}`, {
+          method: 'HEAD',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        // Ping succeeded -> User is actively online
+        setIsOffline(false);
+        clearPendingTimer();
+      } catch (_) {
+        // Genuine offline confirmed
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          setIsOffline(true);
+        }
+      }
+    };
+
+    const handleOnline = () => {
+      clearPendingTimer();
+      setIsOffline(false);
+    };
+
+    const handleOffline = () => {
+      clearPendingTimer();
+      // Debounce offline trigger by 2.2 seconds to eliminate refresh flickers
+      offlineTimerRef.current = setTimeout(() => {
+        verifyConnectivity();
+      }, 2200);
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial check
-    if (!navigator.onLine) {
-      setIsOffline(true);
-    }
+    // Initial check after startup grace period (2.5 seconds)
+    // Never trigger during initial load or page refresh
+    const initialTimer = setTimeout(() => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        verifyConnectivity();
+      }
+    }, 2500);
 
     return () => {
+      clearPendingTimer();
+      clearTimeout(initialTimer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
