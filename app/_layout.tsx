@@ -15,6 +15,7 @@ import { getProfile, syncUserProfile } from '../lib/profileService';
 import { useUserStore, UserTier } from '../store/userStore';
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
+import OfflineNotice from '../components/ui/OfflineNotice';
 
 if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
@@ -161,6 +162,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: '#050B0E' }} onLayout={onLayoutRootView}>
         <StatusBar style="light" backgroundColor="#050B0E" />
+        <OfflineNotice />
         <GlobalCallListener />
         <GlobalPresence />
         <Stack
