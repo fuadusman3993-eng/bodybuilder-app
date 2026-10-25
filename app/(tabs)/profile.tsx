@@ -273,23 +273,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const [unreadCount, setUnreadCount] = useState(0);
-  
-  useFocusEffect(
-    useCallback(() => {
-      if (user.uid) {
-        supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_uid', user.uid)
-          .eq('is_read', false)
-          .then(({ count }) => {
-            setUnreadCount(count || 0);
-          });
-      }
-    }, [user.uid])
-  );
-
   // Note: Guest users view the TikTok-style login/signup state in-place without forced redirect
 
   // ── Render ────────────────────────────────────────────────
@@ -302,14 +285,6 @@ export default function ProfileScreen() {
         </View>
         {(!user?.uid || user.tier === UserTier.GUEST) ? null : (
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
-              <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={() => setShowMoreModal(true)}>
               <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
@@ -621,10 +596,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
 
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 2,
+  },
   headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   brandText: { color: Colors.primary, fontSize: 20, fontWeight: '800', fontStyle: 'italic' },
-  headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   iconBtn: {
     width: 42,
     height: 42,
@@ -634,23 +616,7 @@ const styles = StyleSheet.create({
     borderColor: '#192C3C',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
-  notifBadge: {
-    position: 'absolute',
-    top: 3,
-    right: 3,
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: BG,
-  },
-  notifBadgeText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
 
   scroll: { paddingBottom: 110 },
 
@@ -658,7 +624,7 @@ const styles = StyleSheet.create({
   heroCenterWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 0,
     marginBottom: 4,
   },
   avatarWrap: {
