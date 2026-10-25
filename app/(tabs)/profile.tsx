@@ -29,11 +29,13 @@ export default function ProfileScreen() {
   const { user, setUser, authInitialized, setTier } = useUserStore();
 
   const isCoach = user.role === 'coach';
-  const defaultTabs = isCoach
-    ? ['Posts', 'Reposts', 'Clients', 'Saved']
-    : ['Posts', 'Reposts', 'Progress', 'Saved'];
+  const PROFILE_TABS = [
+    { key: 'Posts', iconOutline: 'grid-outline', iconFilled: 'grid' },
+    { key: 'Reposts', iconOutline: 'repeat-outline', iconFilled: 'repeat' },
+    { key: 'Saved', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
+  ] as const;
 
-  const [activeTab, setActiveTab] = useState('Posts');
+  const [activeTab, setActiveTab] = useState<'Posts' | 'Reposts' | 'Saved'>('Posts');
   const [profileData, setProfileData] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
@@ -319,46 +321,42 @@ export default function ProfileScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {/* Centered Avatar Skeleton */}
           <View style={styles.heroCenterWrap}>
-            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden' }}>
-              <Skeleton width={96} height={96} borderRadius={48} />
+            <View style={{ width: 88, height: 88, borderRadius: 44, overflow: 'hidden' }}>
+              <Skeleton width={88} height={88} borderRadius={44} />
             </View>
           </View>
 
           {/* Centered Identity Skeleton */}
           <View style={[styles.heroIdentityBlock, { alignItems: 'center' }]}>
-            <Skeleton width={160} height={22} borderRadius={6} style={{ marginBottom: 6 }} />
-            <Skeleton width={110} height={14} borderRadius={4} style={{ marginBottom: 10 }} />
-            <Skeleton width="80%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
-            <Skeleton width="55%" height={14} borderRadius={4} style={{ marginBottom: 14 }} />
-            <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-              <Skeleton width={80} height={26} borderRadius={13} />
-              <Skeleton width={110} height={26} borderRadius={13} />
-            </View>
+            <Skeleton width={140} height={20} borderRadius={6} style={{ marginBottom: 4 }} />
+            <Skeleton width={100} height={13} borderRadius={4} style={{ marginBottom: 8 }} />
+            <Skeleton width="75%" height={13} borderRadius={4} style={{ marginBottom: 6 }} />
+            <Skeleton width="45%" height={12} borderRadius={4} style={{ marginBottom: 10 }} />
           </View>
 
-          {/* Stats Card Skeleton */}
-          <View style={[styles.statsCard, { justifyContent: 'space-around', paddingVertical: 18 }]}>
-            <Skeleton width={50} height={28} borderRadius={6} />
-            <View style={styles.statDivider} />
-            <Skeleton width={50} height={28} borderRadius={6} />
-            <View style={styles.statDivider} />
-            <Skeleton width={50} height={28} borderRadius={6} />
+          {/* Floating Stats Skeleton */}
+          <View style={styles.statsRow}>
+            <Skeleton width={45} height={28} borderRadius={4} />
+            <Skeleton width={55} height={28} borderRadius={4} />
+            <Skeleton width={55} height={28} borderRadius={4} />
           </View>
 
-          {/* Action Buttons Skeleton */}
-          <View style={styles.actionBlock}>
-            <View style={styles.actionRow}>
-              <Skeleton width="48%" height={44} borderRadius={12} />
-              <Skeleton width="48%" height={44} borderRadius={12} />
-            </View>
-            <View style={styles.actionRow}>
-              <Skeleton width="48%" height={44} borderRadius={12} />
-              <Skeleton width="48%" height={44} borderRadius={12} />
-            </View>
+          {/* Single-Row Action Buttons Skeleton */}
+          <View style={styles.actionRow}>
+            <Skeleton width="44%" height={38} borderRadius={10} />
+            <Skeleton width="44%" height={38} borderRadius={10} />
+            <Skeleton width={40} height={38} borderRadius={10} />
+          </View>
+
+          {/* Icon Tabs Skeleton */}
+          <View style={styles.tabsWrap}>
+            <Skeleton width={28} height={22} borderRadius={4} />
+            <Skeleton width={28} height={22} borderRadius={4} />
+            <Skeleton width={28} height={22} borderRadius={4} />
           </View>
 
           {/* Grid skeleton */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
             {[1, 2, 3, 4, 5, 6].map(i => (
               <Skeleton key={i} width={GRID_ITEM_SIZE} height={GRID_ITEM_SIZE * 1.25} borderRadius={6} />
             ))}
@@ -387,7 +385,7 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         >
-          {/* ── Centered Pro Hero: Avatar ── */}
+          {/* ── Centered Pro Hero: Avatar (TikTok Compact) ── */}
           <View style={styles.heroCenterWrap}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatarRing}>
@@ -402,21 +400,21 @@ export default function ProfileScreen() {
                 activeOpacity={0.85}
                 onPress={() => router.push('/add-story')}
               >
-                <Ionicons name="add" size={16} color="#000" />
+                <Ionicons name="add" size={15} color="#000" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* ── Centered Identity Block: Name, @Username, Bio, Badges ── */}
+          {/* ── Centered Identity Block: Name, @Username, Bio, Meta ── */}
           <View style={styles.heroIdentityBlock}>
             <View style={styles.nameRow}>
               <Text style={styles.nameText}>{name}</Text>
               {isCoach && (
-                <Ionicons name="checkmark-circle" size={18} color={Colors.primary} style={{ marginLeft: 5 }} />
+                <Ionicons name="checkmark-circle" size={17} color={Colors.primary} style={{ marginLeft: 4 }} />
               )}
               {user.tier === UserTier.PREMIUM && (
                 <View style={styles.proPillBadge}>
-                  <Ionicons name="star" size={10} color="#000" />
+                  <Ionicons name="star" size={9} color="#000" />
                   <Text style={styles.proPillBadgeText}>PRO</Text>
                 </View>
               )}
@@ -426,119 +424,93 @@ export default function ProfileScreen() {
 
             {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
 
-            <View style={styles.badgesRow}>
-              {city ? (
-                <View style={styles.infoBadge}>
-                  <Ionicons name="location-outline" size={12} color={Colors.primary} />
-                  <Text style={styles.infoBadgeText}>{city}</Text>
-                </View>
-              ) : null}
-              {goal ? (
-                <View style={styles.infoBadge}>
-                  <Ionicons name="trophy-outline" size={12} color={Colors.primary} />
-                  <Text style={styles.infoBadgeText}>{goal}</Text>
-                </View>
-              ) : null}
-            </View>
+            {(city || goal) ? (
+              <View style={styles.metaRow}>
+                {city ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="location-sharp" size={12} color={Colors.primary} />
+                    <Text style={styles.metaText}>{city}</Text>
+                  </View>
+                ) : null}
+                {city && goal ? <Text style={styles.metaDot}>•</Text> : null}
+                {goal ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="trophy" size={12} color="#EAB308" />
+                    <Text style={styles.metaText}>{goal}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
-          {/* ── Strict 3-Column Stats Card ── */}
-          <View style={styles.statsCard}>
+          {/* ── Floating Border-Free Stats (TikTok Image 2 Style) ── */}
+          <View style={styles.statsRow}>
             <View style={styles.statCol}>
               <Text style={styles.statCount}>{stat1Value}</Text>
               <Text style={styles.statName}>{stat1Label}</Text>
             </View>
-            <View style={styles.statDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statCount}>{stat2Value}</Text>
               <Text style={styles.statName}>{stat2Label}</Text>
             </View>
-            <View style={styles.statDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statCount}>{stat3Value}</Text>
               <Text style={styles.statName}>{stat3Label}</Text>
             </View>
           </View>
 
-          {/* ── Pro Action Buttons ── */}
-          <View style={styles.actionBlock}>
-            {/* Row 1: Edit & Share */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.actionBtnDark}
-                activeOpacity={0.8}
-                onPress={() => router.push('/edit-profile')}
-              >
-                <Ionicons name="create-outline" size={16} color="#FFF" />
-                <Text style={styles.actionBtnDarkText}>Edit Profile</Text>
-              </TouchableOpacity>
+          {/* ── Single-Row Action Bar (TikTok Style) ── */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionBtnDark}
+              activeOpacity={0.8}
+              onPress={() => router.push('/edit-profile')}
+            >
+              <Text style={styles.actionBtnDarkText}>Edit profile</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.actionBtnDark}
-                activeOpacity={0.8}
-                onPress={handleShareProfile}
-              >
-                <Ionicons name="share-social-outline" size={16} color="#FFF" />
-                <Text style={styles.actionBtnDarkText}>Share Profile</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.actionBtnDark}
+              activeOpacity={0.8}
+              onPress={handleShareProfile}
+            >
+              <Text style={styles.actionBtnDarkText}>Share profile</Text>
+            </TouchableOpacity>
 
-            {/* Row 2: Role-based actions */}
-            {isCoach ? (
-              <TouchableOpacity
-                style={styles.coachDashboardBtn}
-                activeOpacity={0.85}
-                onPress={() => router.push('/coach-dashboard')}
-              >
-                <Ionicons name="speedometer-outline" size={17} color="#000" />
-                <Text style={styles.coachDashboardBtnText}>Coach Dashboard</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.findCoachBtn}
-                  activeOpacity={0.85}
-                  onPress={() => router.push('/coaches')}
-                >
-                  <Ionicons name="search" size={16} color="#000" />
-                  <Text style={styles.findCoachBtnText}>Find Coach</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.becomeCoachBtn}
-                  activeOpacity={0.8}
-                  onPress={() => router.push('/coach-onboarding')}
-                >
-                  <Ionicons name="barbell-outline" size={16} color={Colors.primary} />
-                  <Text style={styles.becomeCoachBtnText}>Become Coach</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <TouchableOpacity
+              style={styles.actionIconBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push(isCoach ? '/coach-dashboard' : '/coaches')}
+            >
+              <Ionicons
+                name={isCoach ? 'speedometer-outline' : 'search-outline'}
+                size={18}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
           </View>
 
-        {/* ── Tabs ── */}
-        <View style={styles.tabsWrap}>
-          {defaultTabs.map((tab) => {
-            const active = activeTab === tab;
-            const icon: any = tab === 'Posts'
-              ? 'grid-outline'
-              : tab === 'Reposts'
-              ? 'repeat-outline'
-              : tab === 'Saved'
-              ? 'bookmark-outline'
-              : 'stats-chart-outline';
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tabBtn, active && styles.tabBtnActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Ionicons name={icon} size={14} color={active ? Colors.textPrimary : Colors.textMuted} />
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+          {/* ── Minimal TikTok-Style Icon Tabs (Zero Text) ── */}
+          <View style={styles.tabsWrap}>
+            {PROFILE_TABS.map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={styles.tabBtn}
+                  activeOpacity={0.7}
+                  onPress={() => setActiveTab(tab.key)}
+                >
+                  <Ionicons
+                    name={(active ? tab.iconFilled : tab.iconOutline) as any}
+                    size={23}
+                    color={active ? '#FFFFFF' : '#64748B'}
+                  />
+                  {active && <View style={styles.tabActiveBar} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
         {/* ── Grid (real posts) ── */}
         {activeTab === 'Posts' && (
@@ -626,13 +598,6 @@ export default function ProfileScreen() {
             </View>
           )
         )}
-
-        {activeTab !== 'Posts' && activeTab !== 'Saved' && activeTab !== 'Reposts' && (
-          <View style={styles.emptyPosts}>
-            <Ionicons name="construct-outline" size={40} color={Colors.textMuted} />
-            <Text style={styles.emptySubtitle}>Coming soon</Text>
-          </View>
-        )}
       </ScrollView>
       )}
 
@@ -693,277 +658,207 @@ const styles = StyleSheet.create({
   heroCenterWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
   avatarWrap: {
     position: 'relative',
   },
   avatarRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2.5,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
     borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#101C26',
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 3,
   },
   avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   addStoryBtn: {
     position: 'absolute',
-    bottom: 1,
-    right: 1,
+    bottom: 0,
+    right: 0,
     backgroundColor: Colors.primary,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: BG,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   // Identity Block
   heroIdentityBlock: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 6,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   nameText: {
     color: Colors.textPrimary,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   usernameText: {
     color: '#8A95A5',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 5,
   },
   proPillBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EAB308',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 7,
-    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    marginLeft: 6,
+    gap: 2.5,
   },
   proPillBadgeText: {
     color: '#000',
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '800',
   },
   bioText: {
     color: '#CBD5E1',
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
-    marginBottom: 12,
-    maxWidth: '90%',
+    marginBottom: 4,
+    maxWidth: '92%',
   },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  infoBadge: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#101C26',
-    borderWidth: 1,
-    borderColor: '#1F3142',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    gap: 5,
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 2,
   },
-  infoBadgeText: {
-    color: Colors.textMuted,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+  },
+  metaDot: {
+    color: '#475569',
+    fontSize: 12,
+  },
+  metaText: {
+    color: '#94A3B8',
     fontSize: 12,
     fontWeight: '500',
   },
 
-  // Strict 3-Column Stats Card
-  statsCard: {
+  // Floating Border-Free Stats (TikTok Image 2 Style)
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
-    backgroundColor: '#101C26',
-    borderWidth: 1,
-    borderColor: '#1A2E40',
-    borderRadius: 18,
-    marginHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 16,
+    justifyContent: 'center',
+    gap: 36,
+    marginVertical: 10,
+    paddingHorizontal: 20,
   },
   statCol: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   statCount: {
     color: Colors.textPrimary,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   statName: {
     color: '#8A95A5',
-    fontSize: 11.5,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
     marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#1E3244',
+    letterSpacing: 0.1,
   },
 
-  // Action Buttons Block
-  actionBlock: {
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    gap: 10,
-  },
+  // Single-Row Action Bar (TikTok Style)
   actionRow: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    gap: 8,
   },
   actionBtnDark: {
     flex: 1,
-    height: 44,
-    flexDirection: 'row',
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#15222E',
     borderWidth: 1,
     borderColor: '#223647',
-    borderRadius: 12,
-    gap: 6,
+    borderRadius: 10,
   },
   actionBtnDarkText: {
     color: Colors.textPrimary,
     fontWeight: '700',
     fontSize: 13.5,
   },
-  findCoachBtn: {
-    flex: 1,
-    height: 44,
-    flexDirection: 'row',
+  actionIconBtn: {
+    width: 40,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    gap: 6,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  findCoachBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 13.5,
-  },
-  becomeCoachBtn: {
-    flex: 1,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#101F1B',
+    backgroundColor: '#15222E',
     borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.4)',
-    borderRadius: 12,
-    gap: 6,
-  },
-  becomeCoachBtnText: {
-    color: Colors.primary,
-    fontWeight: '700',
-    fontSize: 13.5,
-  },
-  coachDashboardBtn: {
-    width: '100%',
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  coachDashboardBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 14,
+    borderColor: '#223647',
+    borderRadius: 10,
   },
 
-  // Tabs
+  // Minimal TikTok-Style Icon Tabs (Zero Text)
   tabsWrap: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#0D161F',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#192C3C',
-    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    marginTop: 4,
+    marginBottom: 6,
+    height: 44,
   },
   tabBtn: {
     flex: 1,
-    flexDirection: 'row',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 12,
-    gap: 5,
+    position: 'relative',
   },
-  tabBtnActive: {
-    backgroundColor: '#152535',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.35)',
-  },
-  tabText: {
-    color: Colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: '#00E676',
-    fontWeight: '700',
+  tabActiveBar: {
+    position: 'absolute',
+    bottom: 0,
+    width: 36,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#00E676',
   },
 
   // Grid
