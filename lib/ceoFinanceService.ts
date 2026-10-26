@@ -98,7 +98,7 @@ export async function fetchRealPaymentLedger(limit: number = 60): Promise<CeoTra
       return {
         id: t.id,
         user_id: t.user_id,
-        userName: p.name || 'Athlete',
+        userName: (p as any).name && (p as any).name.trim() ? (p as any).name : `User ${t.user_id?.slice(0, 8) || 'Unknown'}`,
         userEmail: p.email,
         userAvatar: p.avatar_url,
         userLifetimeSpentEtb: lt.totalEtb,

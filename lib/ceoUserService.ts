@@ -54,7 +54,8 @@ const GENERIC_NAMES = new Set(['trainee', 'user', 'athlete', 'a user', 'member',
 
 /**
  * Organic Authenticity & Bot Detection Algorithm:
- * Evaluates real human signals WITHOUT penalizing free users who haven't paid!
+ * A user who has PAID any amount of ETB is automatically NOT a bot.
+ * Evaluates real human signals across identity, activity, and engagement.
  */
 export function calculateUserTrustScore(
   profile: {
@@ -86,12 +87,20 @@ export function calculateUserTrustScore(
   const name = (profile.name || '').trim();
   const isGeneric = !name || GENERIC_NAMES.has(name.toLowerCase());
 
-  // 1. Real Display Name & Identity (Max 30 pts)
+  // ── RULE 0: ABSOLUTE OVERRIDE ──────────────────────────────────────
+  // Any user who has ever paid real money CAN'T be a bot.
+  // Bank payment requires a real human with ID/biometrics.
+  if (financials.lifetimeSpentEtb > 0) {
+    score += 50; // Guaranteed baseline to at least "Low Activity"
+    reasons.push(`✅ Verified paying customer — ${financials.lifetimeSpentEtb} ETB paid via Chapa/Bank (real human confirmed)`);
+  }
+
+  // ── 1. Real Display Name & Identity (Max 25 pts) ──────────────────
   if (!isGeneric && name.length >= 2) {
-    score += 25;
+    score += 20;
     reasons.push('Custom display name set');
   } else {
-    reasons.push('Default/generic account name detected');
+    reasons.push('Generic or missing display name (e.g. "Athlete")');
   }
 
   if (profile.username && profile.username.trim().length >= 3) {
@@ -99,63 +108,65 @@ export function calculateUserTrustScore(
     reasons.push(`Custom username handle (@${profile.username})`);
   }
 
-  // 2. Profile Photo / Custom Avatar (Max 25 pts)
+  // ── 2. Profile Photo / Custom Avatar (Max 20 pts) ─────────────────
   const avatar = profile.avatar_url || '';
   if (avatar && !avatar.includes('dicebear') && !avatar.includes('placeholder')) {
-    score += 25;
+    score += 20;
     reasons.push('Real custom profile photo uploaded');
   } else {
     reasons.push('Default or missing avatar photo');
   }
 
-  // 3. Contact & Location Information (Max 25 pts)
+  // ── 3. Contact & Location Information (Max 20 pts) ────────────────
   const email = (profile.email || '').trim().toLowerCase();
   if (email && email.includes('@') && email.length > 5) {
-    score += 20;
+    score += 15;
     reasons.push('Verified email address linked');
   } else {
-    reasons.push('No email address provided');
+    reasons.push('No email address registered');
   }
 
   if (profile.city || profile.bio) {
     score += 5;
-    reasons.push(profile.city ? `Location: ${profile.city}` : 'Bio profile filled');
+    reasons.push(profile.city ? `Location: ${profile.city}` : 'Bio description filled');
   }
 
-  // 4. Free App Activity & Social Engagement (Max 20 pts)
+  // ── 4. Free App Activity & Social Engagement (Max 15 pts) ─────────
   if (activity.postsCount > 0 || activity.storiesCount > 0) {
-    score += 10;
-    reasons.push(`Active creator (${activity.postsCount} posts, ${activity.storiesCount} stories)`);
+    score += 8;
+    reasons.push(`Active content creator (${activity.postsCount} posts, ${activity.storiesCount} stories)`);
   }
 
   if (activity.followersCount > 0 || activity.followingCount > 0 || activity.hasCoachRelation) {
-    score += 10;
+    score += 7;
     reasons.push('Community connected (followers/following/coach relation)');
   }
 
-  // 5. Financial Bonus (Pure Bonus - Not required for 100% human score!)
-  if (financials.lifetimeSpentEtb > 0) {
-    score += 10;
-    reasons.push(`Paying customer (${financials.lifetimeSpentEtb} ETB total spent)`);
-  } else if (financials.isPro) {
+  // ── 5. Additional Financial Confirmation (Max 10 pts bonus) ────────
+  if (financials.isPro) {
     score += 10;
     reasons.push('Active Pro Membership subscriber');
-  } else if (financials.coins > 0) {
+  } else if (financials.coins > 0 && financials.lifetimeSpentEtb === 0) {
+    // Coins without payment — could be gifted coins
     score += 5;
-    reasons.push(`Holds ${financials.coins} coins`);
+    reasons.push(`Holds ${financials.coins} coins in wallet`);
   }
 
-  // Determine Badge Tier: A regular free user with real name, email, and photo gets 25+25+20 = 70 pts!
+  const finalScore = Math.min(score, 100);
+
+  // ── Badge Tier Assignment ──────────────────────────────────────────
+  // IMPORTANT: NEVER label a paying customer as Suspected Bot
   let badge: 'Verified Human' | 'Low Activity' | 'Suspected Bot';
-  if (score >= 50) {
-    badge = 'Verified Human';
-  } else if (score >= 25) {
+  if (financials.lifetimeSpentEtb > 0 || finalScore >= 50) {
+    // Paying customers + high-score users
+    badge = finalScore >= 65 ? 'Verified Human' : 'Low Activity';
+  } else if (finalScore >= 25) {
     badge = 'Low Activity';
   } else {
     badge = 'Suspected Bot';
   }
 
-  return { score: Math.min(score, 100), badge, reasons };
+  return { score: finalScore, badge, reasons };
 }
 
 /**
