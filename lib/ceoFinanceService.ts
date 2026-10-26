@@ -6,6 +6,8 @@ export interface CeoTransactionItem {
   userName?: string;
   userEmail?: string;
   userAvatar?: string;
+  userLifetimeSpentEtb?: number;
+  userLifetimeCoins?: number;
   type: string;
   amount_coins: number;
   amount_etb: number;
@@ -16,6 +18,16 @@ export interface CeoTransactionItem {
   created_at: string;
 }
 
+export interface TopSpenderItem {
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  userAvatar?: string;
+  totalSpentEtb: number;
+  totalCoinsBought: number;
+  txCount: number;
+}
+
 export interface FinancialKPIs {
   totalRevenueEtb: number;
   totalCoinsPurchased: number;
@@ -24,12 +36,13 @@ export interface FinancialKPIs {
   completedTransactionsCount: number;
   failedTransactionsCount: number;
   successRatePercent: number;
+  topSpenders: TopSpenderItem[];
 }
 
 /**
  * Fetch real payment ledger directly from Supabase coin_transactions joined with user profiles
  */
-export async function fetchRealPaymentLedger(limit: number = 50): Promise<CeoTransactionItem[]> {
+export async function fetchRealPaymentLedger(limit: number = 60): Promise<CeoTransactionItem[]> {
   try {
     const { data: rawTxs, error } = await supabase
       .from('coin_transactions')
@@ -67,14 +80,29 @@ export async function fetchRealPaymentLedger(limit: number = 50): Promise<CeoTra
       }
     }
 
+    // Compute user lifetime spend map
+    const userLifetimeMap: Record<string, { totalEtb: number; totalCoins: number }> = {};
+    rawTxs.forEach((t: any) => {
+      const uid = t.user_id;
+      if (!uid) return;
+      if (!userLifetimeMap[uid]) userLifetimeMap[uid] = { totalEtb: 0, totalCoins: 0 };
+      if (t.status === 'completed') {
+        userLifetimeMap[uid].totalEtb += t.amount_etb || 0;
+        userLifetimeMap[uid].totalCoins += t.amount_coins || 0;
+      }
+    });
+
     return rawTxs.map((t: any) => {
       const p = profileMap[t.user_id] || {};
+      const lt = userLifetimeMap[t.user_id] || { totalEtb: 0, totalCoins: 0 };
       return {
         id: t.id,
         user_id: t.user_id,
         userName: p.name || 'Athlete',
         userEmail: p.email,
         userAvatar: p.avatar_url,
+        userLifetimeSpentEtb: lt.totalEtb,
+        userLifetimeCoins: lt.totalCoins,
         type: t.type || 'topup',
         amount_coins: t.amount_coins || 0,
         amount_etb: t.amount_etb || 0,
@@ -92,7 +120,7 @@ export async function fetchRealPaymentLedger(limit: number = 50): Promise<CeoTra
 }
 
 /**
- * Calculate financial totals and conversion rates
+ * Calculate financial totals, conversion rates, and top paying customers
  */
 export function calculateFinancialKPIs(transactions: CeoTransactionItem[]): FinancialKPIs {
   let totalRevenueEtb = 0;
@@ -102,11 +130,28 @@ export function calculateFinancialKPIs(transactions: CeoTransactionItem[]): Fina
   let completedTransactionsCount = 0;
   let failedTransactionsCount = 0;
 
+  const spendersMap: Record<string, TopSpenderItem> = {};
+
   transactions.forEach((tx) => {
     if (tx.status === 'completed') {
       completedTransactionsCount++;
       totalRevenueEtb += tx.amount_etb;
       totalCoinsPurchased += tx.amount_coins;
+
+      if (!spendersMap[tx.user_id]) {
+        spendersMap[tx.user_id] = {
+          userId: tx.user_id,
+          userName: tx.userName || 'Member',
+          userEmail: tx.userEmail,
+          userAvatar: tx.userAvatar,
+          totalSpentEtb: 0,
+          totalCoinsBought: 0,
+          txCount: 0,
+        };
+      }
+      spendersMap[tx.user_id].totalSpentEtb += tx.amount_etb;
+      spendersMap[tx.user_id].totalCoinsBought += tx.amount_coins;
+      spendersMap[tx.user_id].txCount++;
     } else if (tx.status === 'pending') {
       pendingTransactionsCount++;
       pendingAmountEtb += tx.amount_etb;
@@ -118,6 +163,11 @@ export function calculateFinancialKPIs(transactions: CeoTransactionItem[]): Fina
   const totalFinished = completedTransactionsCount + failedTransactionsCount;
   const successRatePercent = totalFinished > 0 ? Math.round((completedTransactionsCount / totalFinished) * 100) : 100;
 
+  // Sort top spenders descending
+  const topSpenders = Object.values(spendersMap)
+    .sort((a, b) => b.totalSpentEtb - a.totalSpentEtb)
+    .slice(0, 5);
+
   return {
     totalRevenueEtb,
     totalCoinsPurchased,
@@ -126,6 +176,7 @@ export function calculateFinancialKPIs(transactions: CeoTransactionItem[]): Fina
     completedTransactionsCount,
     failedTransactionsCount,
     successRatePercent,
+    topSpenders,
   };
 }
 

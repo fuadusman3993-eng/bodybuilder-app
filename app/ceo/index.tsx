@@ -79,7 +79,7 @@ export default function CeoDashboardScreen() {
   const [errorFilterSeverity, setErrorFilterSeverity] = useState<'all' | 'critical' | 'warning' | 'unresolved'>('unresolved');
 
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'user' | 'coach' | 'flagged' | 'bots'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'user' | 'coach' | 'flagged' | 'bots' | 'paying'>('all');
   const [selectedUserForModal, setSelectedUserForModal] = useState<CeoUserItem | null>(null);
   const [grantingCoins, setGrantingCoins] = useState(false);
 
@@ -108,7 +108,7 @@ export default function CeoDashboardScreen() {
       const [errors, users, txs, health, config] = await Promise.all([
         fetchRecentErrors(100),
         fetchAllUsersWithMetrics(),
-        fetchRealPaymentLedger(50),
+        fetchRealPaymentLedger(60),
         checkAllServicesHealth(),
         fetchSystemConfig(),
       ]);
@@ -214,6 +214,7 @@ export default function CeoDashboardScreen() {
   const flaggedUsersCount = useMemo(() => usersList.filter((u) => u.errorCount > 0).length, [usersList]);
   const suspectedBotsCount = useMemo(() => usersList.filter((u) => u.trustBadge === 'Suspected Bot').length, [usersList]);
   const verifiedHumansCount = useMemo(() => usersList.filter((u) => u.trustBadge === 'Verified Human').length, [usersList]);
+  const payingUsersCount = useMemo(() => usersList.filter((u) => u.lifetimeSpentEtb > 0).length, [usersList]);
 
   const financialKPIs: FinancialKPIs = useMemo(
     () => calculateFinancialKPIs(transactionsList),
@@ -259,6 +260,7 @@ export default function CeoDashboardScreen() {
       if (userRoleFilter === 'coach' && u.role !== 'coach') return false;
       if (userRoleFilter === 'flagged' && u.errorCount === 0) return false;
       if (userRoleFilter === 'bots' && u.trustBadge !== 'Suspected Bot') return false;
+      if (userRoleFilter === 'paying' && u.lifetimeSpentEtb <= 0) return false;
 
       if (userSearchQuery.trim()) {
         const q = userSearchQuery.toLowerCase();
@@ -406,7 +408,7 @@ export default function CeoDashboardScreen() {
             </View>
             <Text style={styles.metricValue}>{financialKPIs.totalRevenueEtb} ETB</Text>
             <Text style={styles.metricSub}>
-              {financialKPIs.completedTransactionsCount} Completed Txs
+              {financialKPIs.completedTransactionsCount} Completed Txs • {payingUsersCount} Paying Users
             </Text>
           </TouchableOpacity>
 
@@ -600,7 +602,7 @@ export default function CeoDashboardScreen() {
                       </Text>
                     </View>
 
-                    {/* ── AI PROACTIVE DIAGNOSIS BOX ── */}
+                    {/* AI Diagnosis Box */}
                     <View style={styles.aiDiagnosisBox}>
                       <View style={styles.aiDiagnosisHeader}>
                         <Ionicons name="sparkles" size={15} color={Colors.primary} />
@@ -656,9 +658,9 @@ export default function CeoDashboardScreen() {
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Registered Users & Bot Detector</Text>
+                <Text style={styles.sectionTitle}>Registered Users, Lifetime Purchases & Activity</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Monitor member activity, evaluate authenticity (Real vs Bot), and identify users who hit app errors.
+                  Monitor member activity, lifetime ETB spend, authenticity signals, and click any user to inspect everything they saved.
                 </Text>
               </View>
             </View>
@@ -667,7 +669,7 @@ export default function CeoDashboardScreen() {
             <View style={styles.userSummaryBar}>
               <View style={styles.userSummaryItem}>
                 <Text style={styles.userSummaryNum}>{usersList.length}</Text>
-                <Text style={styles.userSummaryLabel}>Total Registered</Text>
+                <Text style={styles.userSummaryLabel}>Total Users</Text>
               </View>
               <View style={styles.userSummaryDivider} />
               <View style={styles.userSummaryItem}>
@@ -676,13 +678,13 @@ export default function CeoDashboardScreen() {
               </View>
               <View style={styles.userSummaryDivider} />
               <View style={styles.userSummaryItem}>
-                <Text style={[styles.userSummaryNum, { color: '#EF4444' }]}>{flaggedUsersCount}</Text>
-                <Text style={styles.userSummaryLabel}>Users With Crashes</Text>
+                <Text style={[styles.userSummaryNum, { color: '#EAB308' }]}>{payingUsersCount}</Text>
+                <Text style={styles.userSummaryLabel}>Paying Clients</Text>
               </View>
               <View style={styles.userSummaryDivider} />
               <View style={styles.userSummaryItem}>
-                <Text style={[styles.userSummaryNum, { color: '#8A95A5' }]}>{suspectedBotsCount}</Text>
-                <Text style={styles.userSummaryLabel}>Suspected Bots</Text>
+                <Text style={[styles.userSummaryNum, { color: '#EF4444' }]}>{flaggedUsersCount}</Text>
+                <Text style={styles.userSummaryLabel}>With Crashes</Text>
               </View>
             </View>
 
@@ -707,9 +709,10 @@ export default function CeoDashboardScreen() {
               <View style={styles.pillGroup}>
                 {[
                   { key: 'all', label: `All (${usersList.length})` },
+                  { key: 'paying', label: `💳 Paying (${payingUsersCount})` },
                   { key: 'user', label: 'Trainees' },
                   { key: 'coach', label: 'Coaches' },
-                  { key: 'flagged', label: `⚠️ Hit Errors (${flaggedUsersCount})` },
+                  { key: 'flagged', label: `⚠️ Crashes (${flaggedUsersCount})` },
                   { key: 'bots', label: `🤖 Suspected Bots (${suspectedBotsCount})` },
                 ].map((pill) => (
                   <TouchableOpacity
@@ -745,7 +748,12 @@ export default function CeoDashboardScreen() {
                 const isBot = user.trustBadge === 'Suspected Bot';
 
                 return (
-                  <View key={user.uid} style={styles.userCard}>
+                  <TouchableOpacity
+                    key={user.uid}
+                    style={styles.userCard}
+                    onPress={() => setSelectedUserForModal(user)}
+                    activeOpacity={0.8}
+                  >
                     <View style={styles.userCardMain}>
                       {/* Avatar */}
                       <View style={styles.avatarWrap}>
@@ -769,6 +777,9 @@ export default function CeoDashboardScreen() {
                       <View style={styles.userInfoWrap}>
                         <View style={styles.userNameRow}>
                           <Text style={styles.userNameText}>{user.name}</Text>
+                          {user.username ? (
+                            <Text style={styles.userHandleText}>@{user.username}</Text>
+                          ) : null}
                           <View style={styles.roleTag}>
                             <Text style={styles.roleTagText}>{user.role.toUpperCase()}</Text>
                           </View>
@@ -780,8 +791,18 @@ export default function CeoDashboardScreen() {
                         </View>
 
                         <Text style={styles.userEmailText}>
-                          {user.email || 'No email registered'} {user.city ? `• ${user.city}` : ''}
+                          {user.email || 'No email registered'} {user.city ? `• 📍 ${user.city}` : ''}
                         </Text>
+
+                        {/* Lifetime Purchases & Activity Row */}
+                        <View style={styles.userSpendRow}>
+                          <Text style={styles.userSpendText}>
+                            💳 Lifetime: <Text style={{ color: '#00E676', fontWeight: '800' }}>{user.lifetimeSpentEtb} ETB</Text> ({user.lifetimeCoinsBought} Coins)
+                          </Text>
+                          <Text style={styles.userActivityText}>
+                            • 📸 {user.postsCount} Posts • 👥 {user.followersCount} Followers
+                          </Text>
+                        </View>
 
                         {/* Badges Row */}
                         <View style={styles.userBadgesRow}>
@@ -799,7 +820,7 @@ export default function CeoDashboardScreen() {
                             ]}
                           >
                             <Ionicons
-                              name={isHuman ? 'shield-checkmark' : isBot ? 'hardware-chip' : 'help-circle'}
+                              name={isHuman ? 'shield-checkmark' : isBot ? 'hardware-chip' : 'person'}
                               size={12}
                               color={isHuman ? '#00E676' : isBot ? '#EF4444' : '#EAB308'}
                             />
@@ -816,7 +837,7 @@ export default function CeoDashboardScreen() {
                           {/* Coins */}
                           <View style={styles.coinsBadge}>
                             <Ionicons name="cash" size={12} color="#EAB308" />
-                            <Text style={styles.coinsBadgeText}>{user.coins} Coins</Text>
+                            <Text style={styles.coinsBadgeText}>{user.coins} Coins in Wallet</Text>
                           </View>
 
                           {/* Error Flag Alert */}
@@ -833,14 +854,13 @@ export default function CeoDashboardScreen() {
                     </View>
 
                     {/* Inspect Button */}
-                    <TouchableOpacity
-                      style={styles.inspectUserBtn}
-                      onPress={() => setSelectedUserForModal(user)}
-                    >
-                      <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
-                      <Text style={styles.inspectUserBtnText}>Inspect & Support</Text>
-                    </TouchableOpacity>
-                  </View>
+                    <View style={styles.inspectBtnWrap}>
+                      <View style={styles.inspectUserBtn}>
+                        <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+                        <Text style={styles.inspectUserBtnText}>Inspect Dossier</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
                 );
               })
             )}
@@ -848,7 +868,7 @@ export default function CeoDashboardScreen() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════ */}
-        {/* ── TAB 3: REAL PAYMENT RADAR & CHAPA RECONCILIATION ──     */}
+        {/* ── TAB 3: REAL PAYMENT RADAR & TOP SPENDERS ──            */}
         {/* ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'finance' && (
           <View style={styles.tabContent}>
@@ -856,7 +876,7 @@ export default function CeoDashboardScreen() {
               <View>
                 <Text style={styles.sectionTitle}>Chapa & Coin Financial Ledger</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Real-time transaction stream directly from Supabase coin_transactions with 1-click verification.
+                  Real-time transaction stream directly from Supabase coin_transactions with user lifetime totals.
                 </Text>
               </View>
 
@@ -892,7 +912,7 @@ export default function CeoDashboardScreen() {
                 <Text style={[styles.kpiValue, { color: financialKPIs.pendingAmountEtb > 0 ? '#EF4444' : '#FFF' }]}>
                   {financialKPIs.pendingAmountEtb} ETB
                 </Text>
-                <Text style={styles.kpiSub}>{financialKPIs.pendingTransactionsCount} pending bank checkouts</Text>
+                <Text style={styles.kpiSub}>{financialKPIs.pendingTransactionsCount} pending checkouts</Text>
               </View>
 
               <View style={styles.kpiCard}>
@@ -901,6 +921,31 @@ export default function CeoDashboardScreen() {
                 <Text style={styles.kpiSub}>{financialKPIs.completedTransactionsCount} successful checkouts</Text>
               </View>
             </View>
+
+            {/* ── TOP CUSTOMER / SPENDER RADAR ── */}
+            {financialKPIs.topSpenders && financialKPIs.topSpenders.length > 0 && (
+              <View style={styles.topSpendersBox}>
+                <View style={styles.topSpendersHeader}>
+                  <Ionicons name="trophy" size={16} color="#EAB308" />
+                  <Text style={styles.topSpendersTitle}>Top Customer Radar (Highest Value Trainees)</Text>
+                </View>
+                <View style={styles.topSpendersGrid}>
+                  {financialKPIs.topSpenders.map((sp, idx) => (
+                    <View key={sp.userId} style={styles.topSpenderItem}>
+                      <Text style={styles.topSpenderRank}>#{idx + 1}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.topSpenderName}>{sp.userName}</Text>
+                        <Text style={styles.topSpenderSub}>{sp.txCount} transactions</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.topSpenderEtb}>{sp.totalSpentEtb} ETB</Text>
+                        <Text style={styles.topSpenderCoins}>{sp.totalCoinsBought} 🪙</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Filters & Search */}
             <View style={styles.filterBarRow}>
@@ -972,6 +1017,9 @@ export default function CeoDashboardScreen() {
                       <Text style={styles.txUserSubText}>
                         {tx.userName} {tx.userEmail ? `(${tx.userEmail})` : ''} • Gateway: {tx.payment_gateway?.toUpperCase()}
                       </Text>
+                      <Text style={styles.txLifetimeSubText}>
+                        User Lifetime Total: <Text style={{ color: '#00E676', fontWeight: '700' }}>{tx.userLifetimeSpentEtb || tx.amount_etb} ETB</Text> ({tx.userLifetimeCoins || tx.amount_coins} Coins)
+                      </Text>
                       <Text style={styles.txTimeText}>
                         {tx.created_at ? new Date(tx.created_at).toLocaleString() : ''}
                       </Text>
@@ -1033,7 +1081,7 @@ export default function CeoDashboardScreen() {
               </View>
             </View>
 
-            {/* ── AUTOMATED BOTTLENECK DIAGNOSTICS ALERT (IN AMHARIC) ── */}
+            {/* Bottleneck Alert */}
             {infrastructureBottlenecks.length > 0 ? (
               <View style={styles.bottleneckAlertCard}>
                 <View style={styles.bottleneckAlertHeader}>
@@ -1180,7 +1228,7 @@ export default function CeoDashboardScreen() {
       </ScrollView>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* ── MODAL 1: USER INSPECTION & COMPENSATION COIN TOOL ──     */}
+      {/* ── MODAL 1: FULL USER DOSSIER & EVERYTHING THEY STORED ──   */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <Modal
         visible={!!selectedUserForModal}
@@ -1194,37 +1242,154 @@ export default function CeoDashboardScreen() {
               <>
                 <View style={styles.modalHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="person-circle-outline" size={24} color={Colors.primary} />
-                    <Text style={styles.modalTitle}>Member Intelligence & Support</Text>
+                    <Ionicons name="person-circle" size={24} color={Colors.primary} />
+                    <Text style={styles.modalTitle}>User Dossier & Saved Data</Text>
                   </View>
                   <TouchableOpacity onPress={() => setSelectedUserForModal(null)}>
                     <Ionicons name="close" size={24} color="#FFF" />
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
-                  {/* User Profile Bar */}
+                <ScrollView style={{ maxHeight: 560 }} showsVerticalScrollIndicator={false}>
+                  {/* Top Profile Summary */}
                   <View style={styles.modalUserBar}>
-                    <Text style={styles.modalUserName}>{selectedUserForModal.name}</Text>
-                    <Text style={styles.modalUserEmail}>{selectedUserForModal.email || 'No email'}</Text>
-                    <Text style={styles.modalUserUid}>UID: {selectedUserForModal.uid}</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+                      {selectedUserForModal.avatar_url ? (
+                        <Image source={{ uri: selectedUserForModal.avatar_url }} style={styles.modalAvatarImg} />
+                      ) : (
+                        <View style={styles.modalAvatarPlaceholder}>
+                          <Text style={styles.modalAvatarInitials}>
+                            {selectedUserForModal.name.slice(0, 2).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalUserName}>{selectedUserForModal.name}</Text>
+                        {selectedUserForModal.username && (
+                          <Text style={styles.modalUserHandle}>@{selectedUserForModal.username}</Text>
+                        )}
+                        <Text style={styles.modalUserEmail}>{selectedUserForModal.email || 'No email registered'}</Text>
+                        <Text style={styles.modalUserUid}>UID: {selectedUserForModal.uid}</Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                       <View style={styles.roleTag}>
                         <Text style={styles.roleTagText}>{selectedUserForModal.role.toUpperCase()}</Text>
                       </View>
-                      <View style={styles.coinsBadge}>
-                        <Ionicons name="cash" size={12} color="#EAB308" />
-                        <Text style={styles.coinsBadgeText}>{selectedUserForModal.coins} Coins</Text>
+                      {selectedUserForModal.isPro ? (
+                        <View style={styles.proTag}>
+                          <Text style={styles.proTagText}>PRO ACTIVE</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.freeTag}>
+                          <Text style={styles.freeTagText}>FREE MEMBER</Text>
+                        </View>
+                      )}
+                      <View style={styles.trustBadge}>
+                        <Text style={styles.trustBadgeText}>{selectedUserForModal.trustBadge} ({selectedUserForModal.trustScore}%)</Text>
                       </View>
                     </View>
                   </View>
 
-                  {/* Authenticity Breakdown */}
+                  {/* ── 1. USER FINANCIAL LEDGER & LIFETIME PURCHASES ── */}
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>🤖 Authenticity & Bot Evaluation</Text>
+                    <Text style={styles.modalSectionTitle}>💳 Financial Ledger & Lifetime Purchases</Text>
+                    <View style={styles.modalKpiRow}>
+                      <View style={styles.modalKpiMini}>
+                        <Text style={styles.modalKpiMiniLabel}>LIFETIME SPENT</Text>
+                        <Text style={[styles.modalKpiMiniValue, { color: '#00E676' }]}>
+                          {selectedUserForModal.lifetimeSpentEtb} ETB
+                        </Text>
+                      </View>
+                      <View style={styles.modalKpiMini}>
+                        <Text style={styles.modalKpiMiniLabel}>COINS PURCHASED</Text>
+                        <Text style={[styles.modalKpiMiniValue, { color: '#EAB308' }]}>
+                          {selectedUserForModal.lifetimeCoinsBought} 🪙
+                        </Text>
+                      </View>
+                      <View style={styles.modalKpiMini}>
+                        <Text style={styles.modalKpiMiniLabel}>WALLET BALANCE</Text>
+                        <Text style={styles.modalKpiMiniValue}>
+                          {selectedUserForModal.coins} Coins
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Transaction History for this user */}
+                    <Text style={styles.modalSubheading}>Transaction Ledger ({selectedUserForModal.userTransactions.length} records):</Text>
+                    {selectedUserForModal.userTransactions.length === 0 ? (
+                      <Text style={styles.modalEmptyNotice}>No payments or top-ups made yet.</Text>
+                    ) : (
+                      selectedUserForModal.userTransactions.map((tx) => (
+                        <View key={tx.id} style={styles.userTxItemRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.userTxTitle}>{tx.description}</Text>
+                            <Text style={styles.userTxDate}>
+                              {new Date(tx.created_at).toLocaleDateString()} • Gateway: {tx.payment_gateway}
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.userTxAmount}>+{tx.amount_etb} ETB</Text>
+                            <Text style={styles.userTxCoins}>+{tx.amount_coins} Coins</Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </View>
+
+                  {/* ── 2. EVERYTHING SAVED & STORED IN THE APP ── */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>📂 Stored Profile & Content Attributes</Text>
+                    <View style={styles.attributesGrid}>
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Bio / Motivation:</Text>
+                        <Text style={styles.attributeValue}>{selectedUserForModal.bio || 'Not provided'}</Text>
+                      </View>
+
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Location (City, Country):</Text>
+                        <Text style={styles.attributeValue}>
+                          {selectedUserForModal.city || 'Not set'} {selectedUserForModal.country ? `, ${selectedUserForModal.country}` : ''}
+                        </Text>
+                      </View>
+
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Joined Date:</Text>
+                        <Text style={styles.attributeValue}>
+                          {selectedUserForModal.created_at ? new Date(selectedUserForModal.created_at).toLocaleString() : 'N/A'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Community Content:</Text>
+                        <Text style={styles.attributeValue}>
+                          📸 {selectedUserForModal.postsCount} Posts • 🎥 {selectedUserForModal.storiesCount} Stories
+                        </Text>
+                      </View>
+
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Network Social:</Text>
+                        <Text style={styles.attributeValue}>
+                          👥 {selectedUserForModal.followersCount} Followers • {selectedUserForModal.followingCount} Following
+                        </Text>
+                      </View>
+
+                      <View style={styles.attributeItem}>
+                        <Text style={styles.attributeLabel}>Coach Contract Status:</Text>
+                        <Text style={styles.attributeValue}>
+                          {selectedUserForModal.coachRequestStatus ? `Status: ${selectedUserForModal.coachRequestStatus.toUpperCase()}` : 'No active coach request'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* ── 3. AUTHENTICITY EVALUATION BREAKDOWN ── */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>🤖 Authenticity Signals (Human vs Bot)</Text>
                     <View style={styles.authenticityBox}>
                       <Text style={styles.authenticityScoreText}>
-                        Trust Score: {selectedUserForModal.trustScore}% ({selectedUserForModal.trustBadge})
+                        Score: {selectedUserForModal.trustScore}% ({selectedUserForModal.trustBadge})
                       </Text>
                       {selectedUserForModal.trustReasons.map((r, i) => (
                         <Text key={i} style={styles.authenticityReasonText}>• {r}</Text>
@@ -1232,32 +1397,31 @@ export default function CeoDashboardScreen() {
                     </View>
                   </View>
 
-                  {/* Crash History For This User */}
+                  {/* ── 4. CRASH & ERROR HISTORY FOR THIS USER ── */}
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>⚠️ Encountered Errors & Crashes</Text>
-                    {selectedUserForModal.errorCount > 0 ? (
-                      <View style={styles.modalCrashAlert}>
-                        <Text style={styles.modalCrashCountText}>
-                          This user has encountered {selectedUserForModal.errorCount} system crash(es).
-                        </Text>
-                        {selectedUserForModal.latestErrorMessage ? (
-                          <Text style={styles.modalCrashMsgText}>
-                            Latest Error: {selectedUserForModal.latestErrorMessage}
-                          </Text>
-                        ) : null}
-                      </View>
+                    <Text style={styles.modalSectionTitle}>⚠️ Encountered Errors & Crashes ({selectedUserForModal.errorCount})</Text>
+                    {selectedUserForModal.userErrors.length > 0 ? (
+                      selectedUserForModal.userErrors.map((err, i) => (
+                        <View key={i} style={styles.modalCrashAlert}>
+                          <Text style={styles.modalCrashCountText}>Component: {err.component || 'AppGlobal'}</Text>
+                          <Text style={styles.modalCrashMsgText}>{err.error_message}</Text>
+                          {err.created_at && (
+                            <Text style={styles.modalCrashDate}>{new Date(err.created_at).toLocaleString()}</Text>
+                          )}
+                        </View>
+                      ))
                     ) : (
                       <Text style={{ color: '#00E676', fontSize: 13 }}>
-                        ✅ Zero recorded crashes. User has had a clean experience.
+                        ✅ Zero recorded crashes. User has had an optimal experience.
                       </Text>
                     )}
                   </View>
 
-                  {/* CEO Goodwill Compensation Tool */}
+                  {/* ── 5. CEO GOODWILL COIN GRANT ── */}
                   <View style={styles.modalSection}>
                     <Text style={styles.modalSectionTitle}>🎁 CEO Goodwill Coin Grant</Text>
                     <Text style={styles.modalCompensationSub}>
-                      If this user suffered an app error, grant compensatory FitPulse coins directly to their wallet:
+                      Grant compensatory or loyalty FitPulse coins directly to this user's wallet:
                     </Text>
 
                     <View style={styles.coinGrantBtnRow}>
@@ -1891,21 +2055,21 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitials: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   coachBadgeDot: {
@@ -1927,11 +2091,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   userNameText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFF',
+  },
+  userHandleText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   roleTag: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
@@ -1955,8 +2125,34 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
   },
+  freeTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  freeTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8A95A5',
+  },
   userEmailText: {
     fontSize: 12,
+    color: '#8A95A5',
+  },
+  userSpendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+    flexWrap: 'wrap',
+  },
+  userSpendText: {
+    fontSize: 12,
+    color: '#D1D5DB',
+  },
+  userActivityText: {
+    fontSize: 11,
     color: '#8A95A5',
   },
   userBadgesRow: {
@@ -1973,10 +2169,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 4,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
   },
   trustBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+    color: '#00E676',
   },
   coinsBadge: {
     flexDirection: 'row',
@@ -2006,10 +2204,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#EF4444',
   },
+  inspectBtnWrap: {
+    justifyContent: 'center',
+  },
   inspectUserBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: 'rgba(0, 230, 118, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -2054,6 +2255,60 @@ const styles = StyleSheet.create({
   kpiSub: {
     fontSize: 11,
     color: '#8A95A5',
+  },
+  topSpendersBox: {
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
+    gap: 10,
+    marginBottom: 6,
+  },
+  topSpendersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topSpendersTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EAB308',
+  },
+  topSpendersGrid: {
+    gap: 8,
+  },
+  topSpenderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  topSpenderRank: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EAB308',
+    width: 24,
+  },
+  topSpenderName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  topSpenderSub: {
+    fontSize: 11,
+    color: '#8A95A5',
+  },
+  topSpenderEtb: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#00E676',
+  },
+  topSpenderCoins: {
+    fontSize: 11,
+    color: '#EAB308',
   },
   verifyModalTriggerBtn: {
     flexDirection: 'row',
@@ -2106,6 +2361,11 @@ const styles = StyleSheet.create({
   txUserSubText: {
     fontSize: 12,
     color: '#8A95A5',
+  },
+  txLifetimeSubText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   txTimeText: {
     fontSize: 11,
@@ -2298,20 +2558,20 @@ const styles = StyleSheet.create({
   // ── Modals Styles ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     width: '100%',
-    maxWidth: 550,
+    maxWidth: 620,
     backgroundColor: '#091116',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 16,
+    gap: 14,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2330,16 +2590,39 @@ const styles = StyleSheet.create({
   modalUserBar: {
     backgroundColor: '#0C161C',
     borderRadius: 10,
-    padding: 14,
+    padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    gap: 2,
+    gap: 4,
     marginBottom: 14,
   },
+  modalAvatarImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  modalAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAvatarInitials: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
   modalUserName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: '#FFF',
+  },
+  modalUserHandle: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   modalUserEmail: {
     fontSize: 13,
@@ -2351,11 +2634,103 @@ const styles = StyleSheet.create({
   },
   modalSection: {
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   modalSectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    paddingBottom: 6,
+  },
+  modalKpiRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  modalKpiMini: {
+    flex: 1,
+    backgroundColor: '#0C161C',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalKpiMiniLabel: {
+    fontSize: 9,
     fontWeight: '700',
+    color: '#8A95A5',
+  },
+  modalKpiMiniValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFF',
+    marginTop: 2,
+  },
+  modalSubheading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D1D5DB',
+    marginTop: 6,
+  },
+  modalEmptyNotice: {
+    fontSize: 12,
+    color: '#667085',
+    fontStyle: 'italic',
+  },
+  userTxItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 6,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    marginTop: 4,
+  },
+  userTxTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  userTxDate: {
+    fontSize: 11,
+    color: '#8A95A5',
+  },
+  userTxAmount: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#00E676',
+  },
+  userTxCoins: {
+    fontSize: 11,
+    color: '#EAB308',
+  },
+  attributesGrid: {
+    backgroundColor: '#0C161C',
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  attributeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.03)',
+    paddingBottom: 6,
+  },
+  attributeLabel: {
+    fontSize: 12,
+    color: '#8A95A5',
+  },
+  attributeValue: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#FFF',
   },
   authenticityBox: {
@@ -2379,13 +2754,14 @@ const styles = StyleSheet.create({
   modalCrashAlert: {
     backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.25)',
-    gap: 4,
+    gap: 2,
+    marginTop: 4,
   },
   modalCrashCountText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#EF4444',
   },
@@ -2393,6 +2769,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FCA5A5',
     lineHeight: 16,
+  },
+  modalCrashDate: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   modalCompensationSub: {
     fontSize: 12,
