@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   RefreshControl,
   Switch,
   Alert,
+  TextInput,
+  Modal,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,14 +30,27 @@ import {
 import {
   checkAllServicesHealth,
   diagnoseSystemIssue,
+  explainInfrastructureBottleneck,
   fetchSystemConfig,
   updateSystemConfig,
   ServiceHealthItem,
   SystemRemoteConfig,
+  BottleneckAnalysis,
 } from '../../lib/systemHealthService';
-import { supabase } from '../../lib/supabase';
+import {
+  fetchAllUsersWithMetrics,
+  grantCompensationCoins,
+  CeoUserItem,
+} from '../../lib/ceoUserService';
+import {
+  fetchRealPaymentLedger,
+  calculateFinancialKPIs,
+  verifyAndReconcileChapaTx,
+  CeoTransactionItem,
+  FinancialKPIs,
+} from '../../lib/ceoFinanceService';
 
-type CeoTab = 'errors' | 'finance' | 'health' | 'controls';
+type CeoTab = 'errors' | 'users' | 'finance' | 'health' | 'controls';
 
 export default function CeoDashboardScreen() {
   const router = useRouter();
@@ -46,19 +62,34 @@ export default function CeoDashboardScreen() {
 
   // Data States
   const [errorsList, setErrorsList] = useState<SystemErrorItem[]>([]);
+  const [usersList, setUsersList] = useState<CeoUserItem[]>([]);
+  const [transactionsList, setTransactionsList] = useState<CeoTransactionItem[]>([]);
   const [healthList, setHealthList] = useState<ServiceHealthItem[]>([]);
   const [remoteConfig, setRemoteConfig] = useState<SystemRemoteConfig>({
     voice_coach_enabled: true,
     maintenance_mode: false,
     chapa_payments_enabled: true,
   });
-  const [transactionsList, setTransactionsList] = useState<any[]>([]);
-  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
-  const [onlyUnresolved, setOnlyUnresolved] = useState(true);
-  const [updatingConfig, setUpdatingConfig] = useState(false);
-  const [lastRefreshedTime, setLastRefreshedTime] = useState<string>('');
 
-  // 1. Enforce Authentication
+  const [lastRefreshedTime, setLastRefreshedTime] = useState<string>('');
+  const [updatingConfig, setUpdatingConfig] = useState(false);
+
+  // Search & Filter States
+  const [errorSearchQuery, setErrorSearchQuery] = useState('');
+  const [errorFilterSeverity, setErrorFilterSeverity] = useState<'all' | 'critical' | 'warning' | 'unresolved'>('unresolved');
+
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'user' | 'coach' | 'flagged' | 'bots'>('all');
+  const [selectedUserForModal, setSelectedUserForModal] = useState<CeoUserItem | null>(null);
+  const [grantingCoins, setGrantingCoins] = useState(false);
+
+  const [txSearchQuery, setTxSearchQuery] = useState('');
+  const [txStatusFilter, setTxStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [manualTxRefInput, setManualTxRefInput] = useState('');
+  const [verifyingTx, setVerifyingTx] = useState(false);
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+
+  // 1. Enforce CEO Authentication Gate
   useEffect(() => {
     isCeoAuthenticated().then((authenticated) => {
       if (!authenticated) {
@@ -74,31 +105,19 @@ export default function CeoDashboardScreen() {
     try {
       setRefreshing(true);
 
-      const [errors, health, config, txRes, usersCountRes] = await Promise.all([
-        fetchRecentErrors(50),
+      const [errors, users, txs, health, config] = await Promise.all([
+        fetchRecentErrors(100),
+        fetchAllUsersWithMetrics(),
+        fetchRealPaymentLedger(50),
         checkAllServicesHealth(),
         fetchSystemConfig(),
-        (async () => {
-          try {
-            return await supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(25);
-          } catch {
-            return { data: [] };
-          }
-        })(),
-        (async () => {
-          try {
-            return await supabase.from('profiles').select('*', { count: 'exact', head: true });
-          } catch {
-            return { count: 0 };
-          }
-        })(),
       ]);
 
       setErrorsList(errors);
+      setUsersList(users);
+      setTransactionsList(txs);
       setHealthList(health);
       setRemoteConfig(config);
-      setTransactionsList((txRes as any)?.data || []);
-      setTotalUsersCount((usersCountRes as any)?.count || 0);
       setLastRefreshedTime(new Date().toLocaleTimeString());
     } catch (e) {
       console.warn('Dashboard sync error:', e);
@@ -110,8 +129,7 @@ export default function CeoDashboardScreen() {
   useEffect(() => {
     if (!checkingAuth) {
       loadDashboardData();
-      // Auto-refresh every 30 seconds
-      const interval = setInterval(loadDashboardData, 30000);
+      const interval = setInterval(loadDashboardData, 30000); // Auto-refresh every 30s
       return () => clearInterval(interval);
     }
   }, [checkingAuth, loadDashboardData]);
@@ -138,7 +156,7 @@ export default function CeoDashboardScreen() {
     setErrorsList((prev) => prev.filter((e) => !e.resolved));
   };
 
-  // Actions for Config Switches
+  // Actions for Remote Config Switches
   const handleToggleConfig = async (key: keyof SystemRemoteConfig, val: boolean) => {
     setUpdatingConfig(true);
     setRemoteConfig((prev) => ({ ...prev, [key]: val }));
@@ -146,10 +164,69 @@ export default function CeoDashboardScreen() {
     setUpdatingConfig(false);
   };
 
-  // Calculate High-level System Status
+  // Actions for Granting Compensation Coins
+  const handleGrantCompensationCoins = async (uid: string, amount: number) => {
+    try {
+      setGrantingCoins(true);
+      const res = await grantCompensationCoins(uid, amount, 'CEO Goodwill Support');
+      if (res.success) {
+        Alert.alert('Coins Granted! 🪙', `${amount} coins have been successfully added to the user's wallet.`);
+        // Refresh users
+        const updatedUsers = await fetchAllUsersWithMetrics();
+        setUsersList(updatedUsers);
+        if (selectedUserForModal && selectedUserForModal.uid === uid) {
+          const fresh = updatedUsers.find((u) => u.uid === uid);
+          if (fresh) setSelectedUserForModal(fresh);
+        }
+      } else {
+        Alert.alert('Grant Failed', res.message);
+      }
+    } finally {
+      setGrantingCoins(false);
+    }
+  };
+
+  // Actions for Manual Chapa Payment Verification
+  const handleVerifyManualTx = async () => {
+    if (!manualTxRefInput.trim()) {
+      Alert.alert('Input Required', 'Please enter a valid Chapa transaction reference.');
+      return;
+    }
+
+    try {
+      setVerifyingTx(true);
+      const res = await verifyAndReconcileChapaTx(manualTxRefInput.trim());
+      if (res.success) {
+        Alert.alert('Verification Success ✅', res.message);
+        setVerifyModalVisible(false);
+        setManualTxRefInput('');
+        loadDashboardData();
+      } else {
+        Alert.alert('Verification Issue', res.message);
+      }
+    } finally {
+      setVerifyingTx(false);
+    }
+  };
+
+  // ── Derived Calculations ──
+  const unresolvedErrorsCount = useMemo(() => errorsList.filter((e) => !e.resolved).length, [errorsList]);
+  const flaggedUsersCount = useMemo(() => usersList.filter((u) => u.errorCount > 0).length, [usersList]);
+  const suspectedBotsCount = useMemo(() => usersList.filter((u) => u.trustBadge === 'Suspected Bot').length, [usersList]);
+  const verifiedHumansCount = useMemo(() => usersList.filter((u) => u.trustBadge === 'Verified Human').length, [usersList]);
+
+  const financialKPIs: FinancialKPIs = useMemo(
+    () => calculateFinancialKPIs(transactionsList),
+    [transactionsList]
+  );
+
+  const infrastructureBottlenecks: BottleneckAnalysis[] = useMemo(
+    () => explainInfrastructureBottleneck(healthList),
+    [healthList]
+  );
+
   const hasDownService = healthList.some((h) => h.status === 'down');
   const hasDegradedService = healthList.some((h) => h.status === 'degraded');
-  const unresolvedErrorsCount = errorsList.filter((e) => !e.resolved).length;
 
   const systemStatusPill = hasDownService
     ? { text: 'CRITICAL ALERT', color: '#EF4444', icon: 'alert-circle' }
@@ -157,36 +234,89 @@ export default function CeoDashboardScreen() {
     ? { text: 'DEGRADED PERFORMANCE', color: '#EAB308', icon: 'warning' }
     : { text: 'ALL SYSTEMS OPERATIONAL', color: '#00E676', icon: 'checkmark-circle' };
 
+  // Filtered Errors
+  const filteredErrors = useMemo(() => {
+    return errorsList.filter((err) => {
+      if (errorFilterSeverity === 'unresolved' && err.resolved) return false;
+      if (errorFilterSeverity === 'critical' && err.severity !== 'critical') return false;
+      if (errorFilterSeverity === 'warning' && err.severity !== 'warning') return false;
+
+      if (errorSearchQuery.trim()) {
+        const q = errorSearchQuery.toLowerCase();
+        const matchesMsg = err.error_message?.toLowerCase().includes(q);
+        const matchesComp = err.component?.toLowerCase().includes(q);
+        const matchesUser = err.user_email?.toLowerCase().includes(q) || err.user_uid?.toLowerCase().includes(q);
+        return matchesMsg || matchesComp || matchesUser;
+      }
+      return true;
+    });
+  }, [errorsList, errorFilterSeverity, errorSearchQuery]);
+
+  // Filtered Users
+  const filteredUsers = useMemo(() => {
+    return usersList.filter((u) => {
+      if (userRoleFilter === 'user' && u.role !== 'user') return false;
+      if (userRoleFilter === 'coach' && u.role !== 'coach') return false;
+      if (userRoleFilter === 'flagged' && u.errorCount === 0) return false;
+      if (userRoleFilter === 'bots' && u.trustBadge !== 'Suspected Bot') return false;
+
+      if (userSearchQuery.trim()) {
+        const q = userSearchQuery.toLowerCase();
+        const matchesName = u.name?.toLowerCase().includes(q);
+        const matchesEmail = u.email?.toLowerCase().includes(q);
+        const matchesUid = u.uid?.toLowerCase().includes(q);
+        const matchesCity = u.city?.toLowerCase().includes(q);
+        return matchesName || matchesEmail || matchesUid || matchesCity;
+      }
+      return true;
+    });
+  }, [usersList, userRoleFilter, userSearchQuery]);
+
+  // Filtered Transactions
+  const filteredTransactions = useMemo(() => {
+    return transactionsList.filter((tx) => {
+      if (txStatusFilter !== 'all' && tx.status !== txStatusFilter) return false;
+
+      if (txSearchQuery.trim()) {
+        const q = txSearchQuery.toLowerCase();
+        const matchesRef = tx.description?.toLowerCase().includes(q) || tx.id?.toLowerCase().includes(q);
+        const matchesName = tx.userName?.toLowerCase().includes(q);
+        const matchesEmail = tx.userEmail?.toLowerCase().includes(q);
+        return matchesRef || matchesName || matchesEmail;
+      }
+      return true;
+    });
+  }, [transactionsList, txStatusFilter, txSearchQuery]);
+
   if (checkingAuth) {
     return (
       <View style={styles.centerLoading}>
         <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Verifying CEO Master Credentials...</Text>
       </View>
     );
   }
 
-  const displayedErrors = onlyUnresolved ? errorsList.filter((e) => !e.resolved) : errorsList;
-
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* ── TOP HEADER ── */}
-      <View style={styles.header}>
-        <View style={styles.brandGroup}>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
+      {/* ── TOP EXECUTIVE APP BAR ── */}
+      <View style={styles.executiveHeader}>
+        <View style={styles.headerLeft}>
           <BrandLogo size="small" showText={false} />
-          <View style={styles.brandTitleWrap}>
-            <View style={styles.titleRow}>
+          <View style={styles.headerTitles}>
+            <View style={styles.brandRow}>
               <Text style={styles.brandTitle}>FitPulse</Text>
               <View style={styles.ceoBadge}>
                 <Text style={styles.ceoBadgeText}>MISSION CONTROL</Text>
               </View>
             </View>
-            <Text style={styles.brandSubtitle}>Executive Operations & Health Dashboard</Text>
+            <Text style={styles.brandSubtitle}>Executive Operations & Intelligence Cockpit</Text>
           </View>
         </View>
 
-        <View style={styles.headerRightActions}>
+        <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.refreshIconBtn}
+            style={styles.refreshBtn}
             onPress={loadDashboardData}
             activeOpacity={0.7}
           >
@@ -211,7 +341,7 @@ export default function CeoDashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} tintColor={Colors.primary} />
         }
       >
-        {/* ── SYSTEM STATUS BANNER ── */}
+        {/* ── HIGH-LEVEL SYSTEM STATUS BANNER ── */}
         <View style={styles.statusBanner}>
           <View style={styles.statusLeft}>
             <Ionicons name={systemStatusPill.icon as any} size={18} color={systemStatusPill.color} />
@@ -224,10 +354,14 @@ export default function CeoDashboardScreen() {
           </Text>
         </View>
 
-        {/* ── QUICK METRICS GRID ── */}
+        {/* ── TOP 4 METRIC RADAR CARDS ── */}
         <View style={styles.metricsGrid}>
-          {/* Metric 1: Unresolved Errors */}
-          <View style={[styles.metricCard, unresolvedErrorsCount > 0 && styles.metricCardAlert]}>
+          {/* Card 1: Active Errors */}
+          <TouchableOpacity
+            style={[styles.metricCard, unresolvedErrorsCount > 0 && styles.metricCardAlert]}
+            onPress={() => setActiveTab('errors')}
+            activeOpacity={0.8}
+          >
             <View style={styles.metricCardHeader}>
               <Text style={styles.metricLabel}>ACTIVE ERRORS</Text>
               <Ionicons
@@ -242,30 +376,46 @@ export default function CeoDashboardScreen() {
             <Text style={styles.metricSub}>
               {errorsList.length} total captured logs
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          {/* Metric 2: Registered Athletes & Coaches */}
-          <View style={styles.metricCard}>
+          {/* Card 2: Registered Users */}
+          <TouchableOpacity
+            style={styles.metricCard}
+            onPress={() => setActiveTab('users')}
+            activeOpacity={0.8}
+          >
             <View style={styles.metricCardHeader}>
               <Text style={styles.metricLabel}>REGISTERED USERS</Text>
               <Ionicons name="people" size={16} color={Colors.primary} />
             </View>
-            <Text style={styles.metricValue}>{totalUsersCount}</Text>
-            <Text style={styles.metricSub}>Athletes, Coaches & Guests</Text>
-          </View>
+            <Text style={styles.metricValue}>{usersList.length}</Text>
+            <Text style={styles.metricSub}>
+              {verifiedHumansCount} Humans • {flaggedUsersCount > 0 ? `⚠️ ${flaggedUsersCount} Errors` : '0 Errors'}
+            </Text>
+          </TouchableOpacity>
 
-          {/* Metric 3: Recent Transactions */}
-          <View style={styles.metricCard}>
+          {/* Card 3: Payment Radar */}
+          <TouchableOpacity
+            style={styles.metricCard}
+            onPress={() => setActiveTab('finance')}
+            activeOpacity={0.8}
+          >
             <View style={styles.metricCardHeader}>
               <Text style={styles.metricLabel}>PAYMENT RADAR</Text>
-              <Ionicons name="card" size={16} color="#EAB308" />
+              <Ionicons name="wallet" size={16} color="#EAB308" />
             </View>
-            <Text style={styles.metricValue}>{transactionsList.length}</Text>
-            <Text style={styles.metricSub}>Recent Chapa & Coins logs</Text>
-          </View>
+            <Text style={styles.metricValue}>{financialKPIs.totalRevenueEtb} ETB</Text>
+            <Text style={styles.metricSub}>
+              {financialKPIs.completedTransactionsCount} Completed Txs
+            </Text>
+          </TouchableOpacity>
 
-          {/* Metric 4: Cloud Health */}
-          <View style={styles.metricCard}>
+          {/* Card 4: Infrastructure */}
+          <TouchableOpacity
+            style={styles.metricCard}
+            onPress={() => setActiveTab('health')}
+            activeOpacity={0.8}
+          >
             <View style={styles.metricCardHeader}>
               <Text style={styles.metricLabel}>CORE SERVICES</Text>
               <Ionicons name="server" size={16} color="#00E676" />
@@ -274,13 +424,14 @@ export default function CeoDashboardScreen() {
               {healthList.filter((h) => h.status === 'healthy').length}/{healthList.length || 4}
             </Text>
             <Text style={styles.metricSub}>APIs Online & Monitored</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* ── NAVIGATION TABS ── */}
+        {/* ── 5 DEDICATED NAVIGATION TABS ── */}
         <View style={styles.navTabsWrap}>
           {[
             { key: 'errors', label: 'Error Radar', icon: 'alert-circle', count: unresolvedErrorsCount },
+            { key: 'users', label: 'Users & Bots', icon: 'people', alertCount: flaggedUsersCount },
             { key: 'finance', label: 'Payment Radar', icon: 'wallet', count: transactionsList.length },
             { key: 'health', label: 'Infrastructure', icon: 'pulse' },
             { key: 'controls', label: 'Remote Controls', icon: 'toggle' },
@@ -301,6 +452,7 @@ export default function CeoDashboardScreen() {
                 <Text style={[styles.navTabText, active && styles.navTabTextActive]}>
                   {tab.label}
                 </Text>
+
                 {tab.count !== undefined && tab.count > 0 ? (
                   <View
                     style={[
@@ -311,132 +463,183 @@ export default function CeoDashboardScreen() {
                     <Text style={styles.tabCountBadgeText}>{tab.count}</Text>
                   </View>
                 ) : null}
+
+                {tab.alertCount !== undefined && tab.alertCount > 0 ? (
+                  <View style={[styles.tabCountBadge, { backgroundColor: '#EAB308' }]}>
+                    <Text style={[styles.tabCountBadgeText, { color: '#000' }]}>⚠️ {tab.alertCount}</Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* ── TAB 1: ERROR RADAR ── */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB 1: ERROR RADAR & AI DIAGNOSTICS ──                   */}
+        {/* ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'errors' && (
-          <View style={styles.tabSection}>
+          <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Real-time Error & Crash Stream</Text>
+                <Text style={styles.sectionTitle}>Real-Time User Crash & Error Telemetry</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Errors captured silently on user devices with automated diagnostic resolutions.
+                  Autonomous error stream from mobile & web clients with instant AI root-cause diagnostics.
                 </Text>
               </View>
-
-              <View style={styles.errorFilterActions}>
-                <TouchableOpacity
-                  style={[styles.filterChip, onlyUnresolved && styles.filterChipActive]}
-                  onPress={() => setOnlyUnresolved(!onlyUnresolved)}
-                >
-                  <Text style={[styles.filterChipText, onlyUnresolved && styles.filterChipTextActive]}>
-                    {onlyUnresolved ? 'Unresolved Only' : 'Showing All'}
-                  </Text>
-                </TouchableOpacity>
-
+              {errorsList.some((e) => e.resolved) && (
                 <TouchableOpacity style={styles.clearBtn} onPress={handleClearResolved}>
-                  <Text style={styles.clearBtnText}>Purge Resolved</Text>
+                  <Ionicons name="trash-bin-outline" size={14} color="#8A95A5" />
+                  <Text style={styles.clearBtnText}>Wipe Resolved</Text>
                 </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Error Filters & Search Bar */}
+            <View style={styles.filterBarRow}>
+              <View style={styles.searchBoxWrap}>
+                <Ionicons name="search" size={16} color="#8A95A5" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search error message, component, or user..."
+                  placeholderTextColor="#667085"
+                  value={errorSearchQuery}
+                  onChangeText={setErrorSearchQuery}
+                />
+                {errorSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setErrorSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color="#8A95A5" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.pillGroup}>
+                {[
+                  { key: 'unresolved', label: `Unresolved (${unresolvedErrorsCount})` },
+                  { key: 'all', label: `All (${errorsList.length})` },
+                  { key: 'critical', label: 'Critical' },
+                  { key: 'warning', label: 'Warning' },
+                ].map((pill) => (
+                  <TouchableOpacity
+                    key={pill.key}
+                    style={[
+                      styles.filterPill,
+                      errorFilterSeverity === pill.key && styles.filterPillActive,
+                    ]}
+                    onPress={() => setErrorFilterSeverity(pill.key as any)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        errorFilterSeverity === pill.key && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {pill.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
-            {displayedErrors.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkmark-done-circle" size={54} color="#00E676" />
-                <Text style={styles.emptyTitle}>Zero Active Errors</Text>
-                <Text style={styles.emptySubtitle}>
-                  All systems operating cleanly. User app telemetry is running smoothly with no reported crashes.
+            {filteredErrors.length === 0 ? (
+              <View style={styles.emptyStateCard}>
+                <Ionicons name="shield-checkmark" size={48} color="#00E676" />
+                <Text style={styles.emptyStateTitle}>Zero Active Crashes</Text>
+                <Text style={styles.emptyStateSub}>
+                  No active exceptions recorded. Your mobile and web client sessions are running smoothly.
                 </Text>
               </View>
             ) : (
-              displayedErrors.map((item) => {
-                const diag = diagnoseSystemIssue(item.error_message, item.component);
+              filteredErrors.map((err) => {
+                const diagnosis = diagnoseSystemIssue(err.error_message, err.component);
                 return (
-                  <View key={item.id} style={[styles.errorCard, item.resolved && styles.errorCardResolved]}>
+                  <View key={err.id} style={[styles.errorCard, err.resolved && styles.errorCardResolved]}>
                     <View style={styles.errorCardTop}>
                       <View style={styles.errorBadgesRow}>
                         <View
                           style={[
-                            styles.severityBadge,
-                            item.severity === 'critical'
-                              ? styles.badgeCritical
-                              : styles.badgeWarning,
+                            styles.severityPill,
+                            {
+                              backgroundColor:
+                                err.severity === 'critical'
+                                  ? 'rgba(239, 68, 68, 0.15)'
+                                  : 'rgba(234, 179, 8, 0.15)',
+                            },
                           ]}
                         >
-                          <Text style={styles.severityBadgeText}>
-                            {(item.severity || 'warning').toUpperCase()}
+                          <Text
+                            style={[
+                              styles.severityPillText,
+                              { color: err.severity === 'critical' ? '#EF4444' : '#EAB308' },
+                            ]}
+                          >
+                            {(err.severity || 'warning').toUpperCase()}
                           </Text>
                         </View>
 
                         <View style={styles.platformBadge}>
-                          <Ionicons name="phone-portrait-outline" size={11} color="#8A95A5" />
-                          <Text style={styles.platformBadgeText}>{item.platform || 'Client'}</Text>
+                          <Text style={styles.platformBadgeText}>{err.platform || 'Client'}</Text>
                         </View>
 
                         <View style={styles.componentBadge}>
-                          <Text style={styles.componentBadgeText}>{item.component || 'App'}</Text>
+                          <Text style={styles.componentBadgeText}>{err.component || 'AppGlobal'}</Text>
                         </View>
                       </View>
 
                       <Text style={styles.errorTime}>
-                        {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}
+                        {err.created_at ? new Date(err.created_at).toLocaleString() : 'Just now'}
                       </Text>
                     </View>
 
-                    <Text style={styles.errorMessageText}>{item.error_message}</Text>
+                    <Text style={styles.errorMessageText}>{err.error_message}</Text>
 
-                    {item.user_email && item.user_email !== 'unknown' ? (
-                      <Text style={styles.errorUserMeta}>
-                        User Affected: <Text style={{ color: '#FFF' }}>{item.user_email}</Text> ({item.user_uid?.slice(0, 8)}...)
+                    {/* User Metadata */}
+                    <View style={styles.errorUserRow}>
+                      <Ionicons name="person-outline" size={13} color="#8A95A5" />
+                      <Text style={styles.errorUserText}>
+                        User: <Text style={{ color: '#FFF' }}>{err.user_email || err.user_uid || 'Anonymous'}</Text>
                       </Text>
-                    ) : null}
+                    </View>
 
-                    {/* Proactive Diagnosis Box */}
-                    <View style={styles.diagnosisBox}>
-                      <View style={styles.diagnosisHeader}>
-                        <Ionicons name="sparkles" size={13} color="#EAB308" />
-                        <Text style={styles.diagnosisTitle}>PROACTIVE DIAGNOSTIC & SOLUTION</Text>
+                    {/* ── AI PROACTIVE DIAGNOSIS BOX ── */}
+                    <View style={styles.aiDiagnosisBox}>
+                      <View style={styles.aiDiagnosisHeader}>
+                        <Ionicons name="sparkles" size={15} color={Colors.primary} />
+                        <Text style={styles.aiDiagnosisTitle}>AI Autonomous Diagnosis & Solution</Text>
                       </View>
-                      <Text style={styles.diagCause}>
-                        <Text style={{ fontWeight: '700', color: '#FFF' }}>ምክንያት፦ </Text>
-                        {diag.rootCause}
-                      </Text>
-                      <Text style={styles.diagSolution}>
-                        <Text style={{ fontWeight: '700', color: '#00E676' }}>መፍትሔ፦ </Text>
-                        {diag.actionableSolution}
-                      </Text>
-                      {diag.actionCodeSnippet ? (
+
+                      <Text style={styles.aiIssueTitle}>{diagnosis.issueTitle}</Text>
+                      <Text style={styles.aiRootCauseText}>💡 {diagnosis.rootCause}</Text>
+                      <Text style={styles.aiSolutionText}>🛠️ {diagnosis.actionableSolution}</Text>
+
+                      {diagnosis.actionCodeSnippet ? (
                         <View style={styles.codeSnippetBox}>
-                          <Text style={styles.codeSnippetText}>{diag.actionCodeSnippet}</Text>
+                          <Text style={styles.codeSnippetText}>{diagnosis.actionCodeSnippet}</Text>
                         </View>
                       ) : null}
                     </View>
 
                     {/* Action Buttons */}
-                    <View style={styles.errorCardActions}>
-                      {!item.resolved ? (
-                        <TouchableOpacity
-                          style={styles.resolveBtn}
-                          onPress={() => item.id && handleResolveError(item.id)}
-                        >
-                          <Ionicons name="checkmark" size={14} color="#000" />
-                          <Text style={styles.resolveBtnText}>Mark Resolved</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.resolvedPill}>
-                          <Ionicons name="checkmark-circle" size={13} color="#00E676" />
-                          <Text style={styles.resolvedPillText}>Resolved</Text>
-                        </View>
-                      )}
+                    <View style={styles.errorActionsRow}>
+                      <TouchableOpacity
+                        style={[styles.resolveBtn, err.resolved && styles.resolveBtnActive]}
+                        onPress={() => err.id && handleResolveError(err.id)}
+                      >
+                        <Ionicons
+                          name={err.resolved ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                          size={15}
+                          color={err.resolved ? '#00E676' : '#8A95A5'}
+                        />
+                        <Text style={[styles.resolveBtnText, err.resolved && { color: '#00E676' }]}>
+                          {err.resolved ? 'Resolved' : 'Mark Resolved'}
+                        </Text>
+                      </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.deleteErrorBtn}
-                        onPress={() => item.id && handleDeleteError(item.id)}
+                        onPress={() => err.id && handleDeleteError(err.id)}
                       >
-                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                        <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                        <Text style={styles.deleteErrorBtnText}>Delete Log</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -446,60 +649,367 @@ export default function CeoDashboardScreen() {
           </View>
         )}
 
-        {/* ── TAB 2: PAYMENT & CHAPA RADAR ── */}
-        {activeTab === 'finance' && (
-          <View style={styles.tabSection}>
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB 2: REGISTERED USERS & BOT DETECTOR ──                */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'users' && (
+          <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Chapa & Coin Transaction Feed</Text>
+                <Text style={styles.sectionTitle}>Registered Users & Bot Detector</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Monitor digital payments, coin purchases, and pending bank clearances.
+                  Monitor member activity, evaluate authenticity (Real vs Bot), and identify users who hit app errors.
                 </Text>
               </View>
             </View>
 
-            {transactionsList.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="card-outline" size={50} color="#8A95A5" />
-                <Text style={styles.emptyTitle}>No Recorded Transactions</Text>
-                <Text style={styles.emptySubtitle}>
-                  Transactions made via Chapa checkout or coin gifts will display live here.
+            {/* Quick Metrics Bar */}
+            <View style={styles.userSummaryBar}>
+              <View style={styles.userSummaryItem}>
+                <Text style={styles.userSummaryNum}>{usersList.length}</Text>
+                <Text style={styles.userSummaryLabel}>Total Registered</Text>
+              </View>
+              <View style={styles.userSummaryDivider} />
+              <View style={styles.userSummaryItem}>
+                <Text style={[styles.userSummaryNum, { color: '#00E676' }]}>{verifiedHumansCount}</Text>
+                <Text style={styles.userSummaryLabel}>Verified Humans</Text>
+              </View>
+              <View style={styles.userSummaryDivider} />
+              <View style={styles.userSummaryItem}>
+                <Text style={[styles.userSummaryNum, { color: '#EF4444' }]}>{flaggedUsersCount}</Text>
+                <Text style={styles.userSummaryLabel}>Users With Crashes</Text>
+              </View>
+              <View style={styles.userSummaryDivider} />
+              <View style={styles.userSummaryItem}>
+                <Text style={[styles.userSummaryNum, { color: '#8A95A5' }]}>{suspectedBotsCount}</Text>
+                <Text style={styles.userSummaryLabel}>Suspected Bots</Text>
+              </View>
+            </View>
+
+            {/* User Search & Filter */}
+            <View style={styles.filterBarRow}>
+              <View style={styles.searchBoxWrap}>
+                <Ionicons name="search" size={16} color="#8A95A5" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search user by name, email, UID, or city..."
+                  placeholderTextColor="#667085"
+                  value={userSearchQuery}
+                  onChangeText={setUserSearchQuery}
+                />
+                {userSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setUserSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color="#8A95A5" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.pillGroup}>
+                {[
+                  { key: 'all', label: `All (${usersList.length})` },
+                  { key: 'user', label: 'Trainees' },
+                  { key: 'coach', label: 'Coaches' },
+                  { key: 'flagged', label: `⚠️ Hit Errors (${flaggedUsersCount})` },
+                  { key: 'bots', label: `🤖 Suspected Bots (${suspectedBotsCount})` },
+                ].map((pill) => (
+                  <TouchableOpacity
+                    key={pill.key}
+                    style={[
+                      styles.filterPill,
+                      userRoleFilter === pill.key && styles.filterPillActive,
+                    ]}
+                    onPress={() => setUserRoleFilter(pill.key as any)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        userRoleFilter === pill.key && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {pill.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {filteredUsers.length === 0 ? (
+              <View style={styles.emptyStateCard}>
+                <Ionicons name="people-outline" size={48} color="#8A95A5" />
+                <Text style={styles.emptyStateTitle}>No Users Found</Text>
+                <Text style={styles.emptyStateSub}>No users match the active search or filter criteria.</Text>
+              </View>
+            ) : (
+              filteredUsers.map((user) => {
+                const isHuman = user.trustBadge === 'Verified Human';
+                const isBot = user.trustBadge === 'Suspected Bot';
+
+                return (
+                  <View key={user.uid} style={styles.userCard}>
+                    <View style={styles.userCardMain}>
+                      {/* Avatar */}
+                      <View style={styles.avatarWrap}>
+                        {user.avatar_url ? (
+                          <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarPlaceholder}>
+                            <Text style={styles.avatarInitials}>
+                              {user.name.slice(0, 2).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        {user.role === 'coach' && (
+                          <View style={styles.coachBadgeDot}>
+                            <Ionicons name="ribbon" size={10} color="#000" />
+                          </View>
+                        )}
+                      </View>
+
+                      {/* User Info */}
+                      <View style={styles.userInfoWrap}>
+                        <View style={styles.userNameRow}>
+                          <Text style={styles.userNameText}>{user.name}</Text>
+                          <View style={styles.roleTag}>
+                            <Text style={styles.roleTagText}>{user.role.toUpperCase()}</Text>
+                          </View>
+                          {user.isPro && (
+                            <View style={styles.proTag}>
+                              <Text style={styles.proTagText}>PRO</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text style={styles.userEmailText}>
+                          {user.email || 'No email registered'} {user.city ? `• ${user.city}` : ''}
+                        </Text>
+
+                        {/* Badges Row */}
+                        <View style={styles.userBadgesRow}>
+                          {/* Trust Badge */}
+                          <View
+                            style={[
+                              styles.trustBadge,
+                              {
+                                backgroundColor: isHuman
+                                  ? 'rgba(0, 230, 118, 0.12)'
+                                  : isBot
+                                  ? 'rgba(239, 68, 68, 0.12)'
+                                  : 'rgba(234, 179, 8, 0.12)',
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name={isHuman ? 'shield-checkmark' : isBot ? 'hardware-chip' : 'help-circle'}
+                              size={12}
+                              color={isHuman ? '#00E676' : isBot ? '#EF4444' : '#EAB308'}
+                            />
+                            <Text
+                              style={[
+                                styles.trustBadgeText,
+                                { color: isHuman ? '#00E676' : isBot ? '#EF4444' : '#EAB308' },
+                              ]}
+                            >
+                              {user.trustBadge} ({user.trustScore}%)
+                            </Text>
+                          </View>
+
+                          {/* Coins */}
+                          <View style={styles.coinsBadge}>
+                            <Ionicons name="cash" size={12} color="#EAB308" />
+                            <Text style={styles.coinsBadgeText}>{user.coins} Coins</Text>
+                          </View>
+
+                          {/* Error Flag Alert */}
+                          {user.errorCount > 0 && (
+                            <View style={styles.errorFlagBadge}>
+                              <Ionicons name="warning" size={12} color="#EF4444" />
+                              <Text style={styles.errorFlagBadgeText}>
+                                ⚠️ {user.errorCount} Crashes
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Inspect Button */}
+                    <TouchableOpacity
+                      style={styles.inspectUserBtn}
+                      onPress={() => setSelectedUserForModal(user)}
+                    >
+                      <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
+                      <Text style={styles.inspectUserBtnText}>Inspect & Support</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB 3: REAL PAYMENT RADAR & CHAPA RECONCILIATION ──     */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'finance' && (
+          <View style={styles.tabContent}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.sectionTitle}>Chapa & Coin Financial Ledger</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Real-time transaction stream directly from Supabase coin_transactions with 1-click verification.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.verifyModalTriggerBtn}
+                onPress={() => setVerifyModalVisible(true)}
+              >
+                <Ionicons name="checkmark-done" size={14} color="#000" />
+                <Text style={styles.verifyModalTriggerBtnText}>Verify Tx with Chapa</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Financial KPI Banner */}
+            <View style={styles.financialKpiGrid}>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>TOTAL REVENUE</Text>
+                <Text style={[styles.kpiValue, { color: '#00E676' }]}>
+                  {financialKPIs.totalRevenueEtb} ETB
+                </Text>
+                <Text style={styles.kpiSub}>Completed fiat payments</Text>
+              </View>
+
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>COINS SOLD</Text>
+                <Text style={[styles.kpiValue, { color: '#EAB308' }]}>
+                  {financialKPIs.totalCoinsPurchased} 🪙
+                </Text>
+                <Text style={styles.kpiSub}>Credits circulating</Text>
+              </View>
+
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>PENDING VOLUME</Text>
+                <Text style={[styles.kpiValue, { color: financialKPIs.pendingAmountEtb > 0 ? '#EF4444' : '#FFF' }]}>
+                  {financialKPIs.pendingAmountEtb} ETB
+                </Text>
+                <Text style={styles.kpiSub}>{financialKPIs.pendingTransactionsCount} pending bank checkouts</Text>
+              </View>
+
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>CHAPA SUCCESS RATE</Text>
+                <Text style={styles.kpiValue}>{financialKPIs.successRatePercent}%</Text>
+                <Text style={styles.kpiSub}>{financialKPIs.completedTransactionsCount} successful checkouts</Text>
+              </View>
+            </View>
+
+            {/* Filters & Search */}
+            <View style={styles.filterBarRow}>
+              <View style={styles.searchBoxWrap}>
+                <Ionicons name="search" size={16} color="#8A95A5" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search transaction ref, user name, or email..."
+                  placeholderTextColor="#667085"
+                  value={txSearchQuery}
+                  onChangeText={setTxSearchQuery}
+                />
+                {txSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setTxSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color="#8A95A5" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.pillGroup}>
+                {[
+                  { key: 'all', label: `All (${transactionsList.length})` },
+                  { key: 'completed', label: 'Completed' },
+                  { key: 'pending', label: 'Pending' },
+                  { key: 'failed', label: 'Failed' },
+                ].map((pill) => (
+                  <TouchableOpacity
+                    key={pill.key}
+                    style={[
+                      styles.filterPill,
+                      txStatusFilter === pill.key && styles.filterPillActive,
+                    ]}
+                    onPress={() => setTxStatusFilter(pill.key as any)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        txStatusFilter === pill.key && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {pill.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {filteredTransactions.length === 0 ? (
+              <View style={styles.emptyStateCard}>
+                <Ionicons name="card-outline" size={48} color="#8A95A5" />
+                <Text style={styles.emptyStateTitle}>No Transactions Recorded</Text>
+                <Text style={styles.emptyStateSub}>
+                  No payment entries match the criteria. New Chapa checkouts will appear here instantly.
                 </Text>
               </View>
             ) : (
-              transactionsList.map((tx: any, idx) => (
-                <View key={tx.id || idx} style={styles.transactionCard}>
-                  <View style={styles.txLeft}>
-                    <View style={styles.txIconCircle}>
+              filteredTransactions.map((tx) => (
+                <View key={tx.id} style={styles.txCard}>
+                  <View style={styles.txCardLeft}>
+                    <View style={styles.txIconWrap}>
                       <Ionicons
-                        name={tx.type === 'coin_purchase' ? 'cash' : 'arrow-up-circle'}
+                        name={tx.status === 'completed' ? 'checkmark' : tx.status === 'pending' ? 'time' : 'close'}
                         size={18}
-                        color={Colors.primary}
+                        color={tx.status === 'completed' ? '#00E676' : tx.status === 'pending' ? '#EAB308' : '#EF4444'}
                       />
                     </View>
-                    <View>
-                      <Text style={styles.txTitle}>{tx.description || tx.type || 'Transaction'}</Text>
-                      <Text style={styles.txMeta}>
-                        Ref: {tx.tx_ref || tx.reference || tx.id?.slice(0, 10)} •{' '}
-                        {tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'Recent'}
+                    <View style={styles.txInfoWrap}>
+                      <Text style={styles.txTitleText}>{tx.description || 'Coin Bundle Purchase'}</Text>
+                      <Text style={styles.txUserSubText}>
+                        {tx.userName} {tx.userEmail ? `(${tx.userEmail})` : ''} • Gateway: {tx.payment_gateway?.toUpperCase()}
+                      </Text>
+                      <Text style={styles.txTimeText}>
+                        {tx.created_at ? new Date(tx.created_at).toLocaleString() : ''}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.txRight}>
-                    <Text style={styles.txAmount}>
-                      {tx.amount ? `${tx.amount} ETB` : `${tx.coins || 0} Coins`}
+                  <View style={styles.txCardRight}>
+                    <Text style={styles.txAmountText}>
+                      +{tx.amount_etb} ETB
                     </Text>
+                    <Text style={styles.txCoinsSubText}>+{tx.amount_coins} Coins</Text>
                     <View
                       style={[
-                        styles.txStatusBadge,
-                        tx.status === 'completed' || tx.status === 'success'
-                          ? styles.txStatusSuccess
-                          : styles.txStatusPending,
+                        styles.txStatusPill,
+                        {
+                          backgroundColor:
+                            tx.status === 'completed'
+                              ? 'rgba(0, 230, 118, 0.15)'
+                              : tx.status === 'pending'
+                              ? 'rgba(234, 179, 8, 0.15)'
+                              : 'rgba(239, 68, 68, 0.15)',
+                        },
                       ]}
                     >
-                      <Text style={styles.txStatusText}>
-                        {(tx.status || 'completed').toUpperCase()}
+                      <Text
+                        style={[
+                          styles.txStatusPillText,
+                          {
+                            color:
+                              tx.status === 'completed'
+                                ? '#00E676'
+                                : tx.status === 'pending'
+                                ? '#EAB308'
+                                : '#EF4444',
+                          },
+                        ]}
+                      >
+                        {tx.status.toUpperCase()}
                       </Text>
                     </View>
                   </View>
@@ -509,40 +1019,80 @@ export default function CeoDashboardScreen() {
           </View>
         )}
 
-        {/* ── TAB 3: INFRASTRUCTURE HEARTBEAT ── */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB 4: INFRASTRUCTURE & DEEP BOTTLENECK ANALYSIS ──     */}
+        {/* ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'health' && (
-          <View style={styles.tabSection}>
+          <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Cloud Services & API Heartbeat</Text>
+                <Text style={styles.sectionTitle}>Cloud Services & Deep Infrastructure Heartbeat</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Live latency metrics and endpoint ping checks across external providers.
+                  Real-time latency metrics and automated root-cause bottleneck diagnostics.
                 </Text>
               </View>
             </View>
 
-            <View style={styles.healthCardsGrid}>
-              {healthList.map((item, index) => {
-                const isHealthy = item.status === 'healthy';
-                const isDegraded = item.status === 'degraded';
+            {/* ── AUTOMATED BOTTLENECK DIAGNOSTICS ALERT (IN AMHARIC) ── */}
+            {infrastructureBottlenecks.length > 0 ? (
+              <View style={styles.bottleneckAlertCard}>
+                <View style={styles.bottleneckAlertHeader}>
+                  <Ionicons name="warning" size={20} color="#EAB308" />
+                  <Text style={styles.bottleneckAlertTitle}>
+                    የሲስተም መዘግየት ትንተና (System Bottleneck Analysis)
+                  </Text>
+                </View>
+
+                {infrastructureBottlenecks.map((b, idx) => (
+                  <View key={idx} style={styles.bottleneckItemBox}>
+                    <Text style={styles.bottleneckItemTitle}>🚨 {b.amharicTitle} ({b.latencyMs} ms)</Text>
+                    <Text style={styles.bottleneckExplanation}>💡 <Text style={{ fontWeight: '700' }}>ምክንያት፦</Text> {b.amharicExplanation}</Text>
+                    <Text style={styles.bottleneckImpact}>⚠️ <Text style={{ fontWeight: '700' }}>ተፅዕኖ፦</Text> {b.impactOnUsers}</Text>
+                    <Text style={styles.bottleneckAction}>🛠️ <Text style={{ fontWeight: '700' }}>የሚመከር እርምጃ፦</Text> {b.recommendedAction}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.optimalHealthCard}>
+                <Ionicons name="shield-checkmark" size={22} color="#00E676" />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={styles.optimalHealthTitle}>ሁሉም ሰርቨሮች በከፍተኛ ፍጥነት በመስራት ላይ ናቸው</Text>
+                  <Text style={styles.optimalHealthSub}>
+                    የ Supabase ዳታቤዝ፣ የ Firebase መለያ፣ የ Chapa ክፍያ እና የ Agora ድምጽ ሞተር በሙሉ በጥሩ ጤንነት ላይ ናቸው።
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Live Service Cards */}
+            <View style={styles.serviceCardsGrid}>
+              {healthList.map((service, idx) => {
+                const isHealthy = service.status === 'healthy';
+                const isDegraded = service.status === 'degraded';
                 const statusColor = isHealthy ? '#00E676' : isDegraded ? '#EAB308' : '#EF4444';
+
                 return (
-                  <View key={index} style={styles.serviceHealthCard}>
-                    <View style={styles.serviceCardTop}>
-                      <Text style={styles.serviceName}>{item.name}</Text>
-                      <View style={[styles.healthDot, { backgroundColor: statusColor }]} />
+                  <View key={idx} style={styles.serviceCard}>
+                    <View style={styles.serviceCardHeader}>
+                      <Text style={styles.serviceName}>{service.name}</Text>
+                      <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
                     </View>
 
-                    <View style={styles.serviceLatencyRow}>
-                      <Ionicons name="speedometer-outline" size={15} color="#8A95A5" />
-                      <Text style={styles.serviceLatencyText}>{item.latencyMs} ms</Text>
-                      <Text style={[styles.serviceStatusText, { color: statusColor }]}>
-                        • {item.status.toUpperCase()}
+                    <View style={styles.latencyRow}>
+                      <Ionicons name="speedometer-outline" size={16} color={statusColor} />
+                      <Text style={[styles.latencyText, { color: statusColor }]}>
+                        {service.latencyMs} ms
                       </Text>
+                      <Text style={styles.statusLabelText}>• {service.status.toUpperCase()}</Text>
                     </View>
 
-                    <Text style={styles.serviceMessage}>{item.message}</Text>
-                    <Text style={styles.serviceChecked}>Last checked: {item.lastChecked}</Text>
+                    <Text style={styles.serviceMessage}>{service.message}</Text>
+                    {service.details && (
+                      <Text style={styles.serviceDetails}>{service.details}</Text>
+                    )}
+                    <Text style={styles.serviceCheckedTime}>
+                      Last checked: {service.lastChecked}
+                    </Text>
                   </View>
                 );
               })}
@@ -550,76 +1100,76 @@ export default function CeoDashboardScreen() {
           </View>
         )}
 
-        {/* ── TAB 4: REMOTE CONTROLS & AI SETTINGS ── */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB 5: REMOTE SWITCHES & SYSTEM KILLSWITCHES ──          */}
+        {/* ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'controls' && (
-          <View style={styles.tabSection}>
+          <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>System Switches & Remote Feature Flags</Text>
+                <Text style={styles.sectionTitle}>Emergency Remote Switches</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Change live application behavior remotely without redeploying code.
+                  Instantly toggle features across all user devices in real-time.
                 </Text>
               </View>
             </View>
 
-            <View style={styles.switchesContainer}>
+            <View style={styles.switchGroup}>
               {/* Switch 1: AI Voice Coach */}
-              <View style={styles.switchRow}>
+              <View style={styles.switchCard}>
                 <View style={styles.switchInfo}>
                   <View style={styles.switchTitleRow}>
-                    <Ionicons name="mic-outline" size={18} color={Colors.primary} />
+                    <Ionicons name="mic" size={18} color={Colors.primary} />
                     <Text style={styles.switchTitle}>Voice Coach AI Engine</Text>
                   </View>
-                  <Text style={styles.switchSubtitle}>
-                    Enables motivational real-time spoken coaching audio during user workouts.
+                  <Text style={styles.switchSub}>
+                    Toggle real-time Gemini/OpenAI voice feedback in user workouts. Turn off in case of upstream API quota issues.
                   </Text>
                 </View>
                 <Switch
                   value={remoteConfig.voice_coach_enabled}
                   onValueChange={(val) => handleToggleConfig('voice_coach_enabled', val)}
-                  trackColor={{ false: '#263442', true: '#00E676' }}
+                  trackColor={{ false: '#2C3440', true: Colors.primary }}
                   thumbColor="#FFF"
                   disabled={updatingConfig}
                 />
               </View>
 
-              {/* Switch 2: Chapa Payments Gateway */}
-              <View style={styles.switchRow}>
+              {/* Switch 2: Emergency Maintenance Mode */}
+              <View style={styles.switchCard}>
                 <View style={styles.switchInfo}>
                   <View style={styles.switchTitleRow}>
-                    <Ionicons name="card-outline" size={18} color="#EAB308" />
-                    <Text style={styles.switchTitle}>Chapa Payment Gateway</Text>
+                    <Ionicons name="construct" size={18} color="#EF4444" />
+                    <Text style={styles.switchTitle}>Emergency Maintenance Mode</Text>
                   </View>
-                  <Text style={styles.switchSubtitle}>
-                    When disabled, users see a gentle maintenance notice when attempting coin recharges.
-                  </Text>
-                </View>
-                <Switch
-                  value={remoteConfig.chapa_payments_enabled}
-                  onValueChange={(val) => handleToggleConfig('chapa_payments_enabled', val)}
-                  trackColor={{ false: '#263442', true: '#00E676' }}
-                  thumbColor="#FFF"
-                  disabled={updatingConfig}
-                />
-              </View>
-
-              {/* Switch 3: Emergency Maintenance Mode */}
-              <View style={[styles.switchRow, remoteConfig.maintenance_mode && styles.switchRowAlert]}>
-                <View style={styles.switchInfo}>
-                  <View style={styles.switchTitleRow}>
-                    <Ionicons name="warning-outline" size={18} color="#EF4444" />
-                    <Text style={[styles.switchTitle, remoteConfig.maintenance_mode && { color: '#EF4444' }]}>
-                      Emergency Maintenance Mode
-                    </Text>
-                  </View>
-                  <Text style={styles.switchSubtitle}>
-                    Locks the mobile app and displays a maintenance message to all non-admin users.
+                  <Text style={styles.switchSub}>
+                    Block incoming trainee requests and display a graceful maintenance screen across the app.
                   </Text>
                 </View>
                 <Switch
                   value={remoteConfig.maintenance_mode}
                   onValueChange={(val) => handleToggleConfig('maintenance_mode', val)}
-                  trackColor={{ false: '#263442', true: '#EF4444' }}
+                  trackColor={{ false: '#2C3440', true: '#EF4444' }}
+                  thumbColor="#FFF"
+                  disabled={updatingConfig}
+                />
+              </View>
+
+              {/* Switch 3: Chapa Payments */}
+              <View style={styles.switchCard}>
+                <View style={styles.switchInfo}>
+                  <View style={styles.switchTitleRow}>
+                    <Ionicons name="card" size={18} color="#EAB308" />
+                    <Text style={styles.switchTitle}>Chapa Checkout Flow</Text>
+                  </View>
+                  <Text style={styles.switchSub}>
+                    Permit coin bundle purchases and bank transfers. Freeze in case of bank network downtime.
+                  </Text>
+                </View>
+                <Switch
+                  value={remoteConfig.chapa_payments_enabled}
+                  onValueChange={(val) => handleToggleConfig('chapa_payments_enabled', val)}
+                  trackColor={{ false: '#2C3440', true: '#EAB308' }}
                   thumbColor="#FFF"
                   disabled={updatingConfig}
                 />
@@ -628,12 +1178,180 @@ export default function CeoDashboardScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* ── MODAL 1: USER INSPECTION & COMPENSATION COIN TOOL ──     */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <Modal
+        visible={!!selectedUserForModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedUserForModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selectedUserForModal && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="person-circle-outline" size={24} color={Colors.primary} />
+                    <Text style={styles.modalTitle}>Member Intelligence & Support</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setSelectedUserForModal(null)}>
+                    <Ionicons name="close" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+                  {/* User Profile Bar */}
+                  <View style={styles.modalUserBar}>
+                    <Text style={styles.modalUserName}>{selectedUserForModal.name}</Text>
+                    <Text style={styles.modalUserEmail}>{selectedUserForModal.email || 'No email'}</Text>
+                    <Text style={styles.modalUserUid}>UID: {selectedUserForModal.uid}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                      <View style={styles.roleTag}>
+                        <Text style={styles.roleTagText}>{selectedUserForModal.role.toUpperCase()}</Text>
+                      </View>
+                      <View style={styles.coinsBadge}>
+                        <Ionicons name="cash" size={12} color="#EAB308" />
+                        <Text style={styles.coinsBadgeText}>{selectedUserForModal.coins} Coins</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Authenticity Breakdown */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>🤖 Authenticity & Bot Evaluation</Text>
+                    <View style={styles.authenticityBox}>
+                      <Text style={styles.authenticityScoreText}>
+                        Trust Score: {selectedUserForModal.trustScore}% ({selectedUserForModal.trustBadge})
+                      </Text>
+                      {selectedUserForModal.trustReasons.map((r, i) => (
+                        <Text key={i} style={styles.authenticityReasonText}>• {r}</Text>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Crash History For This User */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>⚠️ Encountered Errors & Crashes</Text>
+                    {selectedUserForModal.errorCount > 0 ? (
+                      <View style={styles.modalCrashAlert}>
+                        <Text style={styles.modalCrashCountText}>
+                          This user has encountered {selectedUserForModal.errorCount} system crash(es).
+                        </Text>
+                        {selectedUserForModal.latestErrorMessage ? (
+                          <Text style={styles.modalCrashMsgText}>
+                            Latest Error: {selectedUserForModal.latestErrorMessage}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : (
+                      <Text style={{ color: '#00E676', fontSize: 13 }}>
+                        ✅ Zero recorded crashes. User has had a clean experience.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* CEO Goodwill Compensation Tool */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>🎁 CEO Goodwill Coin Grant</Text>
+                    <Text style={styles.modalCompensationSub}>
+                      If this user suffered an app error, grant compensatory FitPulse coins directly to their wallet:
+                    </Text>
+
+                    <View style={styles.coinGrantBtnRow}>
+                      <TouchableOpacity
+                        style={styles.grantCoinBtn}
+                        onPress={() => handleGrantCompensationCoins(selectedUserForModal.uid, 25)}
+                        disabled={grantingCoins}
+                      >
+                        <Text style={styles.grantCoinBtnText}>+25 Coins</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.grantCoinBtn, { backgroundColor: '#EAB308' }]}
+                        onPress={() => handleGrantCompensationCoins(selectedUserForModal.uid, 50)}
+                        disabled={grantingCoins}
+                      >
+                        <Text style={[styles.grantCoinBtnText, { color: '#000' }]}>+50 Coins</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.grantCoinBtn, { backgroundColor: Colors.primary }]}
+                        onPress={() => handleGrantCompensationCoins(selectedUserForModal.uid, 100)}
+                        disabled={grantingCoins}
+                      >
+                        <Text style={[styles.grantCoinBtnText, { color: '#000' }]}>+100 Coins</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* ── MODAL 2: 1-CLICK CHAPA MANUAL TX VERIFIER ──             */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <Modal
+        visible={verifyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVerifyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 500 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="card" size={22} color="#EAB308" />
+                <Text style={styles.modalTitle}>Chapa Payment Verifier</Text>
+              </View>
+              <TouchableOpacity onPress={() => setVerifyModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.verifyModalSub}>
+              Enter a Chapa transaction reference (e.g., fp-chapa-1729...) to query Chapa directly, verify bank confirmation, and automatically credit the user's wallet.
+            </Text>
+
+            <TextInput
+              style={styles.verifyModalInput}
+              placeholder="e.g. fp-chapa-172986283742"
+              placeholderTextColor="#667085"
+              value={manualTxRefInput}
+              onChangeText={setManualTxRefInput}
+            />
+
+            <TouchableOpacity
+              style={styles.verifySubmitBtn}
+              onPress={handleVerifyManualTx}
+              disabled={verifyingTx}
+            >
+              {verifyingTx ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <>
+                  <Ionicons name="shield-checkmark" size={17} color="#000" />
+                  <Text style={styles.verifySubmitBtnText}>Verify & Credit Now</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
     backgroundColor: '#050B0E',
   },
@@ -643,106 +1361,107 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  loadingText: {
+    color: '#8A95A5',
+    marginTop: 14,
+    fontSize: 14,
+  },
+
+  // Executive Top Header
+  executiveHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#0B131B',
     borderBottomWidth: 1,
-    borderBottomColor: '#172430',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#091116',
   },
-  brandGroup: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  brandTitleWrap: {
-    justifyContent: 'center',
+  headerTitles: {
+    gap: 2,
   },
-  titleRow: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   brandTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
-    fontStyle: 'italic',
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.5,
   },
   ceoBadge: {
     backgroundColor: 'rgba(0, 230, 118, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.35)',
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
   },
   ceoBadgeText: {
-    color: '#00E676',
-    fontSize: 9.5,
+    color: Colors.primary,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   brandSubtitle: {
-    color: '#8A95A5',
     fontSize: 11,
-    marginTop: 2,
+    color: '#8A95A5',
   },
-  headerRightActions: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  refreshIconBtn: {
+  refreshBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#15222E',
-    borderWidth: 1,
-    borderColor: '#223647',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
   logoutBtnText: {
     color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
   },
+
   scrollBody: {
-    paddingHorizontal: 16,
+    padding: 20,
     paddingBottom: 60,
-    maxWidth: 1200,
-    width: '100%',
-    alignSelf: 'center',
   },
+
+  // Status Banner
   statusBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0D1722',
-    borderWidth: 1,
-    borderColor: '#182A3A',
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginTop: 14,
-    marginBottom: 14,
-    flexWrap: 'wrap',
-    gap: 6,
+    paddingVertical: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   statusLeft: {
     flexDirection: 'row',
@@ -750,32 +1469,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   statusBannerTitle: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   statusLastSync: {
+    fontSize: 12,
     color: '#8A95A5',
-    fontSize: 11,
   },
+
+  // 4 Metrics Grid
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
+    gap: 14,
+    marginBottom: 22,
   },
   metricCard: {
     flex: 1,
     minWidth: 160,
-    backgroundColor: '#0D161F',
-    borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 16,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
   },
   metricCardAlert: {
     borderColor: 'rgba(239, 68, 68, 0.4)',
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
   },
   metricCardHeader: {
     flexDirection: 'row',
@@ -784,442 +1505,946 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   metricLabel: {
-    color: '#8A95A5',
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
+    color: '#8A95A5',
     letterSpacing: 0.5,
   },
   metricValue: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
-    marginBottom: 2,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 4,
   },
   metricSub: {
-    color: '#64748B',
     fontSize: 11,
+    color: '#8A95A5',
   },
+
+  // Navigation Tabs
   navTabsWrap: {
     flexDirection: 'row',
-    backgroundColor: '#0B131B',
-    borderWidth: 1,
-    borderColor: '#172430',
-    borderRadius: 14,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
     padding: 4,
-    marginBottom: 18,
-    gap: 4,
-    flexWrap: 'wrap',
+    marginBottom: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    overflow: 'hidden',
   },
   navTabBtn: {
     flex: 1,
-    minWidth: 120,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     gap: 6,
   },
   navTabBtnActive: {
-    backgroundColor: '#00E676',
+    backgroundColor: Colors.primary,
   },
   navTabText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#8A95A5',
-    fontSize: 12.5,
-    fontWeight: '700',
   },
   navTabTextActive: {
-    color: '#000000',
+    color: '#000',
+    fontWeight: '700',
   },
   tabCountBadge: {
-    backgroundColor: '#1E2D3D',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   tabCountBadgeText: {
     color: '#FFF',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  tabSection: {
-    gap: 12,
+
+  // Tab Content Container
+  tabContent: {
+    gap: 16,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
-    flexWrap: 'wrap',
-    gap: 8,
   },
   sectionTitle: {
-    color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: -0.3,
   },
   sectionSubtitle: {
-    color: '#8A95A5',
     fontSize: 12,
+    color: '#8A95A5',
     marginTop: 2,
   },
-  errorFilterActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterChip: {
-    backgroundColor: '#15222E',
-    borderWidth: 1,
-    borderColor: '#223647',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  filterChipActive: {
-    borderColor: '#00E676',
-    backgroundColor: 'rgba(0, 230, 118, 0.1)',
-  },
-  filterChipText: {
-    color: '#8A95A5',
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: '#00E676',
-  },
   clearBtn: {
-    backgroundColor: '#15222E',
-    borderWidth: 1,
-    borderColor: '#223647',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   clearBtnText: {
-    color: '#EF4444',
-    fontSize: 11.5,
+    color: '#8A95A5',
+    fontSize: 12,
+  },
+
+  // Filter Bar
+  filterBarRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  searchBoxWrap: {
+    flex: 1,
+    minWidth: 260,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0C161C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 13,
+    padding: 0,
+  },
+  pillGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  filterPillActive: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderColor: Colors.primary,
+  },
+  filterPillText: {
+    color: '#8A95A5',
+    fontSize: 12,
     fontWeight: '600',
   },
-  emptyState: {
+  filterPillTextActive: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+
+  // Empty State
+  emptyStateCard: {
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 20,
-    backgroundColor: '#0D161F',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 18,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     gap: 8,
   },
-  emptyTitle: {
-    color: '#FFFFFF',
+  emptyStateTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 6,
   },
-  emptySubtitle: {
+  emptyStateSub: {
+    fontSize: 12,
     color: '#8A95A5',
-    fontSize: 13,
     textAlign: 'center',
-    maxWidth: 400,
+    maxWidth: 380,
   },
+
+  // Error Card
   errorCard: {
-    backgroundColor: '#0D161F',
-    borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 16,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 12,
   },
   errorCardResolved: {
-    opacity: 0.55,
+    opacity: 0.6,
   },
   errorCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   errorBadgesRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     alignItems: 'center',
-    flexWrap: 'wrap',
   },
-  severityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+  severityPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
-  badgeCritical: {
-    backgroundColor: '#EF4444',
-  },
-  badgeWarning: {
-    backgroundColor: '#EAB308',
-  },
-  severityBadgeText: {
-    color: '#000',
-    fontSize: 9.5,
-    fontWeight: '900',
-  },
-  platformBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#15222E',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 3,
-  },
-  platformBadgeText: {
-    color: '#8A95A5',
-    fontSize: 10.5,
-  },
-  componentBadge: {
-    backgroundColor: '#15222E',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  componentBadgeText: {
-    color: '#00E676',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  errorTime: {
-    color: '#64748B',
-    fontSize: 11,
-  },
-  errorMessageText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  errorUserMeta: {
-    color: '#8A95A5',
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  diagnosisBox: {
-    backgroundColor: '#121E2B',
-    borderLeftWidth: 3,
-    borderLeftColor: '#EAB308',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  diagnosisHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  diagnosisTitle: {
-    color: '#EAB308',
-    fontSize: 10.5,
+  severityPillText: {
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  diagCause: {
-    color: '#CBD5E1',
-    fontSize: 12.5,
-    lineHeight: 18,
+  platformBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  platformBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  componentBadge: {
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  componentBadgeText: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  errorTime: {
+    fontSize: 11,
+    color: '#667085',
+  },
+  errorMessageText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+    lineHeight: 20,
+  },
+  errorUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorUserText: {
+    fontSize: 12,
+    color: '#8A95A5',
+  },
+
+  // AI Proactive Diagnosis Box
+  aiDiagnosisBox: {
+    backgroundColor: '#111E26',
+    borderRadius: 8,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.25)',
+    gap: 6,
+  },
+  aiDiagnosisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 4,
   },
-  diagSolution: {
-    color: '#E2E8F0',
-    fontSize: 12.5,
+  aiDiagnosisTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: 0.3,
+  },
+  aiIssueTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  aiRootCauseText: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    lineHeight: 18,
+  },
+  aiSolutionText: {
+    fontSize: 12,
+    color: '#A7F3D0',
     lineHeight: 18,
   },
   codeSnippetBox: {
     backgroundColor: '#050B0E',
     borderRadius: 6,
-    padding: 8,
-    marginTop: 8,
+    padding: 10,
+    marginTop: 6,
   },
   codeSnippetText: {
-    color: '#00E676',
     fontSize: 11,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#F9FAFB',
+    lineHeight: 16,
   },
-  errorCardActions: {
+  errorActionsRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
   resolveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00E676',
-    paddingHorizontal: 10,
+    gap: 6,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  resolveBtnActive: {
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
   },
   resolveBtnText: {
-    color: '#000',
     fontSize: 12,
-    fontWeight: '800',
-  },
-  resolvedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 230, 118, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 4,
-  },
-  resolvedPillText: {
-    color: '#00E676',
-    fontSize: 11.5,
-    fontWeight: '700',
+    color: '#8A95A5',
+    fontWeight: '600',
   },
   deleteErrorBtn: {
-    padding: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
-  transactionCard: {
+  deleteErrorBtnText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+
+  // ── Users Tab Styles ──
+  userSummaryBar: {
+    flexDirection: 'row',
+    backgroundColor: '#0C161C',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    justifyContent: 'space-around',
+    marginBottom: 6,
+  },
+  userSummaryItem: {
+    alignItems: 'center',
+  },
+  userSummaryNum: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  userSummaryLabel: {
+    fontSize: 11,
+    color: '#8A95A5',
+    marginTop: 2,
+  },
+  userSummaryDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  userCard: {
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0D161F',
-    borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 14,
-    padding: 14,
-  },
-  txLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap',
   },
-  txIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#15222E',
+  userCardMain: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 260,
+  },
+  avatarWrap: {
+    position: 'relative',
+  },
+  avatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  avatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  txTitle: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
+  avatarInitials: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '700',
   },
-  txMeta: {
-    color: '#8A95A5',
-    fontSize: 11.5,
-    marginTop: 2,
+  coachBadgeDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: Colors.primary,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  txRight: {
-    alignItems: 'flex-end',
+  userInfoWrap: {
+    flex: 1,
+    gap: 3,
   },
-  txAmount: {
-    color: '#00E676',
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userNameText: {
     fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#FFF',
   },
-  txStatusBadge: {
+  roleTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
   },
-  txStatusSuccess: {
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+  roleTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8A95A5',
   },
-  txStatusPending: {
-    backgroundColor: 'rgba(234, 179, 8, 0.12)',
+  proTag: {
+    backgroundColor: '#EAB308',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  txStatusText: {
-    color: '#FFF',
-    fontSize: 9.5,
+  proTagText: {
+    fontSize: 9,
     fontWeight: '800',
+    color: '#000',
   },
-  healthCardsGrid: {
-    gap: 12,
+  userEmailText: {
+    fontSize: 12,
+    color: '#8A95A5',
   },
-  serviceHealthCard: {
-    backgroundColor: '#0D161F',
+  userBadgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  trustBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  coinsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  coinsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EAB308',
+  },
+  errorFlagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  errorFlagBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  inspectUserBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 16,
-    padding: 16,
+    borderColor: 'rgba(0, 230, 118, 0.25)',
   },
-  serviceCardTop: {
+  inspectUserBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // ── Payment Radar Styles ──
+  financialKpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 6,
+  },
+  kpiCard: {
+    flex: 1,
+    minWidth: 150,
+    backgroundColor: '#0C161C',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8A95A5',
+    letterSpacing: 0.5,
+  },
+  kpiValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFF',
+    marginVertical: 4,
+  },
+  kpiSub: {
+    fontSize: 11,
+    color: '#8A95A5',
+  },
+  verifyModalTriggerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EAB308',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  verifyModalTriggerBtnText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  txCard: {
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 12,
   },
-  serviceName: {
-    color: '#FFFFFF',
+  txCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  txIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  txInfoWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  txTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  txUserSubText: {
+    fontSize: 12,
+    color: '#8A95A5',
+  },
+  txTimeText: {
+    fontSize: 11,
+    color: '#667085',
+  },
+  txCardRight: {
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  txAmountText: {
     fontSize: 15,
     fontWeight: '800',
+    color: '#00E676',
   },
-  healthDot: {
+  txCoinsSubText: {
+    fontSize: 11,
+    color: '#EAB308',
+    fontWeight: '600',
+  },
+  txStatusPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
+  txStatusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // ── Infrastructure & Bottleneck Styles ──
+  bottleneckAlertCard: {
+    backgroundColor: '#16190D',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EAB308',
+    gap: 12,
+  },
+  bottleneckAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bottleneckAlertTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EAB308',
+  },
+  bottleneckItemBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    gap: 4,
+  },
+  bottleneckItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 2,
+  },
+  bottleneckExplanation: {
+    fontSize: 12,
+    color: '#E5E7EB',
+    lineHeight: 18,
+  },
+  bottleneckImpact: {
+    fontSize: 12,
+    color: '#FCD34D',
+    lineHeight: 18,
+  },
+  bottleneckAction: {
+    fontSize: 12,
+    color: '#A7F3D0',
+    lineHeight: 18,
+  },
+  optimalHealthCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.25)',
+  },
+  optimalHealthTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  optimalHealthSub: {
+    fontSize: 12,
+    color: '#A7F3D0',
+    marginTop: 2,
+  },
+  serviceCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  serviceCard: {
+    flex: 1,
+    minWidth: 260,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    gap: 6,
+  },
+  serviceCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  serviceName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  statusDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  serviceLatencyRow: {
+  latencyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 6,
+    marginTop: 2,
   },
-  serviceLatencyText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  serviceStatusText: {
-    fontSize: 11.5,
+  latencyText: {
+    fontSize: 14,
     fontWeight: '800',
   },
+  statusLabelText: {
+    fontSize: 12,
+    color: '#8A95A5',
+    fontWeight: '600',
+  },
   serviceMessage: {
-    color: '#CBD5E1',
-    fontSize: 12.5,
-    marginBottom: 4,
+    fontSize: 12,
+    color: '#8A95A5',
   },
-  serviceChecked: {
-    color: '#64748B',
+  serviceDetails: {
     fontSize: 11,
+    color: '#667085',
   },
-  switchesContainer: {
-    gap: 12,
+  serviceCheckedTime: {
+    fontSize: 10,
+    color: '#475569',
+    marginTop: 4,
   },
-  switchRow: {
+
+  // ── Remote Controls Styles ──
+  switchGroup: {
+    gap: 14,
+  },
+  switchCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0D161F',
-    borderWidth: 1,
-    borderColor: '#192C3C',
-    borderRadius: 16,
+    backgroundColor: '#0C161C',
+    borderRadius: 12,
     padding: 18,
-    gap: 14,
-  },
-  switchRowAlert: {
-    borderColor: '#EF4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    gap: 16,
   },
   switchInfo: {
     flex: 1,
+    gap: 4,
   },
   switchTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
   },
   switchTitle: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: '#FFF',
   },
-  switchSubtitle: {
+  switchSub: {
+    fontSize: 12,
     color: '#8A95A5',
-    fontSize: 12.5,
     lineHeight: 18,
+  },
+
+  // ── Modals Styles ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 550,
+    backgroundColor: '#091116',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFF',
+    marginLeft: 8,
+  },
+  modalUserBar: {
+    backgroundColor: '#0C161C',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 2,
+    marginBottom: 14,
+  },
+  modalUserName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  modalUserEmail: {
+    fontSize: 13,
+    color: '#8A95A5',
+  },
+  modalUserUid: {
+    fontSize: 11,
+    color: '#667085',
+  },
+  modalSection: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  modalSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  authenticityBox: {
+    backgroundColor: '#0C161C',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 4,
+  },
+  authenticityScoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  authenticityReasonText: {
+    fontSize: 12,
+    color: '#8A95A5',
+  },
+  modalCrashAlert: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    gap: 4,
+  },
+  modalCrashCountText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  modalCrashMsgText: {
+    fontSize: 12,
+    color: '#FCA5A5',
+    lineHeight: 16,
+  },
+  modalCompensationSub: {
+    fontSize: 12,
+    color: '#8A95A5',
+  },
+  coinGrantBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  grantCoinBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  grantCoinBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+
+  // Modal 2 Verifier
+  verifyModalSub: {
+    fontSize: 13,
+    color: '#8A95A5',
+    lineHeight: 18,
+  },
+  verifyModalInput: {
+    backgroundColor: '#0C161C',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#FFF',
+    fontSize: 14,
+  },
+  verifySubmitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#00E676',
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  verifySubmitBtnText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
