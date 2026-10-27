@@ -237,7 +237,26 @@ export function diagnoseSystemIssue(errorMessage: string, component: string = ''
     };
   }
 
-  // 3. Network or Timeout Failure
+  // 3. Audio & Voice Message Playback Failures
+  if (
+    lowerMsg.includes('no supported source was found') ||
+    lowerMsg.includes('mediaerror') ||
+    lowerMsg.includes('audio') ||
+    lowerMsg.includes('play() request was interrupted') ||
+    lowerMsg.includes('notallowederror')
+  ) {
+    return {
+      issueTitle: 'የቻት ሩም ድምጽ መልእክት (Voice Message) ማጫወት አለመቻል',
+      rootCause:
+        'ተጠቃሚው በቻት ውስጥ የተላከለትን የድምጽ መልእክት (Voice Message) ሲከፍት ማጫወቻው የድምጽ ፋይሉን ፎርማት (MIME type: WebM/M4A) ማግኘት ወይም መክፈት አልቻለም።',
+      severity: 'warning',
+      actionableSolution:
+        'በ chat-room.tsx ውስጥ የድምጽ ማጫወቻው audio.onerror እንዲይዝ እና audio.play() failure በ .catch() እንዲስተናገድ ተደርጓል፤ እንዲሁም የድምጽ ፋይል ዩአርኤል ትክክለኛ መሆኑን ማረጋገጥ።',
+      actionCodeSnippet: `// HTML5 Audio Safe Handling in chat-room.tsx\naudio.onerror = () => { setPlayingId(null); setPlaybackPosition(0); };\naudio.play().catch(e => { setPlayingId(null); setPlaybackPosition(0); });`,
+    };
+  }
+
+  // 4. Network or Timeout Failure
   if (lowerMsg.includes('network request failed') || lowerMsg.includes('timeout') || lowerMsg.includes('fetch')) {
     return {
       issueTitle: 'Client Network Connectivity Timeout',
@@ -248,7 +267,7 @@ export function diagnoseSystemIssue(errorMessage: string, component: string = ''
     };
   }
 
-  // 4. Default Heuristic Diagnostic
+  // 5. Default Heuristic Diagnostic
   return {
     issueTitle: 'Runtime UI/Component Execution Warning',
     rootCause: `በ ${component || 'AppCore'} ኮምፖነንት ውስጥ ያልታሰበ የኮድ ክስተት አጋጥሟል፦ ${errorMessage.slice(0, 80)}...`,

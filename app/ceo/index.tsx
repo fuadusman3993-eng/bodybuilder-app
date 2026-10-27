@@ -146,9 +146,19 @@ export default function CeoDashboardScreen() {
     setErrorsList((prev) => prev.map((e) => (e.id === id ? { ...e, resolved: true } : e)));
   };
 
+  const handleResolveGroup = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => resolveError(id)));
+    setErrorsList((prev) => prev.map((e) => (e.id && ids.includes(e.id) ? { ...e, resolved: true } : e)));
+  };
+
   const handleDeleteError = async (id: string) => {
     await deleteErrorRecord(id);
     setErrorsList((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const handleDeleteGroup = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => deleteErrorRecord(id)));
+    setErrorsList((prev) => prev.filter((e) => e.id && !ids.includes(e.id)));
   };
 
   const handleClearResolved = async () => {
@@ -252,6 +262,84 @@ export default function CeoDashboardScreen() {
       return true;
     });
   }, [errorsList, errorFilterSeverity, errorSearchQuery]);
+
+  // Grouped and Deduplicated Errors (prevents 9x repetition spam in Error Radar)
+  const groupedFilteredErrors = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        key: string;
+        primaryError: SystemErrorItem;
+        count: number;
+        allIds: string[];
+        latestTime: string;
+        earliestTime: string;
+        allResolved: boolean;
+      }
+    >();
+
+    filteredErrors.forEach((err) => {
+      const groupKey = `${(err.error_message || '').trim()}_${err.component || ''}_${err.user_email || err.user_uid || ''}`;
+
+      if (!map.has(groupKey)) {
+        map.set(groupKey, {
+          key: groupKey,
+          primaryError: err,
+          count: 1,
+          allIds: err.id ? [err.id] : [],
+          latestTime: err.created_at || '',
+          earliestTime: err.created_at || '',
+          allResolved: !!err.resolved,
+        });
+      } else {
+        const item = map.get(groupKey)!;
+        item.count += 1;
+        if (err.id) item.allIds.push(err.id);
+        if (!err.resolved) item.allResolved = false;
+        if (err.created_at && (!item.latestTime || new Date(err.created_at) > new Date(item.latestTime))) {
+          item.latestTime = err.created_at;
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [filteredErrors]);
+
+  // Grouped user errors for the selected dossier modal
+  const groupedUserErrors = useMemo(() => {
+    if (!selectedUserForModal?.userErrors || selectedUserForModal.userErrors.length === 0) return [];
+    const map = new Map<
+      string,
+      {
+        errorMessage: string;
+        component: string;
+        count: number;
+        latestTime: string;
+        earliestTime: string;
+      }
+    >();
+
+    selectedUserForModal.userErrors.forEach((err) => {
+      const key = `${(err.error_message || '').trim()}_${err.component || ''}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          errorMessage: err.error_message,
+          component: err.component || 'AppGlobal',
+          count: 1,
+          latestTime: err.created_at || '',
+          earliestTime: err.created_at || '',
+        });
+      } else {
+        const item = map.get(key)!;
+        item.count += 1;
+        if (err.created_at && (!item.latestTime || new Date(err.created_at) > new Date(item.latestTime))) {
+          item.latestTime = err.created_at;
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [selectedUserForModal]);
 
   // Filtered Users
   const filteredUsers = useMemo(() => {
@@ -542,7 +630,7 @@ export default function CeoDashboardScreen() {
               </View>
             </View>
 
-            {filteredErrors.length === 0 ? (
+            {groupedFilteredErrors.length === 0 ? (
               <View style={styles.emptyStateCard}>
                 <Ionicons name="shield-checkmark" size={48} color="#00E676" />
                 <Text style={styles.emptyStateTitle}>Zero Active Crashes</Text>
@@ -551,10 +639,13 @@ export default function CeoDashboardScreen() {
                 </Text>
               </View>
             ) : (
-              filteredErrors.map((err) => {
+              groupedFilteredErrors.map((group) => {
+                const err = group.primaryError;
                 const diagnosis = diagnoseSystemIssue(err.error_message, err.component);
+                const isGroupResolved = group.allResolved;
+
                 return (
-                  <View key={err.id} style={[styles.errorCard, err.resolved && styles.errorCardResolved]}>
+                  <View key={group.key} style={[styles.errorCard, isGroupResolved && styles.errorCardResolved]}>
                     <View style={styles.errorCardTop}>
                       <View style={styles.errorBadgesRow}>
                         <View
@@ -578,6 +669,14 @@ export default function CeoDashboardScreen() {
                           </Text>
                         </View>
 
+                        {/* Deduplication & Repetition Badge */}
+                        {group.count > 1 && (
+                          <View style={styles.repetitionPill}>
+                            <Ionicons name="repeat" size={12} color="#EF4444" />
+                            <Text style={styles.repetitionPillText}>{group.count}x Repeated</Text>
+                          </View>
+                        )}
+
                         <View style={styles.platformBadge}>
                           <Text style={styles.platformBadgeText}>{err.platform || 'Client'}</Text>
                         </View>
@@ -588,7 +687,7 @@ export default function CeoDashboardScreen() {
                       </View>
 
                       <Text style={styles.errorTime}>
-                        {err.created_at ? new Date(err.created_at).toLocaleString() : 'Just now'}
+                        Latest: {group.latestTime ? new Date(group.latestTime).toLocaleTimeString() : 'Just now'}
                       </Text>
                     </View>
 
@@ -599,6 +698,7 @@ export default function CeoDashboardScreen() {
                       <Ionicons name="person-outline" size={13} color="#8A95A5" />
                       <Text style={styles.errorUserText}>
                         User: <Text style={{ color: '#FFF' }}>{err.user_email || err.user_uid || 'Anonymous'}</Text>
+                        {group.count > 1 ? ` • Encountered ${group.count} times` : ''}
                       </Text>
                     </View>
 
@@ -623,25 +723,25 @@ export default function CeoDashboardScreen() {
                     {/* Action Buttons */}
                     <View style={styles.errorActionsRow}>
                       <TouchableOpacity
-                        style={[styles.resolveBtn, err.resolved && styles.resolveBtnActive]}
-                        onPress={() => err.id && handleResolveError(err.id)}
+                        style={[styles.resolveBtn, isGroupResolved && styles.resolveBtnActive]}
+                        onPress={() => handleResolveGroup(group.allIds)}
                       >
                         <Ionicons
-                          name={err.resolved ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                          name={isGroupResolved ? 'checkmark-circle' : 'checkmark-circle-outline'}
                           size={15}
-                          color={err.resolved ? '#00E676' : '#8A95A5'}
+                          color={isGroupResolved ? '#00E676' : '#8A95A5'}
                         />
-                        <Text style={[styles.resolveBtnText, err.resolved && { color: '#00E676' }]}>
-                          {err.resolved ? 'Resolved' : 'Mark Resolved'}
+                        <Text style={[styles.resolveBtnText, isGroupResolved && { color: '#00E676' }]}>
+                          {isGroupResolved ? 'Resolved' : `Resolve All (${group.count})`}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.deleteErrorBtn}
-                        onPress={() => err.id && handleDeleteError(err.id)}
+                        onPress={() => handleDeleteGroup(group.allIds)}
                       >
                         <Ionicons name="trash-outline" size={15} color="#EF4444" />
-                        <Text style={styles.deleteErrorBtnText}>Delete Log</Text>
+                        <Text style={styles.deleteErrorBtnText}>Delete {group.count > 1 ? `(${group.count})` : 'Log'}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1399,17 +1499,54 @@ export default function CeoDashboardScreen() {
 
                   {/* ── 4. CRASH & ERROR HISTORY FOR THIS USER ── */}
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>⚠️ Encountered Errors & Crashes ({selectedUserForModal.errorCount})</Text>
-                    {selectedUserForModal.userErrors.length > 0 ? (
-                      selectedUserForModal.userErrors.map((err, i) => (
-                        <View key={i} style={styles.modalCrashAlert}>
-                          <Text style={styles.modalCrashCountText}>Component: {err.component || 'AppGlobal'}</Text>
-                          <Text style={styles.modalCrashMsgText}>{err.error_message}</Text>
-                          {err.created_at && (
-                            <Text style={styles.modalCrashDate}>{new Date(err.created_at).toLocaleString()}</Text>
-                          )}
-                        </View>
-                      ))
+                    <Text style={styles.modalSectionTitle}>
+                      ⚠️ Encountered Errors & Crashes ({selectedUserForModal.errorCount})
+                    </Text>
+
+                    {groupedUserErrors.length > 0 ? (
+                      groupedUserErrors.map((item, i) => {
+                        const diagnosis = diagnoseSystemIssue(item.errorMessage, item.component);
+                        return (
+                          <View key={i} style={styles.userDossierErrorCard}>
+                            <View style={styles.userDossierErrorHeader}>
+                              <View style={styles.userDossierErrorTitleRow}>
+                                <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                                <Text style={styles.userDossierErrorTitle}>
+                                  {diagnosis.issueTitle}
+                                </Text>
+                              </View>
+                              {item.count > 1 ? (
+                                <View style={styles.repetitionPill}>
+                                  <Text style={styles.repetitionPillText}>
+                                    {item.count}x ተከስቷል
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+
+                            <View style={styles.dossierDiagnosisBox}>
+                              <Text style={styles.dossierDiagRoot}>💡 <Text style={{ fontWeight: '700' }}>መንስኤ፦</Text> {diagnosis.rootCause}</Text>
+                              <Text style={styles.dossierDiagImpact}>⚠️ <Text style={{ fontWeight: '700' }}>ተፅዕኖ፦</Text> ተጠቃሚው በቻት ውስጥ የድምጽ መልእክት ሲከፍት ድምጹ አይሰማም፤ በ 0:00 ላይ ቆሞ ይቀራል።</Text>
+                              <Text style={styles.dossierDiagSolution}>🛠️ <Text style={{ fontWeight: '700' }}>መፍትሄ፦</Text> {diagnosis.actionableSolution}</Text>
+                            </View>
+
+                            <View style={styles.dossierErrorMetaRow}>
+                              <Text style={styles.dossierErrorMetaText}>
+                                Component: <Text style={{ color: '#FFF' }}>{item.component}</Text>
+                              </Text>
+                              <Text style={styles.dossierErrorMetaText}>
+                                {item.count > 1
+                                  ? `ድግግሞሽ፦ ${item.count} ጊዜ (${new Date(item.earliestTime).toLocaleTimeString()} - ${new Date(item.latestTime).toLocaleTimeString()})`
+                                  : `ሰዓት፦ ${new Date(item.latestTime).toLocaleTimeString()}`}
+                              </Text>
+                            </View>
+
+                            <View style={styles.dossierRawErrorBox}>
+                              <Text style={styles.dossierRawErrorText}>{item.errorMessage}</Text>
+                            </View>
+                          </View>
+                        );
+                      })
                     ) : (
                       <Text style={{ color: '#00E676', fontSize: 13 }}>
                         ✅ Zero recorded crashes. User has had an optimal experience.
@@ -2750,6 +2887,96 @@ const styles = StyleSheet.create({
   authenticityReasonText: {
     fontSize: 12,
     color: '#8A95A5',
+  },
+  repetitionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  repetitionPillText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  userDossierErrorCard: {
+    backgroundColor: '#0C161C',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    gap: 10,
+    marginTop: 6,
+  },
+  userDossierErrorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  userDossierErrorTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  userDossierErrorTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  dossierDiagnosisBox: {
+    backgroundColor: '#111E26',
+    borderRadius: 8,
+    padding: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.2)',
+  },
+  dossierDiagRoot: {
+    fontSize: 12,
+    color: '#E5E7EB',
+    lineHeight: 18,
+  },
+  dossierDiagImpact: {
+    fontSize: 12,
+    color: '#FCD34D',
+    lineHeight: 18,
+  },
+  dossierDiagSolution: {
+    fontSize: 12,
+    color: '#A7F3D0',
+    lineHeight: 18,
+  },
+  dossierErrorMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  dossierErrorMetaText: {
+    fontSize: 11,
+    color: '#8A95A5',
+  },
+  dossierRawErrorBox: {
+    backgroundColor: '#050B0E',
+    borderRadius: 6,
+    padding: 8,
+  },
+  dossierRawErrorText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   modalCrashAlert: {
     backgroundColor: 'rgba(239, 68, 68, 0.12)',

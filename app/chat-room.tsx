@@ -91,7 +91,17 @@ export default function ChatRoom() {
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   const scrollToNewest = useCallback((animated = true) => {
-    flatRef.current?.scrollToOffset({ offset: 0, animated });
+    try {
+      flatRef.current?.scrollToOffset({ offset: 0, animated });
+      if (Platform.OS === 'web') {
+        const domNode = (flatRef.current as any)?.getScrollableNode?.();
+        if (domNode) {
+          domNode.scrollTop = 0;
+        }
+        const responder = (flatRef.current as any)?.getScrollResponder?.();
+        responder?.scrollTo?.({ y: 0, animated });
+      }
+    } catch (_) {}
   }, []);
 
   // Fetch other user info directly from Supabase Unified Profiles
@@ -565,6 +575,11 @@ export default function ChatRoom() {
   };
 
   const togglePlay = async (id: string, audioUrl: string) => {
+    if (!audioUrl || !audioUrl.trim()) {
+      Alert.alert('Audio Notice', 'Audio message source is not accessible.');
+      return;
+    }
+
     if (Platform.OS === 'web') {
       if (playingId === id) {
         webAudioRef.current?.pause();
@@ -573,54 +588,106 @@ export default function ChatRoom() {
         setPlaybackPosition(0);
         return;
       }
-      webAudioRef.current?.pause();
-      const audio = new window.Audio(audioUrl);
-      audio.playbackRate = playbackRate;
-      webAudioRef.current = audio;
-      setPlayingId(id);
-      setPlaybackPosition(0);
-      audio.play();
-      
-      // Update timer live
-      audio.ontimeupdate = () => {
-        setPlaybackPosition(audio.currentTime);
-      };
-      
-      audio.onended = () => { 
-        setPlayingId(null); 
+
+      // Pause & cleanup previous audio instance
+      if (webAudioRef.current) {
+        try {
+          webAudioRef.current.pause();
+          webAudioRef.current = null;
+        } catch (_) {}
+      }
+
+      try {
+        const audio = new window.Audio(audioUrl);
+        audio.playbackRate = playbackRate;
+        webAudioRef.current = audio;
+
+        // Catch loading errors before play
+        audio.onerror = (e) => {
+          console.warn('HTML5 Audio playback error for URL:', audioUrl, e);
+          setPlayingId(null);
+          setPlaybackPosition(0);
+          webAudioRef.current = null;
+        };
+
+        audio.ontimeupdate = () => {
+          setPlaybackPosition(audio.currentTime);
+        };
+
+        audio.onended = () => {
+          setPlayingId(null);
+          setPlaybackPosition(0);
+          webAudioRef.current = null;
+        };
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setPlayingId(id);
+              setPlaybackPosition(0);
+            })
+            .catch((err) => {
+              console.warn('audio.play() caught exception:', err);
+              setPlayingId(null);
+              setPlaybackPosition(0);
+              webAudioRef.current = null;
+            });
+        } else {
+          setPlayingId(id);
+          setPlaybackPosition(0);
+        }
+      } catch (err) {
+        console.warn('Web Audio creation error:', err);
+        setPlayingId(null);
         setPlaybackPosition(0);
-        webAudioRef.current = null; 
-      };
+        webAudioRef.current = null;
+      }
     } else {
       if (playingId === id) {
-        await nativeSoundRef.current?.stopAsync();
-        await nativeSoundRef.current?.unloadAsync();
+        await nativeSoundRef.current?.stopAsync().catch(() => {});
+        await nativeSoundRef.current?.unloadAsync().catch(() => {});
         nativeSoundRef.current = null;
         setPlayingId(null);
         setPlaybackPosition(0);
         return;
       }
       if (nativeSoundRef.current) {
-        await nativeSoundRef.current.stopAsync();
-        await nativeSoundRef.current.unloadAsync();
+        await nativeSoundRef.current.stopAsync().catch(() => {});
+        await nativeSoundRef.current.unloadAsync().catch(() => {});
         nativeSoundRef.current = null;
       }
-      setPlayingId(id);
-      setPlaybackPosition(0);
-      const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: true, progressUpdateIntervalMillis: 100 });
-      nativeSoundRef.current = sound;
-      
-      sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.isLoaded) {
-          setPlaybackPosition(status.positionMillis / 1000);
-          if (status.didJustFinish) {
+
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: audioUrl },
+          { shouldPlay: true, progressUpdateIntervalMillis: 100 }
+        );
+        nativeSoundRef.current = sound;
+        setPlayingId(id);
+        setPlaybackPosition(0);
+
+        sound.setOnPlaybackStatusUpdate((status: any) => {
+          if (status.isLoaded) {
+            setPlaybackPosition(status.positionMillis / 1000);
+            if (status.didJustFinish) {
+              setPlayingId(null);
+              setPlaybackPosition(0);
+              sound.unloadAsync().catch(() => {});
+              nativeSoundRef.current = null;
+            }
+          } else if (status.error) {
             setPlayingId(null);
             setPlaybackPosition(0);
-            sound.unloadAsync();
             nativeSoundRef.current = null;
           }
-        }
-      });
+        });
+      } catch (e: any) {
+        console.warn('Native Audio play error:', e);
+        setPlayingId(null);
+        setPlaybackPosition(0);
+        nativeSoundRef.current = null;
+      }
     }
   };
 
@@ -895,8 +962,8 @@ export default function ChatRoom() {
             }
           />
 
-          {/* Floating Scroll-to-Bottom Button */}
-          {showScrollDownBtn && (
+          {/* Floating Scroll-to-Bottom Button (Hidden while recording) */}
+          {showScrollDownBtn && !isRecording && (
             <TouchableOpacity
               style={styles.floatingScrollDownBtn}
               activeOpacity={0.8}

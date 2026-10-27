@@ -40,13 +40,11 @@ class VoiceCoach {
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = options.rate ?? 1.0; // Clean natural English speed
+        utterance.rate = options.rate ?? 1.0;
         utterance.pitch = options.pitch ?? 1.0;
-        utterance.lang = 'en-US'; // English (United States)
+        utterance.lang = 'en-US';
 
         const voices = window.speechSynthesis.getVoices();
-
-        // Prefer clean natural US/English voice
         const englishVoice =
           voices.find(v => v.lang === 'en-US' && !v.name.includes('Bad')) ||
           voices.find(v => v.lang.startsWith('en')) ||
@@ -93,23 +91,23 @@ class VoiceCoach {
   }
 
   /**
-   * 3-2-1 Countdown — English
+   * 3-2-1 Countdown — English with clean tone/speech stagger to prevent mobile audio collision
    */
   public announceCountdownStep(count: number) {
     if (!this.isEnabled) return;
 
     if (count === 3) {
-      this.playTone(660, 150);
-      this.speak('Three');
+      this.playTone(660, 120);
+      setTimeout(() => this.speak('Three'), 130);
     } else if (count === 2) {
-      this.playTone(660, 150);
-      this.speak('Two');
+      this.playTone(660, 120);
+      setTimeout(() => this.speak('Two'), 130);
     } else if (count === 1) {
-      this.playTone(660, 150);
-      this.speak('One');
+      this.playTone(660, 120);
+      setTimeout(() => this.speak('One'), 130);
     } else if (count === 0) {
-      this.playTone(1050, 280);
-      this.speak('Go!');
+      this.playTone(1050, 200);
+      setTimeout(() => this.speak('Go!'), 140);
     }
   }
 
@@ -126,8 +124,8 @@ class VoiceCoach {
    */
   public announceHalfway() {
     if (!this.isEnabled) return;
-    this.playTone(740, 180);
-    this.speak('Halfway there! Keep pushing!');
+    this.playTone(740, 150);
+    setTimeout(() => this.speak('Halfway there! Keep pushing!'), 160);
   }
 
   /**
@@ -135,12 +133,9 @@ class VoiceCoach {
    */
   public announceRest(nextExerciseName?: string) {
     if (!this.isEnabled) return;
-    this.playTone(520, 250);
-    if (nextExerciseName) {
-      this.speak(`Take a rest. Next is ${nextExerciseName}.`);
-    } else {
-      this.speak('Take a rest.');
-    }
+    this.playTone(520, 180);
+    const msg = nextExerciseName ? `Take a rest. Next is ${nextExerciseName}.` : 'Take a rest.';
+    setTimeout(() => this.speak(msg), 190);
   }
 
   /**
@@ -148,8 +143,8 @@ class VoiceCoach {
    */
   public announceComplete() {
     if (!this.isEnabled) return;
-    this.playTone(980, 400);
-    this.speak('Workout completed! Fantastic work!');
+    this.playTone(980, 250);
+    setTimeout(() => this.speak('Workout completed! Fantastic work!'), 260);
   }
 }
 
