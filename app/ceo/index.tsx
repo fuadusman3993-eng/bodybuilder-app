@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import BrandLogo from '../../components/ui/BrandLogo';
+import CeoChatCopilot from '../../components/ceo/CeoChatCopilot';
 import { isCeoAuthenticated, logoutCeo } from '../../lib/ceoAuthService';
 import {
   fetchRecentErrors,
@@ -56,8 +57,9 @@ export default function CeoDashboardScreen() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Tab State
+  // Tab & View Mode States
   const [activeTab, setActiveTab] = useState<CeoTab>('errors');
+  const [viewMode, setViewMode] = useState<'copilot' | 'records'>('copilot');
   const [refreshing, setRefreshing] = useState(false);
 
   // Data States
@@ -151,6 +153,13 @@ export default function CeoDashboardScreen() {
     setErrorsList((prev) => prev.map((e) => (e.id && ids.includes(e.id) ? { ...e, resolved: true } : e)));
   };
 
+  const handleResolveAllErrors = async () => {
+    const unresolvedIds = errorsList.filter((e) => !e.resolved && e.id).map((e) => e.id!);
+    if (unresolvedIds.length > 0) {
+      await handleResolveGroup(unresolvedIds);
+    }
+  };
+
   const handleDeleteError = async (id: string) => {
     await deleteErrorRecord(id);
     setErrorsList((prev) => prev.filter((e) => e.id !== id));
@@ -230,6 +239,15 @@ export default function CeoDashboardScreen() {
     () => calculateFinancialKPIs(transactionsList),
     [transactionsList]
   );
+
+  const copilotContextData = useMemo(() => ({
+    errors: errorsList,
+    users: usersList,
+    txs: transactionsList,
+    health: healthList,
+    kpis: financialKPIs,
+    remoteConfig,
+  }), [errorsList, usersList, transactionsList, healthList, financialKPIs, remoteConfig]);
 
   const infrastructureBottlenecks: BottleneckAnalysis[] = useMemo(
     () => explainInfrastructureBottleneck(healthList),
@@ -564,6 +582,49 @@ export default function CeoDashboardScreen() {
           })}
         </View>
 
+        {/* ── VIEW MODE TOGGLE (AI COPILOT CHAT VS RAW DATA RECORDS) ── */}
+        <View style={styles.viewModeToggleRow}>
+          <TouchableOpacity
+            style={[styles.viewModeBtn, viewMode === 'copilot' && styles.viewModeBtnActive]}
+            onPress={() => setViewMode('copilot')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubbles" size={16} color={viewMode === 'copilot' ? '#10B981' : '#8A95A5'} />
+            <Text style={[styles.viewModeBtnText, viewMode === 'copilot' && styles.viewModeBtnTextActive]}>
+              💬 AI Copilot View (የ AI ረዳት እይታ)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.viewModeBtn, viewMode === 'records' && styles.viewModeBtnActive]}
+            onPress={() => setViewMode('records')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="layers-outline" size={16} color={viewMode === 'records' ? '#10B981' : '#8A95A5'} />
+            <Text style={[styles.viewModeBtnText, viewMode === 'records' && styles.viewModeBtnTextActive]}>
+              📊 Raw Data Records ({activeTab.toUpperCase()})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {viewMode === 'copilot' ? (
+          <View style={styles.copilotWrapper}>
+            <CeoChatCopilot
+              category={activeTab === 'controls' ? 'health' : activeTab}
+              contextData={copilotContextData}
+              onResolveAllErrors={handleResolveAllErrors}
+              onInspectUser={(u) => setSelectedUserForModal(u)}
+              onOpenReconcileModal={() => setVerifyModalVisible(true)}
+              onGrantCoinsModal={(u) => {
+                if (u) setSelectedUserForModal(u);
+              }}
+              onToggleMaintenance={() => handleToggleConfig('maintenance_mode', !remoteConfig.maintenance_mode)}
+              onToggleVoice={() => handleToggleConfig('voice_coach_enabled', !remoteConfig.voice_coach_enabled)}
+              onSwitchCategory={(cat) => setActiveTab(cat as CeoTab)}
+            />
+          </View>
+        ) : (
+          <>
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* ── TAB 1: ERROR RADAR & AI DIAGNOSTICS ──                   */}
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -1325,6 +1386,8 @@ export default function CeoDashboardScreen() {
             </View>
           </View>
         )}
+          </>
+        )}
       </ScrollView>
 
       {/* ══════════════════════════════════════════════════════════════ */}
@@ -1865,6 +1928,45 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '700',
+  },
+
+  // View Mode Switcher
+  viewModeToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: -10,
+    marginBottom: 20,
+  },
+  viewModeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  viewModeBtnActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: '#10B981',
+  },
+  viewModeBtnText: {
+    color: '#8A95A5',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  viewModeBtnTextActive: {
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  copilotWrapper: {
+    marginBottom: 26,
+    width: '100%',
   },
 
   // Tab Content Container
