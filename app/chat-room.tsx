@@ -74,12 +74,15 @@ export default function ChatRoom() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Playback
+  // Playback & Instant Cache Pool
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
   const [playbackPosition, setPlaybackPosition] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<1 | 1.5 | 2>(1); // <--- Speed toggle
   const nativeSoundRef = useRef<any>(null);
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
+  const webAudioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const nativeSoundCacheRef = useRef<Map<string, any>>(new Map());
 
   const flatRef = useRef<FlatList>(null);
   const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
@@ -567,10 +570,43 @@ export default function ChatRoom() {
   const pickVideo = () => pickMedia('video');
   // ────────────────────────────────────────────────────────────
 
+  const configureAudioForPlayback = async () => {
+    if (Platform.OS !== 'web' && Audio) {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (_) {}
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (webAudioRef.current) {
+        try { webAudioRef.current.pause(); } catch (_) {}
+      }
+      if (nativeSoundRef.current) {
+        nativeSoundRef.current.stopAsync().catch(() => {});
+      }
+      nativeSoundCacheRef.current.forEach((snd) => {
+        snd?.unloadAsync?.().catch(() => {});
+      });
+      nativeSoundCacheRef.current.clear();
+      webAudioCacheRef.current.clear();
+    };
+  }, []);
+
   const togglePlaybackRate = () => {
     const next: 1 | 1.5 | 2 = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
     setPlaybackRate(next);
     if (webAudioRef.current) webAudioRef.current.playbackRate = next;
+    webAudioCacheRef.current.forEach((audio) => {
+      audio.playbackRate = next;
+    });
     if (nativeSoundRef.current) nativeSoundRef.current.setRateAsync?.(next, true);
   };
 
@@ -581,112 +617,156 @@ export default function ChatRoom() {
     }
 
     if (Platform.OS === 'web') {
+      // 1. If currently playing this audio -> pause it
       if (playingId === id) {
-        webAudioRef.current?.pause();
-        webAudioRef.current = null;
+        if (webAudioRef.current) {
+          webAudioRef.current.pause();
+        }
         setPlayingId(null);
-        setPlaybackPosition(0);
+        setLoadingAudioId(null);
         return;
       }
 
-      // Pause & cleanup previous audio instance
+      // 2. Pause any other audio currently playing
       if (webAudioRef.current) {
-        try {
-          webAudioRef.current.pause();
-          webAudioRef.current = null;
-        } catch (_) {}
+        try { webAudioRef.current.pause(); } catch (_) {}
       }
 
-      try {
-        const audio = new window.Audio(audioUrl);
-        audio.playbackRate = playbackRate;
-        webAudioRef.current = audio;
+      // 3. Check if this audioUrl is already in the in-memory cache!
+      let audio = webAudioCacheRef.current.get(audioUrl);
 
-        // Catch loading errors before play
-        audio.onerror = (e) => {
+      if (!audio) {
+        setLoadingAudioId(id);
+        const newAudio = new window.Audio(audioUrl);
+        newAudio.preload = 'auto';
+        webAudioCacheRef.current.set(audioUrl, newAudio);
+        audio = newAudio;
+
+        newAudio.onerror = (e) => {
           console.warn('HTML5 Audio playback error for URL:', audioUrl, e);
           setPlayingId(null);
+          setLoadingAudioId(null);
           setPlaybackPosition(0);
-          webAudioRef.current = null;
+          webAudioCacheRef.current.delete(audioUrl);
         };
 
-        audio.ontimeupdate = () => {
-          setPlaybackPosition(audio.currentTime);
+        newAudio.ontimeupdate = () => {
+          setPlaybackPosition(newAudio.currentTime);
         };
 
-        audio.onended = () => {
+        newAudio.onended = () => {
           setPlayingId(null);
+          setLoadingAudioId(null);
           setPlaybackPosition(0);
-          webAudioRef.current = null;
+          // Keep in cache for instant replay!
         };
+      } else {
+        // Fast replay from start if finished
+        if (audio.ended || Math.abs(audio.currentTime - audio.duration) < 0.2) {
+          audio.currentTime = 0;
+        }
+      }
 
+      audio.playbackRate = playbackRate;
+      webAudioRef.current = audio;
+
+      try {
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
+              setLoadingAudioId(null);
               setPlayingId(id);
-              setPlaybackPosition(0);
             })
             .catch((err) => {
-              console.warn('audio.play() caught exception:', err);
+              if (err.name !== 'AbortError') {
+                console.warn('audio.play() exception:', err);
+              }
+              setLoadingAudioId(null);
               setPlayingId(null);
-              setPlaybackPosition(0);
-              webAudioRef.current = null;
             });
         } else {
+          setLoadingAudioId(null);
           setPlayingId(id);
-          setPlaybackPosition(0);
         }
       } catch (err) {
-        console.warn('Web Audio creation error:', err);
+        console.warn('Web Audio play call error:', err);
+        setLoadingAudioId(null);
         setPlayingId(null);
-        setPlaybackPosition(0);
-        webAudioRef.current = null;
       }
     } else {
+      // ── NATIVE (iOS & Android) ──
+      // 1. If currently playing this audio -> pause it
       if (playingId === id) {
-        await nativeSoundRef.current?.stopAsync().catch(() => {});
-        await nativeSoundRef.current?.unloadAsync().catch(() => {});
-        nativeSoundRef.current = null;
+        if (nativeSoundRef.current) {
+          await nativeSoundRef.current.pauseAsync().catch(() => {});
+        }
         setPlayingId(null);
-        setPlaybackPosition(0);
+        setLoadingAudioId(null);
         return;
       }
+
+      // 2. Pause any currently playing native sound
       if (nativeSoundRef.current) {
-        await nativeSoundRef.current.stopAsync().catch(() => {});
-        await nativeSoundRef.current.unloadAsync().catch(() => {});
-        nativeSoundRef.current = null;
+        await nativeSoundRef.current.pauseAsync().catch(() => {});
       }
 
+      // 3. Ensure speaker audio session is active
+      await configureAudioForPlayback();
+
+      // 4. Check if sound instance already cached
+      let sound = nativeSoundCacheRef.current.get(audioUrl);
+
+      if (sound) {
+        // 0ms instant replay from cache!
+        try {
+          nativeSoundRef.current = sound;
+          await sound.setPositionAsync(0);
+          await sound.setRateAsync(playbackRate, true).catch(() => {});
+          await sound.playAsync();
+          setPlayingId(id);
+          setLoadingAudioId(null);
+          return;
+        } catch (_) {
+          nativeSoundCacheRef.current.delete(audioUrl);
+        }
+      }
+
+      // 5. If not cached, load and cache it
+      setLoadingAudioId(id);
       try {
-        const { sound } = await Audio.Sound.createAsync(
+        const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: audioUrl },
           { shouldPlay: true, progressUpdateIntervalMillis: 100 }
         );
-        nativeSoundRef.current = sound;
+        nativeSoundRef.current = newSound;
+        nativeSoundCacheRef.current.set(audioUrl, newSound);
+        await newSound.setRateAsync(playbackRate, true).catch(() => {});
         setPlayingId(id);
-        setPlaybackPosition(0);
+        setLoadingAudioId(null);
 
-        sound.setOnPlaybackStatusUpdate((status: any) => {
+        newSound.setOnPlaybackStatusUpdate((status: any) => {
           if (status.isLoaded) {
             setPlaybackPosition(status.positionMillis / 1000);
             if (status.didJustFinish) {
               setPlayingId(null);
+              setLoadingAudioId(null);
               setPlaybackPosition(0);
-              sound.unloadAsync().catch(() => {});
-              nativeSoundRef.current = null;
+              newSound.setPositionAsync(0).catch(() => {});
+              // Keep loaded in cache for instant replay!
             }
           } else if (status.error) {
             setPlayingId(null);
+            setLoadingAudioId(null);
             setPlaybackPosition(0);
-            nativeSoundRef.current = null;
+            nativeSoundCacheRef.current.delete(audioUrl);
           }
         });
       } catch (e: any) {
         console.warn('Native Audio play error:', e);
         setPlayingId(null);
+        setLoadingAudioId(null);
         setPlaybackPosition(0);
-        nativeSoundRef.current = null;
       }
     }
   };
@@ -735,7 +815,7 @@ export default function ChatRoom() {
             {isAudio ? (
               <View style={[item.isUploading && { opacity: 0.6 }]}>
                 <View style={styles.audioRow}>
-                  {item.isUploading ? (
+                  {item.isUploading || loadingAudioId === item.id ? (
                     <View style={styles.playIconWrap}>
                       <ActivityIndicator size="small" color="#00E676" />
                     </View>
