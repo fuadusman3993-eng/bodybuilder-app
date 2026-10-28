@@ -20,6 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import BrandLogo from '../../components/ui/BrandLogo';
 import CeoChatCopilot from '../../components/ceo/CeoChatCopilot';
+import CeoIssueChatRoom from '../../components/ceo/CeoIssueChatRoom';
+import CeoAiConfigModal from '../../components/ceo/CeoAiConfigModal';
+import { buildCeoChatThreads, CeoChatThread } from '../../lib/ceoThreadsService';
 import { isCeoAuthenticated, logoutCeo } from '../../lib/ceoAuthService';
 import {
   fetchRecentErrors,
@@ -60,6 +63,9 @@ export default function CeoDashboardScreen() {
   // Tab & View Mode States
   const [activeTab, setActiveTab] = useState<CeoTab>('errors');
   const [viewMode, setViewMode] = useState<'copilot' | 'records'>('copilot');
+  const [activeThread, setActiveThread] = useState<CeoChatThread | null>(null);
+  const [aiConfigModalVisible, setAiConfigModalVisible] = useState(false);
+  const [chatCategoryFilter, setChatCategoryFilter] = useState<'all' | 'error' | 'user' | 'payment' | 'health'>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   // Data States
@@ -160,6 +166,12 @@ export default function CeoDashboardScreen() {
     }
   };
 
+  const handleResolveThread = async (thread: CeoChatThread) => {
+    if (thread.allErrorIds && thread.allErrorIds.length > 0) {
+      await handleResolveGroup(thread.allErrorIds);
+    }
+  };
+
   const handleDeleteError = async (id: string) => {
     await deleteErrorRecord(id);
     setErrorsList((prev) => prev.filter((e) => e.id !== id));
@@ -248,6 +260,15 @@ export default function CeoDashboardScreen() {
     kpis: financialKPIs,
     remoteConfig,
   }), [errorsList, usersList, transactionsList, healthList, financialKPIs, remoteConfig]);
+
+  const chatThreads: CeoChatThread[] = useMemo(() => {
+    return buildCeoChatThreads(errorsList, usersList, transactionsList, healthList, financialKPIs);
+  }, [errorsList, usersList, transactionsList, healthList, financialKPIs]);
+
+  const filteredChatThreads = useMemo(() => {
+    if (chatCategoryFilter === 'all') return chatThreads;
+    return chatThreads.filter((t) => t.type === chatCategoryFilter);
+  }, [chatThreads, chatCategoryFilter]);
 
   const infrastructureBottlenecks: BottleneckAnalysis[] = useMemo(
     () => explainInfrastructureBottleneck(healthList),
@@ -423,6 +444,35 @@ export default function CeoDashboardScreen() {
         </View>
 
         <View style={styles.headerRight}>
+          {/* AI Key Config Button */}
+          <TouchableOpacity
+            style={styles.aiKeyBtn}
+            onPress={() => setAiConfigModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="sparkles" size={14} color="#10B981" />
+            <Text style={styles.aiKeyBtnText}>AI Key</Text>
+          </TouchableOpacity>
+
+          {/* View Mode Toggle Pill (Chat Inbox vs Raw Records) */}
+          <TouchableOpacity
+            style={styles.viewModeTogglePill}
+            onPress={() => {
+              setViewMode(viewMode === 'copilot' ? 'records' : 'copilot');
+              setActiveThread(null);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={viewMode === 'copilot' ? 'layers-outline' : 'chatbubbles'}
+              size={14}
+              color={viewMode === 'copilot' ? '#8A95A5' : '#10B981'}
+            />
+            <Text style={styles.viewModeTogglePillText}>
+              {viewMode === 'copilot' ? 'Records' : 'Chat'}
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.refreshBtn}
             onPress={loadDashboardData}
@@ -608,21 +658,118 @@ export default function CeoDashboardScreen() {
         </View>
 
         {viewMode === 'copilot' ? (
-          <View style={styles.copilotWrapper}>
-            <CeoChatCopilot
-              category={activeTab === 'controls' ? 'health' : activeTab}
-              contextData={copilotContextData}
-              onResolveAllErrors={handleResolveAllErrors}
-              onInspectUser={(u) => setSelectedUserForModal(u)}
-              onOpenReconcileModal={() => setVerifyModalVisible(true)}
-              onGrantCoinsModal={(u) => {
-                if (u) setSelectedUserForModal(u);
-              }}
-              onToggleMaintenance={() => handleToggleConfig('maintenance_mode', !remoteConfig.maintenance_mode)}
-              onToggleVoice={() => handleToggleConfig('voice_coach_enabled', !remoteConfig.voice_coach_enabled)}
-              onSwitchCategory={(cat) => setActiveTab(cat as CeoTab)}
-            />
-          </View>
+          activeThread ? (
+            /* ── FULL-SCREEN ISSUE CHAT ROOM ── */
+            <View style={{ flex: 1, minHeight: 500 }}>
+              <CeoIssueChatRoom
+                thread={activeThread}
+                onBack={() => setActiveThread(null)}
+                onResolveThread={(t) => {
+                  handleResolveThread(t).then(() => {
+                    setActiveThread(null);
+                    loadDashboardData();
+                  });
+                }}
+                onInspectUser={(t) => {
+                  const u = usersList.find(
+                    (usr) => usr.email === (t as any).userEmail || usr.uid === (t as any).userUid
+                  );
+                  if (u) setSelectedUserForModal(u);
+                }}
+                onGrantCoinsToUser={(t, _amount) => {
+                  const u = usersList.find((usr) => usr.email === (t as any).userEmail);
+                  if (u) setSelectedUserForModal(u);
+                }}
+              />
+            </View>
+          ) : (
+            /* ── CHAT INBOX (Thread List) ── */
+            <View style={styles.chatInboxContainer}>
+              {/* Category filter pills */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chatFilterBar}
+                contentContainerStyle={{ paddingRight: 16 }}
+              >
+                {([
+                  { key: 'all', label: '📋 All' },
+                  { key: 'error', label: '🚨 Errors' },
+                  { key: 'user', label: '👥 Users' },
+                  { key: 'payment', label: '💳 Finance' },
+                  { key: 'health', label: '⚡ Server' },
+                ] as { key: 'all' | 'error' | 'user' | 'payment' | 'health'; label: string }[]).map((f) => (
+                  <TouchableOpacity
+                    key={f.key}
+                    style={[
+                      styles.chatFilterPill,
+                      chatCategoryFilter === f.key && styles.chatFilterPillActive,
+                    ]}
+                    onPress={() => setChatCategoryFilter(f.key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.chatFilterPillText,
+                        chatCategoryFilter === f.key && styles.chatFilterPillTextActive,
+                      ]}
+                    >
+                      {f.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Empty state */}
+              {filteredChatThreads.length === 0 && (
+                <View style={styles.chatEmptyState}>
+                  <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                  <Text style={styles.chatEmptyStateTitle}>ሁሉም ተወግዷል ✅</Text>
+                  <Text style={styles.chatEmptyStateSub}>No active issues in this category</Text>
+                </View>
+              )}
+
+              {/* Thread rows */}
+              {filteredChatThreads.map((thread) => (
+                <TouchableOpacity
+                  key={thread.id}
+                  style={styles.chatThreadItem}
+                  onPress={() => setActiveThread(thread)}
+                  activeOpacity={0.75}
+                >
+                  {/* Avatar */}
+                  <View style={[styles.chatThreadAvatar, { backgroundColor: thread.avatarColor }]}>
+                    <Ionicons name={thread.avatarIcon as any} size={18} color="#FFF" />
+                  </View>
+
+                  {/* Body */}
+                  <View style={styles.chatThreadBody}>
+                    <View style={styles.chatThreadTopRow}>
+                      <Text style={styles.chatThreadTitle} numberOfLines={1}>
+                        {thread.title}
+                      </Text>
+                      <Text style={styles.chatThreadTime}>{thread.timestamp}</Text>
+                    </View>
+                    <View style={styles.chatThreadBottomRow}>
+                      <Text style={styles.chatThreadSub} numberOfLines={1}>
+                        {thread.lastMessage}
+                      </Text>
+                      {thread.unreadCount && thread.unreadCount > 0 ? (
+                        <View
+                          style={[
+                            styles.chatUnreadBadge,
+                            thread.status === 'critical' && { backgroundColor: '#EF4444' },
+                          ]}
+                        >
+                          <Text style={styles.chatUnreadBadgeText}>{thread.unreadCount}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         ) : (
           <>
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -1707,6 +1854,12 @@ export default function CeoDashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── AI CONFIG MODAL ── */}
+      <CeoAiConfigModal
+        visible={aiConfigModalVisible}
+        onClose={() => setAiConfigModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -3156,5 +3309,139 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: '800',
+  },
+
+  // ── CHAT INBOX STYLES ──────────────────────────────────────────────────────
+  aiKeyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  aiKeyBtnText: {
+    color: '#10B981',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  viewModeTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  viewModeTogglePillText: {
+    color: '#94A3B8',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  chatInboxContainer: {
+    flex: 1,
+  },
+  chatFilterBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexGrow: 0,
+  },
+  chatFilterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#1E293B',
+    marginRight: 8,
+  },
+  chatFilterPillActive: {
+    backgroundColor: '#10B981',
+  },
+  chatFilterPillText: {
+    color: '#8A95A5',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chatFilterPillTextActive: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  chatEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  chatEmptyStateTitle: {
+    color: '#F8FAFC',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  chatEmptyStateSub: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+  chatThreadItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A2433',
+  },
+  chatThreadAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatThreadBody: {
+    flex: 1,
+  },
+  chatThreadTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  chatThreadTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+  },
+  chatThreadTime: {
+    color: '#64748B',
+    fontSize: 11.5,
+    marginLeft: 8,
+  },
+  chatThreadBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chatThreadSub: {
+    color: '#94A3B8',
+    fontSize: 13,
+    flex: 1,
+  },
+  chatUnreadBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#00E676',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+    marginLeft: 8,
+  },
+  chatUnreadBadgeText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
