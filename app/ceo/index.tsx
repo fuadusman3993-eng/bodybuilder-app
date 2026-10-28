@@ -54,15 +54,14 @@ import {
   FinancialKPIs,
 } from '../../lib/ceoFinanceService';
 
-type CeoTab = 'errors' | 'users' | 'finance' | 'health' | 'controls';
+type CeoTab = 'home' | 'chat' | 'errors' | 'users' | 'finance' | 'controls';
 
 export default function CeoDashboardScreen() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Tab & View Mode States
-  const [activeTab, setActiveTab] = useState<CeoTab>('errors');
-  const [viewMode, setViewMode] = useState<'copilot' | 'records'>('copilot');
+  const [activeTab, setActiveTab] = useState<CeoTab>('home');
   const [activeThread, setActiveThread] = useState<CeoChatThread | null>(null);
   const [aiConfigModalVisible, setAiConfigModalVisible] = useState(false);
   const [chatCategoryFilter, setChatCategoryFilter] = useState<'all' | 'error' | 'user' | 'payment' | 'health'>('all');
@@ -454,25 +453,6 @@ export default function CeoDashboardScreen() {
             <Text style={styles.aiKeyBtnText}>AI Key</Text>
           </TouchableOpacity>
 
-          {/* View Mode Toggle Pill (Chat Inbox vs Raw Records) */}
-          <TouchableOpacity
-            style={styles.viewModeTogglePill}
-            onPress={() => {
-              setViewMode(viewMode === 'copilot' ? 'records' : 'copilot');
-              setActiveThread(null);
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={viewMode === 'copilot' ? 'layers-outline' : 'chatbubbles'}
-              size={14}
-              color={viewMode === 'copilot' ? '#8A95A5' : '#10B981'}
-            />
-            <Text style={styles.viewModeTogglePillText}>
-              {viewMode === 'copilot' ? 'Records' : 'Chat'}
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.refreshBtn}
             onPress={loadDashboardData}
@@ -492,175 +472,178 @@ export default function CeoDashboardScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollBody}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} tintColor={Colors.primary} />
-        }
-      >
-        {/* ── HIGH-LEVEL SYSTEM STATUS BANNER ── */}
-        <View style={styles.statusBanner}>
-          <View style={styles.statusLeft}>
-            <Ionicons name={systemStatusPill.icon as any} size={18} color={systemStatusPill.color} />
-            <Text style={[styles.statusBannerTitle, { color: systemStatusPill.color }]}>
-              {systemStatusPill.text}
-            </Text>
-          </View>
-          <Text style={styles.statusLastSync}>
-            Synced: {lastRefreshedTime || 'Just now'} • Auto-refresh: 30s
-          </Text>
-        </View>
-
-        {/* ── TOP 4 METRIC RADAR CARDS ── */}
-        <View style={styles.metricsGrid}>
-          {/* Card 1: Active Errors */}
-          <TouchableOpacity
-            style={[styles.metricCard, unresolvedErrorsCount > 0 && styles.metricCardAlert]}
-            onPress={() => setActiveTab('errors')}
-            activeOpacity={0.8}
+      {/* ── MAIN CONTENT CONTAINER (SWITCHES BY ACTIVE TAB) ── */}
+      <View style={styles.mainContentContainer}>
+        {/* ── 1. HOME SCREEN ── */}
+        {activeTab === 'home' && (
+          <ScrollView
+            contentContainerStyle={styles.scrollBody}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} tintColor={Colors.primary} />
+            }
           >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>ACTIVE ERRORS</Text>
-              <Ionicons
-                name="bug"
-                size={16}
-                color={unresolvedErrorsCount > 0 ? '#EF4444' : Colors.primary}
-              />
-            </View>
-            <Text style={[styles.metricValue, unresolvedErrorsCount > 0 && { color: '#EF4444' }]}>
-              {unresolvedErrorsCount}
-            </Text>
-            <Text style={styles.metricSub}>
-              {errorsList.length} total captured logs
-            </Text>
-          </TouchableOpacity>
-
-          {/* Card 2: Registered Users */}
-          <TouchableOpacity
-            style={styles.metricCard}
-            onPress={() => setActiveTab('users')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>REGISTERED USERS</Text>
-              <Ionicons name="people" size={16} color={Colors.primary} />
-            </View>
-            <Text style={styles.metricValue}>{usersList.length}</Text>
-            <Text style={styles.metricSub}>
-              {verifiedHumansCount} Humans • {flaggedUsersCount > 0 ? `⚠️ ${flaggedUsersCount} Errors` : '0 Errors'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Card 3: Payment Radar */}
-          <TouchableOpacity
-            style={styles.metricCard}
-            onPress={() => setActiveTab('finance')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>PAYMENT RADAR</Text>
-              <Ionicons name="wallet" size={16} color="#EAB308" />
-            </View>
-            <Text style={styles.metricValue}>{financialKPIs.totalRevenueEtb} ETB</Text>
-            <Text style={styles.metricSub}>
-              {financialKPIs.completedTransactionsCount} Completed Txs • {payingUsersCount} Paying Users
-            </Text>
-          </TouchableOpacity>
-
-          {/* Card 4: Infrastructure */}
-          <TouchableOpacity
-            style={styles.metricCard}
-            onPress={() => setActiveTab('health')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>CORE SERVICES</Text>
-              <Ionicons name="server" size={16} color="#00E676" />
-            </View>
-            <Text style={styles.metricValue}>
-              {healthList.filter((h) => h.status === 'healthy').length}/{healthList.length || 4}
-            </Text>
-            <Text style={styles.metricSub}>APIs Online & Monitored</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── 5 DEDICATED NAVIGATION TABS ── */}
-        <View style={styles.navTabsWrap}>
-          {[
-            { key: 'errors', label: 'Error Radar', icon: 'alert-circle', count: unresolvedErrorsCount },
-            { key: 'users', label: 'Users & Bots', icon: 'people', alertCount: flaggedUsersCount },
-            { key: 'finance', label: 'Payment Radar', icon: 'wallet', count: transactionsList.length },
-            { key: 'health', label: 'Infrastructure', icon: 'pulse' },
-            { key: 'controls', label: 'Remote Controls', icon: 'toggle' },
-          ].map((tab) => {
-            const active = activeTab === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.navTabBtn, active && styles.navTabBtnActive]}
-                onPress={() => setActiveTab(tab.key as CeoTab)}
-                activeOpacity={0.75}
-              >
-                <Ionicons
-                  name={tab.icon as any}
-                  size={16}
-                  color={active ? '#000' : '#8A95A5'}
-                />
-                <Text style={[styles.navTabText, active && styles.navTabTextActive]}>
-                  {tab.label}
+            {/* System Status Banner */}
+            <View style={styles.statusBanner}>
+              <View style={styles.statusLeft}>
+                <Ionicons name={systemStatusPill.icon as any} size={18} color={systemStatusPill.color} />
+                <Text style={[styles.statusBannerTitle, { color: systemStatusPill.color }]}>
+                  {systemStatusPill.text}
                 </Text>
+              </View>
+              <Text style={styles.statusLastSync}>
+                Synced: {lastRefreshedTime || 'Just now'} • Auto-refresh: 30s
+              </Text>
+            </View>
 
-                {tab.count !== undefined && tab.count > 0 ? (
-                  <View
-                    style={[
-                      styles.tabCountBadge,
-                      tab.key === 'errors' && unresolvedErrorsCount > 0 && { backgroundColor: '#EF4444' },
-                    ]}
-                  >
-                    <Text style={styles.tabCountBadgeText}>{tab.count}</Text>
-                  </View>
-                ) : null}
-
-                {tab.alertCount !== undefined && tab.alertCount > 0 ? (
-                  <View style={[styles.tabCountBadge, { backgroundColor: '#EAB308' }]}>
-                    <Text style={[styles.tabCountBadgeText, { color: '#000' }]}>⚠️ {tab.alertCount}</Text>
-                  </View>
-                ) : null}
+            {/* Top 4 Metric Cards */}
+            <View style={styles.metricsGrid}>
+              {/* Card 1: Active Errors */}
+              <TouchableOpacity
+                style={[styles.metricCard, unresolvedErrorsCount > 0 && styles.metricCardAlert]}
+                onPress={() => setActiveTab('errors')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.metricCardHeader}>
+                  <Text style={styles.metricLabel}>ACTIVE ERRORS</Text>
+                  <Ionicons
+                    name="bug"
+                    size={16}
+                    color={unresolvedErrorsCount > 0 ? '#EF4444' : Colors.primary}
+                  />
+                </View>
+                <Text style={[styles.metricValue, unresolvedErrorsCount > 0 && { color: '#EF4444' }]}>
+                  {unresolvedErrorsCount}
+                </Text>
+                <Text style={styles.metricSub}>
+                  {errorsList.length} total captured logs • View Radar →
+                </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
 
-        {/* ── VIEW MODE TOGGLE (AI COPILOT CHAT VS RAW DATA RECORDS) ── */}
-        <View style={styles.viewModeToggleRow}>
-          <TouchableOpacity
-            style={[styles.viewModeBtn, viewMode === 'copilot' && styles.viewModeBtnActive]}
-            onPress={() => setViewMode('copilot')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="chatbubbles" size={16} color={viewMode === 'copilot' ? '#10B981' : '#8A95A5'} />
-            <Text style={[styles.viewModeBtnText, viewMode === 'copilot' && styles.viewModeBtnTextActive]}>
-              💬 AI Copilot View (የ AI ረዳት እይታ)
-            </Text>
-          </TouchableOpacity>
+              {/* Card 2: Registered Users */}
+              <TouchableOpacity
+                style={styles.metricCard}
+                onPress={() => setActiveTab('users')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.metricCardHeader}>
+                  <Text style={styles.metricLabel}>REGISTERED USERS</Text>
+                  <Ionicons name="people" size={16} color={Colors.primary} />
+                </View>
+                <Text style={styles.metricValue}>{usersList.length}</Text>
+                <Text style={styles.metricSub}>
+                  {verifiedHumansCount} Humans • {flaggedUsersCount > 0 ? `⚠️ ${flaggedUsersCount} Errors` : '0 Errors'} →
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.viewModeBtn, viewMode === 'records' && styles.viewModeBtnActive]}
-            onPress={() => setViewMode('records')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="layers-outline" size={16} color={viewMode === 'records' ? '#10B981' : '#8A95A5'} />
-            <Text style={[styles.viewModeBtnText, viewMode === 'records' && styles.viewModeBtnTextActive]}>
-              📊 Raw Data Records ({activeTab.toUpperCase()})
-            </Text>
-          </TouchableOpacity>
-        </View>
+              {/* Card 3: Payment Radar */}
+              <TouchableOpacity
+                style={styles.metricCard}
+                onPress={() => setActiveTab('finance')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.metricCardHeader}>
+                  <Text style={styles.metricLabel}>PAYMENT RADAR</Text>
+                  <Ionicons name="wallet" size={16} color="#EAB308" />
+                </View>
+                <Text style={styles.metricValue}>{financialKPIs.totalRevenueEtb} ETB</Text>
+                <Text style={styles.metricSub}>
+                  {financialKPIs.completedTransactionsCount} Completed Txs • {payingUsersCount} Paying Users →
+                </Text>
+              </TouchableOpacity>
 
-        {viewMode === 'copilot' ? (
+              {/* Card 4: Infrastructure */}
+              <TouchableOpacity
+                style={styles.metricCard}
+                onPress={() => setActiveTab('controls')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.metricCardHeader}>
+                  <Text style={styles.metricLabel}>CORE SERVICES</Text>
+                  <Ionicons name="server" size={16} color="#00E676" />
+                </View>
+                <Text style={styles.metricValue}>
+                  {healthList.filter((h) => h.status === 'healthy').length}/{healthList.length || 4}
+                </Text>
+                <Text style={styles.metricSub}>APIs Online & Monitored →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* AI Operations Messenger Hub Card */}
+            <TouchableOpacity
+              style={styles.aiHomePromoCard}
+              onPress={() => setActiveTab('chat')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.aiPromoLeft}>
+                <View style={styles.aiPromoIconWrap}>
+                  <Ionicons name="chatbubbles" size={26} color="#00E676" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={styles.aiPromoTitle}>💬 Operations AI Chat Messenger</Text>
+                    {unresolvedErrorsCount > 0 && (
+                      <View style={styles.aiPromoBadge}>
+                        <Text style={styles.aiPromoBadgeText}>{unresolvedErrorsCount} Active</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.aiPromoSub}>
+                    ከ Google Gemini AI ጋር በእውነተኛ ሰዓት እየተወያዩ ስህተቶችን እና የደንበኞችን ጥያቄዎች በአማርኛ ወይም በእንግሊዝኛ ይፍቱ።
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.aiPromoBtn}>
+                <Text style={styles.aiPromoBtnText}>Open Chat Room ({chatThreads.length})</Text>
+                <Ionicons name="arrow-forward" size={14} color="#000" />
+              </View>
+            </TouchableOpacity>
+
+            {/* Active Operational Threads Preview */}
+            <View style={styles.homeSection}>
+              <View style={styles.homeSectionHeader}>
+                <Text style={styles.homeSectionTitle}>Active Operational Threads</Text>
+                <TouchableOpacity onPress={() => setActiveTab('chat')}>
+                  <Text style={styles.homeSectionLink}>View All ({chatThreads.length}) →</Text>
+                </TouchableOpacity>
+              </View>
+              {chatThreads.slice(0, 4).map((thread) => (
+                <TouchableOpacity
+                  key={thread.id}
+                  style={styles.homeThreadPreviewItem}
+                  onPress={() => {
+                    setActiveThread(thread);
+                    setActiveTab('chat');
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.chatThreadAvatar, { backgroundColor: thread.avatarColor, width: 42, height: 42, borderRadius: 21 }]}>
+                    <Ionicons name={thread.avatarIcon as any} size={18} color="#FFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <Text style={styles.chatThreadTitle} numberOfLines={1}>{thread.title}</Text>
+                      <Text style={styles.chatThreadTime}>{thread.timestamp}</Text>
+                    </View>
+                    <Text style={styles.chatThreadSub} numberOfLines={1}>{thread.lastMessage}</Text>
+                  </View>
+                  {thread.unreadCount && thread.unreadCount > 0 ? (
+                    <View style={[styles.chatUnreadBadge, thread.status === 'critical' && { backgroundColor: '#EF4444' }]}>
+                      <Text style={styles.chatUnreadBadgeText}>{thread.unreadCount}</Text>
+                    </View>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* ── 2. CHAT PAGE (MESSENGER INBOX + FULLSCREEN AI CHAT ROOM) ── */}
+        {activeTab === 'chat' && (
           activeThread ? (
-            /* ── FULL-SCREEN ISSUE CHAT ROOM ── */
-            <View style={{ flex: 1, minHeight: 500 }}>
+            <View style={{ flex: 1 }}>
               <CeoIssueChatRoom
                 thread={activeThread}
                 onBack={() => setActiveThread(null)}
@@ -683,7 +666,6 @@ export default function CeoDashboardScreen() {
               />
             </View>
           ) : (
-            /* ── CHAT INBOX (Thread List) ── */
             <View style={styles.chatInboxContainer}>
               {/* Category filter pills */}
               <ScrollView
@@ -729,49 +711,57 @@ export default function CeoDashboardScreen() {
                 </View>
               )}
 
-              {/* Thread rows */}
-              {filteredChatThreads.map((thread) => (
-                <TouchableOpacity
-                  key={thread.id}
-                  style={styles.chatThreadItem}
-                  onPress={() => setActiveThread(thread)}
-                  activeOpacity={0.75}
-                >
-                  {/* Avatar */}
-                  <View style={[styles.chatThreadAvatar, { backgroundColor: thread.avatarColor }]}>
-                    <Ionicons name={thread.avatarIcon as any} size={18} color="#FFF" />
-                  </View>
-
-                  {/* Body */}
-                  <View style={styles.chatThreadBody}>
-                    <View style={styles.chatThreadTopRow}>
-                      <Text style={styles.chatThreadTitle} numberOfLines={1}>
-                        {thread.title}
-                      </Text>
-                      <Text style={styles.chatThreadTime}>{thread.timestamp}</Text>
+              {/* Thread list */}
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                {filteredChatThreads.map((thread) => (
+                  <TouchableOpacity
+                    key={thread.id}
+                    style={styles.chatThreadItem}
+                    onPress={() => setActiveThread(thread)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.chatThreadAvatar, { backgroundColor: thread.avatarColor }]}>
+                      <Ionicons name={thread.avatarIcon as any} size={18} color="#FFF" />
                     </View>
-                    <View style={styles.chatThreadBottomRow}>
-                      <Text style={styles.chatThreadSub} numberOfLines={1}>
-                        {thread.lastMessage}
-                      </Text>
-                      {thread.unreadCount && thread.unreadCount > 0 ? (
-                        <View
-                          style={[
-                            styles.chatUnreadBadge,
-                            thread.status === 'critical' && { backgroundColor: '#EF4444' },
-                          ]}
-                        >
-                          <Text style={styles.chatUnreadBadgeText}>{thread.unreadCount}</Text>
-                        </View>
-                      ) : null}
+                    <View style={styles.chatThreadBody}>
+                      <View style={styles.chatThreadTopRow}>
+                        <Text style={styles.chatThreadTitle} numberOfLines={1}>
+                          {thread.title}
+                        </Text>
+                        <Text style={styles.chatThreadTime}>{thread.timestamp}</Text>
+                      </View>
+                      <View style={styles.chatThreadBottomRow}>
+                        <Text style={styles.chatThreadSub} numberOfLines={1}>
+                          {thread.lastMessage}
+                        </Text>
+                        {thread.unreadCount && thread.unreadCount > 0 ? (
+                          <View
+                            style={[
+                              styles.chatUnreadBadge,
+                              thread.status === 'critical' && { backgroundColor: '#EF4444' },
+                            ]}
+                          >
+                            <Text style={styles.chatUnreadBadgeText}>{thread.unreadCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )
-        ) : (
-          <>
+        )}
+
+        {/* ── 3. ERRORS, USERS, FINANCE, CONTROLS (SCROLLABLE PAGES) ── */}
+        {activeTab !== 'home' && activeTab !== 'chat' && (
+          <ScrollView
+            contentContainerStyle={styles.scrollBody}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} tintColor={Colors.primary} />
+            }
+          >
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* ── TAB 1: ERROR RADAR & AI DIAGNOSTICS ──                   */}
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -1378,7 +1368,7 @@ export default function CeoDashboardScreen() {
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* ── TAB 4: INFRASTRUCTURE & DEEP BOTTLENECK ANALYSIS ──     */}
         {/* ══════════════════════════════════════════════════════════════ */}
-        {activeTab === 'health' && (
+        {activeTab === 'controls' && (
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
@@ -1533,9 +1523,54 @@ export default function CeoDashboardScreen() {
             </View>
           </View>
         )}
-          </>
+          </ScrollView>
         )}
-      </ScrollView>
+      </View>
+
+      {/* ── FIXED BOTTOM NAVIGATION BAR ── */}
+      {(!activeThread || activeTab !== 'chat') && (
+        <View style={styles.bottomNavContainer}>
+          {([
+            { key: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
+            { key: 'chat', label: 'Chat', icon: 'chatbubbles', iconOutline: 'chatbubbles-outline', badge: unresolvedErrorsCount },
+            { key: 'errors', label: 'Errors', icon: 'bug', iconOutline: 'bug-outline', badge: unresolvedErrorsCount, badgeColor: '#EF4444' },
+            { key: 'users', label: 'Users', icon: 'people', iconOutline: 'people-outline', badge: flaggedUsersCount, badgeColor: '#EAB308' },
+            { key: 'finance', label: 'Finance', icon: 'wallet', iconOutline: 'wallet-outline' },
+            { key: 'controls', label: 'Controls', icon: 'construct', iconOutline: 'construct-outline' },
+          ] as { key: CeoTab; label: string; icon: string; iconOutline: string; badge?: number; badgeColor?: string }[]).map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.bottomNavItem, active && styles.bottomNavItemActive]}
+                onPress={() => {
+                  setActiveTab(tab.key);
+                  if (tab.key !== 'chat') {
+                    setActiveThread(null);
+                  }
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.bottomNavIconWrap}>
+                  <Ionicons
+                    name={(active ? tab.icon : tab.iconOutline) as any}
+                    size={22}
+                    color={active ? '#00E676' : '#8A95A5'}
+                  />
+                  {tab.badge && tab.badge > 0 ? (
+                    <View style={[styles.bottomNavBadge, { backgroundColor: tab.badgeColor || '#EF4444' }]}>
+                      <Text style={styles.bottomNavBadgeText}>{tab.badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.bottomNavLabel, active && styles.bottomNavLabelActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* ── MODAL 1: FULL USER DOSSIER & EVERYTHING THEY STORED ──   */}
@@ -3442,6 +3477,152 @@ const styles = StyleSheet.create({
   chatUnreadBadgeText: {
     color: '#000',
     fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // ── APP CONTAINER & NATIVE BOTTOM NAV ──────────────────────────────────────
+  mainContentContainer: {
+    flex: 1,
+  },
+  aiHomePromoCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.25)',
+    padding: 16,
+    marginBottom: 18,
+    gap: 14,
+  },
+  aiPromoLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  aiPromoIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiPromoTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  aiPromoBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  aiPromoBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  aiPromoSub: {
+    color: '#94A3B8',
+    fontSize: 12.5,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  aiPromoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#00E676',
+    borderRadius: 8,
+    paddingVertical: 10,
+  },
+  aiPromoBtnText: {
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  homeSection: {
+    marginBottom: 20,
+  },
+  homeSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  homeSectionTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  homeSectionLink: {
+    color: '#00E676',
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  homeThreadPreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  bottomNavContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#0A0F1D',
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    paddingTop: 8,
+    paddingHorizontal: 4,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  bottomNavItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    minWidth: 46,
+  },
+  bottomNavItemActive: {
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+  },
+  bottomNavIconWrap: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomNavBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  bottomNavBadgeText: {
+    color: '#000',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  bottomNavLabel: {
+    color: '#8A95A5',
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  bottomNavLabelActive: {
+    color: '#00E676',
     fontWeight: '700',
   },
 });
