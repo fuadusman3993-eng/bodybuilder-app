@@ -35,6 +35,16 @@ const BANNERS = [
     image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1000&q=80',
     route: '/workout',
   },
+  {
+    id: '4',
+    tag: 'FITPULSE STORE',
+    title: 'Supplements &',
+    titleAccent: 'Pro Gear',
+    subtitle: 'Consult Marketing AI & buy with Coins or Chapa.',
+    quote: 'Fuel\nYour\nGrowth',
+    image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=1000&q=80',
+    route: '/marketplace',
+  },
 ];
 
 export default function HeroBanner() {

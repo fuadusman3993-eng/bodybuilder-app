@@ -8,7 +8,7 @@ const ACTIONS = [
   { id: '1', title: 'My Workout', subtitle: 'Track & improve', icon: 'barbell-outline', color: '#3B82F6', route: '/workout' },
   { id: '2', title: 'AI Assistant', subtitle: 'Ask anything', icon: 'hardware-chip-outline', color: '#8B5CF6', route: '/(tabs)/chat' },
   { id: '3', title: 'Find Gym', subtitle: 'Near you', icon: 'location-outline', color: '#F59E0B', route: '/gym' },
-  { id: '4', title: 'Market Place', subtitle: 'Sport gear & more', icon: 'cart-outline', color: '#EF4444', route: '/gym' },
+  { id: '4', title: 'Market Place', subtitle: 'Sport gear & more', icon: 'cart-outline', color: '#00E676', route: '/marketplace' },
 ];
 
 export default function QuickActions() {
