@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import BrandLogo from '../ui/BrandLogo';
 
 export type CeoNavTab = 'home' | 'chat' | 'errors' | 'users' | 'finance' | 'controls';
 
@@ -79,10 +80,8 @@ export default function CeoDesktopSidebar({
       {/* ── BRAND LOGO ── */}
       <View style={styles.brandContainer}>
         <View style={styles.brandLogoRow}>
-          <View style={styles.logoBadge}>
-            <Ionicons name="flash" size={20} color="#00E676" />
-          </View>
-          <View>
+          <BrandLogo size="small" showText={false} />
+          <View style={{ marginLeft: 4 }}>
             <Text style={styles.brandTitle}>FitPulse</Text>
             <Text style={styles.brandSub}>MISSION CONTROL</Text>
           </View>

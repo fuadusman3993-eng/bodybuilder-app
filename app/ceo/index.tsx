@@ -519,6 +519,7 @@ export default function CeoDashboardScreen() {
                 healthList={healthList}
                 recentErrors={errorsList}
                 chatThreads={chatThreads}
+                transactionsList={transactionsList}
                 onNavigateTab={(tab) => {
                   setActiveTab(tab);
                   if (tab !== 'chat') {

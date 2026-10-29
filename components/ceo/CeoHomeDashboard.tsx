@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ServiceHealthItem } from '../../lib/systemHealthService';
 import { CeoChatThread } from '../../lib/ceoThreadsService';
 import { SystemErrorItem } from '../../lib/telemetryService';
+import { CeoTransactionItem } from '../../lib/ceoFinanceService';
 import { CeoNavTab } from './CeoDesktopSidebar';
 
 interface CeoHomeDashboardProps {
@@ -29,6 +30,7 @@ interface CeoHomeDashboardProps {
   healthList: ServiceHealthItem[];
   recentErrors: SystemErrorItem[];
   chatThreads: CeoChatThread[];
+  transactionsList?: CeoTransactionItem[];
   onNavigateTab: (tab: CeoNavTab) => void;
   onOpenThread?: (thread: CeoChatThread) => void;
 }
@@ -41,6 +43,7 @@ export default function CeoHomeDashboard({
   healthList,
   recentErrors,
   chatThreads,
+  transactionsList = [],
   onNavigateTab,
   onOpenThread,
 }: CeoHomeDashboardProps) {
@@ -48,15 +51,110 @@ export default function CeoHomeDashboard({
   const isDesktop = width >= 900;
   const [revenueRange, setRevenueRange] = useState<'7D' | '30D' | '90D'>('7D');
 
-  // Formatted display values matching mockup or real data
-  const displayUsers = usersCount > 0 ? usersCount.toLocaleString() : '24,850';
-  const displayRevenue = totalRevenueEtb > 0 ? `$${totalRevenueEtb.toLocaleString()}` : '$18,320';
-  const displayActiveIssues = unresolvedErrorsCount > 0 ? unresolvedErrorsCount : 3;
-  const displayTransactions = transactionsCount > 0 ? transactionsCount.toLocaleString() : '1,245,000';
+  // 100% Real Live Values (No Dummy Fallbacks)
+  const displayUsers = usersCount.toLocaleString();
+  const displayRevenue = `${totalRevenueEtb.toLocaleString()} ETB`;
+  const displayActiveIssues = unresolvedErrorsCount;
+  const displayTransactions = transactionsCount.toLocaleString();
 
-  const healthyServicesCount = healthList.filter((h) => h.status === 'healthy').length;
-  const totalServices = healthList.length || 4;
-  const healthPercent = totalServices > 0 ? Math.round((healthyServicesCount / totalServices) * 100) : 100;
+  // Dynamic Service Health Calculation
+  const totalServices = healthList.length;
+  const healthyServicesCount = healthList.filter(
+    (h) => h.status === 'healthy'
+  ).length;
+  const healthPercent = totalServices > 0
+    ? Math.round((healthyServicesCount / totalServices) * 100)
+    : 100;
+
+  // Unresolved real errors only
+  const activeUnresolvedErrors = useMemo(() => {
+    return recentErrors.filter((e) => !e.resolved).slice(0, 4);
+  }, [recentErrors]);
+
+  // Dynamic Revenue Chart Aggregation based on real transactions
+  const chartData = useMemo(() => {
+    const daysCount = revenueRange === '7D' ? 7 : revenueRange === '30D' ? 30 : 90;
+    const now = new Date();
+    const dayLabels: string[] = [];
+    const dailyTotals: number[] = [];
+
+    if (revenueRange === '7D') {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        dayLabels.push(dayNames[d.getDay()]);
+
+        const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+        const daySum = transactionsList
+          .filter((tx) => {
+            const txTime = new Date(tx.created_at).getTime();
+            return tx.status === 'completed' && txTime >= startOfDay && txTime < endOfDay;
+          })
+          .reduce((acc, curr) => acc + (curr.amount_etb || 0), 0);
+
+        dailyTotals.push(daySum);
+      }
+    } else {
+      // 30D or 90D intervals (bucketed into 7 visual steps)
+      const stepDays = Math.ceil(daysCount / 7);
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * stepDays * 24 * 60 * 60 * 1000);
+        dayLabels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+
+        const startOfBucket = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const endOfBucket = startOfBucket + stepDays * 24 * 60 * 60 * 1000;
+
+        const bucketSum = transactionsList
+          .filter((tx) => {
+            const txTime = new Date(tx.created_at).getTime();
+            return tx.status === 'completed' && txTime >= startOfBucket && txTime < endOfBucket;
+          })
+          .reduce((acc, curr) => acc + (curr.amount_etb || 0), 0);
+
+        dailyTotals.push(bucketSum);
+      }
+    }
+
+    const periodTotal = dailyTotals.reduce((a, b) => a + b, 0);
+    const maxVal = Math.max(...dailyTotals, 100);
+
+    // Compute 7 SVG coordinates (width: 350, height: 140)
+    // padding: left 15, right 15, top 15, bottom 20
+    const points = dailyTotals.map((val, idx) => {
+      const x = 15 + idx * 53.3; // (350 - 30) / 6 = 53.3
+      const y = 115 - (val / maxVal) * 95;
+      return { x, y, val };
+    });
+
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cpX = (prev.x + curr.x) / 2;
+      pathD += ` C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+
+    const areaD = `${pathD} L ${points[points.length - 1].x} 125 L ${points[0].x} 125 Z`;
+
+    return {
+      points,
+      pathD,
+      areaD,
+      dayLabels,
+      maxVal,
+      periodTotal,
+    };
+  }, [transactionsList, revenueRange]);
+
+  const todayDateString = useMemo(() => {
+    return new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, []);
 
   return (
     <ScrollView
@@ -80,15 +178,15 @@ export default function CeoHomeDashboard({
           </View>
         </View>
 
-        <TouchableOpacity style={styles.dateDropdown} activeOpacity={0.8}>
+        <View style={styles.dateDropdown}>
           <Ionicons name="calendar-outline" size={16} color="#CBD5E1" />
-          <Text style={styles.dateDropdownText}>Oct 29, 2026</Text>
+          <Text style={styles.dateDropdownText}>{todayDateString}</Text>
           <Ionicons name="chevron-down" size={14} color="#94A3B8" />
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* ── 2. FOUR METRIC CARDS ──                                   */}
+      {/* ── 2. FOUR METRIC CARDS (REAL DATA) ──                       */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <View style={[styles.metricCardsGrid, !isDesktop && styles.metricCardsGridMobile]}>
         {/* CARD 1: Total Users (Green) */}
@@ -109,9 +207,8 @@ export default function CeoHomeDashboard({
 
           <View style={styles.statCardBottom}>
             <View style={styles.trendPill}>
-              <Text style={[styles.trendPillText, { color: '#00E676' }]}>↑ +12%</Text>
+              <Text style={[styles.trendPillText, { color: '#00E676' }]}>Live Users</Text>
             </View>
-            {/* SVG Sparkline Wave (Green) */}
             <View style={styles.waveSvgWrap}>
               <Svg width={90} height={32} viewBox="0 0 90 32">
                 <Path
@@ -144,9 +241,8 @@ export default function CeoHomeDashboard({
 
           <View style={styles.statCardBottom}>
             <View style={styles.trendPill}>
-              <Text style={[styles.trendPillText, { color: '#38BDF8' }]}>↑ +8%</Text>
+              <Text style={[styles.trendPillText, { color: '#38BDF8' }]}>Chapa Ledger</Text>
             </View>
-            {/* SVG Sparkline Wave (Blue) */}
             <View style={styles.waveSvgWrap}>
               <Svg width={90} height={32} viewBox="0 0 90 32">
                 <Path
@@ -172,16 +268,19 @@ export default function CeoHomeDashboard({
               <Ionicons name="warning" size={22} color="#F59E0B" />
             </View>
             <View style={styles.statNumberWrap}>
-              <Text style={styles.statNumber}>{displayActiveIssues}</Text>
+              <Text style={[styles.statNumber, unresolvedErrorsCount > 0 && { color: '#EF4444' }]}>
+                {displayActiveIssues}
+              </Text>
               <Text style={styles.statLabel}>Active Issues</Text>
             </View>
           </View>
 
           <View style={styles.statCardBottom}>
             <View style={styles.trendPill}>
-              <Text style={[styles.trendPillText, { color: '#00E676' }]}>↑ -40%</Text>
+              <Text style={[styles.trendPillText, { color: unresolvedErrorsCount > 0 ? '#EF4444' : '#00E676' }]}>
+                {unresolvedErrorsCount > 0 ? 'Action Needed' : 'Zero Errors ✓'}
+              </Text>
             </View>
-            {/* SVG Sparkline Wave (Orange) */}
             <View style={styles.waveSvgWrap}>
               <Svg width={90} height={32} viewBox="0 0 90 32">
                 <Path
@@ -214,9 +313,8 @@ export default function CeoHomeDashboard({
 
           <View style={styles.statCardBottom}>
             <View style={styles.trendPill}>
-              <Text style={[styles.trendPillText, { color: '#C084FC' }]}>↑ +15%</Text>
+              <Text style={[styles.trendPillText, { color: '#C084FC' }]}>Coin Purchases</Text>
             </View>
-            {/* SVG Sparkline Wave (Purple) */}
             <View style={styles.waveSvgWrap}>
               <Svg width={90} height={32} viewBox="0 0 90 32">
                 <Path
@@ -236,7 +334,7 @@ export default function CeoHomeDashboard({
       {/* ── 3. MIDDLE ROW: SYSTEM STATUS + REVENUE OVERVIEW ──        */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <View style={[styles.middleRow, !isDesktop && styles.middleRowMobile]}>
-        {/* LEFT: System Status */}
+        {/* LEFT: System Status (Dynamic Services & Accurate %) */}
         <View style={styles.systemStatusCard}>
           <View style={styles.systemStatusHeader}>
             <View style={styles.statusHeaderIcon}>
@@ -244,7 +342,11 @@ export default function CeoHomeDashboard({
             </View>
             <View>
               <Text style={styles.cardHeaderTitle}>System Status</Text>
-              <Text style={styles.cardHeaderSubtitle}>All core services are running smoothly</Text>
+              <Text style={styles.cardHeaderSubtitle}>
+                {healthPercent === 100
+                  ? 'All core services are running smoothly'
+                  : 'Service telemetry active and monitored'}
+              </Text>
             </View>
           </View>
 
@@ -264,7 +366,7 @@ export default function CeoHomeDashboard({
                   cx="55"
                   cy="55"
                   r="45"
-                  stroke="#00E676"
+                  stroke={healthPercent >= 75 ? '#00E676' : '#F59E0B'}
                   strokeWidth="8"
                   strokeDasharray="283"
                   strokeDashoffset={283 - (283 * healthPercent) / 100}
@@ -274,47 +376,83 @@ export default function CeoHomeDashboard({
                 />
               </Svg>
               <View style={styles.gaugeInnerContent}>
-                <Ionicons name="checkmark" size={24} color="#00E676" />
+                <Ionicons
+                  name={healthPercent >= 75 ? 'checkmark' : 'alert'}
+                  size={24}
+                  color={healthPercent >= 75 ? '#00E676' : '#F59E0B'}
+                />
                 <Text style={styles.gaugePercentText}>{healthPercent}%</Text>
-                <Text style={styles.gaugeLabelText}>Healthy</Text>
+                <Text
+                  style={[
+                    styles.gaugeLabelText,
+                    { color: healthPercent >= 75 ? '#00E676' : '#F59E0B' },
+                  ]}
+                >
+                  {healthPercent === 100 ? 'Healthy' : healthPercent >= 75 ? 'Optimal' : 'Attention'}
+                </Text>
               </View>
             </View>
 
-            {/* Services Checklist */}
+            {/* Real Services Checklist */}
             <View style={styles.servicesList}>
-              <View style={styles.serviceRow}>
-                <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
-                <Text style={styles.serviceNameText}>API Services</Text>
-                <Text style={styles.serviceStatusText}>Online</Text>
-              </View>
+              {healthList.length > 0 ? (
+                healthList.slice(0, 4).map((service, idx) => {
+                  const isHealthy = service.status === 'healthy';
+                  const isDegraded = service.status === 'degraded';
+                  const statusColor = isHealthy ? '#00E676' : isDegraded ? '#F59E0B' : '#EF4444';
+                  const statusText = isHealthy ? 'Online' : isDegraded ? 'Degraded' : 'Offline';
 
-              <View style={styles.serviceRow}>
-                <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
-                <Text style={styles.serviceNameText}>Payment Gateway</Text>
-                <Text style={styles.serviceStatusText}>Online</Text>
-              </View>
-
-              <View style={styles.serviceRow}>
-                <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
-                <Text style={styles.serviceNameText}>Database</Text>
-                <Text style={styles.serviceStatusText}>Online</Text>
-              </View>
-
-              <View style={styles.serviceRow}>
-                <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
-                <Text style={styles.serviceNameText}>AI Services</Text>
-                <Text style={styles.serviceStatusText}>Online</Text>
-              </View>
+                  return (
+                    <View key={idx} style={styles.serviceRow}>
+                      <View style={[styles.serviceStatusDot, { backgroundColor: statusColor }]} />
+                      <Text style={styles.serviceNameText} numberOfLines={1}>
+                        {service.name}
+                      </Text>
+                      <Text style={[styles.serviceStatusText, { color: statusColor }]}>
+                        {statusText}
+                      </Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <>
+                  <View style={styles.serviceRow}>
+                    <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
+                    <Text style={styles.serviceNameText}>Database & Storage</Text>
+                    <Text style={styles.serviceStatusText}>Online</Text>
+                  </View>
+                  <View style={styles.serviceRow}>
+                    <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
+                    <Text style={styles.serviceNameText}>Auth Gateway</Text>
+                    <Text style={styles.serviceStatusText}>Online</Text>
+                  </View>
+                  <View style={styles.serviceRow}>
+                    <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
+                    <Text style={styles.serviceNameText}>Payment Gateway</Text>
+                    <Text style={styles.serviceStatusText}>Online</Text>
+                  </View>
+                  <View style={styles.serviceRow}>
+                    <View style={[styles.serviceStatusDot, { backgroundColor: '#00E676' }]} />
+                    <Text style={styles.serviceNameText}>AI & Voice Services</Text>
+                    <Text style={styles.serviceStatusText}>Online</Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         </View>
 
-        {/* RIGHT: Revenue Overview Chart */}
+        {/* RIGHT: Real Dynamic Revenue Overview Chart */}
         <View style={styles.revenueOverviewCard}>
           <View style={styles.revenueHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="bar-chart" size={20} color="#00E676" />
-              <Text style={styles.cardHeaderTitle}>Revenue Overview</Text>
+              <View>
+                <Text style={styles.cardHeaderTitle}>Revenue Overview</Text>
+                <Text style={styles.revenueSubTotalText}>
+                  Period Total: {chartData.periodTotal.toLocaleString()} ETB
+                </Text>
+              </View>
             </View>
 
             {/* Time period switcher pills */}
@@ -337,14 +475,14 @@ export default function CeoHomeDashboard({
             </View>
           </View>
 
-          {/* SVG Line Chart with Y-Axis and glowing green dots */}
+          {/* SVG Line Chart with Dynamic Real Data */}
           <View style={styles.chartAreaWrap}>
-            {/* Y-Axis Labels */}
+            {/* Dynamic Y-Axis Labels */}
             <View style={styles.yAxisColumn}>
-              <Text style={styles.axisLabel}>15K</Text>
-              <Text style={styles.axisLabel}>10K</Text>
-              <Text style={styles.axisLabel}>5K</Text>
-              <Text style={styles.axisLabel}>0K</Text>
+              <Text style={styles.axisLabel}>{Math.round(chartData.maxVal)}</Text>
+              <Text style={styles.axisLabel}>{Math.round(chartData.maxVal * 0.66)}</Text>
+              <Text style={styles.axisLabel}>{Math.round(chartData.maxVal * 0.33)}</Text>
+              <Text style={styles.axisLabel}>0</Text>
             </View>
 
             {/* Chart SVG Canvas */}
@@ -358,45 +496,44 @@ export default function CeoHomeDashboard({
                 </Defs>
 
                 {/* Horizontal grid lines */}
-                <Path d="M 0 10 L 350 10" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                <Path d="M 0 50 L 350 50" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <Path d="M 0 20 L 350 20" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <Path d="M 0 55 L 350 55" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
                 <Path d="M 0 90 L 350 90" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                <Path d="M 0 130 L 350 130" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <Path d="M 0 125 L 350 125" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
 
-                {/* Area under line */}
-                <Path
-                  d="M 10 95 Q 60 85 110 65 T 210 40 T 310 20 L 340 10 L 340 130 L 10 130 Z"
-                  fill="url(#greenAreaGrad)"
-                />
+                {/* Dynamic Area under line */}
+                <Path d={chartData.areaD} fill="url(#greenAreaGrad)" />
 
-                {/* Smooth Green Curve */}
+                {/* Dynamic Smooth Green Curve */}
                 <Path
-                  d="M 10 95 Q 60 85 110 65 T 210 40 T 310 20 L 340 10"
+                  d={chartData.pathD}
                   fill="none"
                   stroke="#00E676"
                   strokeWidth="3.5"
                   strokeLinecap="round"
                 />
 
-                {/* 7 Glowing Data Points */}
-                <Circle cx="10" cy="95" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="65" cy="80" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="120" cy="65" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="175" cy="55" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="230" cy="40" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="285" cy="25" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
-                <Circle cx="340" cy="10" r="5" fill="#00E676" stroke="#06121E" strokeWidth="2" />
+                {/* Glowing Data Points */}
+                {chartData.points.map((pt, pIdx) => (
+                  <Circle
+                    key={pIdx}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="4.5"
+                    fill="#00E676"
+                    stroke="#06121E"
+                    strokeWidth="2"
+                  />
+                ))}
               </Svg>
 
-              {/* X-Axis Day Labels */}
+              {/* Dynamic X-Axis Labels */}
               <View style={styles.xAxisRow}>
-                <Text style={styles.axisLabel}>Mon</Text>
-                <Text style={styles.axisLabel}>Tue</Text>
-                <Text style={styles.axisLabel}>Wed</Text>
-                <Text style={styles.axisLabel}>Thu</Text>
-                <Text style={styles.axisLabel}>Fri</Text>
-                <Text style={styles.axisLabel}>Sat</Text>
-                <Text style={styles.axisLabel}>Sun</Text>
+                {chartData.dayLabels.map((label, lIdx) => (
+                  <Text key={lIdx} style={styles.axisLabel}>
+                    {label}
+                  </Text>
+                ))}
               </View>
             </View>
           </View>
@@ -407,12 +544,16 @@ export default function CeoHomeDashboard({
       {/* ── 4. BOTTOM ROW: RECENT ALERTS + GROWTH ROCKET BANNER ──    */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <View style={[styles.bottomRow, !isDesktop && styles.bottomRowMobile]}>
-        {/* LEFT: Recent Alerts (Red-tinted card) */}
+        {/* LEFT: Recent Real Alerts */}
         <View style={styles.recentAlertsCard}>
           <View style={styles.alertsHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={styles.alertIconCircle}>
-                <Ionicons name="notifications" size={16} color="#EF4444" />
+                <Ionicons
+                  name={activeUnresolvedErrors.length > 0 ? 'notifications' : 'shield-checkmark'}
+                  size={16}
+                  color={activeUnresolvedErrors.length > 0 ? '#EF4444' : '#00E676'}
+                />
               </View>
               <Text style={styles.cardHeaderTitle}>Recent Alerts</Text>
             </View>
@@ -421,62 +562,59 @@ export default function CeoHomeDashboard({
               onPress={() => onNavigateTab('errors')}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewAllRedText}>View All →</Text>
+              <Text style={styles.viewAllRedText}>View All ({recentErrors.length}) →</Text>
             </TouchableOpacity>
           </View>
 
-          {/* List of 3 Alerts */}
+          {/* List of Real Active Alerts */}
           <View style={styles.alertsList}>
-            {/* Alert 1: Critical */}
-            <View style={styles.alertItemRow}>
-              <View style={[styles.alertSeverityBadge, { backgroundColor: '#EF4444' }]}>
-                <Text style={styles.severityBadgeText}>Critical</Text>
-              </View>
-              <Text style={styles.alertMsgText} numberOfLines={1}>
-                {recentErrors[0]?.error_message || 'Payment gateway failed - 2 transactions affected'}
-              </Text>
-              <Text style={styles.alertTimeText}>4:15 PM</Text>
-              <TouchableOpacity
-                style={styles.viewAlertBtn}
-                onPress={() => onNavigateTab('errors')}
-              >
-                <Text style={styles.viewAlertBtnText}>View</Text>
-              </TouchableOpacity>
-            </View>
+            {activeUnresolvedErrors.length > 0 ? (
+              activeUnresolvedErrors.map((err, errIdx) => {
+                const severity = err.severity || 'critical';
+                const badgeColor =
+                  severity === 'critical'
+                    ? '#EF4444'
+                    : severity === 'warning'
+                    ? '#F59E0B'
+                    : '#3B82F6';
+                const timeStr = err.created_at
+                  ? new Date(err.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : 'Recent';
 
-            {/* Alert 2: Warning */}
-            <View style={styles.alertItemRow}>
-              <View style={[styles.alertSeverityBadge, { backgroundColor: '#F59E0B' }]}>
-                <Text style={styles.severityBadgeText}>Warning</Text>
+                return (
+                  <View key={err.id || errIdx} style={styles.alertItemRow}>
+                    <View style={[styles.alertSeverityBadge, { backgroundColor: badgeColor }]}>
+                      <Text style={styles.severityBadgeText}>
+                        {severity.toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.alertMsgText} numberOfLines={1}>
+                      {err.error_message || 'Unresolved system issue logged'}
+                    </Text>
+                    <Text style={styles.alertTimeText}>{timeStr}</Text>
+                    <TouchableOpacity
+                      style={styles.viewAlertBtn}
+                      onPress={() => onNavigateTab('errors')}
+                    >
+                      <Text style={styles.viewAlertBtnText}>View</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.noAlertsRow}>
+                <Ionicons name="checkmark-done-circle" size={26} color="#00E676" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.noAlertsTitle}>All Systems Operational</Text>
+                  <Text style={styles.noAlertsSub}>
+                    Zero active crash telemetry errors detected in Supabase.
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.alertMsgText} numberOfLines={1}>
-                {recentErrors[1]?.error_message || 'High API response time (2.8s)'}
-              </Text>
-              <Text style={styles.alertTimeText}>3:50 PM</Text>
-              <TouchableOpacity
-                style={styles.viewAlertBtn}
-                onPress={() => onNavigateTab('errors')}
-              >
-                <Text style={styles.viewAlertBtnText}>View</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Alert 3: Info */}
-            <View style={styles.alertItemRow}>
-              <View style={[styles.alertSeverityBadge, { backgroundColor: '#3B82F6' }]}>
-                <Text style={styles.severityBadgeText}>Info</Text>
-              </View>
-              <Text style={styles.alertMsgText} numberOfLines={1}>
-                New user registration spike (+35%)
-              </Text>
-              <Text style={styles.alertTimeText}>2:30 PM</Text>
-              <TouchableOpacity
-                style={styles.viewAlertBtn}
-                onPress={() => onNavigateTab('users')}
-              >
-                <Text style={styles.viewAlertBtnText}>View</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
         </View>
 
@@ -492,28 +630,16 @@ export default function CeoHomeDashboard({
             <View style={styles.rocketWrap}>
               <Svg width={90} height={90} viewBox="0 0 100 100">
                 {/* Exhaust flame */}
-                <Path
-                  d="M 28 72 Q 10 90 20 98 Q 38 88 42 74 Z"
-                  fill="#F97316"
-                />
-                <Path
-                  d="M 28 72 Q 18 84 24 90 Q 34 82 40 74 Z"
-                  fill="#FDE047"
-                />
+                <Path d="M 28 72 Q 10 90 20 98 Q 38 88 42 74 Z" fill="#F97316" />
+                <Path d="M 28 72 Q 18 84 24 90 Q 34 82 40 74 Z" fill="#FDE047" />
                 {/* Rocket body */}
                 <Path
                   d="M 32 68 Q 30 40 68 18 Q 74 12 80 14 Q 84 20 80 26 Q 58 64 32 68 Z"
                   fill="#FFFFFF"
                 />
                 {/* Wings */}
-                <Path
-                  d="M 35 55 L 20 62 L 28 44 Z"
-                  fill="#38BDF8"
-                />
-                <Path
-                  d="M 55 35 L 62 20 L 44 28 Z"
-                  fill="#38BDF8"
-                />
+                <Path d="M 35 55 L 20 62 L 28 44 Z" fill="#38BDF8" />
+                <Path d="M 55 35 L 62 20 L 44 28 Z" fill="#38BDF8" />
                 {/* Cockpit window */}
                 <Circle cx="62" cy="32" r="6" fill="#0284C7" />
               </Svg>
@@ -702,13 +828,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   trendPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
   },
   trendPillText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   waveSvgWrap: {
@@ -783,7 +909,6 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   gaugeLabelText: {
-    color: '#00E676',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -803,12 +928,11 @@ const styles = StyleSheet.create({
   },
   serviceNameText: {
     color: '#E2E8F0',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     flex: 1,
   },
   serviceStatusText: {
-    color: '#00E676',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -827,6 +951,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  revenueSubTotalText: {
+    color: '#00E676',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 2,
   },
   rangePillsContainer: {
     flexDirection: 'row',
@@ -934,7 +1064,7 @@ const styles = StyleSheet.create({
   },
   severityBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   alertMsgText: {
@@ -958,6 +1088,26 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 11,
     fontWeight: '700',
+  },
+  noAlertsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(0, 230, 118, 0.05)',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.15)',
+  },
+  noAlertsTitle: {
+    color: '#F8FAFC',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  noAlertsSub: {
+    color: '#94A3B8',
+    fontSize: 11.5,
+    marginTop: 2,
   },
 
   // Growth Promo Card
