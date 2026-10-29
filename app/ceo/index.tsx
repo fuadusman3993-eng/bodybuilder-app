@@ -13,6 +13,7 @@ import {
   TextInput,
   Modal,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +23,9 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import CeoChatCopilot from '../../components/ceo/CeoChatCopilot';
 import CeoIssueChatRoom from '../../components/ceo/CeoIssueChatRoom';
 import CeoAiConfigModal from '../../components/ceo/CeoAiConfigModal';
+import CeoDesktopSidebar from '../../components/ceo/CeoDesktopSidebar';
+import CeoTopStatusBar from '../../components/ceo/CeoTopStatusBar';
+import CeoHomeDashboard from '../../components/ceo/CeoHomeDashboard';
 import { buildCeoChatThreads, CeoChatThread } from '../../lib/ceoThreadsService';
 import { isCeoAuthenticated, logoutCeo } from '../../lib/ceoAuthService';
 import {
@@ -58,6 +62,8 @@ type CeoTab = 'home' | 'chat' | 'errors' | 'users' | 'finance' | 'controls';
 
 export default function CeoDashboardScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Tab & View Mode States
@@ -427,218 +433,104 @@ export default function CeoDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
-      {/* ── TOP EXECUTIVE APP BAR ── */}
-      <View style={styles.executiveHeader}>
-        <View style={styles.headerLeft}>
-          <BrandLogo size="small" showText={false} />
-          <View style={styles.headerTitles}>
-            <View style={styles.brandRow}>
-              <Text style={styles.brandTitle}>FitPulse</Text>
-              <View style={styles.ceoBadge}>
-                <Text style={styles.ceoBadgeText}>MISSION CONTROL</Text>
-              </View>
-            </View>
-            <Text style={styles.brandSubtitle}>Executive Operations & Intelligence Cockpit</Text>
-          </View>
-        </View>
+      <View style={[styles.rootLayout, isDesktop && styles.rootLayoutDesktop]}>
+        {/* ── DESKTOP SIDEBAR (WHEN WIDTH >= 900) ── */}
+        {isDesktop && (
+          <CeoDesktopSidebar
+            activeTab={activeTab}
+            onSelectTab={(tab) => {
+              setActiveTab(tab);
+              if (tab !== 'chat') {
+                setActiveThread(null);
+              }
+            }}
+            unresolvedErrorsCount={unresolvedErrorsCount}
+            onLogout={handleLogout}
+          />
+        )}
 
-        <View style={styles.headerRight}>
-          {/* AI Key Config Button */}
-          <TouchableOpacity
-            style={styles.aiKeyBtn}
-            onPress={() => setAiConfigModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="sparkles" size={14} color="#10B981" />
-            <Text style={styles.aiKeyBtnText}>AI Key</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.refreshBtn}
-            onPress={loadDashboardData}
-            activeOpacity={0.7}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
-            ) : (
-              <Ionicons name="refresh" size={17} color="#FFF" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
-            <Ionicons name="log-out-outline" size={17} color="#EF4444" />
-            <Text style={styles.logoutBtnText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── MAIN CONTENT CONTAINER (SWITCHES BY ACTIVE TAB) ── */}
-      <View style={styles.mainContentContainer}>
-        {/* ── 1. HOME SCREEN ── */}
-        {activeTab === 'home' && (
-          <ScrollView
-            contentContainerStyle={styles.scrollBody}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={loadDashboardData} tintColor={Colors.primary} />
-            }
-          >
-            {/* System Status Banner */}
-            <View style={styles.statusBanner}>
-              <View style={styles.statusLeft}>
-                <Ionicons name={systemStatusPill.icon as any} size={18} color={systemStatusPill.color} />
-                <Text style={[styles.statusBannerTitle, { color: systemStatusPill.color }]}>
-                  {systemStatusPill.text}
-                </Text>
-              </View>
-              <Text style={styles.statusLastSync}>
-                Synced: {lastRefreshedTime || 'Just now'} • Auto-refresh: 30s
-              </Text>
-            </View>
-
-            {/* Top 4 Metric Cards */}
-            <View style={styles.metricsGrid}>
-              {/* Card 1: Active Errors */}
-              <TouchableOpacity
-                style={[styles.metricCard, unresolvedErrorsCount > 0 && styles.metricCardAlert]}
-                onPress={() => setActiveTab('errors')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.metricCardHeader}>
-                  <Text style={styles.metricLabel}>ACTIVE ERRORS</Text>
-                  <Ionicons
-                    name="bug"
-                    size={16}
-                    color={unresolvedErrorsCount > 0 ? '#EF4444' : Colors.primary}
-                  />
-                </View>
-                <Text style={[styles.metricValue, unresolvedErrorsCount > 0 && { color: '#EF4444' }]}>
-                  {unresolvedErrorsCount}
-                </Text>
-                <Text style={styles.metricSub}>
-                  {errorsList.length} total captured logs • View Radar →
-                </Text>
-              </TouchableOpacity>
-
-              {/* Card 2: Registered Users */}
-              <TouchableOpacity
-                style={styles.metricCard}
-                onPress={() => setActiveTab('users')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.metricCardHeader}>
-                  <Text style={styles.metricLabel}>REGISTERED USERS</Text>
-                  <Ionicons name="people" size={16} color={Colors.primary} />
-                </View>
-                <Text style={styles.metricValue}>{usersList.length}</Text>
-                <Text style={styles.metricSub}>
-                  {verifiedHumansCount} Humans • {flaggedUsersCount > 0 ? `⚠️ ${flaggedUsersCount} Errors` : '0 Errors'} →
-                </Text>
-              </TouchableOpacity>
-
-              {/* Card 3: Payment Radar */}
-              <TouchableOpacity
-                style={styles.metricCard}
-                onPress={() => setActiveTab('finance')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.metricCardHeader}>
-                  <Text style={styles.metricLabel}>PAYMENT RADAR</Text>
-                  <Ionicons name="wallet" size={16} color="#EAB308" />
-                </View>
-                <Text style={styles.metricValue}>{financialKPIs.totalRevenueEtb} ETB</Text>
-                <Text style={styles.metricSub}>
-                  {financialKPIs.completedTransactionsCount} Completed Txs • {payingUsersCount} Paying Users →
-                </Text>
-              </TouchableOpacity>
-
-              {/* Card 4: Infrastructure */}
-              <TouchableOpacity
-                style={styles.metricCard}
-                onPress={() => setActiveTab('controls')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.metricCardHeader}>
-                  <Text style={styles.metricLabel}>CORE SERVICES</Text>
-                  <Ionicons name="server" size={16} color="#00E676" />
-                </View>
-                <Text style={styles.metricValue}>
-                  {healthList.filter((h) => h.status === 'healthy').length}/{healthList.length || 4}
-                </Text>
-                <Text style={styles.metricSub}>APIs Online & Monitored →</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* AI Operations Messenger Hub Card */}
-            <TouchableOpacity
-              style={styles.aiHomePromoCard}
-              onPress={() => setActiveTab('chat')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.aiPromoLeft}>
-                <View style={styles.aiPromoIconWrap}>
-                  <Ionicons name="chatbubbles" size={26} color="#00E676" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={styles.aiPromoTitle}>💬 Operations AI Chat Messenger</Text>
-                    {unresolvedErrorsCount > 0 && (
-                      <View style={styles.aiPromoBadge}>
-                        <Text style={styles.aiPromoBadgeText}>{unresolvedErrorsCount} Active</Text>
-                      </View>
-                    )}
+        {/* ── MAIN BODY AREA ── */}
+        <View style={styles.bodyArea}>
+          {/* TOP BAR: Desktop Top Status Bar vs Mobile Executive Header */}
+          {isDesktop ? (
+            <CeoTopStatusBar
+              lastUpdated={lastRefreshedTime}
+              unresolvedErrorsCount={unresolvedErrorsCount}
+              refreshing={refreshing}
+              onRefresh={loadDashboardData}
+              onOpenAiConfig={() => setAiConfigModalVisible(true)}
+              onAlertsClick={() => setActiveTab('errors')}
+            />
+          ) : (
+            <View style={styles.executiveHeader}>
+              <View style={styles.headerLeft}>
+                <BrandLogo size="small" showText={false} />
+                <View style={styles.headerTitles}>
+                  <View style={styles.brandRow}>
+                    <Text style={styles.brandTitle}>FitPulse</Text>
+                    <View style={styles.ceoBadge}>
+                      <Text style={styles.ceoBadgeText}>MISSION CONTROL</Text>
+                    </View>
                   </View>
-                  <Text style={styles.aiPromoSub}>
-                    ከ Google Gemini AI ጋር በእውነተኛ ሰዓት እየተወያዩ ስህተቶችን እና የደንበኞችን ጥያቄዎች በአማርኛ ወይም በእንግሊዝኛ ይፍቱ።
-                  </Text>
+                  <Text style={styles.brandSubtitle}>Executive Operations & Intelligence Cockpit</Text>
                 </View>
               </View>
-              <View style={styles.aiPromoBtn}>
-                <Text style={styles.aiPromoBtnText}>Open Chat Room ({chatThreads.length})</Text>
-                <Ionicons name="arrow-forward" size={14} color="#000" />
-              </View>
-            </TouchableOpacity>
 
-            {/* Active Operational Threads Preview */}
-            <View style={styles.homeSection}>
-              <View style={styles.homeSectionHeader}>
-                <Text style={styles.homeSectionTitle}>Active Operational Threads</Text>
-                <TouchableOpacity onPress={() => setActiveTab('chat')}>
-                  <Text style={styles.homeSectionLink}>View All ({chatThreads.length}) →</Text>
-                </TouchableOpacity>
-              </View>
-              {chatThreads.slice(0, 4).map((thread) => (
+              <View style={styles.headerRight}>
+                {/* AI Key Config Button */}
                 <TouchableOpacity
-                  key={thread.id}
-                  style={styles.homeThreadPreviewItem}
-                  onPress={() => {
-                    setActiveThread(thread);
-                    setActiveTab('chat');
-                  }}
-                  activeOpacity={0.75}
+                  style={styles.aiKeyBtn}
+                  onPress={() => setAiConfigModalVisible(true)}
+                  activeOpacity={0.7}
                 >
-                  <View style={[styles.chatThreadAvatar, { backgroundColor: thread.avatarColor, width: 42, height: 42, borderRadius: 21 }]}>
-                    <Ionicons name={thread.avatarIcon as any} size={18} color="#FFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                      <Text style={styles.chatThreadTitle} numberOfLines={1}>{thread.title}</Text>
-                      <Text style={styles.chatThreadTime}>{thread.timestamp}</Text>
-                    </View>
-                    <Text style={styles.chatThreadSub} numberOfLines={1}>{thread.lastMessage}</Text>
-                  </View>
-                  {thread.unreadCount && thread.unreadCount > 0 ? (
-                    <View style={[styles.chatUnreadBadge, thread.status === 'critical' && { backgroundColor: '#EF4444' }]}>
-                      <Text style={styles.chatUnreadBadgeText}>{thread.unreadCount}</Text>
-                    </View>
+                  <Ionicons name="sparkles" size={14} color="#10B981" />
+                  <Text style={styles.aiKeyBtnText}>AI Key</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={loadDashboardData}
+                  activeOpacity={0.7}
+                >
+                  {refreshing ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
                   ) : (
-                    <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                    <Ionicons name="refresh" size={17} color="#FFF" />
                   )}
                 </TouchableOpacity>
-              ))}
+
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+                  <Ionicons name="log-out-outline" size={17} color="#EF4444" />
+                  <Text style={styles.logoutBtnText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </ScrollView>
-        )}
+          )}
+
+          {/* ── MAIN CONTENT CONTAINER (SWITCHES BY ACTIVE TAB) ── */}
+          <View style={styles.mainContentContainer}>
+            {/* ── 1. HOME SCREEN (MOCKUP ACCURATE DESIGN) ── */}
+            {activeTab === 'home' && (
+              <CeoHomeDashboard
+                usersCount={usersList.length}
+                totalRevenueEtb={financialKPIs.totalRevenueEtb}
+                unresolvedErrorsCount={unresolvedErrorsCount}
+                transactionsCount={transactionsList.length}
+                healthList={healthList}
+                recentErrors={errorsList}
+                chatThreads={chatThreads}
+                onNavigateTab={(tab) => {
+                  setActiveTab(tab);
+                  if (tab !== 'chat') {
+                    setActiveThread(null);
+                  }
+                }}
+                onOpenThread={(t) => {
+                  setActiveThread(t);
+                  setActiveTab('chat');
+                }}
+              />
+            )}
 
         {/* ── 2. CHAT PAGE (MESSENGER INBOX + FULLSCREEN AI CHAT ROOM) ── */}
         {activeTab === 'chat' && (
@@ -1527,8 +1419,8 @@ export default function CeoDashboardScreen() {
         )}
       </View>
 
-      {/* ── FIXED BOTTOM NAVIGATION BAR ── */}
-      {(!activeThread || activeTab !== 'chat') && (
+      {/* ── FIXED BOTTOM NAVIGATION BAR (MOBILE ONLY) ── */}
+      {!isDesktop && (!activeThread || activeTab !== 'chat') && (
         <View style={styles.bottomNavContainer}>
           {([
             { key: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
@@ -1571,6 +1463,11 @@ export default function CeoDashboardScreen() {
           })}
         </View>
       )}
+
+        </View>
+        {/* End of bodyArea */}
+      </View>
+      {/* End of rootLayout */}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* ── MODAL 1: FULL USER DOSSIER & EVERYTHING THEY STORED ──   */}
@@ -1905,7 +1802,20 @@ export default function CeoDashboardScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#050B0E',
+    backgroundColor: '#070D18',
+  },
+  rootLayout: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#070D18',
+  },
+  rootLayoutDesktop: {
+    flexDirection: 'row',
+  },
+  bodyArea: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#090F1D',
   },
   centerLoading: {
     flex: 1,
