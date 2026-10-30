@@ -33,6 +33,7 @@ import {
   resolveError,
   deleteErrorRecord,
   clearResolvedErrors,
+  runAutonomousSystemProbes,
   SystemErrorItem,
 } from '../../lib/telemetryService';
 import {
@@ -117,6 +118,9 @@ export default function CeoDashboardScreen() {
   const loadDashboardData = useCallback(async () => {
     try {
       setRefreshing(true);
+
+      // Autonomous probe: dynamically tests real services and automatically detects issues
+      runAutonomousSystemProbes().catch(() => {});
 
       const [errors, users, txs, health, config] = await Promise.all([
         fetchRecentErrors(100),
