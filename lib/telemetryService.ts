@@ -61,17 +61,17 @@ export async function captureSystemError(
       default: 'Unknown',
     });
 
-    // 2. Database deduplication check: if an unresolved error with identical component and message already exists, do not duplicate
+    // 2. Database deduplication check: skip if ANY identical record exists (resolved or not)
+    //    This prevents re-inserting probe warnings that were already resolved by the CEO
     const { data: existing } = await supabase
       .from('system_errors')
-      .select('id')
+      .select('id, resolved')
       .eq('component', component)
       .eq('error_message', cleanMessage)
-      .eq('resolved', false)
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Already actively tracked in database - skip duplicate row creation
+      // Record already exists (resolved or unresolved) — skip duplicate row creation
       return;
     }
 
@@ -146,12 +146,19 @@ export async function deleteErrorRecord(id: string): Promise<boolean> {
   }
 }
 
+// Session-level guard: probes run at most once per browser session
+let probesHaveRun = false;
+
 /**
  * Run autonomous real-system probes:
- * Automatically scans and tests live components. When a real anomaly or failure
- * is detected, it automatically captures and logs it to Supabase system_errors without manual intervention.
+ * Automatically scans and tests live components. Runs only ONCE per session.
+ * When a real anomaly is detected it captures it to Supabase — with full deduplication.
  */
 export async function runAutonomousSystemProbes(): Promise<void> {
+  // Guarantee probes run at most once per page load/session
+  if (probesHaveRun) return;
+  probesHaveRun = true;
+
   try {
     // 1. Probe Database & Social Cascades
     const { error: postError } = await supabase.from('posts').select('id').limit(1);
@@ -171,21 +178,8 @@ export async function runAutonomousSystemProbes(): Promise<void> {
       });
     }
 
-    // 3. Probe Chapa Payment Config
-    if (typeof process !== 'undefined' && process.env) {
-      const hasChapa = !!(process.env.EXPO_PUBLIC_CHAPA_PUBLIC_KEY || process.env.CHAPA_SECRET_KEY);
-      if (!hasChapa) {
-        // Auto-detect missing payment gateway configuration
-        const existingErrors = await fetchRecentErrors(10);
-        const alreadyLogged = existingErrors.some((e) => e.error_message?.includes('Chapa API keys not detected'));
-        if (!alreadyLogged) {
-          await captureSystemError('Autonomous Probe: Chapa API keys not detected in environment. Live payments may fail.', {
-            component: 'MarketplaceMarketingAI',
-            severity: 'warning',
-          });
-        }
-      }
-    }
+    // NOTE: Chapa API key detection is NOT run here — process.env is unavailable in the
+    // browser bundle. Chapa configuration errors are captured server-side via the webhook route.
   } catch (err) {
     console.warn('[Autonomous Probe] Diagnostic scan encountered error:', err);
   }
@@ -194,16 +188,23 @@ export async function runAutonomousSystemProbes(): Promise<void> {
 /**
  * Cleanup any temporary test placeholder records (e.g. ceo@fitpulse.et)
  * and deduplicate existing duplicate records in Supabase system_errors.
+ * Also removes stale Chapa probe warnings (false alarms from browser-side env check).
  */
 export async function cleanupDuplicateAndPlaceholderErrors(): Promise<void> {
   try {
-    // 1. Delete placeholder test rows
+    // 1. Delete placeholder test rows AND stale Chapa false-alarm warnings
     await supabase
       .from('system_errors')
       .delete()
       .or('user_email.eq.ceo@fitpulse.et,user_uid.eq.system_audit');
 
-    // 2. Fetch all system errors to check for duplicates
+    // 2. Remove all Chapa probe false-alarm records (browser env check always fails)
+    await supabase
+      .from('system_errors')
+      .delete()
+      .ilike('error_message', '%Chapa API keys not detected%');
+
+    // 3. Fetch all system errors to check for remaining duplicates
     const { data: allErrors } = await supabase
       .from('system_errors')
       .select('id, error_message, component, created_at, resolved')
