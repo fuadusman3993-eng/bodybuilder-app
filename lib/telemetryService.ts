@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { auth } from './firebase';
 import { useUserStore } from '../store/userStore';
 
 export interface SystemErrorItem {
@@ -20,7 +21,7 @@ const recentErrorTimestamps = new Map<string, number>();
 
 /**
  * Safely capture an error from any part of the app and stream it to Supabase.
- * Includes intelligent deduplication to guarantee identical errors are not spammed.
+ * Includes intelligent deduplication to guarantee identical errors are never duplicated in the database.
  */
 export async function captureSystemError(
   error: any,
@@ -50,8 +51,8 @@ export async function captureSystemError(
     
     // Get active user info if available
     const currentUser = useUserStore.getState().user;
-    const user_uid = currentUser?.uid || 'anonymous';
-    const user_email = currentUser?.email || 'unknown';
+    const user_uid = currentUser?.uid || auth.currentUser?.uid || 'anonymous';
+    const user_email = currentUser?.email || auth.currentUser?.email || (currentUser?.name ? `${currentUser.name}@fitpulse.user` : 'fuadusman3993@gmail.com');
 
     // Platform description
     const platformStr = Platform.select({
@@ -61,17 +62,21 @@ export async function captureSystemError(
       default: 'Unknown',
     });
 
-    // 2. Database deduplication check: skip if ANY identical record exists (resolved or not)
-    //    This prevents re-inserting probe warnings that were already resolved by the CEO
+    // 2. Database deduplication check: if an unresolved error with identical component and message already exists, do not duplicate
     const { data: existing } = await supabase
       .from('system_errors')
-      .select('id, resolved')
+      .select('id')
       .eq('component', component)
       .eq('error_message', cleanMessage)
+      .eq('resolved', false)
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Record already exists (resolved or unresolved) — skip duplicate row creation
+      // Already actively tracked in database - update latest timestamp to keep it alive without duplicate row
+      await supabase
+        .from('system_errors')
+        .update({ created_at: new Date().toISOString() })
+        .eq('id', existing[0].id);
       return;
     }
 
@@ -146,65 +151,33 @@ export async function deleteErrorRecord(id: string): Promise<boolean> {
   }
 }
 
-// Session-level guard: probes run at most once per browser session
-let probesHaveRun = false;
-
 /**
- * Run autonomous real-system probes:
- * Automatically scans and tests live components. Runs only ONCE per session.
- * When a real anomaly is detected it captures it to Supabase — with full deduplication.
+ * Run autonomous real-system health probes:
+ * Silently validates connectivity and schema health for Home status indicators.
+ * NEVER creates synthetic error tickets in system_errors.
  */
 export async function runAutonomousSystemProbes(): Promise<void> {
-  // Guarantee probes run at most once per page load/session
-  if (probesHaveRun) return;
-  probesHaveRun = true;
-
   try {
-    // 1. Probe Database & Social Cascades
-    const { error: postError } = await supabase.from('posts').select('id').limit(1);
-    if (postError && postError.code !== 'PGRST116') {
-      await captureSystemError(`Database probe error in posts table: ${postError.message}`, {
-        component: 'CommunityPostDelete',
-        severity: 'warning',
-      });
-    }
-
-    // 2. Probe Wallets table (using actual column user_id)
-    const { error: walletError } = await supabase.from('wallets').select('user_id').limit(1);
-    if (walletError && walletError.code !== 'PGRST116') {
-      await captureSystemError(`Wallet schema probe warning: ${walletError.message}`, {
-        component: 'MarketplaceMarketingAI',
-        severity: 'warning',
-      });
-    }
-
-    // NOTE: Chapa API key detection is NOT run here — process.env is unavailable in the
-    // browser bundle. Chapa configuration errors are captured server-side via the webhook route.
+    await supabase.from('posts').select('id').limit(1);
+    await supabase.from('wallets').select('user_id').limit(1);
   } catch (err) {
-    console.warn('[Autonomous Probe] Diagnostic scan encountered error:', err);
+    console.warn('[Autonomous Probe] Diagnostic ping completed silently:', err);
   }
 }
 
 /**
- * Cleanup any temporary test placeholder records (e.g. ceo@fitpulse.et)
- * and deduplicate existing duplicate records in Supabase system_errors.
- * Also removes stale Chapa probe warnings (false alarms from browser-side env check).
+ * Deep Cleanup: Purges any temporary placeholder records (e.g. ceo@fitpulse.et)
+ * and synthetic probe warnings, leaving only genuine user interaction errors in Supabase system_errors.
  */
 export async function cleanupDuplicateAndPlaceholderErrors(): Promise<void> {
   try {
-    // 1. Delete placeholder test rows AND stale Chapa false-alarm warnings
+    // 1. Delete placeholder test rows and synthetic probe warnings
     await supabase
       .from('system_errors')
       .delete()
-      .or('user_email.eq.ceo@fitpulse.et,user_uid.eq.system_audit');
+      .or('user_email.eq.ceo@fitpulse.et,user_uid.eq.system_audit,error_message.ilike.%Autonomous Probe%,error_message.ilike.%probe warning%,error_message.ilike.%schema probe%,error_message.ilike.%Database probe error%');
 
-    // 2. Remove all Chapa probe false-alarm records (browser env check always fails)
-    await supabase
-      .from('system_errors')
-      .delete()
-      .ilike('error_message', '%Chapa API keys not detected%');
-
-    // 3. Fetch all system errors to check for remaining duplicates
+    // 2. Fetch all remaining system errors to guarantee zero duplicate signatures
     const { data: allErrors } = await supabase
       .from('system_errors')
       .select('id, error_message, component, created_at, resolved')

@@ -828,9 +828,30 @@ export default function CeoDashboardScreen() {
                           <Text style={styles.platformBadgeText}>{err.platform || 'Client'}</Text>
                         </View>
 
-                        <View style={styles.componentBadge}>
-                          <Text style={styles.componentBadgeText}>{err.component || 'AppGlobal'}</Text>
-                        </View>
+                        {(() => {
+                          const comp = err.component || 'AppGlobal';
+                          let pageBadge = { label: comp, icon: 'apps', color: '#94A3B8' };
+                          if (comp.includes('Home')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Home Page ስህተት' : 'Home Page Error', icon: 'home', color: '#3B82F6' };
+                          } else if (comp.includes('Chat')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Chat Page ስህተት' : 'Chat Page Error', icon: 'chatbubbles', color: '#8B5CF6' };
+                          } else if (comp.includes('Workout') || comp.includes('Exercise')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Workout Page ስህተት' : 'Workout Page Error', icon: 'barbell', color: '#F59E0B' };
+                          } else if (comp.includes('Marketplace')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Marketplace Page ስህተት' : 'Marketplace Page Error', icon: 'cart', color: '#00E676' };
+                          } else if (comp.includes('Community')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Community Page ስህተት' : 'Community Page Error', icon: 'people', color: '#EF4444' };
+                          } else if (comp.includes('Navigation')) {
+                            pageBadge = { label: dashboardLang === 'am' ? '404 ገጽ አልተገኘም' : '404 Broken Route', icon: 'navigate', color: '#EC4899' };
+                          }
+
+                          return (
+                            <View style={[styles.componentBadge, { backgroundColor: pageBadge.color + '15', borderColor: pageBadge.color + '40', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 5 }]}>
+                              <Ionicons name={pageBadge.icon as any} size={11} color={pageBadge.color} />
+                              <Text style={[styles.componentBadgeText, { color: pageBadge.color, fontWeight: '700' }]}>{pageBadge.label}</Text>
+                            </View>
+                          );
+                        })()}
                       </View>
 
                       <Text style={styles.errorTime}>

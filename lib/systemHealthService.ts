@@ -221,7 +221,58 @@ export function diagnoseSystemIssue(
   const lowerMsg = (errorMessage || '').toLowerCase();
   const isAm = lang === 'am';
 
-  // 1. Workout Player & Watchdog Progression
+  // 1. Touch & Interaction Auto-Logger: Dead Button
+  if (lowerMsg.includes('dead button') || lowerMsg.includes('no action bound')) {
+    return {
+      issueTitle: isAm
+        ? 'ያልተገናኘ ወይም የማይሰራ ቁልፍ (Dead Button / Unbound Action)'
+        : 'Dead Button / Unbound User Action',
+      rootCause: isAm
+        ? 'ተጠቃሚው አፑ ላይ ቁልፉን ሲጫን የተያያዘ ተግባር (onPress handler) ወይም ራውት አልተገኘም።'
+        : 'User tapped an interactive element that currently lacks a functional callback or navigation target.',
+      severity: 'warning',
+      actionableSolution: isAm
+        ? 'በኮምፖነንቱ ላይ ተገቢውን onPress action ወይም navigation route ማገናኘት።'
+        : 'Connect a functional onPress callback or navigation route to the interactive component.',
+      actionCodeSnippet: `// Bind functional onPress\n<TouchableOpacity onPress={() => router.push('/destination')}>\n  <Text>Button</Text>\n</TouchableOpacity>`,
+    };
+  }
+
+  // 2. Touch & Interaction Auto-Logger: Broken Route / 404
+  if (lowerMsg.includes('broken route') || lowerMsg.includes('404')) {
+    return {
+      issueTitle: isAm
+        ? 'የተበላሸ ወይም የሌለ ገጽ (404 Broken Route / Missing Page)'
+        : '404 Broken Route / Missing Page',
+      rootCause: isAm
+        ? 'ተጠቃሚው ለመክፈት የሞከረው ገጽ በመተግበሪያው ውስጥ አልተገኘም ወይም ተሰርዟል።'
+        : 'The route requested by the user does not exist in the app routing table.',
+      severity: 'critical',
+      actionableSolution: isAm
+        ? 'የጎደለውን ገጽ በ app/ ማውጫ ስር መፍጠር ወይም የሊንኩን አድራሻ ማስተካከል።'
+        : 'Create the destination screen in app/ directory or update the navigation target.',
+      actionCodeSnippet: `// Ensure target file exists in app/ directory\nrouter.push('/(tabs)/chat');`,
+    };
+  }
+
+  // 3. Touch & Interaction Auto-Logger: Action Crash
+  if (lowerMsg.includes('action crash')) {
+    return {
+      issueTitle: isAm
+        ? 'የቁልፍ ንክኪ የኮድ ስህተት (Action Execution Crash)'
+        : 'User Action Execution Crash',
+      rootCause: isAm
+        ? 'ተጠቃሚው ቁልፉን ሲጫን ያልተጠበቀ የኮድ ስህተት ወይም Exception ተከስቷል።'
+        : 'An uncaught exception was thrown during the execution of the user action handler.',
+      severity: 'critical',
+      actionableSolution: isAm
+        ? 'የተግባሩን try/catch እና የዳታቤዝ ጥሪ ማስተካከል ያስፈልጋል።'
+        : 'Inspect the action execution logic and wrap async operations in a try/catch block.',
+      actionCodeSnippet: `try {\n  await performAction();\n} catch (err) {\n  captureSystemError(err, { component: 'UserAction' });\n}`,
+    };
+  }
+
+  // 4. Workout Player & Watchdog Progression
   if (
     component === 'WorkoutExercisePlayer' ||
     lowerMsg.includes('workout') ||

@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
 
+import { trackInteraction } from '../../lib/interactionTelemetry';
+
 const ACTIONS = [
   { id: '1', title: 'My Workout', subtitle: 'Track & improve', icon: 'barbell-outline', color: '#3B82F6', route: '/workout' },
   { id: '2', title: 'AI Assistant', subtitle: 'Ask anything', icon: 'hardware-chip-outline', color: '#8B5CF6', route: '/(tabs)/chat' },
@@ -20,7 +22,10 @@ export default function QuickActions() {
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => trackInteraction('HomePage', 'See all → Quick Actions')}
+        >
           <Text style={styles.seeAll}>See all →</Text>
         </TouchableOpacity>
       </View>
@@ -31,7 +36,7 @@ export default function QuickActions() {
             key={item.id}
             style={[styles.card, { width: cardW + 10 }]}
             activeOpacity={0.75}
-            onPress={() => router.push(item.route as any)}
+            onPress={() => trackInteraction('HomePage', item.title, undefined, item.route)}
           >
             <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
               <Ionicons name={item.icon as any} size={26} color={item.color} />
