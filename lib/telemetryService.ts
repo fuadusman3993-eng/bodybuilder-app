@@ -15,9 +15,12 @@ export interface SystemErrorItem {
   resolved?: boolean;
 }
 
+// In-memory throttle to prevent rapid duplicate insertions (15 minute cooldown per unique error signature)
+const recentErrorTimestamps = new Map<string, number>();
+
 /**
  * Safely capture an error from any part of the app and stream it to Supabase.
- * Designed to never crash or throw, even if logging fails.
+ * Includes intelligent deduplication to guarantee identical errors are not spammed.
  */
 export async function captureSystemError(
   error: any,
@@ -30,6 +33,18 @@ export async function captureSystemError(
 ): Promise<void> {
   try {
     const message = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error);
+    const cleanMessage = (message || 'Unknown System Error').trim();
+    const component = meta.component || 'AppGlobal';
+    const throttleKey = `${component}::${cleanMessage}`;
+
+    // 1. In-memory session throttle: don't call server if logged within the last 15 minutes
+    const lastLogged = recentErrorTimestamps.get(throttleKey);
+    const now = Date.now();
+    if (lastLogged && now - lastLogged < 15 * 60 * 1000) {
+      return;
+    }
+    recentErrorTimestamps.set(throttleKey, now);
+
     const metaStr = meta.metadata ? `\nMeta: ${JSON.stringify(meta.metadata)}` : '';
     const stack = (error instanceof Error ? error.stack : meta.context || '') + metaStr;
     
@@ -46,12 +61,26 @@ export async function captureSystemError(
       default: 'Unknown',
     });
 
+    // 2. Database deduplication check: if an unresolved error with identical component and message already exists, do not duplicate
+    const { data: existing } = await supabase
+      .from('system_errors')
+      .select('id')
+      .eq('component', component)
+      .eq('error_message', cleanMessage)
+      .eq('resolved', false)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Already actively tracked in database - skip duplicate row creation
+      return;
+    }
+
     // Write to Supabase system_errors
     await supabase.from('system_errors').insert([
       {
-        error_message: message || 'Unknown System Error',
+        error_message: cleanMessage,
         error_stack: stack,
-        component: meta.component || 'AppGlobal',
+        component,
         platform: platformStr,
         user_uid,
         user_email,
@@ -133,8 +162,8 @@ export async function runAutonomousSystemProbes(): Promise<void> {
       });
     }
 
-    // 2. Probe Wallets table
-    const { error: walletError } = await supabase.from('wallets').select('uid').limit(1);
+    // 2. Probe Wallets table (using actual column user_id)
+    const { error: walletError } = await supabase.from('wallets').select('user_id').limit(1);
     if (walletError && walletError.code !== 'PGRST116') {
       await captureSystemError(`Wallet schema probe warning: ${walletError.message}`, {
         component: 'MarketplaceMarketingAI',
@@ -159,6 +188,50 @@ export async function runAutonomousSystemProbes(): Promise<void> {
     }
   } catch (err) {
     console.warn('[Autonomous Probe] Diagnostic scan encountered error:', err);
+  }
+}
+
+/**
+ * Cleanup any temporary test placeholder records (e.g. ceo@fitpulse.et)
+ * and deduplicate existing duplicate records in Supabase system_errors.
+ */
+export async function cleanupDuplicateAndPlaceholderErrors(): Promise<void> {
+  try {
+    // 1. Delete placeholder test rows
+    await supabase
+      .from('system_errors')
+      .delete()
+      .or('user_email.eq.ceo@fitpulse.et,user_uid.eq.system_audit');
+
+    // 2. Fetch all system errors to check for duplicates
+    const { data: allErrors } = await supabase
+      .from('system_errors')
+      .select('id, error_message, component, created_at, resolved')
+      .order('created_at', { ascending: false });
+
+    if (allErrors && allErrors.length > 0) {
+      const seen = new Set<string>();
+      const duplicateIdsToDelete: string[] = [];
+
+      for (const err of allErrors) {
+        if (!err.id) continue;
+        const signature = `${err.component}::${(err.error_message || '').trim()}::${err.resolved ? '1' : '0'}`;
+        if (seen.has(signature)) {
+          duplicateIdsToDelete.push(err.id);
+        } else {
+          seen.add(signature);
+        }
+      }
+
+      if (duplicateIdsToDelete.length > 0) {
+        for (let i = 0; i < duplicateIdsToDelete.length; i += 20) {
+          const batch = duplicateIdsToDelete.slice(i, i + 20);
+          await supabase.from('system_errors').delete().in('id', batch);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Telemetry] Cleanup error:', e);
   }
 }
 

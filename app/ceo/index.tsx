@@ -34,6 +34,7 @@ import {
   deleteErrorRecord,
   clearResolvedErrors,
   runAutonomousSystemProbes,
+  cleanupDuplicateAndPlaceholderErrors,
   SystemErrorItem,
 } from '../../lib/telemetryService';
 import {
@@ -87,6 +88,24 @@ export default function CeoDashboardScreen() {
 
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string>('');
   const [updatingConfig, setUpdatingConfig] = useState(false);
+  const [dashboardLang, setDashboardLang] = useState<'en' | 'am'>('en');
+
+  // Load persisted language
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = window.localStorage.getItem('ceo_dashboard_lang');
+      if (saved === 'am' || saved === 'en') {
+        setDashboardLang(saved);
+      }
+    }
+  }, []);
+
+  const handleToggleLang = (lang: 'en' | 'am') => {
+    setDashboardLang(lang);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('ceo_dashboard_lang', lang);
+    }
+  };
 
   // Search & Filter States
   const [errorSearchQuery, setErrorSearchQuery] = useState('');
@@ -118,6 +137,9 @@ export default function CeoDashboardScreen() {
   const loadDashboardData = useCallback(async () => {
     try {
       setRefreshing(true);
+
+      // Clean up any old duplicate entries and temporary placeholder records
+      cleanupDuplicateAndPlaceholderErrors().catch(() => {});
 
       // Autonomous probe: dynamically tests real services and automatically detects issues
       runAutonomousSystemProbes().catch(() => {});
@@ -464,6 +486,8 @@ export default function CeoDashboardScreen() {
               onRefresh={loadDashboardData}
               onOpenAiConfig={() => setAiConfigModalVisible(true)}
               onAlertsClick={() => setActiveTab('errors')}
+              currentLang={dashboardLang}
+              onToggleLang={handleToggleLang}
             />
           ) : (
             <View style={styles.executiveHeader}>
@@ -666,15 +690,21 @@ export default function CeoDashboardScreen() {
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Real-Time User Crash & Error Telemetry</Text>
+                <Text style={styles.sectionTitle}>
+                  {dashboardLang === 'am' ? 'የቀጥታ ስራ ላይ ያሉ ብልሽቶችና የስርዓት ስህተቶች' : 'Real-Time User Crash & Error Telemetry'}
+                </Text>
                 <Text style={styles.sectionSubtitle}>
-                  Autonomous error stream from mobile & web clients with instant AI root-cause diagnostics.
+                  {dashboardLang === 'am'
+                    ? 'ከሞባይልና ከዌብ የቀጥታ ስህተቶች መከታተያ ከቅጽበታዊ የ AI መፍትሄ ጋር።'
+                    : 'Autonomous error stream from mobile & web clients with instant AI root-cause diagnostics.'}
                 </Text>
               </View>
               {errorsList.some((e) => e.resolved) && (
                 <TouchableOpacity style={styles.clearBtn} onPress={handleClearResolved}>
                   <Ionicons name="trash-bin-outline" size={14} color="#8A95A5" />
-                  <Text style={styles.clearBtnText}>Wipe Resolved</Text>
+                  <Text style={styles.clearBtnText}>
+                    {dashboardLang === 'am' ? 'የተፈቱትን አጽዳ' : 'Wipe Resolved'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -685,7 +715,11 @@ export default function CeoDashboardScreen() {
                 <Ionicons name="search" size={16} color="#8A95A5" style={{ marginRight: 8 }} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search error message, component, or user..."
+                  placeholder={
+                    dashboardLang === 'am'
+                      ? 'የስህተት መልእክት፣ ኮምፖነንት ወይም ተጠቃሚ ይፈልጉ...'
+                      : 'Search error message, component, or user...'
+                  }
                   placeholderTextColor="#667085"
                   value={errorSearchQuery}
                   onChangeText={setErrorSearchQuery}
@@ -699,10 +733,22 @@ export default function CeoDashboardScreen() {
 
               <View style={styles.pillGroup}>
                 {[
-                  { key: 'unresolved', label: `Unresolved (${unresolvedErrorsCount})` },
-                  { key: 'all', label: `All (${errorsList.length})` },
-                  { key: 'critical', label: 'Critical' },
-                  { key: 'warning', label: 'Warning' },
+                  {
+                    key: 'unresolved',
+                    label:
+                      dashboardLang === 'am'
+                        ? `ያልተፈቱ (${unresolvedErrorsCount})`
+                        : `Unresolved (${unresolvedErrorsCount})`,
+                  },
+                  {
+                    key: 'all',
+                    label:
+                      dashboardLang === 'am'
+                        ? `ሁሉም (${errorsList.length})`
+                        : `All (${errorsList.length})`,
+                  },
+                  { key: 'critical', label: dashboardLang === 'am' ? 'ወሳኝ' : 'Critical' },
+                  { key: 'warning', label: dashboardLang === 'am' ? 'ማስጠንቀቂያ' : 'Warning' },
                 ].map((pill) => (
                   <TouchableOpacity
                     key={pill.key}
@@ -728,15 +774,19 @@ export default function CeoDashboardScreen() {
             {groupedFilteredErrors.length === 0 ? (
               <View style={styles.emptyStateCard}>
                 <Ionicons name="shield-checkmark" size={48} color="#00E676" />
-                <Text style={styles.emptyStateTitle}>Zero Active Crashes</Text>
+                <Text style={styles.emptyStateTitle}>
+                  {dashboardLang === 'am' ? 'ምንም ንቁ ብልሽት የለም' : 'Zero Active Crashes'}
+                </Text>
                 <Text style={styles.emptyStateSub}>
-                  No active exceptions recorded. Your mobile and web client sessions are running smoothly.
+                  {dashboardLang === 'am'
+                    ? 'ምንም አይነት ንቁ ስህተት አልተመዘገበም። የሞባይልና የዌብ ሲስተሞች በጥሩ ሁኔታ እየሰሩ ነው።'
+                    : 'No active exceptions recorded. Your mobile and web client sessions are running smoothly.'}
                 </Text>
               </View>
             ) : (
               groupedFilteredErrors.map((group) => {
                 const err = group.primaryError;
-                const diagnosis = diagnoseSystemIssue(err.error_message, err.component);
+                const diagnosis = diagnoseSystemIssue(err.error_message, err.component, dashboardLang);
                 const isGroupResolved = group.allResolved;
 
                 return (
@@ -768,7 +818,9 @@ export default function CeoDashboardScreen() {
                         {group.count > 1 && (
                           <View style={styles.repetitionPill}>
                             <Ionicons name="repeat" size={12} color="#EF4444" />
-                            <Text style={styles.repetitionPillText}>{group.count}x Repeated</Text>
+                            <Text style={styles.repetitionPillText}>
+                              {group.count}x {dashboardLang === 'am' ? 'ተደጋግሟል' : 'Repeated'}
+                            </Text>
                           </View>
                         )}
 
@@ -782,7 +834,7 @@ export default function CeoDashboardScreen() {
                       </View>
 
                       <Text style={styles.errorTime}>
-                        Latest: {group.latestTime ? new Date(group.latestTime).toLocaleTimeString() : 'Just now'}
+                        {dashboardLang === 'am' ? 'የመጨረሻው' : 'Latest'}: {group.latestTime ? new Date(group.latestTime).toLocaleTimeString() : 'Just now'}
                       </Text>
                     </View>
 
@@ -792,8 +844,8 @@ export default function CeoDashboardScreen() {
                     <View style={styles.errorUserRow}>
                       <Ionicons name="person-outline" size={13} color="#8A95A5" />
                       <Text style={styles.errorUserText}>
-                        User: <Text style={{ color: '#FFF' }}>{err.user_email || err.user_uid || 'Anonymous'}</Text>
-                        {group.count > 1 ? ` • Encountered ${group.count} times` : ''}
+                        {dashboardLang === 'am' ? 'ተጠቃሚ' : 'User'}: <Text style={{ color: '#FFF' }}>{err.user_email || err.user_uid || 'Anonymous'}</Text>
+                        {group.count > 1 ? (dashboardLang === 'am' ? ` • ${group.count} ጊዜ ተከስቷል` : ` • Encountered ${group.count} times`) : ''}
                       </Text>
                     </View>
 
@@ -801,7 +853,9 @@ export default function CeoDashboardScreen() {
                     <View style={styles.aiDiagnosisBox}>
                       <View style={styles.aiDiagnosisHeader}>
                         <Ionicons name="sparkles" size={15} color={Colors.primary} />
-                        <Text style={styles.aiDiagnosisTitle}>AI Autonomous Diagnosis & Solution</Text>
+                        <Text style={styles.aiDiagnosisTitle}>
+                          {dashboardLang === 'am' ? 'የ AI አውቶማቲክ ምርመራ እና መፍትሄ' : 'AI Autonomous Diagnosis & Solution'}
+                        </Text>
                       </View>
 
                       <Text style={styles.aiIssueTitle}>{diagnosis.issueTitle}</Text>
@@ -827,7 +881,9 @@ export default function CeoDashboardScreen() {
                           color={isGroupResolved ? '#00E676' : '#8A95A5'}
                         />
                         <Text style={[styles.resolveBtnText, isGroupResolved && { color: '#00E676' }]}>
-                          {isGroupResolved ? 'Resolved' : `Resolve All (${group.count})`}
+                          {isGroupResolved
+                            ? (dashboardLang === 'am' ? 'ተፈቷል' : 'Resolved')
+                            : (dashboardLang === 'am' ? `ሁሉንም ፍታ (${group.count})` : `Resolve All (${group.count})`)}
                         </Text>
                       </TouchableOpacity>
 
@@ -836,7 +892,9 @@ export default function CeoDashboardScreen() {
                         onPress={() => handleDeleteGroup(group.allIds)}
                       >
                         <Ionicons name="trash-outline" size={15} color="#EF4444" />
-                        <Text style={styles.deleteErrorBtnText}>Delete {group.count > 1 ? `(${group.count})` : 'Log'}</Text>
+                        <Text style={styles.deleteErrorBtnText}>
+                          {dashboardLang === 'am' ? 'አጥፋ' : 'Delete'} {group.count > 1 ? `(${group.count})` : (dashboardLang === 'am' ? '' : 'Log')}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1652,7 +1710,7 @@ export default function CeoDashboardScreen() {
 
                     {groupedUserErrors.length > 0 ? (
                       groupedUserErrors.map((item, i) => {
-                        const diagnosis = diagnoseSystemIssue(item.errorMessage, item.component);
+                        const diagnosis = diagnoseSystemIssue(item.errorMessage, item.component, dashboardLang);
                         return (
                           <View key={i} style={styles.userDossierErrorCard}>
                             <View style={styles.userDossierErrorHeader}>

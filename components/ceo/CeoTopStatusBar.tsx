@@ -16,6 +16,8 @@ interface CeoTopStatusBarProps {
   onRefresh: () => void;
   onOpenAiConfig: () => void;
   onAlertsClick?: () => void;
+  currentLang?: 'en' | 'am';
+  onToggleLang?: (lang: 'en' | 'am') => void;
 }
 
 export default function CeoTopStatusBar({
@@ -25,6 +27,8 @@ export default function CeoTopStatusBar({
   onRefresh,
   onOpenAiConfig,
   onAlertsClick,
+  currentLang = 'en',
+  onToggleLang,
 }: CeoTopStatusBarProps) {
   return (
     <View style={styles.topBar}>
@@ -83,11 +87,17 @@ export default function CeoTopStatusBar({
         </TouchableOpacity>
 
         {/* Language Selector Dropdown Pill */}
-        <View style={styles.langSelector}>
-          <Ionicons name="globe-outline" size={15} color="#94A3B8" />
-          <Text style={styles.langText}>English</Text>
-          <Ionicons name="chevron-down" size={12} color="#94A3B8" />
-        </View>
+        <TouchableOpacity
+          style={styles.langSelector}
+          activeOpacity={0.7}
+          onPress={() => onToggleLang?.(currentLang === 'am' ? 'en' : 'am')}
+        >
+          <Ionicons name="globe-outline" size={15} color="#00E676" />
+          <Text style={[styles.langText, currentLang === 'am' && { color: '#00E676', fontWeight: '700' }]}>
+            {currentLang === 'am' ? 'አማርኛ' : 'English'}
+          </Text>
+          <Ionicons name="swap-horizontal" size={13} color="#94A3B8" />
+        </TouchableOpacity>
 
         {/* Dark Mode Moon Icon */}
         <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
