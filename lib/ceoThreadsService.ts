@@ -65,6 +65,15 @@ export function buildCeoChatThreads(
     } else if (isReact418) {
       key = 'react_418_error';
       title = 'Web (Mobile Web Client)';
+    } else if (err.component === 'WorkoutExercisePlayer') {
+      key = 'workout_player_error';
+      title = 'Workout Exercise Player';
+    } else if (err.component === 'CommunityPostDelete') {
+      key = 'community_delete_error';
+      title = 'Community Post Deletion';
+    } else if (err.component?.includes('Marketplace')) {
+      key = 'marketplace_error';
+      title = 'FitPulse Marketplace';
     } else if (err.component) {
       key = `comp_${err.component}`;
       title = err.component;
@@ -110,6 +119,15 @@ export function buildCeoChatThreads(
       subtitle = '⚠️ Minified React error #418; Hydration mismatch on Mobile Web';
       icon = 'phone-portrait';
       color = '#EAB308';
+    } else if (group.key === 'workout_player_error') {
+      icon = 'barbell';
+      color = '#F59E0B';
+    } else if (group.key === 'community_delete_error') {
+      icon = 'trash';
+      color = '#EF4444';
+    } else if (group.key === 'marketplace_error') {
+      icon = 'cart';
+      color = '#00E676';
     }
 
     const bilalUser = users.find((u) => u.email?.includes('bilalkediro') || u.name?.toLowerCase().includes('bilal'));

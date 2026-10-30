@@ -43,18 +43,14 @@ export default function WorkoutRestScreen({
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      onFinishRest();
-      return;
+      const finishTimeout = setTimeout(() => {
+        onFinishRest();
+      }, 150);
+      return () => clearTimeout(finishTimeout);
     }
+
     const timer = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          onFinishRest();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);

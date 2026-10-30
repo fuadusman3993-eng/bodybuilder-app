@@ -96,6 +96,8 @@ export default function PostCard({
 
 
   const isOwner = !!post.isSelf || (!!currentUser?.uid && post.uid === currentUser.uid);
+  const isModerator = currentUser?.role === 'coach' || (currentUser?.email && currentUser.email.includes('fuadusman'));
+  const canDelete = isOwner || isModerator;
 
   const handleDelete = () => {
     setShowPostOptions(false);
@@ -272,7 +274,7 @@ export default function PostCard({
           <TouchableOpacity
             style={styles.menuBtn}
             onPress={() => {
-              if (isOwner) {
+              if (canDelete) {
                 setShowPostOptions(true);
               } else {
                 onPressUser?.(post.uid);
@@ -617,7 +619,9 @@ export default function PostCard({
               activeOpacity={0.7}
             >
               <Ionicons name="trash-outline" size={20} color="#EF4444" />
-              <Text style={styles.deleteOptionText}>Delete Post</Text>
+              <Text style={styles.deleteOptionText}>
+                {isOwner ? 'Delete Post' : 'Delete Post (Moderator)'}
+              </Text>
             </TouchableOpacity>
             <View style={styles.optionDivider} />
             <TouchableOpacity

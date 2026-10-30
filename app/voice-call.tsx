@@ -41,10 +41,11 @@ const AGORA_APP_ID = '511e8cc7f06a4bd89ba9e4aad921c158';
 
 export default function VoiceCallScreen() {
   const router = useRouter();
-  const { channelId, otherUserUid, isIncoming } = useLocalSearchParams<{
+  const { channelId, otherUserUid, isIncoming, initialVideo } = useLocalSearchParams<{
     channelId: string;
     otherUserUid: string;
     isIncoming?: string;
+    initialVideo?: string;
   }>();
   const { user } = useUserStore();
   const incoming = isIncoming === 'true';
@@ -54,7 +55,7 @@ export default function VoiceCallScreen() {
   const callStateRef = useRef<'calling' | 'connected' | 'ended'>('calling');
   
   const [micMuted, setMicMuted] = useState(false);
-  const [videoOn, setVideoOn] = useState(false); // Default to voice first
+  const [videoOn, setVideoOn] = useState(initialVideo === 'true');
   const [duration, setDuration] = useState(0);
   const durationRef = useRef(0);
 

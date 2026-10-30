@@ -19,6 +19,7 @@ import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
 import WorkoutCountdownOverlay from '../../components/workout/WorkoutCountdownOverlay';
 import { voiceCoach } from '../../lib/voiceCoach';
 import { Colors } from '../../constants/colors';
+import { captureSystemError } from '../../lib/telemetryService';
 
 export default function LeapFitnessWorkoutPlayer() {
   const router = useRouter();
@@ -41,9 +42,10 @@ export default function LeapFitnessWorkoutPlayer() {
   const [isPaused, setIsPaused] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
-  // Settings & Instructions Modals
+  // Settings, Instructions & Completion Modals
   const [showSettings, setShowSettings] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Rest Screen & Countdown State
@@ -90,6 +92,31 @@ export default function LeapFitnessWorkoutPlayer() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [isPaused, secondsRemaining, isResting, isCountingDown, isTimeBased, targetSeconds]);
+
+  // Watchdog: auto-detect stalled workout at 00:00 and auto-report to CEO Mission Control
+  useEffect(() => {
+    if (secondsRemaining === 0 && !isResting && !showCompletionModal) {
+      const watchdog = setTimeout(() => {
+        captureSystemError(
+          `[WorkoutPlayer] Exercise ${exerciseIndex + 1}/${totalExercises} completed but transition stalled at 00:00`,
+          {
+            component: 'WorkoutExercisePlayer',
+            severity: 'critical',
+            metadata: {
+              exerciseId,
+              dayNumber,
+              exerciseIndex,
+              totalExercises,
+            },
+          }
+        );
+        // Auto-recovery to keep athlete moving
+        handleTriggerRest();
+      }, 3500);
+
+      return () => clearTimeout(watchdog);
+    }
+  }, [secondsRemaining, isResting, showCompletionModal, exerciseIndex, totalExercises]);
 
   const handleTriggerRest = () => {
     if (exerciseIndex + 1 < totalExercises) {
@@ -141,16 +168,7 @@ export default function LeapFitnessWorkoutPlayer() {
   const handleFinishWorkout = () => {
     voiceCoach.announceComplete();
     completeDay(dayNumber);
-    Alert.alert(
-      '🎉 Workout Complete!',
-      `You crushed Day ${dayNumber}! Your streak has increased. Keep up the great work!`,
-      [
-        {
-          text: 'Return to Calendar',
-          onPress: () => router.replace('/challenge'),
-        },
-      ]
-    );
+    setShowCompletionModal(true);
   };
 
   const handleConfirmExit = () => {
@@ -172,7 +190,11 @@ export default function LeapFitnessWorkoutPlayer() {
 
   const nextExData =
     workout && exerciseIndex + 1 < totalExercises
-      ? EXERCISES[workout.exercises[exerciseIndex + 1].exerciseId]
+      ? EXERCISES[workout.exercises[exerciseIndex + 1].exerciseId] || {
+          id: workout.exercises[exerciseIndex + 1].exerciseId,
+          name: 'Next Exercise',
+          defaultDurationSeconds: 30,
+        }
       : null;
 
   return (
@@ -466,6 +488,61 @@ export default function LeapFitnessWorkoutPlayer() {
           </View>
         </View>
       </Modal>
+
+      {/* 🎉 WORKOUT COMPLETE CELEBRATION MODAL */}
+      <Modal
+        visible={showCompletionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => router.replace('/challenge')}
+      >
+        <View style={styles.completionOverlay}>
+          <View style={styles.completionCard}>
+            <View style={styles.trophyCircle}>
+              <Ionicons name="trophy" size={50} color="#F59E0B" />
+            </View>
+            <Text style={styles.completionTitle}>Workout Complete!</Text>
+            <Text style={styles.completionSubtitle}>
+              You crushed Day {dayNumber}! Your streak has increased. Keep up the great work!
+            </Text>
+
+            <View style={styles.completionStatsRow}>
+              <View style={styles.completionStatBox}>
+                <Ionicons name="flame" size={20} color="#EF4444" />
+                <Text style={styles.completionStatVal}>{workout?.estimatedCalories || 180} kcal</Text>
+                <Text style={styles.completionStatLabel}>Burned</Text>
+              </View>
+              <View style={styles.completionStatBox}>
+                <Ionicons name="time" size={20} color="#38BDF8" />
+                <Text style={styles.completionStatVal}>{workout?.duration || '12 min'}</Text>
+                <Text style={styles.completionStatLabel}>Duration</Text>
+              </View>
+              <View style={styles.completionStatBox}>
+                <Ionicons name="barbell" size={20} color="#00E676" />
+                <Text style={styles.completionStatVal}>{totalExercises}</Text>
+                <Text style={styles.completionStatLabel}>Exercises</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.returnCalendarBtn}
+              activeOpacity={0.85}
+              onPress={() => router.replace('/challenge')}
+            >
+              <Ionicons name="calendar" size={18} color="#000" />
+              <Text style={styles.returnCalendarBtnText}>Return to Calendar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.goHomeBtn}
+              activeOpacity={0.8}
+              onPress={() => router.replace('/(tabs)')}
+            >
+              <Text style={styles.goHomeBtnText}>Go to Home</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -738,5 +815,106 @@ const styles = StyleSheet.create({
   settingStatus: {
     fontSize: 16,
     fontWeight: '800',
+  },
+
+  // COMPLETION CELEBRATION MODAL
+  completionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(7, 13, 24, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  completionCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#0D1527',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  trophyCircle: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  completionTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  completionSubtitle: {
+    color: '#94A3B8',
+    fontSize: 13.5,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  completionStatsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  completionStatBox: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  completionStatVal: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  completionStatLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  returnCalendarBtn: {
+    width: '100%',
+    backgroundColor: '#00E676',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  returnCalendarBtnText: {
+    color: '#070D18',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  goHomeBtn: {
+    width: '100%',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  goHomeBtnText: {
+    color: '#94A3B8',
+    fontSize: 13.5,
+    fontWeight: '600',
   },
 });

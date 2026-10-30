@@ -15,6 +15,7 @@ import { db } from '../../lib/firebase';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
+import { captureSystemError } from '../../lib/telemetryService';
 
 type TabType = 'Following' | 'For You';
 
@@ -352,7 +353,7 @@ export default function CommunityScreen() {
     }
   };
 
-  // ── Post Deletion ──
+  // ── Post Deletion (Full Cascade cleanup) ──
   const handleDeletePost = async (postId: string) => {
     setPosts(prev => {
       const next = prev.filter(p => p.id !== postId);
@@ -361,7 +362,9 @@ export default function CommunityScreen() {
     });
 
     try {
+      // Cascading cleanup across all referencing tables to prevent Foreign Key constraints
       await Promise.allSettled([
+        supabase.from('post_reposts').delete().eq('post_id', postId),
         supabase.from('post_likes').delete().eq('post_id', postId),
         supabase.from('post_comments').delete().eq('post_id', postId),
         supabase.from('post_saves').delete().eq('post_id', postId),
@@ -370,6 +373,11 @@ export default function CommunityScreen() {
       if (error) throw error;
     } catch (e: any) {
       console.warn('Delete post error:', e);
+      captureSystemError(e, {
+        component: 'CommunityPostDelete',
+        severity: 'critical',
+        metadata: { postId, authorUid: user?.uid },
+      });
       fetchPosts(false);
     }
   };

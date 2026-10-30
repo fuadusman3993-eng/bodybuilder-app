@@ -55,6 +55,8 @@ export default function ChatRoom() {
   const [otherUser, setOtherUser] = useState<{ name: string; avatar: string; isCoach?: boolean }>({ name: '...', avatar: '' });
   const [showSettings, setShowSettings] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
@@ -989,7 +991,10 @@ export default function ChatRoom() {
           >
             <Ionicons name="call" size={19} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerActionBtn}>
+          <TouchableOpacity
+            style={styles.headerActionBtn}
+            onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid, initialVideo: 'true' } })}
+          >
             <Ionicons name="videocam" size={21} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
@@ -1127,13 +1132,55 @@ export default function ChatRoom() {
               <Text style={styles.modalOptionText}>View Profile</Text>
             </TouchableOpacity>
             <View style={styles.modalDivider} />
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setIsMuted(!isMuted);
+                setShowSettings(false);
+                Alert.alert(
+                  isMuted ? 'Notifications Unmuted' : 'Notifications Muted',
+                  `Notifications from ${otherUser.name} are now ${isMuted ? 'enabled' : 'muted'}.`
+                );
+              }}
+            >
+              <Ionicons name={isMuted ? "notifications-off" : "notifications-outline"} size={22} color="#FFF" />
+              <Text style={styles.modalOptionText}>{isMuted ? 'Unmute Notifications' : 'Mute Notifications'}</Text>
+            </TouchableOpacity>
+            <View style={styles.modalDivider} />
             <TouchableOpacity style={styles.modalOption} onPress={handleDeleteConversation}>
               <Ionicons name="trash-outline" size={22} color="#ef4444" />
               <Text style={[styles.modalOptionText, { color: '#ef4444' }]}>Delete Conversation</Text>
             </TouchableOpacity>
+            <View style={styles.modalDivider} />
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setShowSettings(false);
+                setShowBlockModal(true);
+              }}
+            >
+              <Ionicons name="ban-outline" size={22} color="#ef4444" />
+              <Text style={[styles.modalOptionText, { color: '#ef4444' }]}>Block User</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── BLOCK USER CONFIRM MODAL (FITPULSE CARD) ── */}
+      <FitPulseConfirmModal
+        visible={showBlockModal}
+        title="Block User?"
+        message={`Are you sure you want to block ${otherUser.name}? You will no longer receive messages or calls from them.`}
+        confirmText="Block"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={() => {
+          setShowBlockModal(false);
+          Alert.alert('User Blocked', `${otherUser.name} has been blocked.`);
+          router.back();
+        }}
+        onCancel={() => setShowBlockModal(false)}
+      />
 
       {/* ── DELETE CHAT CONFIRM MODAL (FITPULSE CARD) ── */}
       <FitPulseConfirmModal

@@ -31,6 +31,7 @@ import {
   getInitialAiGreeting,
   AiConsultationMessage,
 } from '../lib/marketplaceAiService';
+import { captureSystemError } from '../lib/telemetryService';
 
 export default function MarketplaceScreen() {
   const router = useRouter();
@@ -119,7 +120,12 @@ export default function MarketplaceScreen() {
         timestamp: 'Just now',
       };
       setAiChatMessages((prev) => [...prev, aiMsg]);
-    } catch (_) {
+    } catch (err: any) {
+      captureSystemError(err, {
+        component: 'MarketplaceMarketingAI',
+        severity: 'warning',
+        metadata: { productId: selectedProductForAi?.id, query: textToSend },
+      });
       const fallbackMsg: AiConsultationMessage = {
         id: `ai_err_${Date.now()}`,
         sender: 'ai',
@@ -147,7 +153,7 @@ export default function MarketplaceScreen() {
           `ይህን እቃ ለመግዛት ${selectedProductForCheckout.priceCoins} Coins ያስፈልጎታል። የእርስዎ ቀሪ ሂሳብ ${userCoins} Coins ነው። እባክዎ ኮይን ይጨምሩ።`,
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Add Coins', onPress: () => router.push('/coins') },
+            { text: 'Add Coins', onPress: () => router.push('/wallet') },
           ]
         );
         return;
@@ -192,7 +198,7 @@ export default function MarketplaceScreen() {
         {/* User Coin Balance Badge */}
         <TouchableOpacity
           style={styles.coinBadge}
-          onPress={() => router.push('/coins')}
+          onPress={() => router.push('/wallet')}
           activeOpacity={0.8}
         >
           <Text style={styles.coinBadgeText}>🪙 {user.coinsBalance || 0}</Text>
