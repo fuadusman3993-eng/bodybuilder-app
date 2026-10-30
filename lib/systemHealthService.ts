@@ -215,7 +215,98 @@ export function explainInfrastructureBottleneck(services: ServiceHealthItem[]): 
 export function diagnoseSystemIssue(errorMessage: string, component: string = ''): ProactiveDiagnosis {
   const lowerMsg = (errorMessage || '').toLowerCase();
 
-  // 1. Chapa Payment Errors
+  // 1. Workout Player & Watchdog Progression
+  if (
+    component === 'WorkoutExercisePlayer' ||
+    lowerMsg.includes('workout') ||
+    lowerMsg.includes('exercise') ||
+    lowerMsg.includes('watchdog')
+  ) {
+    return {
+      issueTitle: 'የስፖርት ልምምድ ማጫወቻ የሰዓት መቆጣጠሪያ እና የቪዲዮ ሽግግር (Workout Player)',
+      rootCause:
+        'በስፖርት ልምምድ ወቅት የቆጣሪው 00:00 መድረስ፣ የእረፍት ሰዓት (Rest Timer) ሽግግር እና ቀጣዩ ልምምድ ያለመቆም በአግባቡ መጫን አለበት።',
+      severity: 'critical',
+      actionableSolution:
+        'በ exercise/[exerciseId].tsx ውስጥ አውቶማቲክ Watchdog የተተከለ ሲሆን፤ ስክሪኑ እንዳይቆም የድል ማጠቃለያ (Celebration Modal) ተዘጋጅቷል።',
+      actionCodeSnippet: `// Auto-telemetry watchdog in exercise/[exerciseId].tsx\nuseEffect(() => {\n  if (secondsRemaining === 0) {\n    watchdogTimer = setTimeout(() => captureSystemError('Exercise Timer Stalled', { component: 'WorkoutExercisePlayer' }), 3500);\n  }\n}, [secondsRemaining]);`,
+    };
+  }
+
+  // 2. Marketplace & Chapa Coin Crediting
+  if (
+    component?.includes('Marketplace') ||
+    lowerMsg.includes('marketplace') ||
+    lowerMsg.includes('wallet') ||
+    lowerMsg.includes('coins')
+  ) {
+    return {
+      issueTitle: 'የማርኬትፕሌስ የሳንቲም ግዢ እና የዋሌት ራውቲንግ (FitPulse Marketplace)',
+      rootCause:
+        'የሳንቲም ባጅ እና Add Coins ቁልፎች ወደ /wallet ገጽ በአግባቡ መምራት እና ከ Chapa API ጋር መገናኘት አለባቸው።',
+      severity: 'warning',
+      actionableSolution:
+        'የሳንቲም ራውቶች ወደ /wallet ተቀይረዋል፤ የ Chapa ክፍያ ሲጠናቀቅ ኮይን ወዲያውኑ ገቢ እንዲሆን ማድረግ።',
+      actionCodeSnippet: `// Marketplace routing to /wallet\nrouter.push('/wallet');\n// Verified Chapa payment webhook reconciles coin balance in Supabase`,
+    };
+  }
+
+  // 3. Community Cascade Delete & Moderation
+  if (
+    component === 'CommunityPostDelete' ||
+    lowerMsg.includes('community') ||
+    lowerMsg.includes('repost') ||
+    lowerMsg.includes('delete post')
+  ) {
+    return {
+      issueTitle: 'የማህበረሰብ ፖስት መሰረዝ እና ዳታቤዝ ጥገኝነት (Community Social)',
+      rootCause:
+        'የማህበረሰብ ፖስቶች ሲሰረዙ ከ post_reposts እና post_likes ጋር የነበረው Foreign Key ጥገኝነት መጣስ።',
+      severity: 'warning',
+      actionableSolution:
+        'በ community.tsx ውስጥ Cascade Delete ተተግብሯል፤ የ CEO/Admin የማጥፋት ፈቃድ (Moderator Delete) ተረጋግጧል።',
+      actionCodeSnippet: `// Cascade delete in app/(tabs)/community.tsx\nawait supabase.from('post_reposts').delete().eq('post_id', postId);\nawait supabase.from('post_likes').delete().eq('post_id', postId);\nawait supabase.from('posts').delete().eq('id', postId);`,
+    };
+  }
+
+  // 4. Chat & WebRTC Video Call
+  if (
+    component?.includes('Chat') ||
+    component?.includes('Voice') ||
+    lowerMsg.includes('webrtc') ||
+    lowerMsg.includes('call') ||
+    lowerMsg.includes('block')
+  ) {
+    return {
+      issueTitle: 'የቻት ክፍል የቪዲዮ ጥሪ እና የተጠቃሚ ቅንብሮች (Chat & Video Call)',
+      rootCause:
+        'የቪዲዮ ጥሪ ቁልፍ ከ voice-call ጋር መገናኘት እና ተጠቃሚን የማገድ (Block) እንዲሁም ኖቲፊኬሽን የማጥፋት (Mute) ፍላጎት።',
+      severity: 'warning',
+      actionableSolution:
+        'የቪዲዮ ቁልፍ ከ /voice-call ጋር ተገናኝቷል፤ View Profile፣ Mute እና Block አማራጮች በ 3-ነጥብ ማውጫው ላይ ተካተዋል።',
+      actionCodeSnippet: `// Video call routing\nrouter.push({ pathname: '/voice-call', params: { channelId, initialVideo: 'true' } });`,
+    };
+  }
+
+  // 5. App Localization & Profile
+  if (
+    component === 'HomeDashboard' ||
+    lowerMsg.includes('localization') ||
+    lowerMsg.includes('amharic') ||
+    lowerMsg.includes('profile')
+  ) {
+    return {
+      issueTitle: 'የቋንቋ አማራጭ እና የመገለጫ መረጃዎች ቋሚነት (Home & Profile)',
+      rootCause:
+        'የመተግበሪያው ቋንቋ (አማርኛ/እንግሊዝኛ) ምርጫ እና የመገለጫ መረጃዎች ገጹ ሲታደስ (Reload) መቆየታቸውን ማረጋገጥ።',
+      severity: 'warning',
+      actionableSolution:
+        'በ userStore እና profileService ውስጥ የአካባቢ ቋንቋ እና የፕሮፋይል ዳታ ቋሚ ማድረግ።',
+      actionCodeSnippet: `// Local language persistence in AsyncStorage / userStore`,
+    };
+  }
+
+  // 6. Chapa Payment Errors
   if (lowerMsg.includes('chapa') || lowerMsg.includes('unauthorized') || lowerMsg.includes('secret key')) {
     return {
       issueTitle: 'Chapa API Authentication or Webhook Failure',

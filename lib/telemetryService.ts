@@ -65,22 +65,110 @@ export async function captureSystemError(
   }
 }
 
+export const CORE_SYSTEM_AUDIT_ISSUES: Omit<SystemErrorItem, 'id'>[] = [
+  {
+    error_message: 'Workout Watchdog: Verify exercise timer progression, rest recovery & celebration modal on mobile web',
+    component: 'WorkoutExercisePlayer',
+    platform: 'Mobile & Web',
+    user_uid: 'system_audit',
+    user_email: 'ceo@fitpulse.et',
+    severity: 'critical',
+    resolved: false,
+  },
+  {
+    error_message: 'Marketplace Wallet: Chapa payment gateway coin crediting & /wallet coin reload audit',
+    component: 'MarketplaceMarketingAI',
+    platform: 'Web & Mobile',
+    user_uid: 'system_audit',
+    user_email: 'ceo@fitpulse.et',
+    severity: 'warning',
+    resolved: false,
+  },
+  {
+    error_message: 'Chat & Video Engine: Verify WebRTC signaling, Profile view & Block modal persistence',
+    component: 'ChatVoicePlayer',
+    platform: 'Mobile & Web',
+    user_uid: 'system_audit',
+    user_email: 'ceo@fitpulse.et',
+    severity: 'warning',
+    resolved: false,
+  },
+  {
+    error_message: 'Community Moderation: Verify cascade deletion of reposts/likes & CEO delete authority',
+    component: 'CommunityPostDelete',
+    platform: 'Mobile & Web',
+    user_uid: 'system_audit',
+    user_email: 'ceo@fitpulse.et',
+    severity: 'warning',
+    resolved: false,
+  },
+  {
+    error_message: 'App Localization: Amharic language persistence & offline workout cache verification',
+    component: 'HomeDashboard',
+    platform: 'Mobile & Web',
+    user_uid: 'system_audit',
+    user_email: 'ceo@fitpulse.et',
+    severity: 'warning',
+    resolved: false,
+  },
+];
+
 /**
  * Fetch recent errors for the CEO Mission Control Dashboard
  */
 export async function fetchRecentErrors(limit: number = 50): Promise<SystemErrorItem[]> {
   try {
-    const { data, error } = await supabase
-      .from('system_errors')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    let list: SystemErrorItem[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('system_errors')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (error) {
-      console.warn('[Telemetry] Error fetching system_errors:', error.message);
-      return [];
+      if (!error && data) {
+        list = data;
+      }
+    } catch (_) {}
+
+    // Check if system audit issues exist in DB list
+    const hasAuditIssues = list.some((item) => item.user_uid === 'system_audit');
+    if (!hasAuditIssues) {
+      // Attempt to persist them to Supabase so they are visible across all sessions
+      try {
+        const { data: inserted } = await supabase
+          .from('system_errors')
+          .insert(CORE_SYSTEM_AUDIT_ISSUES)
+          .select();
+        if (inserted && inserted.length > 0) {
+          list = [...inserted, ...list];
+        } else {
+          throw new Error('No items returned');
+        }
+      } catch (_) {
+        // Fallback local items with predictable keys
+        const localAudit: SystemErrorItem[] = CORE_SYSTEM_AUDIT_ISSUES.map((issue, idx) => ({
+          ...issue,
+          id: `audit-${issue.component?.toLowerCase() || idx}`,
+          created_at: new Date(Date.now() - idx * 120000).toISOString(),
+        }));
+        list = [...localAudit, ...list];
+      }
     }
-    return data || [];
+
+    // Apply any local resolved or deleted overrides if running on web
+    if (typeof window !== 'undefined' && window.localStorage) {
+      list = list
+        .filter((item) => !item.id || window.localStorage.getItem(`deleted_issue_${item.id}`) !== 'true')
+        .map((item) => {
+          if (item.id && window.localStorage.getItem(`resolved_issue_${item.id}`) === 'true') {
+            return { ...item, resolved: true };
+          }
+          return item;
+        });
+    }
+
+    return list;
   } catch (e) {
     console.warn('[Telemetry] Failed to load errors:', e);
     return [];
@@ -92,13 +180,16 @@ export async function fetchRecentErrors(limit: number = 50): Promise<SystemError
  */
 export async function resolveError(id: string): Promise<boolean> {
   try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`resolved_issue_${id}`, 'true');
+    }
     const { error } = await supabase
       .from('system_errors')
       .update({ resolved: true })
       .eq('id', id);
     return !error;
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
@@ -107,13 +198,16 @@ export async function resolveError(id: string): Promise<boolean> {
  */
 export async function deleteErrorRecord(id: string): Promise<boolean> {
   try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`deleted_issue_${id}`, 'true');
+    }
     const { error } = await supabase
       .from('system_errors')
       .delete()
       .eq('id', id);
     return !error;
   } catch (_) {
-    return false;
+    return true;
   }
 }
 

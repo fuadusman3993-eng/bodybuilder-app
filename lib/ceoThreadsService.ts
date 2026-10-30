@@ -74,6 +74,12 @@ export function buildCeoChatThreads(
     } else if (err.component?.includes('Marketplace')) {
       key = 'marketplace_error';
       title = 'FitPulse Marketplace';
+    } else if (err.component === 'HomeDashboard') {
+      key = 'home_dashboard_error';
+      title = 'App Localization & Profile';
+    } else if (err.component === 'ChatVoicePlayer' || err.component?.includes('Chat')) {
+      key = 'chat_video_error';
+      title = 'Chat & Video Engine';
     } else if (err.component) {
       key = `comp_${err.component}`;
       title = err.component;
@@ -128,6 +134,12 @@ export function buildCeoChatThreads(
     } else if (group.key === 'marketplace_error') {
       icon = 'cart';
       color = '#00E676';
+    } else if (group.key === 'home_dashboard_error') {
+      icon = 'home';
+      color = '#3B82F6';
+    } else if (group.key === 'chat_video_error') {
+      icon = 'videocam';
+      color = '#8B5CF6';
     }
 
     const bilalUser = users.find((u) => u.email?.includes('bilalkediro') || u.name?.toLowerCase().includes('bilal'));
