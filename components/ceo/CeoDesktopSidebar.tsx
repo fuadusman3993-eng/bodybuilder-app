@@ -52,7 +52,7 @@ export default function CeoDesktopSidebar({
       title: 'Errors',
       subtitle: 'System Issues',
       icon: 'warning',
-      badge: unresolvedErrorsCount > 0 ? unresolvedErrorsCount : 3,
+      badge: unresolvedErrorsCount > 0 ? unresolvedErrorsCount : undefined,
       badgeColor: '#EF4444',
     },
     {

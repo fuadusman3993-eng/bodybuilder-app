@@ -73,11 +73,13 @@ export default function CeoTopStatusBar({
           activeOpacity={0.7}
         >
           <Ionicons name="notifications" size={18} color="#CBD5E1" />
-          <View style={styles.bellBadge}>
-            <Text style={styles.bellBadgeText}>
-              {unresolvedErrorsCount > 0 ? unresolvedErrorsCount : 3}
-            </Text>
-          </View>
+          {unresolvedErrorsCount > 0 ? (
+            <View style={styles.bellBadge}>
+              <Text style={styles.bellBadgeText}>
+                {unresolvedErrorsCount}
+              </Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
 
         {/* Language Selector Dropdown Pill */}
