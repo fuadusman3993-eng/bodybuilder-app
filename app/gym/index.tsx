@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { gymData } from '../../constants/mockData';
+import { auditScreenRoute } from '../../lib/universalInteractionEngine';
+import { trackInteraction } from '../../lib/interactionTelemetry';
 
 const filterTabs = ['Nearby', 'Popular', 'Price'];
 
@@ -12,6 +14,10 @@ export default function FindGymScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Nearby');
+
+  useEffect(() => {
+    auditScreenRoute('/gym');
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -21,7 +27,10 @@ export default function FindGymScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Find a Gym</Text>
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity 
+          style={styles.headerButton}
+          onPress={() => trackInteraction('FindGymPage', 'Gym Filter Options')}
+        >
           <Ionicons name="options-outline" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -56,7 +65,12 @@ export default function FindGymScreen() {
       {/* Gym List */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContainer}>
         {gymData.map((gym) => (
-          <TouchableOpacity key={gym.id} style={styles.gymCard} activeOpacity={0.8}>
+          <TouchableOpacity 
+            key={gym.id} 
+            style={styles.gymCard} 
+            activeOpacity={0.8}
+            onPress={() => trackInteraction('FindGymPage', gym.name)}
+          >
             <Image source={{ uri: gym.image }} style={styles.gymImage} />
             <View style={styles.gymDetails}>
               <View style={styles.gymHeaderRow}>

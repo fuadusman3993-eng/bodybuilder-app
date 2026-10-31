@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { workoutData } from '../../constants/mockData';
+import { auditScreenRoute } from '../../lib/universalInteractionEngine';
+import { trackInteraction } from '../../lib/interactionTelemetry';
 
 export default function WorkoutScreen() {
   const router = useRouter();
+
+  useEffect(() => {
+    auditScreenRoute('/workout');
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,7 +23,10 @@ export default function WorkoutScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Workout</Text>
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity 
+          style={styles.headerButton}
+          onPress={() => trackInteraction('WorkoutPage', 'Workout Options')}
+        >
           <Ionicons name="ellipsis-vertical" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>

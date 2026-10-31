@@ -49,22 +49,34 @@ export function auditScreenRoute(pathname: string) {
 }
 
 /**
- * Traverses upwards to find whether the clicked target is an interactive element.
- * Uses role, tabindex, focusable attribute, or cursor pointer.
+ * Robust interactive element finder:
+ * Detects buttons, links, cards, focusable items, and styled actionable elements.
  */
-function findInteractiveElement(target: HTMLElement | null): HTMLElement | null {
+function findClickableOrCardElement(target: HTMLElement | null): { element: HTMLElement; label: string } | null {
+  if (!target || target === document.body || target === document.documentElement) return null;
+
   let curr: HTMLElement | null = target;
   let depth = 0;
+  let bestLabel = '';
+
   while (curr && curr !== document.body && depth < 8) {
     const role = curr.getAttribute('role');
     const tabIndex = curr.getAttribute('tabindex');
     const tagName = curr.tagName.toLowerCase();
-    
-    // Check computed cursor style safely
+    const className = curr.className || '';
+
     let isPointer = false;
+    let hasBorderRadius = false;
     try {
-      isPointer = window.getComputedStyle(curr).cursor === 'pointer';
+      const computed = window.getComputedStyle(curr);
+      isPointer = computed.cursor === 'pointer';
+      hasBorderRadius = parseFloat(computed.borderRadius) > 4;
     } catch (_) {}
+
+    const text = (curr.innerText || curr.textContent || '').trim().replace(/\s+/g, ' ');
+    if (text && text.length < 50 && !bestLabel) {
+      bestLabel = text;
+    }
 
     if (
       tagName === 'button' ||
@@ -75,13 +87,26 @@ function findInteractiveElement(target: HTMLElement | null): HTMLElement | null 
       tabIndex === '0' ||
       curr.getAttribute('data-focusable') === 'true' ||
       curr.getAttribute('data-interactive') === 'true' ||
-      isPointer
+      isPointer ||
+      hasBorderRadius ||
+      (typeof className === 'string' && (className.includes('card') || className.includes('btn') || className.includes('touchable')))
     ) {
-      return curr;
+      const label = bestLabel || (curr.getAttribute('aria-label') || text).slice(0, 45);
+      if (label) {
+        return { element: curr, label: label.slice(0, 45) };
+      }
     }
+
     curr = curr.parentElement;
     depth++;
   }
+
+  // Fallback: If clicked element itself has meaningful short text (e.g. gym title, button label)
+  const targetText = (target.innerText || target.textContent || '').trim().replace(/\s+/g, ' ');
+  if (targetText && targetText.length >= 2 && targetText.length <= 40) {
+    return { element: target, label: targetText };
+  }
+
   return null;
 }
 
@@ -96,51 +121,63 @@ export function setupUniversalInteractionEngine() {
     return () => {};
   }
 
+  // 1. Immediately audit the initial URL on startup
+  setTimeout(() => auditScreenRoute(window.location.pathname), 100);
+
+  // 2. Intercept History pushState and replaceState to catch all client-side navigation
+  try {
+    const originalPushState = window.history.pushState;
+    window.history.pushState = function (...args) {
+      const res = originalPushState.apply(this, args);
+      setTimeout(() => auditScreenRoute(window.location.pathname), 50);
+      return res;
+    };
+
+    const originalReplaceState = window.history.replaceState;
+    window.history.replaceState = function (...args) {
+      const res = originalReplaceState.apply(this, args);
+      setTimeout(() => auditScreenRoute(window.location.pathname), 50);
+      return res;
+    };
+
+    window.addEventListener('popstate', () => {
+      setTimeout(() => auditScreenRoute(window.location.pathname), 50);
+    });
+  } catch (_) {}
+
   let lastProcessedClickTime = 0;
 
   const handleGlobalInteraction = (event: MouseEvent | TouchEvent) => {
     try {
       const now = Date.now();
-      // Debounce rapid tap duplicates within 400ms
       if (now - lastProcessedClickTime < 400) return;
       lastProcessedClickTime = now;
 
       const target = event.target as HTMLElement | null;
       if (!target) return;
 
-      // Ignore text input fields
       const tag = target.tagName ? target.tagName.toLowerCase() : '';
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
-      // Find nearest genuinely interactive element
-      const clickable = findInteractiveElement(target);
-      if (!clickable) return;
+      const found = findClickableOrCardElement(target);
+      if (!found) return;
 
-      // Extract a meaningful label
-      const rawText = (clickable.getAttribute('aria-label') || clickable.innerText || clickable.textContent || '').trim();
-      const buttonLabel = rawText.replace(/\s+/g, ' ').slice(0, 45);
-
-      // Ignore clicks without label or trivial background
+      const buttonLabel = found.label;
       if (!buttonLabel) return;
 
-      // Ignore interactions inside CEO dashboard itself
       if (window.location.pathname.startsWith('/ceo')) return;
 
       const startPath = window.location.pathname;
       const initialDomLength = document.body ? document.body.innerHTML.length : 0;
       const startNetworkTime = lastNetworkActivityTimestamp;
-
-      // Determine page name from current pathname
       const pageName = getPageNameFromPath(startPath);
 
-      // Observe for 1000ms
       setTimeout(() => {
         const pathChanged = window.location.pathname !== startPath;
         const networkFired = lastNetworkActivityTimestamp > startNetworkTime || activeFetchCounter > 0;
         const currentDomLength = document.body ? document.body.innerHTML.length : 0;
         const domChanged = Math.abs(currentDomLength - initialDomLength) > 80;
 
-        // If nothing happened at all: No navigation, no network request, no DOM reaction
         if (!pathChanged && !networkFired && !domChanged) {
           captureSystemError(
             `ተጠቃሚው በ [${pageName}] ላይ ['${buttonLabel}'] ነክቶ ምንም ምላሽ አልሰጠም (Dead Click / Unhandled Action)`,

@@ -38,10 +38,10 @@ export async function captureSystemError(
     const component = meta.component || 'AppGlobal';
     const throttleKey = `${component}::${cleanMessage}`;
 
-    // 1. In-memory session throttle: don't call server if logged within the last 15 minutes
+    // 1. In-memory session throttle: don't call server if logged within the last 10 seconds
     const lastLogged = recentErrorTimestamps.get(throttleKey);
     const now = Date.now();
-    if (lastLogged && now - lastLogged < 15 * 60 * 1000) {
+    if (lastLogged && now - lastLogged < 10 * 1000) {
       return;
     }
     recentErrorTimestamps.set(throttleKey, now);
