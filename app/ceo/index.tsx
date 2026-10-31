@@ -841,6 +841,10 @@ export default function CeoDashboardScreen() {
                             pageBadge = { label: dashboardLang === 'am' ? 'Marketplace Page ስህተት' : 'Marketplace Page Error', icon: 'cart', color: '#00E676' };
                           } else if (comp.includes('Community')) {
                             pageBadge = { label: dashboardLang === 'am' ? 'Community Page ስህተት' : 'Community Page Error', icon: 'people', color: '#EF4444' };
+                          } else if (comp.includes('Gym')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Find Gym ገጽ ስህተት' : 'Find Gym Page Error', icon: 'location', color: '#06B6D4' };
+                          } else if (comp.includes('Profile')) {
+                            pageBadge = { label: dashboardLang === 'am' ? 'Profile ገጽ ስህተት' : 'Profile Page Error', icon: 'person', color: '#10B981' };
                           } else if (comp.includes('Navigation')) {
                             pageBadge = { label: dashboardLang === 'am' ? '404 ገጽ አልተገኘም' : '404 Broken Route', icon: 'navigate', color: '#EC4899' };
                           }

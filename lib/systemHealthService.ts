@@ -221,20 +221,49 @@ export function diagnoseSystemIssue(
   const lowerMsg = (errorMessage || '').toLowerCase();
   const isAm = lang === 'am';
 
-  // 1. Touch & Interaction Auto-Logger: Dead Button
-  if (lowerMsg.includes('dead button') || lowerMsg.includes('no action bound')) {
+  // 1. Touch & Interaction Auto-Logger: Dead Click & Dead Button
+  if (
+    lowerMsg.includes('dead click') ||
+    lowerMsg.includes('dead button') ||
+    lowerMsg.includes('unhandled action') ||
+    lowerMsg.includes('no action bound') ||
+    lowerMsg.includes('ምንም ምላሽ አልሰጠም')
+  ) {
     return {
       issueTitle: isAm
-        ? 'ያልተገናኘ ወይም የማይሰራ ቁልፍ (Dead Button / Unbound Action)'
-        : 'Dead Button / Unbound User Action',
+        ? 'ያልተገናኘ ወይም የማይሰራ ቁልፍ (Dead Click / Unhandled Action)'
+        : 'Dead Click / Unhandled User Action',
       rootCause: isAm
-        ? 'ተጠቃሚው አፑ ላይ ቁልፉን ሲጫን የተያያዘ ተግባር (onPress handler) ወይም ራውት አልተገኘም።'
-        : 'User tapped an interactive element that currently lacks a functional callback or navigation target.',
+        ? 'ተጠቃሚው አፑ ላይ ቁልፍ ወይም ካርድ ነክቶ ምንም አይነት ምላሽ፣ ሽግግር ወይም የዳታ ጥሪ አልተከሰተም።'
+        : 'User clicked an interactive element but no route transition, network request, or DOM change was triggered.',
       severity: 'warning',
       actionableSolution: isAm
-        ? 'በኮምፖነንቱ ላይ ተገቢውን onPress action ወይም navigation route ማገናኘት።'
+        ? 'በተጠቃሚው በተነካው ኮምፖነንት ላይ ተግባራዊ onPress ክንውን ወይም ወደሚሰራ ገጽ የሚያሻግር route ማገናኘት።'
         : 'Connect a functional onPress callback or navigation route to the interactive component.',
       actionCodeSnippet: `// Bind functional onPress\n<TouchableOpacity onPress={() => router.push('/destination')}>\n  <Text>Button</Text>\n</TouchableOpacity>`,
+    };
+  }
+
+  // 2. Dummy / Incomplete Screen Auditor
+  if (
+    lowerMsg.includes('dummy') ||
+    lowerMsg.includes('mock data') ||
+    lowerMsg.includes('incomplete screen') ||
+    lowerMsg.includes('በውሸት') ||
+    component === 'FindGymPage'
+  ) {
+    return {
+      issueTitle: isAm
+        ? 'በማሳያ ዳታ (Dummy Mock Data) የተሞላ ያልተጠናቀቀ ገጽ'
+        : 'Dummy Mock Data / Incomplete Screen Detected',
+      rootCause: isAm
+        ? 'ይህ ገጽ ከእውነተኛው የ Supabase ዳታቤዝ ጋር ገና አልተገናኘም፤ የማሳያ (Mock Data) ብቻ እያሳየ ይገኛል።'
+        : 'This screen currently renders static mock data instead of querying live Supabase database records.',
+      severity: 'warning',
+      actionableSolution: isAm
+        ? 'የ mockData.ts አስመጪን በማስወገድ ከ Supabase ሰንጠረዥ ዳታ የሚያመጣ የቀጥታ ዳታቤዝ ጥሪ ማገናኘት።'
+        : 'Replace mockData imports with live Supabase query hook and connect real backend records.',
+      actionCodeSnippet: `// Connect real Supabase table records\nconst { data, error } = await supabase.from('gyms').select('*');`,
     };
   }
 

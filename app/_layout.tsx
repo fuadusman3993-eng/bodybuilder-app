@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Platform } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
@@ -14,6 +14,7 @@ import { getWallet } from '../lib/walletService';
 import { getProfile, syncUserProfile } from '../lib/profileService';
 import { useUserStore, UserTier } from '../store/userStore';
 import { captureSystemError } from '../lib/telemetryService';
+import { setupUniversalInteractionEngine, auditScreenRoute } from '../lib/universalInteractionEngine';
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
 import OfflineNotice from '../components/ui/OfflineNotice';
@@ -32,6 +33,20 @@ import { Ionicons } from '@expo/vector-icons';
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(Platform.OS === 'web');
   const { setUser, setAuthInitialized } = useUserStore();
+  const pathname = usePathname();
+
+  // 1. Universal Screen Route Auditor: Automatically detects when a user navigates to a mock/dummy screen
+  useEffect(() => {
+    if (pathname && !pathname.startsWith('/ceo')) {
+      auditScreenRoute(pathname);
+    }
+  }, [pathname]);
+
+  // 2. Universal Dead Click & Inactivity Interceptor: Listens to all user clicks globally
+  useEffect(() => {
+    const teardown = setupUniversalInteractionEngine();
+    return () => teardown();
+  }, []);
 
   useEffect(() => {
     async function loadAssetsAsync() {

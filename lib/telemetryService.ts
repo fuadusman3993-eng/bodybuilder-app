@@ -51,8 +51,11 @@ export async function captureSystemError(
     
     // Get active user info if available
     const currentUser = useUserStore.getState().user;
-    const user_uid = currentUser?.uid || auth.currentUser?.uid || 'anonymous';
-    const user_email = currentUser?.email || auth.currentUser?.email || (currentUser?.name ? `${currentUser.name}@fitpulse.user` : 'fuadusman3993@gmail.com');
+    const user_uid = currentUser?.uid || auth.currentUser?.uid || 'guest';
+    const userRoleStr = currentUser?.role ? ` [${currentUser.role.toUpperCase()}]` : '';
+    const user_email = currentUser?.email
+      || auth.currentUser?.email
+      || (currentUser?.name ? `${currentUser.name}${userRoleStr}` : 'guest@fitpulse.et');
 
     // Platform description
     const platformStr = Platform.select({
