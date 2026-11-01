@@ -152,7 +152,7 @@ export default function CoachHome() {
           <Text style={styles.qaTitle}>Messages</Text>
           <Text style={styles.qaDesc}>Chat with your trainees</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.qaCard}>
+        <TouchableOpacity style={styles.qaCard} onPress={() => router.push('/(tabs)/create')}>
           <Ionicons name="play-circle" size={28} color="#F59E0B" />
           <Text style={styles.qaTitle}>Add Lesson</Text>
           <Text style={styles.qaDesc}>Share videos, text or images</Text>

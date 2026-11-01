@@ -165,20 +165,29 @@ export function setupUniversalInteractionEngine() {
       const buttonLabel = found.label;
       if (!buttonLabel) return;
 
+      // Skip non-interactive or dismiss/backdrop clicks
+      const lower = buttonLabel.toLowerCase();
+      if (['close', 'dismiss', 'cancel', 'backdrop', 'overlay', 'scroll'].some(s => lower.includes(s))) {
+        return;
+      }
+
       if (window.location.pathname.startsWith('/ceo')) return;
 
       const startPath = window.location.pathname;
       const initialDomLength = document.body ? document.body.innerHTML.length : 0;
       const startNetworkTime = lastNetworkActivityTimestamp;
+      const initialModalCount = document.querySelectorAll('[aria-modal="true"], [role="dialog"], [data-modal="true"]').length;
       const pageName = getPageNameFromPath(startPath);
 
       setTimeout(() => {
         const pathChanged = window.location.pathname !== startPath;
         const networkFired = lastNetworkActivityTimestamp > startNetworkTime || activeFetchCounter > 0;
         const currentDomLength = document.body ? document.body.innerHTML.length : 0;
-        const domChanged = Math.abs(currentDomLength - initialDomLength) > 80;
+        const domChanged = Math.abs(currentDomLength - initialDomLength) > 120;
+        const currentModalCount = document.querySelectorAll('[aria-modal="true"], [role="dialog"], [data-modal="true"]').length;
+        const modalToggled = currentModalCount !== initialModalCount;
 
-        if (!pathChanged && !networkFired && !domChanged) {
+        if (!pathChanged && !networkFired && !domChanged && !modalToggled) {
           captureSystemError(
             `ተጠቃሚው በ [${pageName}] ላይ ['${buttonLabel}'] ነክቶ ምንም ምላሽ አልሰጠም (Dead Click / Unhandled Action)`,
             {

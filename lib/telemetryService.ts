@@ -14,6 +14,8 @@ export interface SystemErrorItem {
   user_email?: string;
   severity?: 'critical' | 'warning' | 'info';
   resolved?: boolean;
+  resolved_at?: string;
+  resolved_note?: string;
 }
 
 // In-memory throttle to prevent rapid duplicate insertions (15 minute cooldown per unique error signature)
@@ -65,22 +67,42 @@ export async function captureSystemError(
       default: 'Unknown',
     });
 
-    // 2. Database deduplication check: if an unresolved error with identical component and message already exists, do not duplicate
+    // 2. Database deduplication check:
+    // a) If unresolved exists → keep alive (update timestamp)
+    // b) If resolved exists → RE-OPEN it (user hit same issue again)
+    // c) If none → insert fresh
     const { data: existing } = await supabase
       .from('system_errors')
-      .select('id')
+      .select('id, resolved')
       .eq('component', component)
       .eq('error_message', cleanMessage)
-      .eq('resolved', false)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Already actively tracked in database - update latest timestamp to keep it alive without duplicate row
-      await supabase
-        .from('system_errors')
-        .update({ created_at: new Date().toISOString() })
-        .eq('id', existing[0].id);
-      return;
+      const rec = existing[0];
+      if (!rec.resolved) {
+        // Already tracked as unresolved — refresh timestamp only
+        await supabase
+          .from('system_errors')
+          .update({ created_at: new Date().toISOString() })
+          .eq('id', rec.id);
+        return;
+      } else {
+        // Previously resolved but same issue occurred again → Re-open
+        await supabase
+          .from('system_errors')
+          .update({
+            resolved: false,
+            resolved_at: null,
+            resolved_note: null,
+            created_at: new Date().toISOString(),
+            user_uid,
+            user_email,
+          })
+          .eq('id', rec.id);
+        return;
+      }
     }
 
     // Write to Supabase system_errors
@@ -125,13 +147,17 @@ export async function fetchRecentErrors(limit: number = 50): Promise<SystemError
 }
 
 /**
- * Mark an error as resolved
+ * Mark an error as resolved with an optional CEO note and timestamp
  */
-export async function resolveError(id: string): Promise<boolean> {
+export async function resolveError(id: string, note?: string): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('system_errors')
-      .update({ resolved: true })
+      .update({
+        resolved: true,
+        resolved_at: new Date().toISOString(),
+        resolved_note: note || 'Marked as resolved by CEO',
+      })
       .eq('id', id);
     return !error;
   } catch (_) {

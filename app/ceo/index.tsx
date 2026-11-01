@@ -75,6 +75,11 @@ export default function CeoDashboardScreen() {
   const [chatCategoryFilter, setChatCategoryFilter] = useState<'all' | 'error' | 'user' | 'payment' | 'health'>('all');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Smart Resolve Modal State
+  const [resolveModalVisible, setResolveModalVisible] = useState(false);
+  const [resolveTargetIds, setResolveTargetIds] = useState<string[]>([]);
+  const [resolveNote, setResolveNote] = useState('');
+
   // Data States
   const [errorsList, setErrorsList] = useState<SystemErrorItem[]>([]);
   const [usersList, setUsersList] = useState<CeoUserItem[]>([]);
@@ -185,15 +190,36 @@ export default function CeoDashboardScreen() {
     setErrorsList((prev) => prev.map((e) => (e.id === id ? { ...e, resolved: true } : e)));
   };
 
+  // Smart Resolve: open modal to confirm + add note
+  const openResolveModal = (ids: string[]) => {
+    setResolveTargetIds(ids);
+    setResolveNote('');
+    setResolveModalVisible(true);
+  };
+
+  const confirmResolve = async () => {
+    const note = resolveNote.trim() || 'Marked as resolved by CEO';
+    await Promise.all(resolveTargetIds.map((id) => resolveError(id, note)));
+    setErrorsList((prev) =>
+      prev.map((e) =>
+        e.id && resolveTargetIds.includes(e.id)
+          ? { ...e, resolved: true, resolved_note: note, resolved_at: new Date().toISOString() }
+          : e
+      )
+    );
+    setResolveModalVisible(false);
+    setResolveTargetIds([]);
+    setResolveNote('');
+  };
+
   const handleResolveGroup = async (ids: string[]) => {
-    await Promise.all(ids.map((id) => resolveError(id)));
-    setErrorsList((prev) => prev.map((e) => (e.id && ids.includes(e.id) ? { ...e, resolved: true } : e)));
+    openResolveModal(ids);
   };
 
   const handleResolveAllErrors = async () => {
     const unresolvedIds = errorsList.filter((e) => !e.resolved && e.id).map((e) => e.id!);
     if (unresolvedIds.length > 0) {
-      await handleResolveGroup(unresolvedIds);
+      openResolveModal(unresolvedIds);
     }
   };
 
@@ -893,6 +919,23 @@ export default function CeoDashboardScreen() {
                         </View>
                       ) : null}
                     </View>
+
+                    {/* Resolution History Banner if Resolved */}
+                    {isGroupResolved ? (
+                      <View style={{ backgroundColor: 'rgba(0, 230, 118, 0.08)', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.25)', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="checkmark-done-circle" size={16} color="#00E676" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#00E676', fontSize: 12, fontWeight: '700' }}>
+                            {dashboardLang === 'am' ? 'የተፈታበት ማስታወሻ' : 'Resolution History'}: {err.resolved_note || (dashboardLang === 'am' ? 'በ CEO ተፈትቷል' : 'Resolved by CEO')}
+                          </Text>
+                          {err.resolved_at ? (
+                            <Text style={{ color: '#8A95A5', fontSize: 11, marginTop: 2 }}>
+                              {dashboardLang === 'am' ? 'የተፈታበት ሰዓት' : 'Resolved at'}: {new Date(err.resolved_at).toLocaleString()}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ) : null}
 
                     {/* Action Buttons */}
                     <View style={styles.errorActionsRow}>
@@ -1871,6 +1914,72 @@ export default function CeoDashboardScreen() {
                 </>
               )}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* ── MODAL 3: SMART RESOLVE MODAL WITH CEO NOTE & RE-OPEN ──   */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <Modal
+        visible={resolveModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setResolveModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 500 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="checkmark-done-circle" size={24} color="#00E676" />
+                <Text style={styles.modalTitle}>
+                  {dashboardLang === 'am' ? 'ስህተቱን መፍታት (Smart Resolve)' : 'Resolve Issue (Smart Resolve)'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setResolveModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.verifyModalSub}>
+              {dashboardLang === 'am'
+                ? `የተመረጡትን ${resolveTargetIds.length} ስህተቶች "ተፈቷል" ብለው ይመዝግቡ። ለወደፊቱ ይኸው ችግር በተጠቃሚው ላይ ዳግም ከተከሰተ ሲስተሙ ራሱ አውቆ በራስ-ሰር ዳግም ይከፍተዋል (Auto Re-Open)።`
+                : `Mark ${resolveTargetIds.length} issue(s) as resolved. If the exact same issue re-occurs for any user in the future, the system will automatically re-open it on the radar.`}
+            </Text>
+
+            <Text style={{ color: '#8A95A5', fontSize: 13, fontWeight: '600', marginTop: 12, marginBottom: 6 }}>
+              {dashboardLang === 'am' ? 'የመፍትሄ ማስታወሻ (አማራጭ)' : 'Resolution Note / Action Taken (Optional)'}
+            </Text>
+
+            <TextInput
+              style={[styles.verifyModalInput, { height: 70, textAlignVertical: 'top' }]}
+              placeholder={dashboardLang === 'am' ? 'ምሳሌ፦ ቁልፉን ወደ ትክክለኛው ገጽ አገናኝተነዋል...' : 'e.g. Connected button route in production, verified with trainee...'}
+              placeholderTextColor="#667085"
+              value={resolveNote}
+              onChangeText={setResolveNote}
+              multiline
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.verifySubmitBtn, { flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}
+                onPress={() => setResolveModalVisible(false)}
+              >
+                <Text style={[styles.verifySubmitBtnText, { color: '#FFF' }]}>
+                  {dashboardLang === 'am' ? 'ተመለስ' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.verifySubmitBtn, { flex: 2, backgroundColor: '#00E676' }]}
+                onPress={confirmResolve}
+              >
+                <Ionicons name="checkmark-circle" size={17} color="#000" />
+                <Text style={[styles.verifySubmitBtnText, { color: '#000', fontWeight: '800' }]}>
+                  {dashboardLang === 'am' ? `አረጋግጥና ፍታ (${resolveTargetIds.length})` : `Confirm Resolve (${resolveTargetIds.length})`}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
