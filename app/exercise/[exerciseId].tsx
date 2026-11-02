@@ -11,7 +11,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { EXERCISES } from '../../constants/exercises';
+import { EXERCISES, Exercise } from '../../constants/exercises';
+import { VAULT_EXERCISES } from '../../constants/exerciseVaultData';
 import { getWorkoutForDay } from '../../constants/workouts';
 import { useChallengeStore } from '../../store/challengeStore';
 import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter';
@@ -32,7 +33,30 @@ export default function LeapFitnessWorkoutPlayer() {
   const workout = getWorkoutForDay(activeGoal, dayNumber);
   const totalExercises = workout?.exercises.length || 15;
   const workoutEx = workout?.exercises[exerciseIndex];
-  const exData = EXERCISES[(exerciseId as string) || 'high-stepping'] || EXERCISES['high-stepping'];
+  
+  const vaultMatch = VAULT_EXERCISES.find((v) => v.id === exerciseId);
+  const resolvedVaultExercise: Exercise | null = vaultMatch
+    ? {
+        id: vaultMatch.id,
+        name: vaultMatch.name,
+        muscleGroup: vaultMatch.bodyPart,
+        primaryMuscles: [vaultMatch.targetMuscle.toLowerCase().includes('chest') ? 'chest' : vaultMatch.targetMuscle.toLowerCase().includes('back') ? 'back' : 'abs'],
+        level: vaultMatch.level,
+        levelNum: vaultMatch.level === 'Beginner' ? 1 : vaultMatch.level === 'Intermediate' ? 2 : 3,
+        movementType: vaultMatch.category === 'gym' ? 'Strength' : 'Bodyweight',
+        isTimeBased: true,
+        defaultDurationSeconds: vaultMatch.defaultDurationSeconds || (vaultMatch.defaultReps ? vaultMatch.defaultReps * 3 : 30),
+        defaultSets: 3,
+        defaultReps: vaultMatch.defaultReps || 12,
+        defaultRestSeconds: 30,
+        thumbnail: vaultMatch.animationUrl,
+        actionImage: vaultMatch.animationUrl,
+        instructions: vaultMatch.instructions,
+        equipment: vaultMatch.equipment,
+      }
+    : null;
+
+  const exData = resolvedVaultExercise || EXERCISES[(exerciseId as string) || 'high-stepping'] || EXERCISES['high-stepping'];
 
   // Timer & Play/Pause State - All exercises count down 30s hands-free
   const isTimeBased = true;
