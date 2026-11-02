@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
 import {
   HOME_CATEGORIES,
   VAULT_EXERCISES,
@@ -27,7 +28,11 @@ export default function HomeWorkoutsScreen() {
       if (ex.category !== 'home') return false;
       if (selectedCategory !== 'all') {
         const catObj = HOME_CATEGORIES.find((c) => c.id === selectedCategory);
-        if (catObj && ex.bodyPart.toLowerCase() !== catObj.name.toLowerCase() && !catObj.name.toLowerCase().includes(ex.bodyPart.toLowerCase())) {
+        if (
+          catObj &&
+          ex.bodyPart.toLowerCase() !== catObj.name.toLowerCase() &&
+          !catObj.name.toLowerCase().includes(ex.bodyPart.toLowerCase())
+        ) {
           return false;
         }
       }
@@ -62,13 +67,13 @@ export default function HomeWorkoutsScreen() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>NO EQUIPMENT</Text>
+          <Text style={styles.liveText}>ZERO EQUIPMENT</Text>
         </View>
       </View>
 
@@ -80,7 +85,7 @@ export default function HomeWorkoutsScreen() {
         {/* Title Banner */}
         <View style={styles.heroSection}>
           <View style={styles.heroIconBox}>
-            <Ionicons name="home" size={28} color="#FF5376" />
+            <Ionicons name="home" size={26} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroTitle}>Home Workouts</Text>
@@ -92,22 +97,22 @@ export default function HomeWorkoutsScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchBarWrap}>
-          <Ionicons name="search" size={18} color="#717D90" />
+          <Ionicons name="search" size={18} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search home workout, stretch, yoga..."
-            placeholderTextColor="#667085"
+            placeholderTextColor={Colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#717D90" />
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
           ) : null}
         </View>
 
-        {/* Category Horizontal Scroll */}
+        {/* Category Pills (Horizontal Scroll) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -120,39 +125,31 @@ export default function HomeWorkoutsScreen() {
             ]}
             onPress={() => setSelectedCategory('all')}
           >
-            <Ionicons
-              name="sparkles"
-              size={14}
-              color={selectedCategory === 'all' ? '#000' : '#8A95A5'}
-            />
             <Text
               style={[
                 styles.catTabText,
                 selectedCategory === 'all' && styles.catTabTextActive,
               ]}
             >
-              All (800+)
+              🔥 All Home
             </Text>
           </TouchableOpacity>
 
           {HOME_CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
+            const isActive = selectedCategory === cat.id;
             return (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.catTab, isSelected && styles.catTabActive]}
+                style={[styles.catTab, isActive && styles.catTabActive]}
                 onPress={() => setSelectedCategory(cat.id)}
               >
                 <Ionicons
                   name={cat.icon as any}
                   size={14}
-                  color={isSelected ? '#000' : cat.color}
+                  color={isActive ? '#000000' : Colors.textMuted}
                 />
                 <Text
-                  style={[
-                    styles.catTabText,
-                    isSelected && styles.catTabTextActive,
-                  ]}
+                  style={[styles.catTabText, isActive && styles.catTabTextActive]}
                 >
                   {cat.name} ({cat.count})
                 </Text>
@@ -161,19 +158,20 @@ export default function HomeWorkoutsScreen() {
           })}
         </ScrollView>
 
-        {/* Exercise Cards */}
+        {/* Exercise List */}
         <View style={styles.exercisesList}>
           {filteredExercises.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Ionicons name="fitness-outline" size={36} color="#717D90" />
+              <Ionicons name="home-outline" size={32} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No workouts found</Text>
               <Text style={styles.emptySub}>
-                Try selecting "All" or clearing the search query.
+                Try adjusting your search or switching to another category.
               </Text>
             </View>
           ) : (
             filteredExercises.map((item) => (
               <View key={item.id} style={styles.exerciseCard}>
+                {/* Animation Image Preview */}
                 <Image
                   source={{ uri: item.animationUrl }}
                   style={styles.cardThumb}
@@ -182,6 +180,7 @@ export default function HomeWorkoutsScreen() {
                   transition={200}
                 />
 
+                {/* Info */}
                 <View style={styles.cardInfo}>
                   <View style={styles.cardTitleRow}>
                     <Text style={styles.cardName} numberOfLines={1}>
@@ -196,20 +195,21 @@ export default function HomeWorkoutsScreen() {
 
                   <View style={styles.cardMetaRow}>
                     <View style={styles.noEquipBadge}>
-                      <Ionicons name="checkmark-circle" size={12} color="#00E676" />
+                      <Ionicons name="checkmark-circle" size={13} color={Colors.primary} />
                       <Text style={styles.noEquipText}>No Equipment</Text>
                     </View>
                     <Text style={styles.durationText}>
-                      ⏱️ {item.defaultDurationSeconds ? `${item.defaultDurationSeconds}s` : `${item.defaultReps} reps`}
+                      ⏱️ {item.defaultDurationSeconds ? `${item.defaultDurationSeconds}s` : '30s'}
                     </Text>
                   </View>
 
+                  {/* Start Exercise Button */}
                   <TouchableOpacity
                     style={styles.startExerciseBtn}
                     activeOpacity={0.8}
                     onPress={() => handleStartExercise(item)}
                   >
-                    <Ionicons name="play" size={14} color="#000" />
+                    <Ionicons name="play" size={14} color="#000000" />
                     <Text style={styles.startExerciseBtnText}>
                       Start with Voice Coach
                     </Text>
@@ -227,7 +227,7 @@ export default function HomeWorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#070D18',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -236,42 +236,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: Colors.textPrimary,
+    fontSize: 13,
     fontWeight: '700',
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 83, 118, 0.1)',
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 83, 118, 0.3)',
+    borderColor: 'rgba(0, 230, 118, 0.25)',
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FF5376',
+    backgroundColor: Colors.primary,
   },
   liveText: {
-    color: '#FF5376',
-    fontSize: 11,
+    color: Colors.primary,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -288,31 +291,31 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: 'rgba(255, 83, 118, 0.05)',
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 83, 118, 0.15)',
+    borderColor: Colors.border,
   },
   heroIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 83, 118, 0.15)',
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 83, 118, 0.3)',
+    borderColor: 'rgba(0, 230, 118, 0.25)',
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+    color: Colors.textPrimary,
+    letterSpacing: -0.4,
   },
   heroSub: {
     fontSize: 12,
-    color: '#8A95A5',
-    fontWeight: '600',
+    color: Colors.textMuted,
+    fontWeight: '500',
     marginTop: 2,
     lineHeight: 16,
   },
@@ -320,18 +323,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.border,
     marginBottom: 14,
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: Colors.textPrimary,
+    fontSize: 13,
     padding: 0,
   },
   catScroll: {
@@ -342,19 +345,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.border,
   },
   catTabActive: {
-    backgroundColor: '#FF5376',
-    borderColor: '#FF5376',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   catTabText: {
-    color: '#8A95A5',
+    color: Colors.textMuted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -366,38 +369,38 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyCard: {
-    backgroundColor: '#0E1620',
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 30,
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.border,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
   },
   emptySub: {
-    fontSize: 13,
-    color: '#8A95A5',
+    fontSize: 12,
+    color: Colors.textMuted,
     textAlign: 'center',
   },
   exerciseCard: {
     flexDirection: 'row',
-    backgroundColor: '#0E1620',
+    backgroundColor: Colors.surfaceLight,
     borderRadius: 14,
     padding: 10,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.border,
   },
   cardThumb: {
-    width: 85,
-    height: 95,
+    width: 80,
+    height: 90,
     borderRadius: 8,
-    backgroundColor: '#070D18',
+    backgroundColor: Colors.background,
   },
   cardInfo: {
     flex: 1,
@@ -412,23 +415,23 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
     flex: 1,
   },
   levelBadge: {
-    backgroundColor: 'rgba(255, 83, 118, 0.15)',
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   levelBadgeText: {
-    color: '#FF5376',
+    color: Colors.primary,
     fontSize: 10,
     fontWeight: '800',
   },
   cardTarget: {
     fontSize: 12,
-    color: '#8A95A5',
+    color: Colors.textMuted,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -444,17 +447,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   noEquipText: {
-    color: '#00E676',
+    color: Colors.primary,
     fontSize: 11,
     fontWeight: '600',
   },
   durationText: {
-    color: '#A0AEC0',
+    color: Colors.textMuted,
     fontSize: 11,
     fontWeight: '600',
   },
   startExerciseBtn: {
-    backgroundColor: '#FF5376',
+    backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingVertical: 7,
     paddingHorizontal: 10,

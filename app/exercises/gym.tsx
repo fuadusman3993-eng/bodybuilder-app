@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  FlatList,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -66,7 +65,6 @@ export default function GymExercisesScreen() {
   };
 
   const handleStartExercise = (exercise: VaultExercise) => {
-    // Connect directly to the Interactive Exercise Player with Voice Coach
     router.push({
       pathname: '/exercise/[exerciseId]',
       params: {
@@ -86,13 +84,13 @@ export default function GymExercisesScreen() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>VITAL DATASET</Text>
+          <Text style={styles.liveText}>800+ EXERCISES</Text>
         </View>
       </View>
 
@@ -104,7 +102,7 @@ export default function GymExercisesScreen() {
         {/* Title Banner */}
         <View style={styles.heroSection}>
           <View style={styles.heroIconBox}>
-            <Ionicons name="barbell" size={28} color="#CCFF00" />
+            <Ionicons name="barbell" size={26} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroTitle}>Gym Exercises</Text>
@@ -123,7 +121,7 @@ export default function GymExercisesScreen() {
             <Ionicons
               name="flame"
               size={14}
-              color={genderFilter === 'all' ? '#000' : '#8A95A5'}
+              color={genderFilter === 'all' ? '#000000' : Colors.textMuted}
             />
             <Text
               style={[
@@ -142,7 +140,7 @@ export default function GymExercisesScreen() {
             <Ionicons
               name="man"
               size={14}
-              color={genderFilter === 'male' ? '#000' : '#8A95A5'}
+              color={genderFilter === 'male' ? '#000000' : Colors.textMuted}
             />
             <Text
               style={[
@@ -161,7 +159,7 @@ export default function GymExercisesScreen() {
             <Ionicons
               name="woman"
               size={14}
-              color={genderFilter === 'female' ? '#000' : '#8A95A5'}
+              color={genderFilter === 'female' ? '#000000' : Colors.textMuted}
             />
             <Text
               style={[
@@ -176,17 +174,17 @@ export default function GymExercisesScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchBarWrap}>
-          <Ionicons name="search" size={18} color="#717D90" />
+          <Ionicons name="search" size={18} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search exercise, muscle (e.g. Chest, Quads)..."
-            placeholderTextColor="#667085"
+            placeholderTextColor={Colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#717D90" />
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -228,7 +226,7 @@ export default function GymExercisesScreen() {
                     <Ionicons
                       name={isExpanded ? 'chevron-up' : 'chevron-down'}
                       size={18}
-                      color="#8A95A5"
+                      color={Colors.textMuted}
                     />
                   </View>
                 </TouchableOpacity>
@@ -238,7 +236,7 @@ export default function GymExercisesScreen() {
                   <View style={styles.accordionBody}>
                     {exercises.length === 0 ? (
                       <View style={styles.emptyExercises}>
-                        <Ionicons name="barbell-outline" size={28} color="#4A5568" />
+                        <Ionicons name="barbell-outline" size={28} color={Colors.textMuted} />
                         <Text style={styles.emptyExercisesText}>
                           {displayCount} exercises cataloged. Select an exercise to preview form & start.
                         </Text>
@@ -287,7 +285,7 @@ export default function GymExercisesScreen() {
                               activeOpacity={0.8}
                               onPress={() => handleStartExercise(item)}
                             >
-                              <Ionicons name="play" size={14} color="#000" />
+                              <Ionicons name="play" size={14} color="#000000" />
                               <Text style={styles.startExerciseBtnText}>
                                 Start with Voice Coach
                               </Text>
@@ -310,7 +308,7 @@ export default function GymExercisesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#070D18',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -319,42 +317,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: Colors.textPrimary,
+    fontSize: 13,
     fontWeight: '700',
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(204, 255, 0, 0.1)',
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(204, 255, 0, 0.3)',
+    borderColor: 'rgba(0, 230, 118, 0.25)',
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#CCFF00',
+    backgroundColor: Colors.primary,
   },
   liveText: {
-    color: '#CCFF00',
-    fontSize: 11,
+    color: Colors.primary,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -371,41 +372,43 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: 'rgba(204, 255, 0, 0.05)',
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(204, 255, 0, 0.15)',
+    borderColor: Colors.border,
   },
   heroIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: 'rgba(204, 255, 0, 0.15)',
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(204, 255, 0, 0.3)',
+    borderColor: 'rgba(0, 230, 118, 0.25)',
   },
   heroTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+    color: Colors.textPrimary,
+    letterSpacing: -0.4,
   },
   heroSub: {
     fontSize: 12,
-    color: '#8A95A5',
-    fontWeight: '600',
+    color: Colors.textMuted,
+    fontWeight: '500',
     marginTop: 2,
     lineHeight: 16,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.surface,
     padding: 4,
     borderRadius: 12,
     marginBottom: 14,
     gap: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   segmentBtn: {
     flex: 1,
@@ -413,14 +416,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   segmentBtnActive: {
-    backgroundColor: '#CCFF00',
+    backgroundColor: Colors.primary,
   },
   segmentBtnText: {
-    color: '#8A95A5',
+    color: Colors.textMuted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -432,28 +435,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 18,
+    borderColor: Colors.border,
+    marginBottom: 16,
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: Colors.textPrimary,
+    fontSize: 13,
     padding: 0,
   },
   accordionsWrap: {
     gap: 10,
   },
   accordionContainer: {
-    backgroundColor: '#0E1620',
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.border,
     overflow: 'hidden',
   },
   accordionHeader: {
@@ -465,8 +468,8 @@ const styles = StyleSheet.create({
   },
   accordionHeaderExpanded: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
   },
   accordionHeaderLeft: {
     flexDirection: 'row',
@@ -481,9 +484,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   accordionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
   },
   accordionHeaderRight: {
     flexDirection: 'row',
@@ -491,19 +494,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   countPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: Colors.surfaceLight,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   countPillText: {
-    color: '#A0AEC0',
-    fontSize: 12,
+    color: Colors.textMuted,
+    fontSize: 11,
     fontWeight: '700',
   },
   accordionBody: {
     padding: 12,
-    gap: 12,
+    gap: 10,
   },
   emptyExercises: {
     paddingVertical: 20,
@@ -511,25 +516,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyExercisesText: {
-    color: '#717D90',
-    fontSize: 13,
+    color: Colors.textMuted,
+    fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   exerciseCard: {
     flexDirection: 'row',
-    backgroundColor: '#131D2A',
+    backgroundColor: Colors.surfaceLight,
     borderRadius: 12,
     padding: 10,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: Colors.border,
   },
   cardThumb: {
-    width: 85,
-    height: 95,
+    width: 80,
+    height: 90,
     borderRadius: 8,
-    backgroundColor: '#070D18',
+    backgroundColor: Colors.background,
   },
   cardInfo: {
     flex: 1,
@@ -544,23 +549,23 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
     flex: 1,
   },
   levelBadge: {
-    backgroundColor: 'rgba(204, 255, 0, 0.15)',
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   levelBadgeText: {
-    color: '#CCFF00',
+    color: Colors.primary,
     fontSize: 10,
     fontWeight: '800',
   },
   cardTarget: {
     fontSize: 12,
-    color: '#8A95A5',
+    color: Colors.textMuted,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -578,18 +583,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   cardEquipPillText: {
-    color: '#CCD6E0',
+    color: Colors.textSecondary,
     fontSize: 10,
     fontWeight: '600',
   },
   repsText: {
-    color: '#00E676',
+    color: Colors.primary,
     fontSize: 11,
     fontWeight: '700',
     marginLeft: 'auto',
   },
   startExerciseBtn: {
-    backgroundColor: '#CCFF00',
+    backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingVertical: 7,
     paddingHorizontal: 10,
