@@ -114,6 +114,17 @@ export const CHALLENGES: Record<string, Challenge> = {
     heroImage: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80',
     days: generate30Days('build-muscle', 'Build Muscle'),
   },
+
+  // 8. HOME WORKOUT (Zero Equipment)
+  'home-workout': {
+    id: 'home-workout',
+    title: 'Home Workout - Zero Equipment',
+    level: 'Beginner',
+    description: 'Full-body home workout program with zero equipment needed. Shed fat and build functional strength.',
+    totalDays: 30,
+    heroImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+    days: generate30Days('home-workout', 'Home Workout'),
+  },
 };
 
 // Backward-compatibility alias

@@ -14,10 +14,13 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { useChallengeStore } from '../store/challengeStore';
 
-type FilterCategory = 'all' | 'arm' | 'abs' | 'chest' | 'legs' | 'shoulder-back' | 'full-body' | 'gym-vault' | 'home-vault';
+type MainTab = 'gym' | 'home';
+
+type GymFilter = 'all' | 'arm' | 'abs' | 'chest' | 'legs' | 'shoulder-back' | 'full-body' | 'gym-vault';
+type HomeFilter = 'all' | 'home-main' | 'yoga' | 'pilates' | 'office' | 'face' | 'women' | 'mobility' | 'home-vault';
 
 interface ProgramGroup {
-  id: FilterCategory;
+  id: string;
   name: string;
   icon: string;
   badge: string;
@@ -41,8 +44,8 @@ interface ProgramGroup {
   }>;
 }
 
-const PROGRAM_GROUPS: ProgramGroup[] = [
-  // 1. ARM WORKOUT ("ena arm yelena" - front and center!)
+// ── GYM 30-DAY PROGRAM GROUPS ──
+const GYM_PROGRAM_GROUPS: ProgramGroup[] = [
   {
     id: 'arm',
     name: 'Arm',
@@ -77,8 +80,6 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
       },
     ],
   },
-
-  // 2. BELLY FAT & ABS (Exact match to user's screenshot!)
   {
     id: 'abs',
     name: 'Abs & Core',
@@ -113,8 +114,6 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
       },
     ],
   },
-
-  // 3. CHEST WORKOUT
   {
     id: 'chest',
     name: 'Chest',
@@ -149,8 +148,6 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
       },
     ],
   },
-
-  // 4. LEGS & LOWER BODY
   {
     id: 'legs',
     name: 'Legs',
@@ -185,8 +182,6 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
       },
     ],
   },
-
-  // 5. SHOULDER & BACK
   {
     id: 'shoulder-back',
     name: 'Shoulder & Back',
@@ -221,8 +216,6 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
       },
     ],
   },
-
-  // 6. FULL BODY ATHLETIC
   {
     id: 'full-body',
     name: 'Full Body',
@@ -259,10 +252,258 @@ const PROGRAM_GROUPS: ProgramGroup[] = [
   },
 ];
 
+// ── HOME 30-DAY PROGRAM GROUPS ──
+const HOME_PROGRAM_GROUPS: ProgramGroup[] = [
+  {
+    id: 'home-main',
+    name: 'Home Workout (No Equipment)',
+    icon: 'home',
+    badge: 'ZERO EQUIPMENT',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Home Workout - Zero Equipment',
+      level: 'Beginner',
+      time: '10 min / day',
+      bolts: 2,
+      users: '7,850,000+',
+      description: 'Complete full-body home routines with zero equipment needed. Shed fat, tone muscle, and boost energy.',
+      image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Full Body Home Burn',
+        level: 'Intermediate',
+        time: '15 min / day',
+        bolts: 2,
+        icon: 'flame',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Home HIIT & Calisthenics',
+        level: 'Advanced',
+        time: '22 min / day',
+        bolts: 3,
+        icon: 'trophy',
+      },
+    ],
+  },
+  {
+    id: 'yoga',
+    name: 'Yoga & Flexibility',
+    icon: 'flower',
+    badge: 'MIND & BODY',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Daily Yoga Flow & Flexibility',
+      level: 'Beginner',
+      time: '15 min / day',
+      bolts: 1,
+      users: '3,410,000+',
+      description: 'Gentle spinal stretches, Downward Dog, and deep hip openers to relieve stiffness and improve flexibility.',
+      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Morning Energy Sun Flow',
+        level: 'Beginner',
+        time: '12 min / day',
+        bolts: 1,
+        icon: 'sunny',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Deep Hip & Back Release',
+        level: 'Intermediate',
+        time: '18 min / day',
+        bolts: 2,
+        icon: 'leaf',
+      },
+    ],
+  },
+  {
+    id: 'pilates',
+    name: 'Pilates Core Sculpt',
+    icon: 'fitness',
+    badge: 'CORE SCULPT',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Pilates Core & Posture',
+      level: 'Beginner',
+      time: '12 min / day',
+      bolts: 2,
+      users: '2,980,000+',
+      description: 'Classical mat pilates targeting deep transverse abdominals, The Hundred, and spine articulation.',
+      image: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Pilates The Hundred & Criss-Cross',
+        level: 'Intermediate',
+        time: '15 min / day',
+        bolts: 2,
+        icon: 'flame',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Power Pilates Waist Trimmer',
+        level: 'Advanced',
+        time: '20 min / day',
+        bolts: 3,
+        icon: 'trophy',
+      },
+    ],
+  },
+  {
+    id: 'office',
+    name: 'Office & Desk Routines',
+    icon: 'briefcase',
+    badge: 'QUICK RELIEF',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Desk Worker Posture Fix',
+      level: 'Beginner',
+      time: '6 min / day',
+      bolts: 1,
+      users: '4,150,000+',
+      description: 'Quick seated chair squats, torso twists, wrist stretches, and neck releases designed for busy work days.',
+      image: 'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Neck & Shoulder Tension Release',
+        level: 'Beginner',
+        time: '5 min / day',
+        bolts: 1,
+        icon: 'happy',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Standing Desk Calf & Core Energizer',
+        level: 'Beginner',
+        time: '8 min / day',
+        bolts: 1,
+        icon: 'walk',
+      },
+    ],
+  },
+  {
+    id: 'face',
+    name: 'Face Yoga & Sculpt',
+    icon: 'happy',
+    badge: 'ANTI-AGING',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Jawline Sculpt & Cheek Lifter',
+      level: 'Beginner',
+      time: '8 min / day',
+      bolts: 1,
+      users: '1,890,000+',
+      description: 'Natural facial exercises to chisel jawline, release forehead tension, tone cheeks, and firm swan neck.',
+      image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Swan Neck & Double Chin Eraser',
+        level: 'Beginner',
+        time: '7 min / day',
+        bolts: 1,
+        icon: 'sparkles',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Forehead & Eye Glow Revitalizer',
+        level: 'Beginner',
+        time: '6 min / day',
+        bolts: 1,
+        icon: 'eye',
+      },
+    ],
+  },
+  {
+    id: 'women',
+    name: 'Women Sculpt & Tone',
+    icon: 'woman',
+    badge: 'CURVE SCULPT',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Glutes & Waist Curve Sculpt',
+      level: 'Beginner',
+      time: '14 min / day',
+      bolts: 2,
+      users: '5,320,000+',
+      description: 'Targeted glute bridge pulses, donkey kicks, fire hydrants, and core bird-dog for sculpted curves.',
+      image: 'https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Booty Lift & Hamstring Burn',
+        level: 'Intermediate',
+        time: '16 min / day',
+        bolts: 2,
+        icon: 'flame',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Inner Thigh & Pelvic Tightener',
+        level: 'Intermediate',
+        time: '15 min / day',
+        bolts: 2,
+        icon: 'heart',
+      },
+    ],
+  },
+  {
+    id: 'mobility',
+    name: 'Mobility & Recovery',
+    icon: 'infinite',
+    badge: 'STRETCH & HEAL',
+    featured: {
+      goalId: 'home-workout',
+      title: 'Full Body Mobility & Joint Health',
+      level: 'Beginner',
+      time: '12 min / day',
+      bolts: 1,
+      users: '2,670,000+',
+      description: "Cat-Cow, World's Greatest Stretch, and 90/90 hip openers to restore joint range and eliminate soreness.",
+      image: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=800&q=80',
+    },
+    secondary: [
+      {
+        goalId: 'home-workout',
+        title: 'Primal Deep Squat Mobility',
+        level: 'Intermediate',
+        time: '10 min / day',
+        bolts: 2,
+        icon: 'barbell',
+      },
+      {
+        goalId: 'home-workout',
+        title: 'Spine & Thoracic Rotation Flow',
+        level: 'Beginner',
+        time: '10 min / day',
+        bolts: 1,
+        icon: 'refresh',
+      },
+    ],
+  },
+];
+
 export default function SelectTrainingPlanScreen() {
   const router = useRouter();
   const { setGoal, setLevel } = useChallengeStore();
-  const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('all');
+
+  // Top Master Switch: 'gym' or 'home'
+  const [activeTab, setActiveTab] = useState<MainTab>('gym');
+
+  // Sub-filters for Gym & Home
+  const [gymFilter, setGymFilter] = useState<GymFilter>('all');
+  const [homeFilter, setHomeFilter] = useState<HomeFilter>('all');
 
   const handleStartPlan = (goalId: string, levelName: string, directToDay1: boolean = false) => {
     setGoal(goalId);
@@ -281,18 +522,23 @@ export default function SelectTrainingPlanScreen() {
     }
   };
 
-  const filteredGroups = selectedFilter === 'all'
-    ? PROGRAM_GROUPS
-    : PROGRAM_GROUPS.filter((g) => g.id === selectedFilter);
+  // Filter groups depending on active tab & sub-filter
+  const currentGymGroups = gymFilter === 'all'
+    ? GYM_PROGRAM_GROUPS
+    : GYM_PROGRAM_GROUPS.filter((g) => g.id === gymFilter);
 
-  const showGymVault = selectedFilter === 'all' || selectedFilter === 'gym-vault';
-  const showHomeVault = selectedFilter === 'all' || selectedFilter === 'home-vault';
+  const currentHomeGroups = homeFilter === 'all'
+    ? HOME_PROGRAM_GROUPS
+    : HOME_PROGRAM_GROUPS.filter((g) => g.id === homeFilter);
+
+  const showGymVaultCard = activeTab === 'gym' && (gymFilter === 'all' || gymFilter === 'gym-vault');
+  const showHomeVaultCard = activeTab === 'home' && (homeFilter === 'all' || homeFilter === 'home-vault');
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* HEADER BAR (Matching User Screenshot) */}
+      {/* HEADER BAR: Back button + Title (HEART LOGO REMOVED AS REQUESTED) */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -302,101 +548,207 @@ export default function SelectTrainingPlanScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Training Hub & Vault</Text>
-          <Text style={styles.headerSubtitle}>Select a challenge or explore 800+ exercises</Text>
+          <Text style={styles.headerTitle}>Training Hub & Challenges</Text>
+          <Text style={styles.headerSubtitle}>Choose Gym or Home workouts and explore 800+ movements</Text>
         </View>
-        <View style={styles.headerRightBadge}>
-          <Ionicons name="fitness" size={20} color={Colors.primary} />
+        {/* Balanced spacer instead of heart icon */}
+        <View style={{ width: 40 }} />
+      </View>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* MASTER SEGMENTED SWITCH: [ 🏋️ Gym Workouts ] [ 🏠 Home Workouts ] */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <View style={styles.masterTabWrap}>
+        <View style={styles.masterTabContainer}>
+          <TouchableOpacity
+            style={[styles.masterTabBtn, activeTab === 'gym' && styles.masterTabBtnActive]}
+            activeOpacity={0.85}
+            onPress={() => setActiveTab('gym')}
+          >
+            <Text style={styles.masterTabEmoji}>🏋️</Text>
+            <Text style={[styles.masterTabText, activeTab === 'gym' && styles.masterTabTextActive]}>
+              Gym Workouts
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.masterTabBtn, activeTab === 'home' && styles.masterTabBtnActive]}
+            activeOpacity={0.85}
+            onPress={() => setActiveTab('home')}
+          >
+            <Text style={styles.masterTabEmoji}>🏠</Text>
+            <Text style={[styles.masterTabText, activeTab === 'home' && styles.masterTabTextActive]}>
+              Home Workouts
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* HORIZONTAL CATEGORY SELECTOR */}
+      {/* SUB-FILTER CHIPS BAR */}
       <View style={styles.filterBarContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('all')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>
-              🔥 All Programs
-            </Text>
-          </TouchableOpacity>
+          {activeTab === 'gym' ? (
+            <>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'all' && styles.filterChipActive]}
+                onPress={() => setGymFilter('all')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'all' && styles.filterChipTextActive]}>
+                  🔥 All Gym
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'arm' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('arm')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'arm' && styles.filterChipTextActive]}>
-              💪 Arm Workout
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'arm' && styles.filterChipActive]}
+                onPress={() => setGymFilter('arm')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'arm' && styles.filterChipTextActive]}>
+                  💪 Arm Workout
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'abs' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('abs')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'abs' && styles.filterChipTextActive]}>
-              🎯 Abs & Core
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'abs' && styles.filterChipActive]}
+                onPress={() => setGymFilter('abs')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'abs' && styles.filterChipTextActive]}>
+                  🎯 Abs & Core
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'chest' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('chest')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'chest' && styles.filterChipTextActive]}>
-              🛡️ Chest
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'chest' && styles.filterChipActive]}
+                onPress={() => setGymFilter('chest')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'chest' && styles.filterChipTextActive]}>
+                  🛡️ Chest
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'legs' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('legs')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'legs' && styles.filterChipTextActive]}>
-              🦵 Legs
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'legs' && styles.filterChipActive]}
+                onPress={() => setGymFilter('legs')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'legs' && styles.filterChipTextActive]}>
+                  🦵 Legs
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'shoulder-back' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('shoulder-back')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'shoulder-back' && styles.filterChipTextActive]}>
-              ⚡ Shoulder & Back
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'shoulder-back' && styles.filterChipActive]}
+                onPress={() => setGymFilter('shoulder-back')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'shoulder-back' && styles.filterChipTextActive]}>
+                  ⚡ Shoulder & Back
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'full-body' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('full-body')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'full-body' && styles.filterChipTextActive]}>
-              🔥 Full Body
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'full-body' && styles.filterChipActive]}
+                onPress={() => setGymFilter('full-body')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'full-body' && styles.filterChipTextActive]}>
+                  🔥 Full Body
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'gym-vault' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('gym-vault')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'gym-vault' && styles.filterChipTextActive]}>
-              🏋️ Gym Vault (800+)
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, gymFilter === 'gym-vault' && styles.filterChipActive]}
+                onPress={() => setGymFilter('gym-vault')}
+              >
+                <Text style={[styles.filterChipText, gymFilter === 'gym-vault' && styles.filterChipTextActive]}>
+                  🏋️ 800+ Gym Vault
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'all' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('all')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'all' && styles.filterChipTextActive]}>
+                  🔥 All Home
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.filterChip, selectedFilter === 'home-vault' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('home-vault')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'home-vault' && styles.filterChipTextActive]}>
-              🏠 Home Vault (800+)
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'home-main' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('home-main')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'home-main' && styles.filterChipTextActive]}>
+                  🏠 Zero Equipment
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'yoga' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('yoga')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'yoga' && styles.filterChipTextActive]}>
+                  🧘 Yoga & Stretch
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'pilates' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('pilates')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'pilates' && styles.filterChipTextActive]}>
+                  ⚡ Pilates Core
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'office' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('office')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'office' && styles.filterChipTextActive]}>
+                  💼 Office Workouts
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'face' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('face')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'face' && styles.filterChipTextActive]}>
+                  😊 Face Yoga
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'women' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('women')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'women' && styles.filterChipTextActive]}>
+                  💃 Women Sculpt
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'mobility' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('mobility')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'mobility' && styles.filterChipTextActive]}>
+                  ♾️ Mobility
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, homeFilter === 'home-vault' && styles.filterChipActive]}
+                onPress={() => setHomeFilter('home-vault')}
+              >
+                <Text style={[styles.filterChipText, homeFilter === 'home-vault' && styles.filterChipTextActive]}>
+                  🏠 800+ Home Vault
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </View>
 
@@ -405,201 +757,308 @@ export default function SelectTrainingPlanScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* TARGETED MUSCLE PROGRAM GROUPS (Matching User's Screenshot) */}
+        {/* GYM WORKOUTS CONTENT */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        {filteredGroups.map((group) => (
-          <View key={group.id} style={styles.groupContainer}>
-            {/* Section Header */}
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <View style={styles.sectionIconBadge}>
-                  <Ionicons name="calendar" size={16} color={Colors.primary} />
-                </View>
-                <Text style={styles.sectionTitle}>{group.name} 30-Day Programs</Text>
-              </View>
-              <Text style={styles.sectionBadge}>{group.badge}</Text>
-            </View>
-
-            {/* FEATURED CARD: Exact match to Screenshot (Athlete background + Start Day 1) */}
-            <View style={styles.featuredCard}>
-              <Image
-                source={{ uri: group.featured.image }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-              />
-
-              <View style={styles.featuredOverlay} />
-
-              {/* Top Right: Active Users Badge */}
-              <View style={styles.usersBadge}>
-                <Text style={styles.usersBadgeNumber}>{group.featured.users}</Text>
-                <Text style={styles.usersBadgeLabel}>Active Users</Text>
-              </View>
-
-              <View style={styles.featuredBody}>
-                <Text style={styles.featuredTitle}>{group.featured.title}</Text>
-
-                <View style={styles.levelRow}>
-                  <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
-                  {Array.from({ length: 3 }).map((_, idx) => (
-                    <Ionicons
-                      key={idx}
-                      name="flash"
-                      size={14}
-                      color={idx < group.featured.bolts ? Colors.primary : 'rgba(255,255,255,0.3)'}
-                    />
-                  ))}
-                  <Text style={styles.timeTagText}>• {group.featured.time}</Text>
-                </View>
-
-                <Text style={styles.featuredDesc}>{group.featured.description}</Text>
-
-                <TouchableOpacity
-                  style={styles.startDay1Btn}
-                  activeOpacity={0.9}
-                  onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
-                >
-                  <Text style={styles.startDay1Text}>Start Day 1  →</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* SECONDARY CARDS: Exact match to Rock Hard Abs & Six Pack Abs in Screenshot */}
-            {group.secondary.map((item, sIndex) => (
-              <TouchableOpacity
-                key={sIndex}
-                style={styles.challengeItemCard}
-                activeOpacity={0.85}
-                onPress={() => handleStartPlan(item.goalId, item.level, false)}
-              >
-                <View style={styles.challengeCardContent}>
-                  <View style={styles.challengeIconBox}>
-                    <Ionicons name={item.icon as any} size={22} color={Colors.primary} />
+        {activeTab === 'gym' && (
+          <>
+            {currentGymGroups.map((group) => (
+              <View key={group.id} style={styles.groupContainer}>
+                {/* Section Header */}
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <View style={styles.sectionIconBadge}>
+                      <Ionicons name="barbell" size={16} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.sectionTitle}>{group.name} 30-Day Programs</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.challengeTitle}>{item.title}</Text>
-                    <View style={styles.levelRowSmall}>
-                      <Text style={styles.challengeLevelText}>{item.level}</Text>
+                  <Text style={styles.sectionBadge}>{group.badge}</Text>
+                </View>
+
+                {/* FEATURED CARD */}
+                <View style={styles.featuredCard}>
+                  <Image
+                    source={{ uri: group.featured.image }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.featuredOverlay} />
+
+                  <View style={styles.usersBadge}>
+                    <Text style={styles.usersBadgeNumber}>{group.featured.users}</Text>
+                    <Text style={styles.usersBadgeLabel}>Active Users</Text>
+                  </View>
+
+                  <View style={styles.featuredBody}>
+                    <Text style={styles.featuredTitle}>{group.featured.title}</Text>
+
+                    <View style={styles.levelRow}>
+                      <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
                       {Array.from({ length: 3 }).map((_, idx) => (
                         <Ionicons
                           key={idx}
                           name="flash"
-                          size={12}
-                          color={idx < item.bolts ? Colors.primary : 'rgba(255,255,255,0.25)'}
+                          size={14}
+                          color={idx < group.featured.bolts ? Colors.primary : 'rgba(255,255,255,0.3)'}
                         />
                       ))}
-                      <Text style={styles.challengeTimeText}>• {item.time}</Text>
+                      <Text style={styles.timeTagText}>• {group.featured.time}</Text>
                     </View>
-                  </View>
-                  <View style={styles.circleChevron}>
-                    <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
 
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* NATIVE EXERCISE VAULT CARDS (FitPulse Style, Not Clunky Web) */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {(showGymVault || showHomeVault) && (
-          <View style={[styles.groupContainer, { marginTop: 10 }]}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <View style={styles.sectionIconBadge}>
-                  <Ionicons name="barbell" size={16} color={Colors.primary} />
+                    <Text style={styles.featuredDesc}>{group.featured.description}</Text>
+
+                    <TouchableOpacity
+                      style={styles.startDay1Btn}
+                      activeOpacity={0.9}
+                      onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
+                    >
+                      <Text style={styles.startDay1Text}>Start Day 1  →</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <Text style={styles.sectionTitle}>Exercise Vaults</Text>
+
+                {/* SECONDARY LIST CARDS */}
+                {group.secondary.map((item, sIndex) => (
+                  <TouchableOpacity
+                    key={sIndex}
+                    style={styles.challengeItemCard}
+                    activeOpacity={0.85}
+                    onPress={() => handleStartPlan(item.goalId, item.level, false)}
+                  >
+                    <View style={styles.challengeCardContent}>
+                      <View style={styles.challengeIconBox}>
+                        <Ionicons name={item.icon as any} size={22} color={Colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.challengeTitle}>{item.title}</Text>
+                        <View style={styles.levelRowSmall}>
+                          <Text style={styles.challengeLevelText}>{item.level}</Text>
+                          {Array.from({ length: 3 }).map((_, idx) => (
+                            <Ionicons
+                              key={idx}
+                              name="flash"
+                              size={12}
+                              color={idx < item.bolts ? Colors.primary : 'rgba(255,255,255,0.25)'}
+                            />
+                          ))}
+                          <Text style={styles.challengeTimeText}>• {item.time}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.circleChevron}>
+                        <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Text style={styles.sectionBadge}>800+ HD ANIMATIONS</Text>
-            </View>
+            ))}
 
             {/* GYM VAULT CARD */}
-            {showGymVault && (
-              <View style={styles.featuredCard}>
-                <Image
-                  source={{
-                    uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
-                  }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="cover"
-                />
-                <View style={styles.featuredOverlay} />
-
-                <View style={styles.usersBadge}>
-                  <Text style={styles.usersBadgeNumber}>800+ HD</Text>
-                  <Text style={styles.usersBadgeLabel}>Animations</Text>
+            {showGymVaultCard && (
+              <View style={[styles.groupContainer, { marginTop: 10 }]}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <View style={styles.sectionIconBadge}>
+                      <Ionicons name="library" size={16} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.sectionTitle}>Gym Exercises Vault</Text>
+                  </View>
+                  <Text style={styles.sectionBadge}>800+ HD MOVEMENTS</Text>
                 </View>
 
-                <View style={styles.featuredBody}>
-                  <Text style={styles.featuredTitle}>Gym Exercises Vault</Text>
+                <View style={styles.featuredCard}>
+                  <Image
+                    source={{
+                      uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+                    }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.featuredOverlay} />
 
-                  <View style={styles.levelRow}>
-                    <Text style={styles.featuredLevelText}>Male (592) & Female (305)</Text>
-                    <Ionicons name="flash" size={14} color={Colors.primary} />
-                    <Ionicons name="flash" size={14} color={Colors.primary} />
-                    <Ionicons name="flash" size={14} color={Colors.primary} />
-                    <Text style={styles.timeTagText}>• 8 Body Parts</Text>
+                  <View style={styles.usersBadge}>
+                    <Text style={styles.usersBadgeNumber}>800+ HD</Text>
+                    <Text style={styles.usersBadgeLabel}>Animations</Text>
                   </View>
 
-                  <Text style={styles.featuredDesc}>
-                    Complete gym exercise catalog — Barbell, Dumbbell, Cable, Machine & Bodyweight movements with animated form preview and voice coach.
-                  </Text>
+                  <View style={styles.featuredBody}>
+                    <Text style={styles.featuredTitle}>Gym Exercises Vault</Text>
 
-                  <TouchableOpacity
-                    style={styles.startDay1Btn}
-                    activeOpacity={0.9}
-                    onPress={() => router.push('/exercises/gym')}
-                  >
-                    <Text style={styles.startDay1Text}>Browse Gym Exercises  →</Text>
-                  </TouchableOpacity>
+                    <View style={styles.levelRow}>
+                      <Text style={styles.featuredLevelText}>Male (592) & Female (305)</Text>
+                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <Text style={styles.timeTagText}>• 8 Body Parts</Text>
+                    </View>
+
+                    <Text style={styles.featuredDesc}>
+                      Explore full gym movement catalog: Barbell, Dumbbell, Cable, and Machines with HD animated preview, rep counts, and voice coaching.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={styles.startDay1Btn}
+                      activeOpacity={0.9}
+                      onPress={() => router.push('/exercises/gym')}
+                    >
+                      <Text style={styles.startDay1Text}>Browse Gym Exercises Vault  →</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
+          </>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* HOME WORKOUTS CONTENT */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {activeTab === 'home' && (
+          <>
+            {currentHomeGroups.map((group) => (
+              <View key={group.id} style={styles.groupContainer}>
+                {/* Section Header */}
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <View style={styles.sectionIconBadge}>
+                      <Ionicons name={group.icon as any} size={16} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.sectionTitle}>{group.name}</Text>
+                  </View>
+                  <Text style={styles.sectionBadge}>{group.badge}</Text>
+                </View>
+
+                {/* FEATURED HOME CARD */}
+                <View style={styles.featuredCard}>
+                  <Image
+                    source={{ uri: group.featured.image }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.featuredOverlay} />
+
+                  <View style={styles.usersBadge}>
+                    <Text style={styles.usersBadgeNumber}>{group.featured.users}</Text>
+                    <Text style={styles.usersBadgeLabel}>Active Users</Text>
+                  </View>
+
+                  <View style={styles.featuredBody}>
+                    <Text style={styles.featuredTitle}>{group.featured.title}</Text>
+
+                    <View style={styles.levelRow}>
+                      <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
+                      {Array.from({ length: 3 }).map((_, idx) => (
+                        <Ionicons
+                          key={idx}
+                          name="flash"
+                          size={14}
+                          color={idx < group.featured.bolts ? Colors.primary : 'rgba(255,255,255,0.3)'}
+                        />
+                      ))}
+                      <Text style={styles.timeTagText}>• {group.featured.time}</Text>
+                    </View>
+
+                    <Text style={styles.featuredDesc}>{group.featured.description}</Text>
+
+                    <TouchableOpacity
+                      style={styles.startDay1Btn}
+                      activeOpacity={0.9}
+                      onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
+                    >
+                      <Text style={styles.startDay1Text}>Start Day 1  →</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* SECONDARY LIST CARDS */}
+                {group.secondary.map((item, sIndex) => (
+                  <TouchableOpacity
+                    key={sIndex}
+                    style={styles.challengeItemCard}
+                    activeOpacity={0.85}
+                    onPress={() => handleStartPlan(item.goalId, item.level, false)}
+                  >
+                    <View style={styles.challengeCardContent}>
+                      <View style={styles.challengeIconBox}>
+                        <Ionicons name={item.icon as any} size={22} color={Colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.challengeTitle}>{item.title}</Text>
+                        <View style={styles.levelRowSmall}>
+                          <Text style={styles.challengeLevelText}>{item.level}</Text>
+                          {Array.from({ length: 3 }).map((_, idx) => (
+                            <Ionicons
+                              key={idx}
+                              name="flash"
+                              size={12}
+                              color={idx < item.bolts ? Colors.primary : 'rgba(255,255,255,0.25)'}
+                            />
+                          ))}
+                          <Text style={styles.challengeTimeText}>• {item.time}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.circleChevron}>
+                        <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
 
             {/* HOME VAULT CARD */}
-            {showHomeVault && (
-              <View style={styles.featuredCard}>
-                <Image
-                  source={{
-                    uri: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
-                  }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="cover"
-                />
-                <View style={styles.featuredOverlay} />
-
-                <View style={styles.usersBadge}>
-                  <Text style={styles.usersBadgeNumber}>NO EQUIPMENT</Text>
-                  <Text style={styles.usersBadgeLabel}>800+ Workouts</Text>
+            {showHomeVaultCard && (
+              <View style={[styles.groupContainer, { marginTop: 10 }]}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <View style={styles.sectionIconBadge}>
+                      <Ionicons name="home" size={16} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.sectionTitle}>Home Workouts Vault</Text>
+                  </View>
+                  <Text style={styles.sectionBadge}>ZERO EQUIPMENT</Text>
                 </View>
 
-                <View style={styles.featuredBody}>
-                  <Text style={styles.featuredTitle}>Home Workouts Vault</Text>
+                <View style={styles.featuredCard}>
+                  <Image
+                    source={{
+                      uri: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+                    }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.featuredOverlay} />
 
-                  <View style={styles.levelRow}>
-                    <Text style={styles.featuredLevelText}>Zero Equipment</Text>
-                    <Ionicons name="flash" size={14} color={Colors.primary} />
-                    <Ionicons name="flash" size={14} color={Colors.primary} />
-                    <Text style={styles.timeTagText}>• 7 Categories • 16+ Routines</Text>
+                  <View style={styles.usersBadge}>
+                    <Text style={styles.usersBadgeNumber}>NO EQUIPMENT</Text>
+                    <Text style={styles.usersBadgeLabel}>800+ Workouts</Text>
                   </View>
 
-                  <Text style={styles.featuredDesc}>
-                    Equipment-free routines for office breaks, yoga & flexibility, pilates core, mobility stretches, face yoga, and women routines.
-                  </Text>
+                  <View style={styles.featuredBody}>
+                    <Text style={styles.featuredTitle}>Home Workouts Vault</Text>
 
-                  <TouchableOpacity
-                    style={styles.startDay1Btn}
-                    activeOpacity={0.9}
-                    onPress={() => router.push('/exercises/home')}
-                  >
-                    <Text style={styles.startDay1Text}>Browse Home Workouts  →</Text>
-                  </TouchableOpacity>
+                    <View style={styles.levelRow}>
+                      <Text style={styles.featuredLevelText}>Zero Equipment</Text>
+                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <Text style={styles.timeTagText}>• 7 Categories • 16+ Routines</Text>
+                    </View>
+
+                    <Text style={styles.featuredDesc}>
+                      Equipment-free routines for office breaks, yoga & flexibility, pilates core, mobility stretches, face yoga, and women routines.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={styles.startDay1Btn}
+                      activeOpacity={0.9}
+                      onPress={() => router.push('/exercises/home')}
+                    >
+                      <Text style={styles.startDay1Text}>Browse Home Workouts Vault  →</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
-          </View>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -614,6 +1073,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -627,10 +1087,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   headerTitleWrap: {
     flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
     fontSize: 18,
@@ -639,17 +1099,49 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textMuted,
     marginTop: 2,
   },
-  headerRightBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 230, 118, 0.1)',
+
+  // MASTER TAB SWITCH (Gym vs Home)
+  masterTabWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+    backgroundColor: Colors.background,
+  },
+  masterTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  masterTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 10,
+  },
+  masterTabBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+  masterTabEmoji: {
+    fontSize: 16,
+  },
+  masterTabText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  masterTabTextActive: {
+    color: '#000000',
+    fontWeight: '900',
   },
 
   // FILTER BAR
@@ -817,7 +1309,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // SECONDARY LIST CARDS: Exactly as in Rock Hard Abs / Six Pack Abs
+  // SECONDARY LIST CARDS
   challengeItemCard: {
     backgroundColor: Colors.surface,
     borderRadius: 16,

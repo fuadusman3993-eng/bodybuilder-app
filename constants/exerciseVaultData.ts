@@ -3,7 +3,8 @@ export interface VaultExercise {
   name: string;
   category: 'gym' | 'home';
   gender: 'male' | 'female' | 'unisex';
-  bodyPart: 'Abs' | 'Arms' | 'Back' | 'Chest' | 'Cardio' | 'Legs' | 'Shoulders' | 'Bodyweight' | 'Yoga' | 'Mobility' | 'Office' | 'Face';
+  bodyPart: string;
+  homeCategory?: 'home' | 'office' | 'yoga' | 'pilates' | 'face' | 'women' | 'mobility';
   equipment: string[];
   animationUrl: string;
   defaultReps?: number;
@@ -263,12 +264,14 @@ export const VAULT_EXERCISES: VaultExercise[] = [
   },
 
   // ── HOME WORKOUTS (NO EQUIPMENT) ──
+  // 1. Home Workouts (Full Body Bodyweight)
   {
     id: 'bodyweight-pushups',
     name: 'Standard Push-Ups',
     category: 'home',
     gender: 'unisex',
     bodyPart: 'Bodyweight',
+    homeCategory: 'home',
     equipment: ['Bodyweight'],
     animationUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=600&q=80',
     defaultReps: 15,
@@ -288,6 +291,7 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     category: 'home',
     gender: 'unisex',
     bodyPart: 'Abs',
+    homeCategory: 'home',
     equipment: ['Bodyweight'],
     animationUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=600&q=80',
     defaultDurationSeconds: 45,
@@ -300,11 +304,69 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     targetMuscle: 'Core & Transverse Abdominis'
   },
   {
+    id: 'bodyweight-air-squats',
+    name: 'Bodyweight Air Squats',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Legs',
+    homeCategory: 'home',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80',
+    defaultReps: 20,
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Stand with feet shoulder-width apart, toes slightly turned out.',
+      'Hinge hips back and bend knees until thighs are parallel to the floor.',
+      'Keep chest tall and drive through heels to return to standing.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Quadriceps, Glutes & Hamstrings'
+  },
+  {
+    id: 'jumping-jacks-cardio',
+    name: 'Jumping Jacks Burner',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Cardio',
+    homeCategory: 'home',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?w=600&q=80',
+    defaultDurationSeconds: 30,
+    instructions: [
+      'Stand tall with feet together and hands by your side.',
+      'Jump feet outward while raising arms overhead.',
+      'Return quickly in a rhythmic tempo to elevate heart rate.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Cardiovascular & Full Body'
+  },
+  {
+    id: 'mountain-climbers-home',
+    name: 'Mountain Climbers',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Abs',
+    homeCategory: 'home',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=600&q=80',
+    defaultDurationSeconds: 30,
+    instructions: [
+      'Start in a high push-up plank position with wrists beneath shoulders.',
+      'Drive one knee toward your chest quickly, then alternate smoothly.',
+      'Keep hips level and engage your lower abdominals.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Lower Core & Cardio'
+  },
+
+  // 2. Office Workouts (Desk & Chair)
+  {
     id: 'office-desk-chair-squats',
     name: 'Desk Chair Box Squats',
     category: 'home',
     gender: 'unisex',
     bodyPart: 'Office',
+    homeCategory: 'office',
     equipment: ['Chair'],
     animationUrl: 'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=600&q=80',
     defaultReps: 20,
@@ -318,11 +380,89 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     targetMuscle: 'Quads & Glutes'
   },
   {
+    id: 'office-seated-torso-twist',
+    name: 'Seated Desk Torso Twist',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Office',
+    homeCategory: 'office',
+    equipment: ['Chair'],
+    animationUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80',
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Sit tall in your desk chair with feet flat on the floor.',
+      'Place your right hand on the left armrest or chair back.',
+      'Gently rotate your torso to the left, gazing over your shoulder.',
+      'Hold for 20 seconds, then repeat on the opposite side.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Spinal Mobility & Obliques'
+  },
+  {
+    id: 'office-wrist-flexor-stretch',
+    name: 'Desk Wrist & Forearm Release',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Office',
+    homeCategory: 'office',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&q=80',
+    defaultDurationSeconds: 30,
+    instructions: [
+      'Extend right arm in front of you with palm facing out and fingers pointed down.',
+      'Gently pull back on fingers with your left hand to stretch the forearm.',
+      'Relieves keyboard and typing strain.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Forearm Flexors & Wrists'
+  },
+  {
+    id: 'office-seated-neck-rolls',
+    name: 'Seated Neck & Trapezius Relief',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Office',
+    homeCategory: 'office',
+    equipment: ['Chair'],
+    animationUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80',
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Sit tall with shoulders relaxed and dropped down from ears.',
+      'Slowly tilt your right ear toward your right shoulder.',
+      'Roll chin toward chest, then tilt left ear to left shoulder.',
+      'Breathe deeply to release monitor-induced tension.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Upper Trapezius & Cervical Spine'
+  },
+  {
+    id: 'office-standing-calf-raises',
+    name: 'Standing Desk Calf Raises',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Office',
+    homeCategory: 'office',
+    equipment: ['Desk'],
+    animationUrl: 'https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=600&q=80',
+    defaultReps: 25,
+    defaultDurationSeconds: 30,
+    instructions: [
+      'Stand behind your desk chair with light finger support.',
+      'Rise up high onto the balls of your feet, squeezing calves at top.',
+      'Lower slowly until heels lightly touch floor, boosting blood circulation.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Gastrocnemius & Soleus'
+  },
+
+  // 3. Yoga & Flexibility
+  {
     id: 'yoga-downward-dog',
     name: 'Downward-Facing Dog (Adho Mukha)',
     category: 'home',
     gender: 'unisex',
     bodyPart: 'Yoga',
+    homeCategory: 'yoga',
     equipment: ['Yoga Mat'],
     animationUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80',
     defaultDurationSeconds: 60,
@@ -335,11 +475,68 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     targetMuscle: 'Hamstrings, Calves & Spine'
   },
   {
+    id: 'yoga-cobra-stretch',
+    name: 'Cobra Pose (Bhujangasana)',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Yoga',
+    homeCategory: 'yoga',
+    equipment: ['Yoga Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80',
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Lie face down on the mat with hands under shoulders.',
+      'Press tops of feet into mat, draw elbows into sides.',
+      'Gently lift chest off the mat by engaging back muscles and pressing lightly with hands.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Spine Extensors & Chest Opener'
+  },
+  {
+    id: 'yoga-childs-pose',
+    name: "Child's Pose (Balasana)",
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Yoga',
+    homeCategory: 'yoga',
+    equipment: ['Yoga Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&q=80',
+    defaultDurationSeconds: 60,
+    instructions: [
+      'Kneel on the floor with big toes touching and knees spread wide.',
+      'Sit back on your heels, fold forward, and rest forehead on the mat.',
+      'Extend arms out long in front of you and breathe deeply into your back.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Lower Back, Hips & Shoulders'
+  },
+  {
+    id: 'yoga-warrior-two',
+    name: 'Warrior II (Virabhadrasana II)',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Yoga',
+    homeCategory: 'yoga',
+    equipment: ['Yoga Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80',
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Step feet wide apart, turn front foot forward 90 degrees and back foot slightly in.',
+      'Bend front knee to 90 degrees while keeping back leg straight.',
+      'Extend arms parallel to the floor, gazing proudly over front fingertips.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Quads, Hips & Core Stability'
+  },
+
+  // 4. Pilates Core
+  {
     id: 'pilates-hundred',
     name: 'Pilates The Hundred',
     category: 'home',
-    gender: 'female',
-    bodyPart: 'Bodyweight',
+    gender: 'unisex',
+    bodyPart: 'Pilates',
+    homeCategory: 'pilates',
     equipment: ['Mat'],
     animationUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&q=80',
     defaultDurationSeconds: 50,
@@ -352,11 +549,222 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     targetMuscle: 'Deep Abdominals & Core Endurance'
   },
   {
+    id: 'pilates-scissors-kick',
+    name: 'Pilates Scissor Kicks',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Pilates',
+    homeCategory: 'pilates',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=600&q=80',
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Lie supine, lift head and shoulders, extend one leg toward ceiling and hold ankle.',
+      'Hover opposite leg a few inches off the floor.',
+      'Pulse the top leg gently twice, then switch legs in a scissor motion.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Lower Rectus Abdominis & Hamstrings'
+  },
+  {
+    id: 'pilates-roll-up',
+    name: 'Pilates Roll-Up',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Pilates',
+    homeCategory: 'pilates',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&q=80',
+    defaultReps: 10,
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Lie flat on back with legs together and arms extended overhead.',
+      'Inhale as you bring arms forward, exhale as you articulate spine off mat vertebra by vertebra.',
+      'Reach over toes, then articulate spine slowly back down.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Transverse Abdominis & Spine Articulation'
+  },
+  {
+    id: 'pilates-criss-cross',
+    name: 'Pilates Criss-Cross Obliques',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Pilates',
+    homeCategory: 'pilates',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80',
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Lie on back with hands behind head and knees in tabletop position.',
+      'Lift head and curl opposite shoulder toward opposite knee while extending other leg.',
+      'Rotate with control without pulling on your neck.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Internal & External Obliques'
+  },
+
+  // 5. Face Yoga
+  {
+    id: 'face-jawline-sculpt',
+    name: 'Jawline Sculpt & Chisel',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Face',
+    homeCategory: 'face',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80',
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Tilt your head back slightly and look toward the ceiling.',
+      'Press your tongue firmly against the roof of your mouth.',
+      'Smile and swallow while keeping tongue pressed up to tone submental jawline muscles.',
+      'Hold for 5 seconds and repeat 8 times.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Platysma & Jawline Contour'
+  },
+  {
+    id: 'face-cheek-lifter',
+    name: 'Cheek Plumping Lifter',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Face',
+    homeCategory: 'face',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&q=80',
+    defaultDurationSeconds: 35,
+    instructions: [
+      'Form an "O" shape with your mouth, hiding your teeth with your lips.',
+      'Smile wide with the corners of your mouth while keeping lips covering teeth.',
+      'Place index fingers lightly on cheeks and visualize muscles lifting toward temples.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Zygomaticus Major & Cheek Apples'
+  },
+  {
+    id: 'face-forehead-smoother',
+    name: 'Forehead Tension Release',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Face',
+    homeCategory: 'face',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80',
+    defaultDurationSeconds: 30,
+    instructions: [
+      'Make fists with both hands and place knuckles of middle fingers in center of forehead.',
+      'Apply gentle pressure and slide knuckles outward toward hairline and temples.',
+      'Releases frown lines and promotes lymphatic drainage.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Frontalis Muscle & Temple Release'
+  },
+  {
+    id: 'face-swan-neck-firming',
+    name: 'Swan Neck Firming Flow',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Face',
+    homeCategory: 'face',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=600&q=80',
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Turn your head 45 degrees to the right and look up diagonally.',
+      'Pout lips slightly and hold for 5 seconds feeling stretch along left side of neck.',
+      'Return to center and repeat on left side.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Platysma & Sternocleidomastoid'
+  },
+
+  // 6. Women Routines
+  {
+    id: 'women-glute-bridge-pulse',
+    name: 'Glute Bridge Isometric Pulse',
+    category: 'home',
+    gender: 'female',
+    bodyPart: 'Women',
+    homeCategory: 'women',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80',
+    defaultReps: 20,
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Lie on back with knees bent and feet flat, hip-width apart.',
+      'Drive through heels to lift hips until thighs and torso align.',
+      'Squeeze glutes at top and perform micro-pulses for 20 seconds before lowering.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Gluteus Maximus & Hamstrings'
+  },
+  {
+    id: 'women-donkey-kicks',
+    name: 'Donkey Kicks Glute Lift',
+    category: 'home',
+    gender: 'female',
+    bodyPart: 'Women',
+    homeCategory: 'women',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1434608519344-49d77a699e1d?w=600&q=80',
+    defaultReps: 15,
+    defaultDurationSeconds: 40,
+    instructions: [
+      'Start on all fours with hands under shoulders and knees under hips.',
+      'Keep knee bent at 90 degrees, kick right foot upward toward ceiling.',
+      'Squeeze glute at top without arching lower back, then lower with control.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Gluteus Maximus & Core'
+  },
+  {
+    id: 'women-fire-hydrant',
+    name: 'Fire Hydrant Outer Thigh Sculpt',
+    category: 'home',
+    gender: 'female',
+    bodyPart: 'Women',
+    homeCategory: 'women',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&q=80',
+    defaultReps: 15,
+    defaultDurationSeconds: 40,
+    instructions: [
+      'On all fours, lift your right knee out to the side keeping knee at 90 degrees.',
+      'Pause at hip height and lower slowly.',
+      'Targets side glutes and tones hip contour.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Gluteus Medius & Tensor Fasciae Latae'
+  },
+  {
+    id: 'women-bird-dog-core',
+    name: 'Core Stability Bird-Dog',
+    category: 'home',
+    gender: 'female',
+    bodyPart: 'Women',
+    homeCategory: 'women',
+    equipment: ['Mat'],
+    animationUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80',
+    defaultReps: 16,
+    defaultDurationSeconds: 45,
+    instructions: [
+      'On hands and knees, reach right arm forward and kick left leg straight back.',
+      'Hold parallel to floor for 2 seconds while bracing abdominal wall.',
+      'Lower and repeat on opposite side with smooth posture control.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Erector Spinae, Glutes & Deep Core'
+  },
+
+  // 7. Mobility & Stretch
+  {
     id: 'mobility-cat-cow',
     name: 'Cat-Cow Spinal Mobility',
     category: 'home',
     gender: 'unisex',
     bodyPart: 'Mobility',
+    homeCategory: 'mobility',
     equipment: ['Bodyweight'],
     animationUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80',
     defaultDurationSeconds: 60,
@@ -367,5 +775,59 @@ export const VAULT_EXERCISES: VaultExercise[] = [
     ],
     level: 'Beginner',
     targetMuscle: 'Spine, Neck & Core Mobility'
+  },
+  {
+    id: 'mobility-worlds-greatest-stretch',
+    name: "World's Greatest Stretch",
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Mobility',
+    homeCategory: 'mobility',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80',
+    defaultDurationSeconds: 50,
+    instructions: [
+      'Step into a deep forward lunge with both hands inside front foot.',
+      'Rotate your torso and reach inside arm up toward ceiling, opening chest.',
+      'Return hand down, push hips back to stretch front hamstring, and switch sides.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Thoracic Spine, Hip Flexors & Hamstrings'
+  },
+  {
+    id: 'mobility-deep-squat-hold',
+    name: 'Primal Deep Squat Hold',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Mobility',
+    homeCategory: 'mobility',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=600&q=80',
+    defaultDurationSeconds: 45,
+    instructions: [
+      'Stand feet shoulder-width, lower all the way down into a deep resting squat.',
+      'Press elbows against inside of knees, palms together at heart center.',
+      'Keep chest tall and heels flat on floor to restore ankle and hip mobility.'
+    ],
+    level: 'Beginner',
+    targetMuscle: 'Ankle Dorsiflexion, Hips & Lower Back'
+  },
+  {
+    id: 'mobility-hip-90-90',
+    name: '90/90 Hip Opener Flow',
+    category: 'home',
+    gender: 'unisex',
+    bodyPart: 'Mobility',
+    homeCategory: 'mobility',
+    equipment: ['Bodyweight'],
+    animationUrl: 'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=600&q=80',
+    defaultDurationSeconds: 50,
+    instructions: [
+      'Sit on floor with front leg bent at 90 degrees and back leg bent at 90 degrees.',
+      'Square shoulders toward front shin and hinge forward with tall spine.',
+      'Switch sides fluidly to improve internal and external hip rotation.'
+    ],
+    level: 'Intermediate',
+    targetMuscle: 'Hip Capsule, Piriformis & Glutes'
   }
 ];

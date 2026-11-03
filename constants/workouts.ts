@@ -172,6 +172,50 @@ export const WORKOUTS: Record<string, Workout> = {
     ],
   },
 
+  // ─── HOME WORKOUTS (Zero Equipment) ───
+  'wk-home-1': {
+    id: 'wk-home-1',
+    title: 'Zero Equipment Full Body - Day 1',
+    duration: '15 min',
+    estimatedCalories: 180,
+    exercises: [
+      { exerciseId: 'jumping-jacks-cardio', sets: 2, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
+      { exerciseId: 'bodyweight-pushups', sets: 3, reps: 12, durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'bodyweight-air-squats', sets: 3, reps: 15, durationSeconds: 35, restSeconds: 20 },
+      { exerciseId: 'home-plank-hold', sets: 2, reps: '00:45', durationSeconds: 45, restSeconds: 20 },
+      { exerciseId: 'mountain-climbers-home', sets: 2, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
+      { exerciseId: 'yoga-cobra-stretch', sets: 2, reps: '00:30', durationSeconds: 30, restSeconds: 0 },
+    ],
+  },
+  'wk-home-2': {
+    id: 'wk-home-2',
+    title: 'Home Core & Tone - Day 2',
+    duration: '16 min',
+    estimatedCalories: 195,
+    exercises: [
+      { exerciseId: 'jumping-jacks-cardio', sets: 2, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
+      { exerciseId: 'pilates-hundred', sets: 2, reps: '00:45', durationSeconds: 45, restSeconds: 20 },
+      { exerciseId: 'women-glute-bridge-pulse', sets: 3, reps: 15, durationSeconds: 35, restSeconds: 20 },
+      { exerciseId: 'bodyweight-pushups', sets: 3, reps: 14, durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'pilates-criss-cross', sets: 2, reps: '00:40', durationSeconds: 40, restSeconds: 15 },
+      { exerciseId: 'mobility-cat-cow', sets: 2, reps: '00:45', durationSeconds: 45, restSeconds: 0 },
+    ],
+  },
+  'wk-home-3': {
+    id: 'wk-home-3',
+    title: 'Home HIIT & Stamina - Day 3',
+    duration: '18 min',
+    estimatedCalories: 220,
+    exercises: [
+      { exerciseId: 'jumping-jacks-cardio', sets: 3, reps: '00:30', durationSeconds: 30, restSeconds: 15 },
+      { exerciseId: 'bodyweight-air-squats', sets: 3, reps: 18, durationSeconds: 35, restSeconds: 20 },
+      { exerciseId: 'mountain-climbers-home', sets: 3, reps: '00:30', durationSeconds: 30, restSeconds: 20 },
+      { exerciseId: 'bodyweight-pushups', sets: 3, reps: 15, durationSeconds: 35, restSeconds: 20 },
+      { exerciseId: 'home-plank-hold', sets: 2, reps: '00:50', durationSeconds: 50, restSeconds: 20 },
+      { exerciseId: 'yoga-downward-dog', sets: 2, reps: '00:45', durationSeconds: 45, restSeconds: 0 },
+    ],
+  },
+
   // ─── MUSCLE HYPERTROPHY (Existing) ───
   'wk-muscle-upper': {
     id: 'wk-muscle-upper',
@@ -243,7 +287,15 @@ export function getWorkoutForDay(goal: string, day: number): Workout | null {
     return day % 2 === 1 ? WORKOUTS['wk-muscle-upper'] : WORKOUTS['wk-muscle-lower'];
   }
 
-  // 7. DEFAULT: LOSE BELLY FAT
+  // 7. HOME WORKOUT
+  if (goal === 'home-workout') {
+    const cycle = day % 3;
+    if (cycle === 1) return WORKOUTS['wk-home-1'];
+    if (cycle === 2) return WORKOUTS['wk-home-2'];
+    return WORKOUTS['wk-home-3'];
+  }
+
+  // 8. DEFAULT: LOSE BELLY FAT
   const cycleIndex = day % 3;
   if (cycleIndex === 1) return WORKOUTS['wk-belly-1'];
   if (cycleIndex === 2) return WORKOUTS['wk-belly-2'];

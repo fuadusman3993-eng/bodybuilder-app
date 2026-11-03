@@ -27,12 +27,11 @@ export default function HomeWorkoutsScreen() {
     return VAULT_EXERCISES.filter((ex) => {
       if (ex.category !== 'home') return false;
       if (selectedCategory !== 'all') {
-        const catObj = HOME_CATEGORIES.find((c) => c.id === selectedCategory);
-        if (
-          catObj &&
-          ex.bodyPart.toLowerCase() !== catObj.name.toLowerCase() &&
-          !catObj.name.toLowerCase().includes(ex.bodyPart.toLowerCase())
-        ) {
+        const matchesCat =
+          ex.homeCategory === selectedCategory ||
+          ex.bodyPart.toLowerCase() === selectedCategory.toLowerCase() ||
+          (selectedCategory === 'home' && (ex.homeCategory === 'home' || ex.bodyPart.toLowerCase() === 'bodyweight' || ex.bodyPart.toLowerCase() === 'abs'));
+        if (!matchesCat) {
           return false;
         }
       }
