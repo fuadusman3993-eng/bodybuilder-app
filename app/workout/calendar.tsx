@@ -79,7 +79,7 @@ export default function WorkoutCalendarScreen() {
             <View style={styles.heroImageWrapper}>
               <Image
                 source={{
-                  uri: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',
+                  uri: challenge.heroImage || 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',
                 }}
                 style={styles.heroAthleteImage}
                 resizeMode="cover"

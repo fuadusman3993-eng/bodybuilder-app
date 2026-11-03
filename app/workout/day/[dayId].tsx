@@ -14,6 +14,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useChallengeStore } from '../../../store/challengeStore';
 import { getWorkoutForDay } from '../../../constants/workouts';
 import { EXERCISES } from '../../../constants/exercises';
+import { VAULT_EXERCISES } from '../../../constants/exerciseVaultData';
+import { CHALLENGES } from '../../../constants/challenges';
 import { Colors } from '../../../constants/colors';
 import { Image as ExpoImage } from 'expo-image';
 import { getExerciseAnimation } from '../../../constants/exerciseAnimations';
@@ -24,6 +26,7 @@ export default function DayWorkoutPreviewScreen() {
   const dayNumber = parseInt((dayId as string) || '1', 10);
 
   const { activeGoal, level, completedDays } = useChallengeStore();
+  const challenge = CHALLENGES[activeGoal] || CHALLENGES['lose-belly-fat'];
   const workout = getWorkoutForDay(activeGoal, dayNumber);
   const isCompleted = completedDays.includes(dayNumber);
 
@@ -98,7 +101,7 @@ export default function DayWorkoutPreviewScreen() {
             <View style={styles.heroThumbWrapper}>
               <Image
                 source={{
-                  uri: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',
+                  uri: challenge.heroImage || 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',
                 }}
                 style={styles.heroThumb}
                 resizeMode="cover"
@@ -162,17 +165,23 @@ export default function DayWorkoutPreviewScreen() {
           contentContainerStyle={styles.exerciseScroll}
         >
           {workout.exercises.map((item, index) => {
-            const exData = EXERCISES[item.exerciseId] || {
+            const vaultMatch = VAULT_EXERCISES.find((v) => v.id === item.exerciseId);
+            const exData = EXERCISES[item.exerciseId] || (vaultMatch ? {
+              name: vaultMatch.name,
+              thumbnail: vaultMatch.animationUrl,
+            } : {
               name: item.exerciseId,
               thumbnail: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
-            };
+            });
 
             const repsDisplay =
               typeof item.reps === 'string'
                 ? item.reps
                 : `x ${item.reps}`;
 
-            const anim = getExerciseAnimation(item.exerciseId);
+            const anim = vaultMatch
+              ? { isVideo: false, source: { uri: vaultMatch.animationUrl } }
+              : getExerciseAnimation(item.exerciseId);
 
             return (
               <TouchableOpacity
