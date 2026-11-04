@@ -10,6 +10,7 @@ import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { resetPassword, firebaseErrorMessage } from '../lib/authService';
+import BackButton from '../components/ui/BackButton';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -58,9 +59,7 @@ export default function ForgotPasswordScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
+            <BackButton fallbackRoute="/login" />
           </View>
 
           <View style={styles.contentWrapper}>

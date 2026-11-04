@@ -166,7 +166,7 @@ export default function CeoIssueChatRoom({
       <View style={styles.headerBar}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={[styles.avatarWrap, { backgroundColor: thread.avatarColor }]}>

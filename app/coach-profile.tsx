@@ -15,6 +15,7 @@ import { getWallet, hireCoachWithCoins, coinsToEtb } from '../lib/walletService'
 import { getProfile } from '../lib/profileService';
 import PaymentSuccessModal from '../components/wallet/PaymentSuccessModal';
 import { safeBack } from '../lib/navigation';
+import BackButton from '../components/ui/BackButton';
 
 interface CoachProfile {
   uid: string;
@@ -385,11 +386,9 @@ export default function CoachProfilePage() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => safeBack('/(tabs)/community')}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          <BackButton fallbackRoute="/(tabs)/community" />
           <Text style={styles.headerTitle}>Coach Profile</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 38 }} />
         </View>
 
         {/* Avatar & Name */}

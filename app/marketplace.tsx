@@ -32,6 +32,7 @@ import {
   AiConsultationMessage,
 } from '../lib/marketplaceAiService';
 import { captureSystemError } from '../lib/telemetryService';
+import BackButton from '../components/ui/BackButton';
 
 export default function MarketplaceScreen() {
   const router = useRouter();
@@ -183,9 +184,7 @@ export default function MarketplaceScreen() {
 
       {/* ── TOP HEADER ── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#FFF" />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)" />
 
         <View style={styles.headerTitleWrap}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

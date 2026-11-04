@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
+import BackButton from '../components/ui/BackButton';
 import { useChallengeStore } from '../store/challengeStore';
 
 type MainTab = 'gym' | 'home';
@@ -538,21 +539,15 @@ export default function SelectTrainingPlanScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* HEADER BAR: Back button + Title (HEART LOGO REMOVED AS REQUESTED) */}
+      {/* HEADER BAR: Back button + Title */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)" />
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Training Hub & Challenges</Text>
           <Text style={styles.headerSubtitle}>Choose Gym or Home workouts and explore 800+ movements</Text>
         </View>
-        {/* Balanced spacer instead of heart icon */}
-        <View style={{ width: 40 }} />
+        {/* Balanced spacer */}
+        <View style={{ width: 38 }} />
       </View>
 
       {/* ═══════════════════════════════════════════════════════════ */}

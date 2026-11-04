@@ -11,6 +11,7 @@ import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import { doc, getDoc } from 'firebase/firestore';
 import Skeleton from '../components/ui/Skeleton';
+import BackButton from '../components/ui/BackButton';
 
 interface Request {
   id: string;
@@ -150,9 +151,7 @@ export default function CoachDashboard() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)" />
         <Text style={styles.headerTitle}>Coach Dashboard</Text>
         <View style={{ flexDirection: 'row', gap: 15 }}>
           <TouchableOpacity onPress={() => router.push('/notifications')}>

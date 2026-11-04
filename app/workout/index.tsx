@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import BackButton from '../../components/ui/BackButton';
 import { workoutData } from '../../constants/mockData';
 import { auditScreenRoute } from '../../lib/universalInteractionEngine';
 import { trackInteraction } from '../../lib/interactionTelemetry';
@@ -19,9 +20,7 @@ export default function WorkoutScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)" />
         <Text style={styles.headerTitle}>My Workout</Text>
         <TouchableOpacity 
           style={styles.headerButton}

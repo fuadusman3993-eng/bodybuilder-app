@@ -248,8 +248,10 @@ export default function LeapFitnessWorkoutPlayer() {
         <TouchableOpacity
           style={styles.circleIconBtn}
           onPress={handleConfirmExit}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={22} color="#475569" />
+          <Ionicons name="chevron-back" size={24} color="#475569" />
         </TouchableOpacity>
 
         <View style={styles.topRightIcons}>

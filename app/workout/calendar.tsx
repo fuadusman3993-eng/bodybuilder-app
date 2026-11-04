@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CHALLENGES } from '../../constants/challenges';
 import { useChallengeStore } from '../../store/challengeStore';
+import BackButton from '../../components/ui/BackButton';
 
 export default function WorkoutCalendarScreen() {
   const router = useRouter();
@@ -51,9 +52,7 @@ export default function WorkoutCalendarScreen() {
       <View style={styles.heroSection}>
         <SafeAreaView edges={['top']} style={styles.safeTop}>
           <View style={styles.navRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
+            <BackButton fallbackRoute="/challenge" />
 
             <TouchableOpacity
               style={styles.changePlanBtn}

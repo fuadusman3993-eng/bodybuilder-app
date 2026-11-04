@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Skeleton from '../components/ui/Skeleton';
+import BackButton from '../components/ui/BackButton';
 
 interface Coach {
   id: string;
@@ -149,9 +150,7 @@ export default function CoachesPage() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with search */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)" />
         <TextInput
           style={styles.headerSearch}
           placeholder="Search coaches..."

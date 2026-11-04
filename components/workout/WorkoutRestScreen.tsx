@@ -68,7 +68,7 @@ export default function WorkoutRestScreen({
       {/* 1. Header with Close and Title */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onSkip} style={styles.headerIconBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>REST</Text>
         <View style={styles.headerIconBtn} />

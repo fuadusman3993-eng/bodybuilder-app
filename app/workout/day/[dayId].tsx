@@ -17,6 +17,7 @@ import { EXERCISES } from '../../../constants/exercises';
 import { VAULT_EXERCISES } from '../../../constants/exerciseVaultData';
 import { CHALLENGES } from '../../../constants/challenges';
 import { Colors } from '../../../constants/colors';
+import BackButton from '../../../components/ui/BackButton';
 import { Image as ExpoImage } from 'expo-image';
 import { getExerciseAnimation } from '../../../constants/exerciseAnimations';
 
@@ -77,9 +78,7 @@ export default function DayWorkoutPreviewScreen() {
       <View style={styles.heroSection}>
         <SafeAreaView edges={['top']} style={styles.safeTop}>
           <View style={styles.navRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
+            <BackButton fallbackRoute="/workout/calendar" />
 
             <TouchableOpacity style={styles.iconBtn}>
               <Ionicons name="ellipsis-vertical" size={20} color="#FFF" />

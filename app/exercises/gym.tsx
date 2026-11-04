@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import BackButton from '../../components/ui/BackButton';
 import {
   GYM_BODY_PARTS,
   VAULT_EXERCISES,
@@ -79,14 +80,7 @@ export default function GymExercisesScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── HEADER BAR ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/challenge" />
 
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />

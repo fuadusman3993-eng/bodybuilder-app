@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
+import BackButton from '../components/ui/BackButton';
 
 export default function MyCoachPage() {
   const router = useRouter();
@@ -109,11 +110,9 @@ export default function MyCoachPage() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          <BackButton fallbackRoute="/(tabs)/profile" />
           <Text style={styles.headerTitle}>My Coach</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 38 }} />
         </View>
         <View style={styles.emptyState}>
           <Ionicons name="person-outline" size={80} color={Colors.textMuted} />
@@ -132,11 +131,9 @@ export default function MyCoachPage() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          <BackButton fallbackRoute="/(tabs)/profile" />
           <Text style={styles.headerTitle}>My Coach</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 38 }} />
         </View>
         <View style={styles.emptyState}>
           <View style={styles.pendingIcon}>
@@ -153,9 +150,7 @@ export default function MyCoachPage() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <BackButton fallbackRoute="/(tabs)/profile" />
         <Text style={styles.headerTitle}>My Coach</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/chat')}>
           <Ionicons name="chatbubble-outline" size={24} color={Colors.primary} />
