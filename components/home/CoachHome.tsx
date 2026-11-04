@@ -8,6 +8,7 @@ import { Colors } from '../../constants/colors';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
 import StoriesRow from './StoriesRow';
+import UserAvatar from '../ui/UserAvatar';
 import BrandLogo from '../ui/BrandLogo';
 
 export default function CoachHome() {
@@ -173,7 +174,13 @@ export default function CoachHome() {
         ) : (
           requests.map(req => (
             <View key={req.id} style={styles.reqCard}>
-              <Image source={req.trainee_avatar || 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150'} cachePolicy="memory-disk" contentFit="cover" style={styles.reqAvatar} />
+              <UserAvatar
+                uid={req.trainee_uid || req.id}
+                name={req.trainee_name}
+                avatarUrl={req.trainee_avatar}
+                size={40}
+                style={styles.reqAvatar as any}
+              />
               <View style={styles.reqInfo}>
                 <Text style={styles.reqName}>{req.trainee_name}</Text>
                 <Text style={styles.reqMeta}>New Trainee • Request</Text>

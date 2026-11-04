@@ -16,6 +16,7 @@ import { Colors } from '../constants/colors';
 import Skeleton from '../components/ui/Skeleton';
 import { safeBack } from '../lib/navigation';
 import BackButton from '../components/ui/BackButton';
+import UserAvatar, { AvatarIconStyle, isValidPhotoUrl } from '../components/ui/UserAvatar';
 
 const { width } = Dimensions.get('window');
 const BG = Colors.background;
@@ -350,8 +351,10 @@ export default function UserProfilePage() {
   const goal = profile?.goal || '';
   const city = profile?.city || '';
   const isCoach = profile?.role === 'coach';
-  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff&size=150`;
   const avatarUri = profile?.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
+  const hasRealPhoto = isValidPhotoUrl(avatarUri);
+  const avatarColor = (profile as any)?.avatar_color;
+  const avatarIcon = (profile as any)?.avatar_icon as AvatarIconStyle;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -366,12 +369,13 @@ export default function UserProfilePage() {
         {/* Avatar + Stats */}
         <View style={styles.topSection}>
           <View style={styles.avatarRing}>
-            <Image
-              source={avatarUri}
-              placeholder={defaultAvatar}
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              style={styles.avatar}
+            <UserAvatar
+              uid={uid as string}
+              name={name}
+              avatarUrl={hasRealPhoto ? avatarUri : null}
+              avatarColor={avatarColor}
+              avatarIcon={avatarIcon}
+              size={80}
             />
           </View>
 

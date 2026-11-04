@@ -7,7 +7,6 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
@@ -15,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { auth } from '../../lib/firebase';
 import Skeleton from '../ui/Skeleton';
+import UserAvatar, { AvatarIconStyle } from '../ui/UserAvatar';
 
 interface StoryGroup {
   uid: string;
@@ -23,6 +23,8 @@ interface StoryGroup {
   isOwn: boolean;
   hasStory: boolean;
   viewed: boolean;
+  avatarColor?: string;
+  avatarIcon?: string;
 }
 
 let cachedStories: StoryGroup[] = [];
@@ -40,7 +42,6 @@ export default function StoriesRow() {
 
   const activeUid = user.uid || auth.currentUser?.uid;
   const ownAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : null);
-  const fallbackAvatar = ownAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=10B981&color=fff&size=150`;
 
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>(cachedStories);
   const [loading, setLoading] = useState(cachedStories.length === 0 || cachedUserUid !== activeUid);
@@ -221,16 +222,18 @@ export default function StoriesRow() {
       const groups: StoryGroup[] = [];
       const ownGroup = activeUid ? groupMap[activeUid] : null;
       const ownExists = !!ownGroup;
-      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : fallbackAvatar);
+      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : null);
 
       // Always show "Your Story" first
       groups.push({
         uid: activeUid || 'own',
         username: user.name || 'You',
-        avatar_url: myAvatar,
+        avatar_url: myAvatar || '',
         isOwn: true,
         hasStory: ownExists,
         viewed: ownExists ? ownGroup.allViewed : false,
+        avatarColor: user.avatarColor,
+        avatarIcon: user.avatarIcon,
       });
 
       // Add other users' stories (filter out own UID to never duplicate)
@@ -248,15 +251,17 @@ export default function StoriesRow() {
       setErrorMsg('Top level error: ' + (e.message || e.toString()));
       console.warn('Stories fetch error:', e);
       const activeUid = user.uid || auth.currentUser?.uid;
-      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : fallbackAvatar);
+      const myAvatar = user.avatar || (activeUid ? `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${activeUid}.jpg` : null);
       const fallbackGroup = [
         {
           uid: activeUid || 'own',
           username: user.name || 'You',
-          avatar_url: myAvatar,
+          avatar_url: myAvatar || '',
           isOwn: true,
           hasStory: false,
           viewed: false,
+          avatarColor: user.avatarColor,
+          avatarIcon: user.avatarIcon,
         },
       ];
       cachedStories = fallbackGroup;
@@ -276,9 +281,13 @@ export default function StoriesRow() {
     }
   };
 
-  const storyFallback = 'https://ui-avatars.com/api/?name=User&background=2A3241&color=fff&size=150';
-
-  const StoryAvatar = ({ url }: { url: string }) => {
+  const StoryAvatar = ({ url, uid, name, avatarColor, avatarIcon }: {
+    url: string;
+    uid?: string;
+    name?: string;
+    avatarColor?: string;
+    avatarIcon?: string;
+  }) => {
     if (url === 'ai_coach') {
       return (
         <View
@@ -296,17 +305,13 @@ export default function StoriesRow() {
       );
     }
     return (
-      <Image
-        source={url || storyFallback}
-        placeholder={storyFallback}
-        cachePolicy="memory-disk"
-        contentFit="cover"
-        style={{
-          width: avatarInner,
-          height: avatarInner,
-          borderRadius: avatarInner / 2,
-          backgroundColor: Colors.surface,
-        }}
+      <UserAvatar
+        uid={uid}
+        name={name}
+        avatarUrl={url}
+        avatarColor={avatarColor}
+        avatarIcon={avatarIcon as AvatarIconStyle}
+        size={avatarInner}
       />
     );
   };
@@ -330,7 +335,13 @@ export default function StoriesRow() {
             isAiCoach && { borderColor: Colors.primary, shadowColor: Colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
           ]}
         >
-          <StoryAvatar url={item.avatar_url} />
+          <StoryAvatar
+            url={item.avatar_url}
+            uid={item.uid}
+            name={item.username}
+            avatarColor={item.avatarColor}
+            avatarIcon={item.avatarIcon}
+          />
           {item.isOwn && (
             <View style={styles.addBadge}>
               <Ionicons name="add" size={12} color={Colors.textPrimary} />
@@ -369,12 +380,13 @@ export default function StoriesRow() {
                 styles.storyRingEmpty,
                 styles.storyRingOwn,
               ]}>
-                <Image
-                  source={ownAvatar || fallbackAvatar}
-                  placeholder={fallbackAvatar}
-                  cachePolicy="memory-disk"
-                  contentFit="cover"
-                  style={{ width: avatarInner, height: avatarInner, borderRadius: avatarInner / 2, backgroundColor: Colors.surface }}
+                <UserAvatar
+                  uid={activeUid}
+                  name={user.name}
+                  avatarUrl={ownAvatar}
+                  avatarColor={user.avatarColor}
+                  avatarIcon={user.avatarIcon as AvatarIconStyle}
+                  size={avatarInner}
                 />
                 <View style={styles.addBadge}>
                   <Ionicons name="add" size={12} color={Colors.textPrimary} />

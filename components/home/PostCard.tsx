@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import SharePostModal from './SharePostModal';
 import FitPulseConfirmModal from '../ui/FitPulseConfirmModal';
+import UserAvatar, { AvatarIconStyle } from '../ui/UserAvatar';
 
 export interface RealPost {
   id: string;
@@ -83,8 +84,7 @@ export default function PostCard({
   onRequireAuth,
 }: PostCardProps) {
   const { user: currentUser } = useUserStore();
-  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&background=10B981&color=fff&size=150`;
-  const currentAvatar = currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=10B981&color=fff&size=150`;
+  // No more ui-avatars.com — UserAvatar handles fallback natively
 
   // Image Aspect Ratio & Full View State
   const [aspectRatio, setAspectRatio] = useState<number>(1);
@@ -181,7 +181,7 @@ export default function PostCard({
       post_id: post.id,
       uid: currentUser.uid,
       username: currentUser.name || 'User',
-      avatar_url: currentAvatar,
+      avatar_url: currentUser.avatar || undefined,
       text,
       created_at: new Date().toISOString(),
       isCoach: currentUser.role === 'coach',
@@ -197,7 +197,7 @@ export default function PostCard({
           post_id: post.id,
           uid: currentUser.uid,
           username: currentUser.name || 'User',
-          avatar_url: currentUser.avatar || null,
+          avatar_url: currentUser.avatar || undefined,
           text,
         })
         .select()
@@ -240,12 +240,11 @@ export default function PostCard({
           activeOpacity={0.8}
           onPress={() => onPressUser?.(post.uid)}
         >
-          <Image
-            source={post.avatar_url || defaultAvatar}
-            placeholder={defaultAvatar}
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            style={styles.avatar}
+          <UserAvatar
+            uid={post.uid}
+            name={post.username}
+            avatarUrl={post.avatar_url}
+            size={38}
           />
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -399,19 +398,19 @@ export default function PostCard({
       {(post.likes_count || 0) > 0 && !!post.recentLikerName && (
         <View style={styles.likedByRow}>
           <View style={styles.likedAvatars}>
-            <Image
-              source={post.recentLikerAvatar || defaultAvatar}
-              placeholder={defaultAvatar}
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              style={styles.likedAvatar1}
+            <UserAvatar
+              uid={post.uid}
+              name={post.recentLikerName}
+              avatarUrl={post.recentLikerAvatar}
+              size={18}
+              style={styles.likedAvatar1 as any}
             />
-            <Image
-              source={post.avatar_url || defaultAvatar}
-              placeholder={defaultAvatar}
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              style={styles.likedAvatar2}
+            <UserAvatar
+              uid={post.uid}
+              name={post.username}
+              avatarUrl={post.avatar_url}
+              size={18}
+              style={styles.likedAvatar2 as any}
             />
           </View>
           <Text style={styles.likedByText}>
@@ -457,12 +456,14 @@ export default function PostCard({
           onPress={() => setShowComments(true)}
           activeOpacity={0.7}
         >
-          <Image
-            source={currentAvatar}
-            placeholder={defaultAvatar}
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            style={styles.tinyAvatar}
+          <UserAvatar
+            uid={currentUser?.uid}
+            name={currentUser?.name}
+            avatarUrl={currentUser?.avatar}
+            avatarColor={currentUser?.avatarColor}
+            avatarIcon={currentUser?.avatarIcon as AvatarIconStyle}
+            size={28}
+            style={styles.tinyAvatar as any}
           />
           <Text style={styles.addCommentPlaceholder}>Add a comment...</Text>
         </TouchableOpacity>
@@ -515,12 +516,12 @@ export default function PostCard({
                 renderItem={({ item }) => (
                   <View style={styles.commentItem}>
                     <TouchableOpacity onPress={() => { setShowComments(false); onPressUser?.(item.uid); }}>
-                      <Image
-                        source={item.avatar_url || defaultAvatar}
-                        placeholder={defaultAvatar}
-                        cachePolicy="memory-disk"
-                        contentFit="cover"
-                        style={styles.commentAvatar}
+                      <UserAvatar
+                        uid={item.uid}
+                        name={item.username}
+                        avatarUrl={item.avatar_url}
+                        size={32}
+                        style={styles.commentAvatar as any}
                       />
                     </TouchableOpacity>
                     <View style={styles.commentContent}>
@@ -539,12 +540,14 @@ export default function PostCard({
             )}
 
             <View style={styles.inputBar}>
-              <Image
-                source={currentAvatar}
-                placeholder={defaultAvatar}
-                cachePolicy="memory-disk"
-                contentFit="cover"
-                style={styles.inputAvatar}
+              <UserAvatar
+                uid={currentUser?.uid}
+                name={currentUser?.name}
+                avatarUrl={currentUser?.avatar}
+                avatarColor={currentUser?.avatarColor}
+                avatarIcon={currentUser?.avatarIcon as AvatarIconStyle}
+                size={32}
+                style={styles.inputAvatar as any}
               />
               <TextInput
                 style={styles.commentInput}

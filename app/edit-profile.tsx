@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,6 +20,8 @@ import { supabase } from '../lib/supabase';
 import { getProfile, syncUserProfile } from '../lib/profileService';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
+import UserAvatar, { AvatarIconStyle, getAvatarColor } from '../components/ui/UserAvatar';
+import AvatarCustomizerModal from '../components/profile/AvatarCustomizerModal';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -18,7 +30,14 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user.name || '');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
-  
+  const [avatarColor, setAvatarColor] = useState<string>(
+    user.avatarColor || getAvatarColor(user.uid, user.name)
+  );
+  const [avatarIcon, setAvatarIcon] = useState<AvatarIconStyle>(
+    (user.avatarIcon as AvatarIconStyle) || 'initials'
+  );
+  const [showCustomizer, setShowCustomizer] = useState(false);
+
   // Trainee fields
   const [weight, setWeight] = useState('');
   // Coach fields
@@ -42,6 +61,8 @@ export default function EditProfileScreen() {
         setName(prof.name || user.name || '');
         setBio(prof.bio || '');
         setAvatar(prof.avatar_url || null);
+        if (prof.avatar_color) setAvatarColor(prof.avatar_color);
+        if (prof.avatar_icon) setAvatarIcon(prof.avatar_icon as AvatarIconStyle);
       }
 
       // 2. Also check Firestore for extra fields
@@ -76,7 +97,6 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        // Show locally immediately so it doesn't look like it "forgot"
         setAvatar(result.assets[0].uri);
         await uploadToSupabase(result.assets[0].uri);
       }
@@ -92,11 +112,10 @@ export default function EditProfileScreen() {
       const uid = auth.currentUser?.uid || user.uid;
       const fileName = `${uid}.jpg`;
 
-      // Convert local URI to Blob
       const res = await fetch(uri);
       const blob = await res.blob();
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('avatars')
         .upload(fileName, blob, {
           contentType: 'image/jpeg',
@@ -105,7 +124,6 @@ export default function EditProfileScreen() {
 
       if (error) throw error;
 
-      // Add timestamp to bypass local caching immediately in UI
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
@@ -132,6 +150,8 @@ export default function EditProfileScreen() {
         bio: bio.trim(),
         avatar_url: avatar || undefined,
         role: user.role || 'user',
+        avatar_color: avatarColor,
+        avatar_icon: avatarIcon,
       });
 
       // 2. If coach, also update coach_profiles
@@ -163,14 +183,37 @@ export default function EditProfileScreen() {
         await updateDoc(doc(db, 'users', uid), updateData);
       } catch (_) {}
 
-      setUser({ ...user, name: name.trim(), avatar: avatar || user.avatar }); // Keep store in sync
-      
+      // 4. Update Zustand store
+      setUser({
+        ...user,
+        name: name.trim(),
+        avatar: avatar || user.avatar,
+        avatarColor,
+        avatarIcon,
+      });
+
       router.back();
     } catch (e: any) {
       console.error(e);
       Alert.alert('Error', 'Failed to update profile.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAvatarStyleSave = async (color: string, icon: AvatarIconStyle) => {
+    setAvatarColor(color);
+    setAvatarIcon(icon);
+    // Persist immediately so the change is visible even if user doesn't tap "Save"
+    const uid = auth.currentUser?.uid || user.uid;
+    if (uid) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ avatar_color: color, avatar_icon: icon, updated_at: new Date().toISOString() })
+          .eq('uid', uid);
+      } catch (_) {}
+      setUser({ ...user, avatarColor: color, avatarIcon: icon });
     }
   };
 
@@ -188,25 +231,59 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        
-        {/* Avatar Upload */}
+
+        {/* Avatar Section */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={pickImage} style={styles.avatarWrap} disabled={isUploading}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatar} />
+          {/* Live avatar preview */}
+          <View style={styles.avatarWrap}>
+            {avatar && !avatar.includes('ui-avatars.com') ? (
+              <>
+                <Image
+                  source={{ uri: avatar }}
+                  style={styles.avatarImg}
+                  contentFit="cover"
+                />
+                {isUploading && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator color="#FFF" />
+                  </View>
+                )}
+              </>
             ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitial}>{name ? name.charAt(0).toUpperCase() : 'U'}</Text>
-              </View>
+              <UserAvatar
+                uid={user.uid}
+                name={name || user.name}
+                avatarColor={avatarColor}
+                avatarIcon={avatarIcon}
+                size={100}
+              />
             )}
-            {isUploading && (
-              <View style={styles.uploadingOverlay}>
-                <ActivityIndicator color="#FFF" />
-              </View>
-            )}
-            <View style={styles.editIconBadge}>
+            {/* Camera badge */}
+            <TouchableOpacity
+              style={styles.editIconBadge}
+              onPress={pickImage}
+              disabled={isUploading}
+            >
               <Ionicons name="camera" size={16} color="#FFF" />
-            </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Action buttons below avatar */}
+          <TouchableOpacity
+            style={styles.avatarActionBtn}
+            onPress={pickImage}
+            disabled={isUploading}
+          >
+            <Ionicons name="image-outline" size={16} color={Colors.primary} />
+            <Text style={styles.avatarActionText}>Upload Photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.avatarActionBtn, { marginTop: 8 }]}
+            onPress={() => setShowCustomizer(true)}
+          >
+            <Ionicons name="color-palette-outline" size={16} color={Colors.primary} />
+            <Text style={styles.avatarActionText}>Customize Color & Style</Text>
           </TouchableOpacity>
         </View>
 
@@ -262,26 +339,91 @@ export default function EditProfileScreen() {
         )}
 
       </ScrollView>
+
+      {/* Avatar Customizer Modal */}
+      <AvatarCustomizerModal
+        visible={showCustomizer}
+        onClose={() => setShowCustomizer(false)}
+        uid={user.uid}
+        name={name || user.name}
+        currentColor={avatarColor}
+        currentIcon={avatarIcon}
+        onSave={handleAvatarStyleSave}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#222' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   backBtn: { padding: 4 },
   saveText: { color: Colors.primary, fontSize: 16, fontWeight: '700' },
   content: { padding: 20 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
-  avatarWrap: { position: 'relative' },
-  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: Colors.surfaceLight },
-  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: Colors.surfaceLight },
-  avatarInitial: { color: '#000', fontSize: 36, fontWeight: '800' },
-  uploadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 50, justifyContent: 'center', alignItems: 'center' },
-  editIconBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: Colors.surfaceLight, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#000' },
+  avatarWrap: { position: 'relative', marginBottom: 12 },
+  avatarImg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: Colors.surfaceLight,
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.surfaceLight,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  avatarActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  avatarActionText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
   inputGroup: { marginBottom: 20 },
   label: { color: '#888', fontSize: 14, marginBottom: 8, fontWeight: '600' },
-  input: { backgroundColor: '#111', borderWidth: 1, borderColor: '#222', borderRadius: 12, paddingHorizontal: 16, height: 52, color: '#FFF', fontSize: 16 },
+  input: {
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 52,
+    color: '#FFF',
+    fontSize: 16,
+  },
   textArea: { height: 100, paddingTop: 16, textAlignVertical: 'top' },
 });

@@ -18,6 +18,8 @@ export interface UserProfile {
   city?: string | null;
   country?: string | null;
   bio?: string | null;
+  avatar_color?: string | null;
+  avatar_icon?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -332,6 +334,8 @@ export async function syncUserProfile(profile: Partial<UserProfile> & { uid: str
           role: profile.role || 'user',
           city: profile.city || undefined,
           country: profile.country || 'Ethiopia',
+          avatar_color: profile.avatar_color || undefined,
+          avatar_icon: profile.avatar_icon || undefined,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'uid' }

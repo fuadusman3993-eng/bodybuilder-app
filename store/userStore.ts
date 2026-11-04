@@ -22,6 +22,9 @@ export interface UserModel {
   coinsBalance?: number;
   isCoachVerified?: boolean;
   premiumUntil?: string | null;
+  // Avatar customisation (colour + icon style)
+  avatarColor?: string;
+  avatarIcon?: string; // 'initials' | 'flash' | 'barbell' | 'flame' | 'trophy' | 'shield-checkmark'
 }
 
 interface UserState {

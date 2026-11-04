@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Image, RefreshControl, ActivityIndicator, Share } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, RefreshControl, ActivityIndicator, Share } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -17,6 +18,7 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 import { saveLastAccount } from '../../lib/savedAccountService';
+import UserAvatar, { AvatarIconStyle, isValidPhotoUrl } from '../../components/ui/UserAvatar';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 28 - 16) / 3;
@@ -250,9 +252,8 @@ export default function ProfileScreen() {
   const goal = profileData?.goal || 'Build a Stronger Me';
   const city = user.city || profileData?.city || 'Addis Ababa';
   
-  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff&size=150`;
   const avatarUri = profileData?.avatar || user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`;
-
+  const hasRealPhoto = isValidPhotoUrl(avatarUri);
   const stat1Label = 'Posts';
   const stat1Value = posts.length;
   const stat2Label = 'Followers';
@@ -364,10 +365,13 @@ export default function ProfileScreen() {
           <View style={styles.heroCenterWrap}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatarRing}>
-                <Image
-                  source={{ uri: avatarUri }}
-                  style={styles.avatar}
-                  defaultSource={{ uri: defaultAvatar }}
+                <UserAvatar
+                  uid={user.uid}
+                  name={name}
+                  avatarUrl={hasRealPhoto ? avatarUri : null}
+                  avatarColor={user.avatarColor}
+                  avatarIcon={user.avatarIcon as AvatarIconStyle}
+                  size={80}
                 />
               </View>
               <TouchableOpacity
