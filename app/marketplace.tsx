@@ -38,6 +38,8 @@ import {
   FREE_DELIVERY_THRESHOLD_ETB,
 } from '../store/supermarketCartStore';
 import SupermarketCartModal from '../components/marketplace/SupermarketCartModal';
+import BrandLogo from '../components/ui/BrandLogo';
+import SupermarketHeroCarousel from '../components/marketplace/SupermarketHeroCarousel';
 
 export default function MarketplaceScreen() {
   const router = useRouter();
@@ -81,6 +83,12 @@ export default function MarketplaceScreen() {
   const [aiInputText, setAiInputText] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const aiChatScrollRef = useRef<ScrollView>(null);
+  const mainScrollRef = useRef<ScrollView>(null);
+
+  const handleShopNow = (category: MarketplaceCategory) => {
+    setSelectedCategory(category);
+    mainScrollRef.current?.scrollTo({ y: 340, animated: true });
+  };
 
   // Weekly Offers (Image 2 style)
   const weeklyOffers = useMemo(() => {
@@ -171,11 +179,13 @@ export default function MarketplaceScreen() {
         <BackButton fallbackRoute="/(tabs)" />
 
         <View style={styles.headerTitleWrap}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="basket" size={19} color="#00E676" />
-            <Text style={styles.headerTitle}>FitPulse Supermarket</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BrandLogo size="small" showText={false} />
+            <View style={styles.headerShopBoxBadge}>
+              <Ionicons name="cube" size={13} color="#000000" />
+            </View>
+            <Text style={styles.headerTitle}>FitPulse Market</Text>
           </View>
-          <Text style={styles.headerSubtitle}>Fresh High-Protein Groceries & Sports Fuel</Text>
         </View>
 
         {/* Right Action Icons: Coins + Basket */}
@@ -206,6 +216,7 @@ export default function MarketplaceScreen() {
       </View>
 
       <ScrollView
+        ref={mainScrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
       >
@@ -227,35 +238,14 @@ export default function MarketplaceScreen() {
           )}
         </View>
 
-        {/* ── 3. TOP PROMOTIONAL BANNER (Image 2 Inspired) ── */}
-        <View style={styles.heroPromoBanner}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80' }}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            transition={200}
-          />
-          <View style={styles.heroPromoOverlay} />
-
-          <View style={styles.heroPromoContent}>
-            <View style={styles.heroTagBadge}>
-              <Text style={styles.heroTagText}>🛒 MEGA FITNESS GROCERY WEEK</Text>
-            </View>
-
-            <Text style={styles.heroPromoTitle}>Fresh Protein & Clean Foods</Text>
-            <Text style={styles.heroPromoSubtitle}>
-              Chicken Breasts, Farm Eggs, Rolled Oats & Blueberries up to 30% OFF
-            </Text>
-
-            <TouchableOpacity
-              style={styles.shopNowBtn}
-              activeOpacity={0.85}
-              onPress={() => setSelectedCategory('all')}
-            >
-              <Text style={styles.shopNowBtnText}>Shop Now ▸</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* ── 3. TOP PROMOTIONAL SHOWCASE CAROUSEL (Image 2 Replica) ── */}
+        <SupermarketHeroCarousel
+          onShopNow={handleShopNow}
+          onProductPress={(prodId) => {
+            const p = PRODUCTS_CATALOG.find((item) => item.id === prodId);
+            if (p) handleOpenAiConsultation(p);
+          }}
+        />
 
         {/* ── 4. SECTION: % WEEKLY OFFERS (100% REPLICA OF IMAGE 2!) ── */}
         <View style={styles.weeklyOffersSection}>
@@ -723,10 +713,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    color: '#8A95A5',
-    fontSize: 11,
-    marginTop: 1,
+  headerShopBoxBadge: {
+    backgroundColor: '#00E676',
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   coinBadge: {
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
