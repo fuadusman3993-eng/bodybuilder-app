@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Image,
   Modal,
   ActivityIndicator,
   Alert,
@@ -17,40 +16,65 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
+import BackButton from '../components/ui/BackButton';
 import {
   PRODUCTS_CATALOG,
   MARKETPLACE_CATEGORIES,
   FEATURED_PROMOS,
   MarketplaceProduct,
+  MarketplaceCategory,
 } from '../lib/marketplaceData';
 import {
   queryMarketingAi,
   getInitialAiGreeting,
   AiConsultationMessage,
 } from '../lib/marketplaceAiService';
-import { captureSystemError } from '../lib/telemetryService';
-import BackButton from '../components/ui/BackButton';
+import {
+  useSupermarketCartStore,
+  FREE_DELIVERY_THRESHOLD_ETB,
+} from '../store/supermarketCartStore';
+import SupermarketCartModal from '../components/marketplace/SupermarketCartModal';
 
 export default function MarketplaceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { user, updateCoins } = useUserStore();
+  const { user } = useUserStore();
 
   const isWide = width >= 768;
-  const numColumns = isWide ? 3 : width >= 500 ? 2 : 1;
+
+  // Cart store
+  const {
+    items: cartItems,
+    addItem,
+    updateQuantity,
+    getItemQuantity,
+    getTotalItemsCount,
+    getTotalPriceEtb,
+    isFreeDeliveryEligible,
+  } = useSupermarketCartStore();
+
+  const cartTotalCount = getTotalItemsCount();
+  const cartTotalEtb = getTotalPriceEtb();
+  const isFreeDelivery = isFreeDeliveryEligible();
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD_ETB - cartTotalEtb);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [cartItemsCount, setCartItemsCount] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<MarketplaceCategory>('all');
 
-  // Modals state
+  // Modals
+  const [showCartModal, setShowCartModal] = useState(false);
   const [selectedProductForAi, setSelectedProductForAi] = useState<MarketplaceProduct | null>(null);
-  const [selectedProductForCheckout, setSelectedProductForCheckout] = useState<MarketplaceProduct | null>(null);
+  const [orderSuccessSummary, setOrderSuccessSummary] = useState<{
+    itemsCount: number;
+    totalEtb: number;
+    paymentMethod: string;
+  } | null>(null);
 
   // Marketing AI state
   const [aiChatMessages, setAiChatMessages] = useState<AiConsultationMessage[]>([]);
@@ -58,12 +82,10 @@ export default function MarketplaceScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const aiChatScrollRef = useRef<ScrollView>(null);
 
-  // Checkout state
-  const [paymentMethod, setPaymentMethod] = useState<'coins' | 'chapa'>('coins');
-  const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('Addis Ababa, Bole');
-  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
-  const [orderSuccessModal, setOrderSuccessModal] = useState(false);
+  // Weekly Offers (Image 2 style)
+  const weeklyOffers = useMemo(() => {
+    return PRODUCTS_CATALOG.filter((p) => p.isWeeklyOffer);
+  }, []);
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
@@ -81,31 +103,32 @@ export default function MarketplaceScreen() {
   // Open Marketing AI modal with selected product
   const handleOpenAiConsultation = (product: MarketplaceProduct) => {
     setSelectedProductForAi(product);
-    const initialGreeting = getInitialAiGreeting(product);
+    const greeting = getInitialAiGreeting(product);
     setAiChatMessages([
       {
-        id: `ai_${Date.now()}`,
+        id: 'msg-init',
         sender: 'ai',
-        text: initialGreeting,
-        timestamp: 'Just now',
+        text: greeting,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
   };
 
-  // Send message to Marketing AI
-  const handleSendAiMessage = async (customPrompt?: string) => {
-    const textToSend = customPrompt || aiInputText.trim();
-    if (!textToSend || !selectedProductForAi || aiLoading) return;
+  const handleSendAiMessage = async () => {
+    if (!aiInputText.trim() || !selectedProductForAi || aiLoading) return;
 
-    const userMsg: AiConsultationMessage = {
-      id: `usr_${Date.now()}`,
+    const userText = aiInputText.trim();
+    setAiInputText('');
+
+    const newMsg: AiConsultationMessage = {
+      id: `user-${Date.now()}`,
       sender: 'user',
-      text: textToSend,
-      timestamp: 'Just now',
+      text: userText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setAiChatMessages((prev) => [...prev, userMsg]);
-    setAiInputText('');
+    const updated = [...aiChatMessages, newMsg];
+    setAiChatMessages(updated);
     setAiLoading(true);
 
     setTimeout(() => {
@@ -113,27 +136,24 @@ export default function MarketplaceScreen() {
     }, 100);
 
     try {
-      const response = await queryMarketingAi(selectedProductForAi, aiChatMessages, textToSend);
-      const aiMsg: AiConsultationMessage = {
-        id: `ai_${Date.now()}`,
+      const response = await queryMarketingAi(selectedProductForAi, updated, userText);
+      const aiReply: AiConsultationMessage = {
+        id: `ai-${Date.now()}`,
         sender: 'ai',
         text: response,
-        timestamp: 'Just now',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      setAiChatMessages((prev) => [...prev, aiMsg]);
-    } catch (err: any) {
-      captureSystemError(err, {
-        component: 'MarketplaceMarketingAI',
-        severity: 'warning',
-        metadata: { productId: selectedProductForAi?.id, query: textToSend },
-      });
-      const fallbackMsg: AiConsultationMessage = {
-        id: `ai_err_${Date.now()}`,
-        sender: 'ai',
-        text: 'ይቅርታ፣ ጥያቄዎን ለማስተናገድ ችግር ገጥሞኛል። እባክዎ እንደገና ይሞክሩ።',
-        timestamp: 'Just now',
-      };
-      setAiChatMessages((prev) => [...prev, fallbackMsg]);
+      setAiChatMessages((prev) => [...prev, aiReply]);
+    } catch {
+      setAiChatMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-err-${Date.now()}`,
+          sender: 'ai',
+          text: 'ይቅርታ፣ ጥያቄዎን በማስተናገድ ላይ ጊዜ ወስዷል። እባክዎ እንደገና ይሞክሩ።',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
     } finally {
       setAiLoading(false);
       setTimeout(() => {
@@ -142,78 +162,59 @@ export default function MarketplaceScreen() {
     }
   };
 
-  // Execute purchase
-  const handleConfirmPurchase = () => {
-    if (!selectedProductForCheckout) return;
-
-    if (paymentMethod === 'coins') {
-      const userCoins = user.coinsBalance || 0;
-      if (userCoins < selectedProductForCheckout.priceCoins) {
-        Alert.alert(
-          'Insufficient Coins (ያልበቃ የኮይን ሂሳብ)',
-          `ይህን እቃ ለመግዛት ${selectedProductForCheckout.priceCoins} Coins ያስፈልጎታል። የእርስዎ ቀሪ ሂሳብ ${userCoins} Coins ነው። እባክዎ ኮይን ይጨምሩ።`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add Coins', onPress: () => router.push('/wallet') },
-          ]
-        );
-        return;
-      }
-
-      setIsProcessingOrder(true);
-      setTimeout(() => {
-        updateCoins(userCoins - selectedProductForCheckout.priceCoins);
-        setIsProcessingOrder(false);
-        setSelectedProductForCheckout(null);
-        setOrderSuccessModal(true);
-      }, 1200);
-    } else {
-      // Chapa ETB payment
-      setIsProcessingOrder(true);
-      setTimeout(() => {
-        setIsProcessingOrder(false);
-        setSelectedProductForCheckout(null);
-        setOrderSuccessModal(true);
-      }, 1500);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeContainer} edges={['top']}>
       <StatusBar style="light" />
 
-      {/* ── TOP HEADER ── */}
+      {/* ── 1. TOP HEADER BAR ── */}
       <View style={styles.header}>
         <BackButton fallbackRoute="/(tabs)" />
 
         <View style={styles.headerTitleWrap}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="cart" size={20} color={Colors.primary} />
-            <Text style={styles.headerTitle}>FitPulse Market</Text>
+            <Ionicons name="basket" size={19} color="#00E676" />
+            <Text style={styles.headerTitle}>FitPulse Supermarket</Text>
           </View>
-          <Text style={styles.headerSubtitle}>Verified Supplements, Gear & Nutrition</Text>
+          <Text style={styles.headerSubtitle}>Fresh High-Protein Groceries & Sports Fuel</Text>
         </View>
 
-        {/* User Coin Balance Badge */}
-        <TouchableOpacity
-          style={styles.coinBadge}
-          onPress={() => router.push('/wallet')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.coinBadgeText}>🪙 {user.coinsBalance || 0}</Text>
-        </TouchableOpacity>
+        {/* Right Action Icons: Coins + Basket */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.coinBadge}
+            onPress={() => router.push('/wallet')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.coinBadgeText}>🪙 {user.coinsBalance || 0}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.cartHeaderBtn}
+            onPress={() => setShowCartModal(true)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Shopping Cart"
+          >
+            <Ionicons name="cart" size={22} color="#FFFFFF" />
+            {cartTotalCount > 0 && (
+              <View style={styles.cartHeaderBadge}>
+                <Text style={styles.cartHeaderBadgeText}>{cartTotalCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 30 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
       >
-        {/* ── SEARCH BAR ── */}
+        {/* ── 2. SEARCH BAR ── */}
         <View style={styles.searchBarWrap}>
           <Ionicons name="search" size={18} color="#8A95A5" style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search supplements, belts, plans, gear..."
+            placeholder="Search chicken breasts, eggs, oats, fruits, whey..."
             placeholderTextColor="#64748B"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -226,162 +227,334 @@ export default function MarketplaceScreen() {
           )}
         </View>
 
-        {/* ── FEATURED DEALS CAROUSEL ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.promosScroll}
-        >
-          {FEATURED_PROMOS.map((promo) => (
-            <View key={promo.id} style={[styles.promoCard, { backgroundColor: promo.bgColor }]}>
-              <Image source={{ uri: promo.imageUrl }} style={styles.promoImage} />
-              <View style={styles.promoOverlay}>
-                <View style={[styles.promoTagBadge, { backgroundColor: promo.accentColor }]}>
-                  <Text style={styles.promoTagText}>{promo.tag}</Text>
-                </View>
-                <Text style={styles.promoTitle}>{promo.title}</Text>
-                <Text style={styles.promoSub} numberOfLines={2}>{promo.subtitle}</Text>
-                <TouchableOpacity
-                  style={[styles.promoActionBtn, { backgroundColor: promo.accentColor }]}
-                  onPress={() => {
-                    const prod = PRODUCTS_CATALOG.find((p) => p.id === promo.productId);
-                    if (prod) handleOpenAiConsultation(prod);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.promoActionBtnText}>Consult AI & Buy →</Text>
-                </TouchableOpacity>
-              </View>
+        {/* ── 3. TOP PROMOTIONAL BANNER (Image 2 Inspired) ── */}
+        <View style={styles.heroPromoBanner}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80' }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            transition={200}
+          />
+          <View style={styles.heroPromoOverlay} />
+
+          <View style={styles.heroPromoContent}>
+            <View style={styles.heroTagBadge}>
+              <Text style={styles.heroTagText}>🛒 MEGA FITNESS GROCERY WEEK</Text>
             </View>
-          ))}
-        </ScrollView>
 
-        {/* ── CATEGORY PILLS BAR ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoryBar}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-        >
-          {MARKETPLACE_CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat.key;
-            return (
-              <TouchableOpacity
-                key={cat.key}
-                style={[styles.categoryPill, isActive && styles.categoryPillActive]}
-                onPress={() => setSelectedCategory(cat.key)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.categoryPillText, isActive && styles.categoryPillTextActive]}>
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            <Text style={styles.heroPromoTitle}>Fresh Protein & Clean Foods</Text>
+            <Text style={styles.heroPromoSubtitle}>
+              Chicken Breasts, Farm Eggs, Rolled Oats & Blueberries up to 30% OFF
+            </Text>
 
-        {/* ── SECTION HEADER ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {selectedCategory === 'all'
-              ? 'Trending Sports Goods'
-              : MARKETPLACE_CATEGORIES.find((c) => c.key === selectedCategory)?.label}
-          </Text>
-          <Text style={styles.sectionCount}>{filteredProducts.length} items</Text>
+            <TouchableOpacity
+              style={styles.shopNowBtn}
+              activeOpacity={0.85}
+              onPress={() => setSelectedCategory('all')}
+            >
+              <Text style={styles.shopNowBtnText}>Shop Now ▸</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ── PRODUCTS GRID ── */}
-        <View style={[styles.productsGrid, isWide && { flexDirection: 'row', flexWrap: 'wrap' }]}>
-          {filteredProducts.map((product) => (
-            <View
-              key={product.id}
-              style={[
-                styles.productCard,
-                isWide && { width: '31.5%', marginHorizontal: '0.9%', marginBottom: 16 },
-              ]}
-            >
-              {/* Image & Badges */}
-              <View style={styles.cardImageWrap}>
-                <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
-                <View style={styles.cardTopPills}>
-                  {product.badge && (
-                    <View style={styles.badgePill}>
-                      <Text style={styles.badgePillText}>{product.badge}</Text>
-                    </View>
-                  )}
-                  {product.discountPercent && (
-                    <View style={styles.discountPill}>
-                      <Text style={styles.discountPillText}>-{product.discountPercent}%</Text>
-                    </View>
-                  )}
-                </View>
+        {/* ── 4. SECTION: % WEEKLY OFFERS (100% REPLICA OF IMAGE 2!) ── */}
+        <View style={styles.weeklyOffersSection}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.percentIconCircle}>
+                <Text style={styles.percentIconText}>%</Text>
               </View>
+              <Text style={styles.sectionTitle}>Weekly Offers</Text>
+            </View>
 
-              {/* Product Info */}
-              <View style={styles.cardBody}>
-                <View style={styles.ratingRow}>
-                  <Text style={styles.brandText}>{product.brand.toUpperCase()}</Text>
-                  <View style={styles.starsWrap}>
-                    <Ionicons name="star" size={13} color="#F59E0B" />
-                    <Text style={styles.ratingText}>
-                      {product.rating} ({product.reviewsCount})
-                    </Text>
-                  </View>
-                </View>
+            <TouchableOpacity
+              style={styles.goBtn}
+              activeOpacity={0.7}
+              onPress={() => setSelectedCategory('all')}
+            >
+              <Text style={styles.goBtnText}>GO &gt;</Text>
+            </TouchableOpacity>
+          </View>
 
-                <Text style={styles.productTitle} numberOfLines={2}>
-                  {product.title}
-                </Text>
-                <Text style={styles.productShortDesc} numberOfLines={2}>
-                  {product.shortDescription}
-                </Text>
+          {/* Horizontal Offers Scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.weeklyOffersScroll}
+          >
+            {weeklyOffers.map((product) => {
+              const qty = getItemQuantity(product.id);
+              return (
+                <View key={product.id} style={styles.weeklyCard}>
+                  {/* Top Discount Badge */}
+                  {product.discountPercent && (
+                    <View style={styles.offerDiscountBadge}>
+                      <Text style={styles.offerDiscountText}>{product.discountPercent}% off</Text>
+                    </View>
+                  )}
 
-                {/* Price Display */}
-                <View style={styles.priceRow}>
-                  <View>
-                    <Text style={styles.priceEtbText}>{product.priceEtb.toLocaleString()} ETB</Text>
-                    {product.originalPriceEtb && (
-                      <Text style={styles.originalPriceText}>
-                        {product.originalPriceEtb.toLocaleString()} ETB
-                      </Text>
+                  {/* Product Image */}
+                  <Image
+                    source={{ uri: product.imageUrl }}
+                    style={styles.weeklyImage}
+                    contentFit="cover"
+                    transition={150}
+                  />
+
+                  {/* Add / Stepper Button (Corner button matching Image 2) */}
+                  <View style={styles.cardCornerAddWrap}>
+                    {qty === 0 ? (
+                      <TouchableOpacity
+                        style={styles.quickAddCircleBtn}
+                        onPress={() => addItem(product, 1)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="add" size={18} color="#000000" />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.cardMiniStepper}>
+                        <TouchableOpacity
+                          style={styles.cardStepperBtn}
+                          onPress={() => updateQuantity(product.id, qty - 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="remove" size={13} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <Text style={styles.cardStepperQty}>{qty}</Text>
+                        <TouchableOpacity
+                          style={[styles.cardStepperBtn, { backgroundColor: '#00E676' }]}
+                          onPress={() => updateQuantity(product.id, qty + 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="add" size={13} color="#000000" />
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
-                  <View style={styles.priceCoinPill}>
-                    <Text style={styles.priceCoinText}>🪙 {product.priceCoins} Coins</Text>
+
+                  {/* Prices Row */}
+                  <View style={styles.weeklyPriceRow}>
+                    <Text style={styles.weeklySalePrice}>{product.priceEtb} ETB</Text>
+                    {product.originalPriceEtb && (
+                      <Text style={styles.weeklyOriginalPrice}>{product.originalPriceEtb}</Text>
+                    )}
+                  </View>
+
+                  {/* Title & Weight */}
+                  <Text style={styles.weeklyTitle} numberOfLines={2}>
+                    {product.title}
+                  </Text>
+                  {product.weight && (
+                    <Text style={styles.weeklyWeightText}>{product.weight}</Text>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── 5. DEPARTMENT AISLES (CIRCULAR ICONS MATCHING IMAGE 2) ── */}
+        <View style={styles.departmentsSection}>
+          <Text style={styles.departmentsTitle}>Fresh &amp; Aisles</Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.aislesScroll}
+          >
+            {MARKETPLACE_CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat.key;
+              return (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={styles.aisleItem}
+                  onPress={() => setSelectedCategory(cat.key)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.aisleIconCircle, isActive && styles.aisleIconCircleActive]}>
+                    <Text style={styles.aisleEmoji}>{cat.emoji}</Text>
+                  </View>
+                  <Text
+                    style={[styles.aisleLabel, isActive && styles.aisleLabelActive]}
+                    numberOfLines={1}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── 6. ALL AISLE PRODUCTS GRID ── */}
+        <View style={styles.gridSectionHeader}>
+          <Text style={styles.gridSectionTitle}>
+            {selectedCategory === 'all'
+              ? 'All Supermarket Items'
+              : MARKETPLACE_CATEGORIES.find((c) => c.key === selectedCategory)?.label}
+          </Text>
+          <Text style={styles.gridSectionCount}>{filteredProducts.length} items</Text>
+        </View>
+
+        <View style={[styles.productsGrid, isWide && { flexDirection: 'row', flexWrap: 'wrap' }]}>
+          {filteredProducts.map((product) => {
+            const qty = getItemQuantity(product.id);
+            return (
+              <View
+                key={product.id}
+                style={[
+                  styles.productCard,
+                  isWide && { width: '31.5%', marginHorizontal: '0.9%', marginBottom: 16 },
+                ]}
+              >
+                {/* Product Image & Badges */}
+                <View style={styles.cardImageWrap}>
+                  <Image source={{ uri: product.imageUrl }} style={styles.productImage} contentFit="cover" />
+
+                  <View style={styles.cardTopPills}>
+                    {product.badge && (
+                      <View style={styles.badgePill}>
+                        <Text style={styles.badgePillText}>{product.badge}</Text>
+                      </View>
+                    )}
+                    {product.discountPercent && (
+                      <View style={styles.discountPill}>
+                        <Text style={styles.discountPillText}>-{product.discountPercent}%</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
-                {/* Dual Action Buttons */}
-                <View style={styles.cardActionButtonsRow}>
-                  {/* Button 1: Ask Marketing AI */}
-                  <TouchableOpacity
-                    style={styles.askAiBtn}
-                    onPress={() => handleOpenAiConsultation(product)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="chatbubbles" size={15} color={Colors.primary} />
-                    <Text style={styles.askAiBtnText}>Ask AI</Text>
-                  </TouchableOpacity>
+                {/* Product Body */}
+                <View style={styles.cardBody}>
+                  {/* Category & Weight */}
+                  <View style={styles.cardHeaderMeta}>
+                    <Text style={styles.brandText}>{product.brand.toUpperCase()}</Text>
+                    {product.weight && <Text style={styles.weightBadge}>{product.weight}</Text>}
+                  </View>
 
-                  {/* Button 2: Buy Now */}
-                  <TouchableOpacity
-                    style={styles.buyNowBtn}
-                    onPress={() => setSelectedProductForCheckout(product)}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="flash" size={15} color="#000" />
-                    <Text style={styles.buyNowBtnText}>Buy Now</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.productTitle} numberOfLines={2}>
+                    {product.title}
+                  </Text>
+
+                  {/* Fitness Macro Hero Badge */}
+                  {product.proteinGrams && (
+                    <View style={styles.macroPill}>
+                      <Text style={styles.macroPillText}>
+                        ⚡ {product.proteinGrams}g Protein
+                        {product.caloriesPerServing ? ` • ${product.caloriesPerServing} kcal` : ''}
+                      </Text>
+                    </View>
+                  )}
+
+                  <Text style={styles.productShortDesc} numberOfLines={2}>
+                    {product.shortDescription}
+                  </Text>
+
+                  {/* Price */}
+                  <View style={styles.priceRow}>
+                    <View>
+                      <Text style={styles.priceEtbText}>{product.priceEtb.toLocaleString()} ETB</Text>
+                      {product.originalPriceEtb && (
+                        <Text style={styles.originalPriceText}>
+                          {product.originalPriceEtb.toLocaleString()} ETB
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.priceCoinPill}>
+                      <Text style={styles.priceCoinText}>🪙 {product.priceCoins}</Text>
+                    </View>
+                  </View>
+
+                  {/* Action Buttons: Add to Basket Stepper + Ask AI */}
+                  <View style={styles.cardActionRow}>
+                    {qty === 0 ? (
+                      <TouchableOpacity
+                        style={styles.addBasketBtn}
+                        onPress={() => addItem(product, 1)}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="add" size={17} color="#000000" />
+                        <Text style={styles.addBasketBtnText}>Add to Basket</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.gridStepper}>
+                        <TouchableOpacity
+                          style={styles.gridStepperBtn}
+                          onPress={() => updateQuantity(product.id, qty - 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="remove" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <Text style={styles.gridStepperQty}>{qty}</Text>
+                        <TouchableOpacity
+                          style={[styles.gridStepperBtn, { backgroundColor: '#00E676' }]}
+                          onPress={() => updateQuantity(product.id, qty + 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="add" size={16} color="#000000" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      style={styles.askAiMiniBtn}
+                      onPress={() => handleOpenAiConsultation(product)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="sparkles" size={14} color="#00E676" />
+                      <Text style={styles.askAiMiniText}>AI</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* ── MODAL 1: MARKETING AI CONSULTATION CHAT ──               */}
-      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* ── 7. FLOATING SUPERMARKET DELIVERY BAR (IMAGE 2 REPLICA) ── */}
+      <View style={[styles.floatingDeliveryContainer, { bottom: insets.bottom + 8 }]}>
+        <TouchableOpacity
+          style={styles.floatingDeliveryPill}
+          activeOpacity={0.9}
+          onPress={() => setShowCartModal(true)}
+        >
+          {/* Left: Free delivery status */}
+          <View style={styles.floatingLeft}>
+            <View style={styles.floatingBagIconWrap}>
+              <Ionicons name="bag-handle" size={16} color="#00E676" />
+            </View>
+            <Text style={styles.floatingDeliveryText}>
+              {isFreeDelivery
+                ? 'FREE Delivery Unlocked!'
+                : `Free delivery at 1,500 ETB`}
+            </Text>
+          </View>
+
+          {/* Right: Cart Summary Pill */}
+          <View style={styles.floatingRightPill}>
+            <Text style={styles.floatingCartSummary}>
+              {cartTotalCount > 0
+                ? `${cartTotalCount} items • ${cartTotalEtb.toLocaleString()} ETB`
+                : 'View Basket'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="#000000" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── 8. SUPERMARKET CART MODAL ── */}
+      <SupermarketCartModal
+        visible={showCartModal}
+        onClose={() => setShowCartModal(false)}
+        onOpenWallet={() => router.push('/wallet')}
+        onOrderSuccess={(summary) => {
+          setOrderSuccessSummary(summary);
+        }}
+      />
+
+      {/* ── 9. MARKETING AI MODAL ── */}
       <Modal
         visible={!!selectedProductForAi}
         transparent
@@ -393,16 +566,15 @@ export default function MarketplaceScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.aiModalContainer}>
-            {/* Modal Header */}
             <View style={styles.aiModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                 <View style={styles.aiAvatar}>
                   <Ionicons name="sparkles" size={18} color="#00E676" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.aiModalTitle}>FitPulse Marketing AI</Text>
+                  <Text style={styles.aiModalTitle}>FitPulse Nutrition AI</Text>
                   <Text style={styles.aiModalSub} numberOfLines={1}>
-                    Advisor for {selectedProductForAi?.title}
+                    Nutrition &amp; Diet Advisor for {selectedProductForAi?.title}
                   </Text>
                 </View>
               </View>
@@ -414,12 +586,13 @@ export default function MarketplaceScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Pinned Product Preview Bar */}
+            {/* Pinned Product Preview */}
             {selectedProductForAi && (
               <View style={styles.pinnedProductBar}>
                 <Image
                   source={{ uri: selectedProductForAi.imageUrl }}
                   style={styles.pinnedProductImg}
+                  contentFit="cover"
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pinnedProductTitle} numberOfLines={1}>
@@ -430,81 +603,47 @@ export default function MarketplaceScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.pinnedBuyBtn}
+                  style={styles.pinnedAddBtn}
                   onPress={() => {
-                    const prod = selectedProductForAi;
+                    addItem(selectedProductForAi, 1);
                     setSelectedProductForAi(null);
-                    setSelectedProductForCheckout(prod);
+                    setShowCartModal(true);
                   }}
                 >
-                  <Text style={styles.pinnedBuyBtnText}>Buy ⚡</Text>
+                  <Text style={styles.pinnedAddBtnText}>Add +</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* Chat Messages */}
+            {/* Chat Body */}
             <ScrollView
               ref={aiChatScrollRef}
               style={styles.aiChatBody}
               contentContainerStyle={{ padding: 16, gap: 12 }}
               showsVerticalScrollIndicator={false}
             >
-              {aiChatMessages.map((msg) => {
-                const isUser = msg.sender === 'user';
-                return (
-                  <View
-                    key={msg.id}
-                    style={[styles.aiChatBubble, isUser ? styles.aiBubbleUser : styles.aiBubbleModel]}
-                  >
-                    {!isUser && (
-                      <View style={styles.aiBubbleSenderRow}>
-                        <Ionicons name="sparkles" size={12} color="#00E676" />
-                        <Text style={styles.aiSenderLabel}>FitPulse Advisor</Text>
-                      </View>
-                    )}
-                    <Text style={[styles.aiBubbleText, isUser && { color: '#FFF' }]}>{msg.text}</Text>
-                  </View>
-                );
-              })}
-
+              {aiChatMessages.map((msg) => (
+                <View
+                  key={msg.id}
+                  style={[styles.aiChatBubble, msg.sender === 'user' ? styles.userBubble : styles.aiBubble]}
+                >
+                  <Text style={styles.aiChatText}>{msg.text}</Text>
+                  <Text style={styles.aiChatTime}>{msg.timestamp}</Text>
+                </View>
+              ))}
               {aiLoading && (
-                <View style={styles.aiLoadingRow}>
+                <View style={[styles.aiChatBubble, styles.aiBubble, { flexDirection: 'row', gap: 6 }]}>
                   <ActivityIndicator size="small" color="#00E676" />
-                  <Text style={styles.aiLoadingText}>AI እያሰበ ነው... (Consulting Advisor)</Text>
+                  <Text style={styles.aiChatText}>Analyzing nutritional macros...</Text>
                 </View>
               )}
             </ScrollView>
 
-            {/* Quick Prompt Chips */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.quickChipsBar}
-              contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
-            >
-              {[
-                'ይህ ምርት እንዴት ይወሰዳል?',
-                'ምን ያህል ጊዜ ውስጥ ውጤት አያለሁ?',
-                'ከምን ጋር አብሬ ልውሰደው?',
-                'How do I take this?',
-                'Is this safe for beginners?',
-              ].map((chip, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.quickChip}
-                  onPress={() => handleSendAiMessage(chip)}
-                  disabled={aiLoading}
-                >
-                  <Text style={styles.quickChipText}>{chip}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Chat Input Bar */}
+            {/* Chat Input */}
             <View style={styles.aiInputRow}>
               <TextInput
                 style={styles.aiTextInput}
-                placeholder="Ask about dosage, results, ingredients..."
+                placeholder="Ask about protein content, calories, prep..."
                 placeholderTextColor="#64748B"
                 value={aiInputText}
                 onChangeText={setAiInputText}
@@ -523,139 +662,36 @@ export default function MarketplaceScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* ── MODAL 2: INSTANT CHECKOUT MODAL ──                        */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      <Modal
-        visible={!!selectedProductForCheckout}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedProductForCheckout(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.checkoutContainer}>
-            <View style={styles.checkoutHeader}>
-              <Text style={styles.checkoutTitle}>Checkout Confirmation</Text>
-              <TouchableOpacity onPress={() => setSelectedProductForCheckout(null)}>
-                <Ionicons name="close" size={22} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-
-            {selectedProductForCheckout && (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
-                {/* Item Summary */}
-                <View style={styles.checkoutItemBox}>
-                  <Image
-                    source={{ uri: selectedProductForCheckout.imageUrl }}
-                    style={styles.checkoutItemImg}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.checkoutItemTitle}>{selectedProductForCheckout.title}</Text>
-                    <Text style={styles.checkoutItemBrand}>{selectedProductForCheckout.brand}</Text>
-                    <Text style={styles.checkoutItemPrice}>
-                      {selectedProductForCheckout.priceEtb.toLocaleString()} ETB or 🪙{' '}
-                      {selectedProductForCheckout.priceCoins} Coins
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Payment Method Selector */}
-                <Text style={styles.checkoutSectionLabel}>SELECT PAYMENT METHOD</Text>
-                <View style={styles.paymentMethodRow}>
-                  {/* Option 1: FitPulse Coins */}
-                  <TouchableOpacity
-                    style={[
-                      styles.paymentMethodCard,
-                      paymentMethod === 'coins' && styles.paymentMethodCardActive,
-                    ]}
-                    onPress={() => setPaymentMethod('coins')}
-                  >
-                    <Text style={styles.payIcon}>🪙</Text>
-                    <Text style={styles.payTitle}>FitPulse Coins</Text>
-                    <Text style={styles.paySub}>
-                      Cost: {selectedProductForCheckout.priceCoins} Coins
-                    </Text>
-                    <Text style={styles.payBalance}>
-                      Balance: {user.coinsBalance || 0} Coins
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Option 2: Chapa / Telebirr */}
-                  <TouchableOpacity
-                    style={[
-                      styles.paymentMethodCard,
-                      paymentMethod === 'chapa' && styles.paymentMethodCardActive,
-                    ]}
-                    onPress={() => setPaymentMethod('chapa')}
-                  >
-                    <Text style={styles.payIcon}>💳</Text>
-                    <Text style={styles.payTitle}>Chapa / Telebirr</Text>
-                    <Text style={styles.paySub}>
-                      {selectedProductForCheckout.priceEtb.toLocaleString()} ETB
-                    </Text>
-                    <Text style={styles.payBalance}>Instant Mobile Pay</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Delivery Information */}
-                <Text style={styles.checkoutSectionLabel}>DELIVERY & CONTACT DETAILS</Text>
-                <TextInput
-                  style={styles.checkoutInput}
-                  placeholder="Phone Number (e.g. 0911223344)"
-                  placeholderTextColor="#64748B"
-                  value={deliveryPhone}
-                  onChangeText={setDeliveryPhone}
-                  keyboardType="phone-pad"
-                />
-                <TextInput
-                  style={styles.checkoutInput}
-                  placeholder="Delivery Address (e.g. Addis Ababa, Bole)"
-                  placeholderTextColor="#64748B"
-                  value={deliveryAddress}
-                  onChangeText={setDeliveryAddress}
-                />
-
-                {/* Submit Order Button */}
-                <TouchableOpacity
-                  style={[styles.confirmOrderBtn, isProcessingOrder && { opacity: 0.6 }]}
-                  onPress={handleConfirmPurchase}
-                  disabled={isProcessingOrder}
-                >
-                  {isProcessingOrder ? (
-                    <ActivityIndicator size="small" color="#000" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-circle" size={18} color="#000" />
-                      <Text style={styles.confirmOrderBtnText}>
-                        {paymentMethod === 'coins'
-                          ? `Pay 🪙 ${selectedProductForCheckout.priceCoins} Coins Now`
-                          : `Pay ${selectedProductForCheckout.priceEtb.toLocaleString()} ETB Now`}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* ── MODAL 3: ORDER SUCCESS CELEBRATION ──                    */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      <Modal visible={orderSuccessModal} transparent animationType="fade">
+      {/* ── 10. ORDER SUCCESS CELEBRATION MODAL ── */}
+      <Modal visible={!!orderSuccessSummary} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.successBox}>
-            <Ionicons name="checkmark-done-circle" size={64} color="#00E676" />
-            <Text style={styles.successTitle}>ትዕዛዝዎ ተጠናቋል! ✅</Text>
+            <View style={styles.successIconCircle}>
+              <Ionicons name="checkmark-done" size={40} color="#00E676" />
+            </View>
+            <Text style={styles.successTitle}>Supermarket Order Placed! 🎉</Text>
             <Text style={styles.successSubtitle}>
-              Order placed successfully! Our delivery agent and FitPulse team will contact you shortly.
+              Your fresh high-protein groceries ({orderSuccessSummary?.itemsCount} items) have been confirmed.
             </Text>
+
+            <View style={styles.successDetailsBox}>
+              <Text style={styles.successDetailText}>
+                💵 Paid: <Text style={{ color: '#00E676', fontWeight: '800' }}>{orderSuccessSummary?.totalEtb.toLocaleString()} ETB</Text>
+              </Text>
+              <Text style={styles.successDetailText}>
+                💳 Method: {orderSuccessSummary?.paymentMethod}
+              </Text>
+              <Text style={styles.successDetailText}>
+                🚚 Delivery: Fast courier dispatch to Addis Ababa
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={styles.successCloseBtn}
-              onPress={() => setOrderSuccessModal(false)}
+              onPress={() => setOrderSuccessSummary(null)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.successCloseBtnText}>Continue Shopping</Text>
+              <Text style={styles.successCloseBtnText}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -664,274 +700,476 @@ export default function MarketplaceScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0A0F1D',
+    backgroundColor: '#070D14',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#1A2533',
     gap: 12,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitleWrap: {
     flex: 1,
   },
   headerTitle: {
-    color: '#F8FAFC',
-    fontSize: 18,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     color: '#8A95A5',
-    fontSize: 11.5,
+    fontSize: 11,
     marginTop: 1,
   },
   coinBadge: {
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
     borderWidth: 1,
     borderColor: '#EAB308',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
   coinBadgeText: {
     color: '#FACC15',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
+  cartHeaderBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#131D28',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    position: 'relative',
+  },
+  cartHeaderBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    backgroundColor: '#00E676',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartHeaderBadgeText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '900',
+  },
   scrollContent: {
-    paddingTop: 12,
+    paddingTop: 10,
   },
   searchBarWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#0F1822',
     borderRadius: 12,
     marginHorizontal: 16,
     paddingHorizontal: 12,
-    height: 44,
+    height: 42,
     borderWidth: 1,
-    borderColor: '#1F2937',
+    borderColor: '#1E2B3A',
   },
   searchInput: {
     flex: 1,
-    color: '#FFF',
-    fontSize: 13.5,
+    color: '#FFFFFF',
+    fontSize: 13,
   },
-  promosScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  promoCard: {
-    width: 290,
-    height: 160,
+
+  // Hero Banner (Image 2 Inspired)
+  heroPromoBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    height: 155,
     borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
+    justifyContent: 'flex-end',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(0, 230, 118, 0.2)',
   },
-  promoImage: {
+  heroPromoOverlay: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.35,
+    backgroundColor: 'rgba(5, 12, 20, 0.72)',
   },
-  promoOverlay: {
-    flex: 1,
+  heroPromoContent: {
     padding: 14,
-    justifyContent: 'space-between',
   },
-  promoTagBadge: {
+  heroTagBadge: {
+    backgroundColor: '#00E676',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    marginBottom: 6,
   },
-  promoTagText: {
-    color: '#000',
+  heroTagText: {
+    color: '#000000',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  promoTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
+  heroPromoTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
-  promoSub: {
+  heroPromoSubtitle: {
     color: '#CBD5E1',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  promoActionBtn: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  promoActionBtnText: {
-    color: '#000',
     fontSize: 11.5,
-    fontWeight: '700',
+    marginTop: 2,
+    marginBottom: 8,
   },
-  categoryBar: {
-    marginVertical: 6,
-    flexGrow: 0,
-  },
-  categoryPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
-    marginRight: 8,
-  },
-  categoryPillActive: {
+  shopNowBtn: {
     backgroundColor: '#00E676',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
   },
-  categoryPillText: {
-    color: '#8A95A5',
-    fontSize: 13,
-    fontWeight: '600',
+  shopNowBtnText: {
+    color: '#000000',
+    fontSize: 11.5,
+    fontWeight: '900',
   },
-  categoryPillTextActive: {
-    color: '#000',
-    fontWeight: '800',
+
+  // % Weekly Offers (Image 2 Replica)
+  weeklyOffersSection: {
+    marginTop: 18,
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginTop: 14,
     marginBottom: 10,
   },
-  sectionTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '700',
+  percentIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  sectionCount: {
+  percentIconText: {
+    color: '#00E676',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  goBtn: {
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  goBtnText: {
+    color: '#00E676',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  weeklyOffersScroll: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  weeklyCard: {
+    width: 140,
+    backgroundColor: '#0F1822',
+    borderRadius: 14,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    position: 'relative',
+  },
+  offerDiscountBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 2,
+  },
+  offerDiscountText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  weeklyImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 10,
+    backgroundColor: '#0B131C',
+    marginBottom: 6,
+  },
+  cardCornerAddWrap: {
+    position: 'absolute',
+    top: 76,
+    right: 8,
+    zIndex: 3,
+  },
+  quickAddCircleBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#00E676',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardMiniStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 2,
+    gap: 4,
+  },
+  cardStepperBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardStepperQty: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  weeklyPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+    marginTop: 2,
+  },
+  weeklySalePrice: {
+    color: '#EF4444',
+    fontSize: 13.5,
+    fontWeight: '900',
+  },
+  weeklyOriginalPrice: {
     color: '#64748B',
+    fontSize: 11,
+    textDecorationLine: 'line-through',
+  },
+  weeklyTitle: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  weeklyWeightText: {
+    color: '#8A95A5',
+    fontSize: 10.5,
+    marginTop: 2,
+  },
+
+  // Department Aisles (Circular Icons)
+  departmentsSection: {
+    marginTop: 20,
+  },
+  departmentsTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  aislesScroll: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  aisleItem: {
+    alignItems: 'center',
+    width: 68,
+  },
+  aisleIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#0F1822',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 5,
+  },
+  aisleIconCircleActive: {
+    borderColor: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+  },
+  aisleEmoji: {
+    fontSize: 22,
+  },
+  aisleLabel: {
+    color: '#8A95A5',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  aisleLabelActive: {
+    color: '#00E676',
+    fontWeight: '800',
+  },
+
+  // Grid Section
+  gridSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  gridSectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  gridSectionCount: {
+    color: '#8A95A5',
     fontSize: 12,
   },
   productsGrid: {
     paddingHorizontal: 16,
+    gap: 14,
   },
   productCard: {
-    backgroundColor: '#111827',
+    backgroundColor: '#0F1822',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1F2937',
-    marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   cardImageWrap: {
-    width: '100%',
-    height: 190,
-    backgroundColor: '#1E293B',
+    height: 150,
+    backgroundColor: '#0B131C',
     position: 'relative',
   },
   productImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   cardTopPills: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
+    top: 8,
+    left: 8,
+    right: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   badgePill: {
     backgroundColor: 'rgba(0, 230, 118, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   badgePillText: {
-    color: '#000',
+    color: '#000000',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   discountPill: {
     backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   discountPillText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '800',
   },
   cardBody: {
-    padding: 14,
+    padding: 12,
   },
-  ratingRow: {
+  cardHeaderMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
   brandText: {
-    color: '#64748B',
+    color: '#00E676',
     fontSize: 10.5,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
-  starsWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  ratingText: {
-    color: '#CBD5E1',
-    fontSize: 11.5,
+  weightBadge: {
+    color: '#94A3B8',
+    fontSize: 10.5,
     fontWeight: '600',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   productTitle: {
-    color: '#F8FAFC',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-    lineHeight: 20,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  macroPill: {
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.25)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginVertical: 5,
+  },
+  macroPillText: {
+    color: '#00E676',
+    fontSize: 11,
+    fontWeight: '800',
   },
   productShortDesc: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#8A95A5',
+    fontSize: 11.5,
     lineHeight: 16,
-    marginBottom: 10,
+    marginTop: 2,
+    marginBottom: 8,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#1F2937',
+    marginBottom: 10,
   },
   priceEtbText: {
-    color: '#00E676',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
   },
   originalPriceText: {
     color: '#64748B',
@@ -939,69 +1177,145 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   priceCoinPill: {
-    backgroundColor: 'rgba(234, 179, 8, 0.12)',
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(234, 179, 8, 0.3)',
   },
   priceCoinText: {
     color: '#FACC15',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
-  cardActionButtonsRow: {
+  cardActionRow: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
   },
-  askAiBtn: {
+  addBasketBtn: {
+    flex: 1,
+    backgroundColor: '#00E676',
+    borderRadius: 10,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addBasketBtnText: {
+    color: '#000000',
+    fontSize: 12.5,
+    fontWeight: '900',
+  },
+  gridStepper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     backgroundColor: '#1E293B',
     borderRadius: 10,
-    paddingVertical: 10,
+    padding: 3,
+  },
+  gridStepperBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridStepperQty: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  askAiMiniBtn: {
+    backgroundColor: '#131D28',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 230, 118, 0.3)',
   },
-  askAiBtnText: {
+  askAiMiniText: {
     color: '#00E676',
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  buyNowBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#00E676',
-    borderRadius: 10,
-    paddingVertical: 10,
-  },
-  buyNowBtnText: {
-    color: '#000',
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
   },
 
-  // ── MODAL STYLES ──
+  // Floating Delivery & Cart Bar (Image 2 Replica)
+  floatingDeliveryContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 100,
+  },
+  floatingDeliveryPill: {
+    backgroundColor: '#0F1822',
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#00E676',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  floatingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  floatingBagIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floatingDeliveryText: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  floatingRightPill: {
+    backgroundColor: '#00E676',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  floatingCartSummary: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  // AI Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
   aiModalContainer: {
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-    minHeight: '65%',
-    borderTopWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#0A0F1D',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '82%',
+    borderWidth: 1,
+    borderColor: '#1E293B',
   },
   aiModalHeader: {
     flexDirection: 'row',
@@ -1015,18 +1329,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderWidth: 1,
+    borderColor: '#00E676',
     alignItems: 'center',
     justifyContent: 'center',
   },
   aiModalTitle: {
-    color: '#F8FAFC',
+    color: '#FFF',
     fontSize: 15,
     fontWeight: '700',
   },
   aiModalSub: {
     color: '#8A95A5',
-    fontSize: 11,
+    fontSize: 11.5,
   },
   modalCloseBtn: {
     width: 32,
@@ -1039,15 +1355,18 @@ const styles = StyleSheet.create({
   pinnedProductBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
-    padding: 10,
+    backgroundColor: '#111827',
     paddingHorizontal: 16,
+    paddingVertical: 10,
     gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1F2937',
   },
   pinnedProductImg: {
-    width: 38,
-    height: 38,
-    borderRadius: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#1F2937',
   },
   pinnedProductTitle: {
     color: '#FFF',
@@ -1059,15 +1378,15 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '600',
   },
-  pinnedBuyBtn: {
+  pinnedAddBtn: {
     backgroundColor: '#00E676',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  pinnedBuyBtnText: {
+  pinnedAddBtnText: {
     color: '#000',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '800',
   },
   aiChatBody: {
@@ -1076,245 +1395,113 @@ const styles = StyleSheet.create({
   aiChatBubble: {
     maxWidth: '85%',
     padding: 12,
-    borderRadius: 14,
+    borderRadius: 16,
   },
-  aiBubbleModel: {
+  aiBubble: {
     alignSelf: 'flex-start',
     backgroundColor: '#1E293B',
     borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#334155',
   },
-  aiBubbleUser: {
+  userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
     borderTopRightRadius: 4,
   },
-  aiBubbleSenderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  aiSenderLabel: {
-    color: '#00E676',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  aiBubbleText: {
+  aiChatText: {
     color: '#E2E8F0',
     fontSize: 13,
     lineHeight: 18,
   },
-  aiLoadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-  },
-  aiLoadingText: {
-    color: '#8A95A5',
-    fontSize: 12,
-  },
-  quickChipsBar: {
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    flexGrow: 0,
-  },
-  quickChip: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  quickChipText: {
-    color: '#CBD5E1',
-    fontSize: 11.5,
+  aiChatTime: {
+    color: '#64748B',
+    fontSize: 10,
+    alignSelf: 'flex-end',
+    marginTop: 4,
   },
   aiInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#111827',
     borderTopWidth: 1,
-    borderTopColor: '#1E293B',
+    borderTopColor: '#1F2937',
     gap: 10,
   },
   aiTextInput: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1F2937',
     borderRadius: 20,
     paddingHorizontal: 16,
-    height: 42,
+    paddingVertical: 10,
     color: '#FFF',
     fontSize: 13,
   },
   aiSendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#00E676',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // ── CHECKOUT MODAL ──
-  checkoutContainer: {
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 18,
-    maxHeight: '90%',
-    borderTopWidth: 1,
-    borderColor: '#334155',
-  },
-  checkoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  checkoutTitle: {
-    color: '#F8FAFC',
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  checkoutItemBox: {
-    flexDirection: 'row',
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-    marginBottom: 16,
-  },
-  checkoutItemImg: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-  },
-  checkoutItemTitle: {
-    color: '#FFF',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  checkoutItemBrand: {
-    color: '#8A95A5',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  checkoutItemPrice: {
-    color: '#00E676',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  checkoutSectionLabel: {
-    color: '#8A95A5',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  paymentMethodRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  paymentMethodCard: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  paymentMethodCardActive: {
-    borderColor: '#00E676',
-    backgroundColor: 'rgba(0, 230, 118, 0.08)',
-  },
-  payIcon: {
-    fontSize: 22,
-    marginBottom: 6,
-  },
-  payTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  paySub: {
-    color: '#00E676',
-    fontSize: 11.5,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  payBalance: {
-    color: '#8A95A5',
-    fontSize: 10,
-    marginTop: 4,
-  },
-  checkoutInput: {
-    backgroundColor: '#1E293B',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 44,
-    color: '#FFF',
-    fontSize: 13,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  confirmOrderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#00E676',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  confirmOrderBtnText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  // ── SUCCESS MODAL ──
+  // Success Celebration Box
   successBox: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F1822',
+    marginHorizontal: 24,
     borderRadius: 20,
     padding: 24,
-    marginHorizontal: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00E676',
-    gap: 12,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+  },
+  successIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   successTitle: {
-    color: '#F8FAFC',
-    fontSize: 19,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   successSubtitle: {
-    color: '#94A3B8',
+    color: '#8A95A5',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
+    marginBottom: 14,
+  },
+  successDetailsBox: {
+    backgroundColor: '#131D28',
+    borderRadius: 12,
+    padding: 12,
+    width: '100%',
+    marginBottom: 16,
+    gap: 6,
+  },
+  successDetailText: {
+    color: '#E2E8F0',
+    fontSize: 12.5,
   },
   successCloseBtn: {
     backgroundColor: '#00E676',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
   },
   successCloseBtnText: {
-    color: '#000',
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '900',
   },
 });
