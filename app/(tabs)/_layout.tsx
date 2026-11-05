@@ -4,12 +4,15 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
+import { useThemeStore } from '../../store/themeStore';
 
-function CreateTabButton({ onPress }: { onPress?: any }) {
+function CreateTabButton({ onPress, primaryColor, bgColor }: { onPress?: any; primaryColor?: string; bgColor?: string }) {
+  const bg = primaryColor || Colors.primary;
+  const iconColor = bgColor || Colors.background;
   return (
     <TouchableOpacity style={styles.createButton} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.createButtonInner}>
-        <Ionicons name="add" size={28} color={Colors.background} />
+      <View style={[styles.createButtonInner, { backgroundColor: bg, shadowColor: bg }]}>
+        <Ionicons name="add" size={28} color={iconColor} />
       </View>
     </TouchableOpacity>
   );
@@ -17,16 +20,23 @@ function CreateTabButton({ onPress }: { onPress?: any }) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  // Increase base height to 64 to ensure text isn't cut off
-  const tabBarHeight = 64 + insets.bottom;
+  const activeTheme = useThemeStore((s) => s.getActiveTheme());
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: [styles.tabBar, { height: 60 + (insets.bottom > 0 ? insets.bottom : 10), paddingBottom: insets.bottom > 0 ? insets.bottom : 10 }],
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            backgroundColor: activeTheme.colors.tabBar,
+            borderTopColor: activeTheme.colors.tabBarBorder,
+            height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          },
+        ],
+        tabBarActiveTintColor: activeTheme.colors.primary,
+        tabBarInactiveTintColor: activeTheme.colors.textMuted,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -53,7 +63,13 @@ export default function TabLayout() {
         options={{
           title: '',
           tabBarIcon: () => null,
-          tabBarButton: (props) => <CreateTabButton onPress={props.onPress} />,
+          tabBarButton: (props) => (
+            <CreateTabButton
+              onPress={props.onPress}
+              primaryColor={activeTheme.colors.primary}
+              bgColor={activeTheme.colors.background}
+            />
+          ),
         }}
       />
       <Tabs.Screen

@@ -9,6 +9,8 @@ import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { signOut } from '../../lib/authService';
 import { getWallet } from '../../lib/walletService';
+import { useThemeStore } from '../../store/themeStore';
+import ThemeSelectorModal from '../theme/ThemeSelectorModal';
 
 interface ProfileMoreModalProps {
   visible: boolean;
@@ -21,8 +23,9 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
   const isCoach = user.role === 'coach';
   const coinsBalance = user.coinsBalance ?? 0;
 
-  // Theme Mode: 'auto' | 'dark' | 'light'
-  const [themeMode, setThemeMode] = useState<'auto' | 'dark' | 'light'>('dark');
+  // Active theme & Theme Selector Modal State
+  const activeTheme = useThemeStore((s) => s.getActiveTheme());
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // Language: 'en' | 'am'
   const [language, setLanguage] = useState<'en' | 'am'>('en');
@@ -179,53 +182,22 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   </View>
                 </TouchableOpacity>
 
-                {/* Dark Mode 3-Way Pill (Matches Screenshot 2) */}
-                <View style={styles.menuItem}>
+                {/* Theme Selector (Replaces Dark mode, opens Telegram-style Themes Modal) */}
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.7}
+                  onPress={() => setShowThemeModal(true)}
+                >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="moon-outline" size={22} color={Colors.textPrimary} />
-                    <Text style={styles.menuItemText}>Dark mode</Text>
+                    <Ionicons name="color-palette-outline" size={22} color={activeTheme.colors.primary} />
+                    <Text style={styles.menuItemText}>Theme</Text>
                   </View>
-                  <View style={styles.themePillWrap}>
-                    {/* Auto */}
-                    <TouchableOpacity
-                      style={[styles.themePillBtn, themeMode === 'auto' && styles.themePillBtnActive]}
-                      onPress={() => setThemeMode('auto')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons
-                        name="phone-portrait-outline"
-                        size={15}
-                        color={themeMode === 'auto' ? '#FFF' : Colors.textMuted}
-                      />
-                    </TouchableOpacity>
-
-                    {/* Dark */}
-                    <TouchableOpacity
-                      style={[styles.themePillBtn, themeMode === 'dark' && styles.themePillBtnActive]}
-                      onPress={() => setThemeMode('dark')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons
-                        name="moon"
-                        size={15}
-                        color={themeMode === 'dark' ? '#FFF' : Colors.textMuted}
-                      />
-                    </TouchableOpacity>
-
-                    {/* Light */}
-                    <TouchableOpacity
-                      style={[styles.themePillBtn, themeMode === 'light' && styles.themePillBtnActive]}
-                      onPress={() => setThemeMode('light')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons
-                        name="sunny-outline"
-                        size={15}
-                        color={themeMode === 'light' ? '#FFF' : Colors.textMuted}
-                      />
-                    </TouchableOpacity>
+                  <View style={styles.themePill}>
+                    <View style={[styles.themeColorDot, { backgroundColor: activeTheme.colors.primary }]} />
+                    <Text style={styles.themePillText}>{activeTheme.label}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
                   </View>
-                </View>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.sectionDivider} />
@@ -439,6 +411,12 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Telegram-style Theme Selector Modal */}
+      <ThemeSelectorModal
+        visible={showThemeModal}
+        onClose={() => setShowThemeModal(false)}
+      />
     </>
   );
 }
@@ -530,22 +508,24 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: '600',
   },
-  themePillWrap: {
+  themePill: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 3,
-    gap: 2,
-  },
-  themePillBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
-  themePillBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  themeColorDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+  },
+  themePillText: {
+    fontSize: 12.5,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   sectionDivider: {
     height: 1,

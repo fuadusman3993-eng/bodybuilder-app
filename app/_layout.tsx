@@ -18,6 +18,8 @@ import { setupUniversalInteractionEngine, auditScreenRoute } from '../lib/univer
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalPresence from '../components/GlobalPresence';
 import OfflineNotice from '../components/ui/OfflineNotice';
+import { useThemeStore } from '../store/themeStore';
+import { applyThemeToColors } from '../constants/themes';
 
 if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
@@ -34,6 +36,13 @@ export default function RootLayout() {
   const [appReady, setAppReady] = useState(Platform.OS === 'web');
   const { setUser, setAuthInitialized } = useUserStore();
   const pathname = usePathname();
+  const activeTheme = useThemeStore((s) => s.getActiveTheme());
+  const themeVersion = useThemeStore((s) => s.themeVersion);
+
+  // Sync theme colors with Web DOM and native status
+  useEffect(() => {
+    applyThemeToColors(activeTheme.id);
+  }, [activeTheme.id, themeVersion]);
 
   // 1. Universal Screen Route Auditor: Automatically detects when a user navigates to a mock/dummy screen
   useEffect(() => {
@@ -206,15 +215,19 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: '#050B0E' }} onLayout={onLayoutRootView}>
-        <StatusBar style="light" backgroundColor="#050B0E" />
+      <View
+        key={`theme_${activeTheme.id}_${themeVersion}`}
+        style={{ flex: 1, backgroundColor: activeTheme.colors.background }}
+        onLayout={onLayoutRootView}
+      >
+        <StatusBar style="light" backgroundColor={activeTheme.colors.background} />
         <OfflineNotice />
         <GlobalCallListener />
         <GlobalPresence />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
+            contentStyle: { backgroundColor: activeTheme.colors.background },
             animation: 'slide_from_right',
           }}
         >
