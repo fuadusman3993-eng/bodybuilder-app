@@ -1,11 +1,11 @@
 /**
  * SupermarketHeroCarousel
  * ─────────────────────────────────────────────────────────────
- * Authentic Image 2 Saudi Grocery Replica:
- * 1. Curated product showcase shelves (Protein, Produce, Supps)
- * 2. FitPulse Fresh Box brand emblem
- * 3. Continuous 60fps shimmer / gleaming light sweep across "Shop Now ▶"
- * 4. 4-second auto-sliding carousel with pagination dots
+ * Authentic Image 1 Saudi Supermarket Replica in FitPulse Green:
+ * 1. Single FitPulse Green promo banner container
+ * 2. Top sale headline ("WEEKLY SUPERMARKET DEALS • UP TO 30% OFF")
+ * 3. Products AUTO-SCROLL horizontally across the shelf in clean white cards
+ * 4. Centered glowing / shimmering "Shop Now ▶" green pill button
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -23,163 +23,135 @@ import {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
 import { MarketplaceCategory } from '../../lib/marketplaceData';
 
-export interface HeroSlideDeal {
+export interface ShelfProduct {
   id: string;
-  badge: string;
   title: string;
+  weight: string;
+  priceEtb: number;
+  originalPriceEtb: number;
+  discountPercent: number;
+  imageUrl: string;
   category: MarketplaceCategory;
-  gradientColors: [string, string];
-  products: {
-    id: string;
-    title: string;
-    weight: string;
-    priceEtb: number;
-    originalPriceEtb: number;
-    discountPercent: number;
-    imageUrl: string;
-  }[];
 }
 
-const HERO_SLIDES: HeroSlideDeal[] = [
+const SHELF_PRODUCTS: ShelfProduct[] = [
   {
-    id: 'slide-protein',
-    badge: '📦 FITPULSE FRESH BOX • UP TO 30% OFF',
-    title: 'High-Protein Muscle Pantry',
+    id: 'prod-chicken-1',
+    title: 'Sadia Chicken Breasts',
+    weight: '450g',
+    priceEtb: 420,
+    originalPriceEtb: 495,
+    discountPercent: 15,
+    imageUrl: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&q=80',
     category: 'poultry_meat',
-    gradientColors: ['#0A2518', '#071810'],
-    products: [
-      {
-        id: 'prod-chicken-1',
-        title: 'Sadia Chicken Breasts',
-        weight: '450g',
-        priceEtb: 420,
-        originalPriceEtb: 495,
-        discountPercent: 15,
-        imageUrl: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&q=80',
-      },
-      {
-        id: 'prod-eggs-1',
-        title: 'Farm Fresh Eggs Crate',
-        weight: '30 Eggs',
-        priceEtb: 480,
-        originalPriceEtb: 580,
-        discountPercent: 17,
-        imageUrl: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=800&q=80',
-      },
-      {
-        id: 'prod-chicken-2',
-        title: 'Al Kabeer Tender Strips',
-        weight: '270g',
-        priceEtb: 310,
-        originalPriceEtb: 375,
-        discountPercent: 17,
-        imageUrl: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=800&q=80',
-      },
-      {
-        id: 'prod-yogurt-1',
-        title: 'Greek Yogurt 0% Fat',
-        weight: '450g',
-        priceEtb: 195,
-        originalPriceEtb: 240,
-        discountPercent: 18,
-        imageUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80',
-      },
-    ],
   },
   {
-    id: 'slide-carbs',
-    badge: '📦 FITPULSE FRESH BOX • UP TO 25% OFF',
-    title: 'Clean Energy & Fresh Superfoods',
+    id: 'prod-eggs-1',
+    title: 'Farm Fresh Eggs (30)',
+    weight: '30 Eggs',
+    priceEtb: 480,
+    originalPriceEtb: 580,
+    discountPercent: 17,
+    imageUrl: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=800&q=80',
+    category: 'dairy_eggs',
+  },
+  {
+    id: 'prod-chicken-2',
+    title: 'Al Kabeer Tender Strips',
+    weight: '270g',
+    priceEtb: 310,
+    originalPriceEtb: 375,
+    discountPercent: 17,
+    imageUrl: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=800&q=80',
+    category: 'poultry_meat',
+  },
+  {
+    id: 'prod-salmon-1',
+    title: 'Atlantic Salmon Fillets',
+    weight: '400g',
+    priceEtb: 750,
+    originalPriceEtb: 850,
+    discountPercent: 12,
+    imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80',
+    category: 'poultry_meat',
+  },
+  {
+    id: 'prod-yogurt-1',
+    title: 'Greek Yogurt 0% Fat',
+    weight: '450g',
+    priceEtb: 195,
+    originalPriceEtb: 240,
+    discountPercent: 18,
+    imageUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80',
+    category: 'dairy_eggs',
+  },
+  {
+    id: 'prod-blueberries-1',
+    title: 'Imported Blueberries',
+    weight: '125g',
+    priceEtb: 280,
+    originalPriceEtb: 350,
+    discountPercent: 20,
+    imageUrl: 'https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=800&q=80',
     category: 'fresh_produce',
-    gradientColors: ['#0C2333', '#081722'],
-    products: [
-      {
-        id: 'prod-blueberries-1',
-        title: 'Imported Blueberries',
-        weight: '125g',
-        priceEtb: 280,
-        originalPriceEtb: 350,
-        discountPercent: 20,
-        imageUrl: 'https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=800&q=80',
-      },
-      {
-        id: 'prod-oats-1',
-        title: 'Whole Rolled Oats',
-        weight: '1kg',
-        priceEtb: 320,
-        originalPriceEtb: 400,
-        discountPercent: 20,
-        imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800&q=80',
-      },
-      {
-        id: 'prod-pb-1',
-        title: '100% Pure Peanut Butter',
-        weight: '500g',
-        priceEtb: 360,
-        originalPriceEtb: 450,
-        discountPercent: 20,
-        imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&q=80',
-      },
-      {
-        id: 'prod-bananas-1',
-        title: 'Hawassa Sweet Bananas',
-        weight: '1kg',
-        priceEtb: 120,
-        originalPriceEtb: 150,
-        discountPercent: 20,
-        imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=800&q=80',
-      },
-    ],
   },
   {
-    id: 'slide-supps',
-    badge: '📦 FITPULSE FRESH BOX • UP TO 20% OFF',
-    title: 'Gym Vault & Pro Supplements',
+    id: 'prod-oats-1',
+    title: 'Whole Rolled Oats',
+    weight: '1kg',
+    priceEtb: 320,
+    originalPriceEtb: 400,
+    discountPercent: 20,
+    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800&q=80',
+    category: 'carbs_fuel',
+  },
+  {
+    id: 'prod-pb-1',
+    title: '100% Pure Peanut Butter',
+    weight: '500g',
+    priceEtb: 360,
+    originalPriceEtb: 450,
+    discountPercent: 20,
+    imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&q=80',
+    category: 'healthy_fats',
+  },
+  {
+    id: 'prod-bananas-1',
+    title: 'Hawassa Sweet Bananas',
+    weight: '1kg',
+    priceEtb: 120,
+    originalPriceEtb: 150,
+    discountPercent: 20,
+    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=800&q=80',
+    category: 'fresh_produce',
+  },
+  {
+    id: 'prod-1',
+    title: 'Gold Standard Whey',
+    weight: '2kg',
+    priceEtb: 4900,
+    originalPriceEtb: 5800,
+    discountPercent: 15,
+    imageUrl: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=800&q=80',
     category: 'supplements',
-    gradientColors: ['#1C162A', '#110D1B'],
-    products: [
-      {
-        id: 'prod-1',
-        title: 'Gold Standard Whey',
-        weight: '2kg',
-        priceEtb: 4900,
-        originalPriceEtb: 5800,
-        discountPercent: 15,
-        imageUrl: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=800&q=80',
-      },
-      {
-        id: 'prod-2',
-        title: 'Creatine Monohydrate',
-        weight: '300g',
-        priceEtb: 2100,
-        originalPriceEtb: 2500,
-        discountPercent: 16,
-        imageUrl: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=800&q=80',
-      },
-      {
-        id: 'prod-3',
-        title: 'Pre-Workout Igniter',
-        weight: '30 Servings',
-        priceEtb: 2400,
-        originalPriceEtb: 2900,
-        discountPercent: 17,
-        imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
-      },
-      {
-        id: 'prod-belt-1',
-        title: 'Leather Lifting Belt',
-        weight: 'Pro Gear',
-        priceEtb: 1850,
-        originalPriceEtb: 2300,
-        discountPercent: 20,
-        imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&q=80',
-      },
-    ],
+  },
+  {
+    id: 'prod-2',
+    title: 'Creatine Monohydrate',
+    weight: '300g',
+    priceEtb: 2100,
+    originalPriceEtb: 2500,
+    discountPercent: 16,
+    imageUrl: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=800&q=80',
+    category: 'supplements',
   },
 ];
+
+const CARD_WIDTH = 96;
+const CARD_GAP = 8;
+const CARD_STEP = CARD_WIDTH + CARD_GAP; // 104px per scroll step
 
 interface Props {
   onShopNow: (category: MarketplaceCategory) => void;
@@ -188,11 +160,12 @@ interface Props {
 
 export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: Props) {
   const { width } = useWindowDimensions();
-  const carouselWidth = Math.min(width - 32, 600); // 16px padding on left/right
+  const bannerWidth = Math.min(width - 32, 600);
 
-  const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const autoSlideTimer = useRef<any>(null);
+  const scrollOffsetRef = useRef<number>(0);
+  const autoScrollTimer = useRef<any>(null);
+  const isUserTouchingRef = useRef<boolean>(false);
 
   // Shimmer / Gleam animation for "Shop Now" button
   const shimmerAnim = useRef(new Animated.Value(-120)).current;
@@ -201,11 +174,11 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 1. Shimmer sweep animation loop (glides light across the button every 2.6s)
+    // 1. Looping light sweep animation across the "Shop Now" button
     const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmerAnim, {
-          toValue: 200,
+          toValue: 220,
           duration: 1200,
           useNativeDriver: true,
         }),
@@ -219,17 +192,17 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
     );
     shimmerLoop.start();
 
-    // 2. Subtle button breathing scale loop
+    // 2. Subtle button breathing scale
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.035,
-          duration: 1000,
+          duration: 900,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: 900,
           useNativeDriver: true,
         }),
       ])
@@ -242,173 +215,163 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
     };
   }, []);
 
-  // Auto-slide every 4.2 seconds
+  // ── Auto-Scroll Product Reel (Items auto-scroll, not banner!) ──
   useEffect(() => {
-    startAutoSlide();
-    return () => stopAutoSlide();
-  }, [activeIndex, carouselWidth]);
+    startAutoScroll();
+    return () => stopAutoScroll();
+  }, [bannerWidth]);
 
-  const startAutoSlide = () => {
-    stopAutoSlide();
-    autoSlideTimer.current = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % HERO_SLIDES.length;
-      scrollRef.current?.scrollTo({
-        x: nextIndex * carouselWidth,
-        animated: true,
-      });
-      setActiveIndex(nextIndex);
-    }, 4200);
+  const startAutoScroll = () => {
+    stopAutoScroll();
+    autoScrollTimer.current = setInterval(() => {
+      if (isUserTouchingRef.current) return;
+
+      const maxScroll = Math.max(0, SHELF_PRODUCTS.length * CARD_STEP - (bannerWidth - 24));
+      let nextOffset = scrollOffsetRef.current + CARD_STEP;
+
+      if (nextOffset > maxScroll) {
+        // Smoothly loop back to start
+        nextOffset = 0;
+      }
+
+      scrollOffsetRef.current = nextOffset;
+      scrollRef.current?.scrollTo({ x: nextOffset, animated: true });
+    }, 2400); // Ticks every 2.4s
   };
 
-  const stopAutoSlide = () => {
-    if (autoSlideTimer.current) {
-      clearInterval(autoSlideTimer.current);
-      autoSlideTimer.current = null;
+  const stopAutoScroll = () => {
+    if (autoScrollTimer.current) {
+      clearInterval(autoScrollTimer.current);
+      autoScrollTimer.current = null;
     }
   };
 
-  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const newIdx = Math.round(offsetX / carouselWidth);
-    if (newIdx !== activeIndex && newIdx >= 0 && newIdx < HERO_SLIDES.length) {
-      setActiveIndex(newIdx);
-    }
-    startAutoSlide();
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffsetRef.current = e.nativeEvent.contentOffset.x;
   };
 
-  const currentSlide = HERO_SLIDES[activeIndex] || HERO_SLIDES[0];
+  const handleScrollBegin = () => {
+    isUserTouchingRef.current = true;
+    stopAutoScroll();
+  };
+
+  const handleScrollEnd = () => {
+    isUserTouchingRef.current = false;
+    startAutoScroll();
+  };
 
   return (
-    <View style={[styles.container, { width: carouselWidth }]}>
-      {/* ── Carousel Slider ── */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScrollBeginDrag={stopAutoSlide}
-        onMomentumScrollEnd={handleScrollEnd}
-        contentContainerStyle={{ width: carouselWidth * HERO_SLIDES.length }}
+    <View style={[styles.container, { width: bannerWidth }]}>
+      <LinearGradient
+        colors={['#0B3B24', '#072417', '#03140C']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.bannerCard}
       >
-        {HERO_SLIDES.map((slide) => (
-          <LinearGradient
-            key={slide.id}
-            colors={slide.gradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.slideCard, { width: carouselWidth }]}
-          >
-            {/* Top Badge & Header */}
-            <View style={styles.topHeaderRow}>
-              <View style={styles.boxBadge}>
-                <Ionicons name="cube" size={12} color="#000" style={{ marginRight: 4 }} />
-                <Text style={styles.boxBadgeText}>{slide.badge}</Text>
+        {/* Top Header Badge */}
+        <View style={styles.topBadgeRow}>
+          <View style={styles.pillBadge}>
+            <Text style={styles.pillBadgeText}>⚡ WEEKLY SUPERMARKET DEALS • UP TO 30% OFF</Text>
+          </View>
+        </View>
+
+        {/* ── Auto-Scrolling Product Shelf (Image 1 Style) ── */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={handleScrollBegin}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
+          contentContainerStyle={styles.shelfScrollContent}
+        >
+          {SHELF_PRODUCTS.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.productFrame}
+              activeOpacity={0.85}
+              onPress={() => onProductPress?.(item.id) || onShopNow(item.category)}
+            >
+              {/* Corner Discount Sticker (-15% off) */}
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountBadgeText}>-{item.discountPercent}%</Text>
               </View>
-              <Text style={styles.slideTitle}>{slide.title}</Text>
-            </View>
 
-            {/* Product Shelf Showcase Row (White cards - Image 2 Replica) */}
-            <View style={styles.shelfRow}>
-              {slide.products.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.productFrame}
-                  activeOpacity={0.85}
-                  onPress={() => onProductPress?.(item.id) || onShopNow(slide.category)}
-                >
-                  {/* Discount sticker in corner */}
-                  <View style={styles.discountSticker}>
-                    <Text style={styles.discountStickerText}>-{item.discountPercent}%</Text>
-                  </View>
+              {/* Product Thumbnail */}
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.productImage}
+                contentFit="contain"
+                transition={150}
+              />
 
-                  {/* Product thumbnail */}
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={styles.productImg}
-                    contentFit="cover"
-                    transition={150}
-                  />
+              {/* Sale Price in Red Bold */}
+              <Text style={styles.salePriceText} numberOfLines={1}>
+                {item.priceEtb} <Text style={styles.currencyText}>ETB</Text>
+              </Text>
 
-                  {/* Price Tag (Red bold) */}
-                  <Text style={styles.shelfPriceText} numberOfLines={1}>
-                    {item.priceEtb} <Text style={styles.etbUnit}>ETB</Text>
-                  </Text>
-                  <Text style={styles.shelfOriginalPrice} numberOfLines={1}>
-                    {item.originalPriceEtb}
-                  </Text>
-                  <Text style={styles.shelfItemTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              {/* Strikethrough Original Price */}
+              <Text style={styles.originalPriceText} numberOfLines={1}>
+                {item.originalPriceEtb}
+              </Text>
 
-            {/* ── Center Glowing "Shop Now ▶" Button ── */}
-            <View style={styles.buttonCenterWrap}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <TouchableOpacity
-                  style={styles.shopNowPillBtn}
-                  activeOpacity={0.88}
-                  onPress={() => onShopNow(slide.category)}
-                >
-                  {/* Base Green Gradient */}
-                  <LinearGradient
-                    colors={['#00E676', '#00C853']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
+              {/* Product Title */}
+              <Text style={styles.productTitleText} numberOfLines={1}>
+                {item.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-                  {/* Animated Light Shimmer Glide (nesbraq reflection) */}
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[
-                      styles.shimmerOverlay,
-                      {
-                        transform: [
-                          { translateX: shimmerAnim },
-                          { rotate: '25deg' },
-                        ],
-                      },
-                    ]}
-                  >
-                    <LinearGradient
-                      colors={[
-                        'rgba(255, 255, 255, 0)',
-                        'rgba(255, 255, 255, 0.65)',
-                        'rgba(255, 255, 255, 0)',
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{ width: 45, height: '100%' }}
-                    />
-                  </Animated.View>
+        {/* ── Center Shining "Shop Now ▶" Green Button ── */}
+        <View style={styles.shopNowButtonWrap}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              style={styles.shopNowBtn}
+              activeOpacity={0.88}
+              onPress={() => onShopNow('all')}
+            >
+              {/* Base Green Gradient */}
+              <LinearGradient
+                colors={['#00E676', '#00C853']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFillObject}
+              />
 
-                  <Text style={styles.shopNowBtnText}>Shop Now</Text>
-                  <Ionicons name="play" size={13} color="#000000" style={{ marginLeft: 5 }} />
-                </TouchableOpacity>
+              {/* Shimmer Light Reflection Sweep (nesbraq) */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.shimmerEffect,
+                  {
+                    transform: [
+                      { translateX: shimmerAnim },
+                      { rotate: '25deg' },
+                    ],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0)',
+                    'rgba(255, 255, 255, 0.7)',
+                    'rgba(255, 255, 255, 0)',
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ width: 45, height: '100%' }}
+                />
               </Animated.View>
-            </View>
-          </LinearGradient>
-        ))}
-      </ScrollView>
 
-      {/* ── Pagination Indicator Dots (● ○ ○) ── */}
-      <View style={styles.paginationRow}>
-        {HERO_SLIDES.map((_, i) => (
-          <TouchableOpacity
-            key={i}
-            onPress={() => {
-              scrollRef.current?.scrollTo({ x: i * carouselWidth, animated: true });
-              setActiveIndex(i);
-            }}
-            style={[
-              styles.dot,
-              activeIndex === i ? styles.dotActive : styles.dotInactive,
-            ]}
-          />
-        ))}
-      </View>
+              <Text style={styles.shopNowText}>Shop Now</Text>
+              <Ionicons name="play" size={13} color="#000000" style={{ marginLeft: 5 }} />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -419,68 +382,56 @@ const styles = StyleSheet.create({
     marginTop: 12,
     alignSelf: 'center',
   },
-  slideCard: {
+  bannerCard: {
     borderRadius: 20,
     paddingTop: 12,
     paddingBottom: 14,
-    paddingHorizontal: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 230, 118, 0.25)',
-    overflow: 'hidden',
+    borderColor: 'rgba(0, 230, 118, 0.35)',
     shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 4,
   },
-  topHeaderRow: {
+  topBadgeRow: {
     alignItems: 'center',
     marginBottom: 10,
+    paddingHorizontal: 12,
   },
-  boxBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pillBadge: {
     backgroundColor: '#00E676',
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 14,
-    marginBottom: 4,
   },
-  boxBadgeText: {
+  pillBadgeText: {
     color: '#000000',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '900',
     letterSpacing: 0.4,
   },
-  slideTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
 
-  // Shelf Row (Image 2 Replica)
-  shelfRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
+  // Auto-scrolling Shelf Content (Image 1 Style)
+  shelfScrollContent: {
+    paddingHorizontal: 12,
+    gap: CARD_GAP,
     marginBottom: 12,
   },
   productFrame: {
-    flex: 1,
+    width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 5,
+    padding: 6,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 2,
   },
-  discountSticker: {
+  discountBadge: {
     position: 'absolute',
     top: -4,
     left: -4,
@@ -490,35 +441,35 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     zIndex: 2,
   },
-  discountStickerText: {
+  discountBadgeText: {
     color: '#FFFFFF',
     fontSize: 8.5,
     fontWeight: '900',
   },
-  productImg: {
+  productImage: {
     width: '100%',
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    height: 54,
+    borderRadius: 6,
+    backgroundColor: '#F8FAFC',
     marginBottom: 3,
   },
-  shelfPriceText: {
+  salePriceText: {
     color: '#DC2626',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '900',
-    lineHeight: 13,
+    lineHeight: 14,
   },
-  etbUnit: {
-    fontSize: 8,
+  currencyText: {
+    fontSize: 8.5,
     fontWeight: '700',
   },
-  shelfOriginalPrice: {
+  originalPriceText: {
     color: '#94A3B8',
-    fontSize: 8.5,
+    fontSize: 9,
     textDecorationLine: 'line-through',
     marginTop: -1,
   },
-  shelfItemTitle: {
+  productTitleText: {
     color: '#1E293B',
     fontSize: 8.5,
     fontWeight: '700',
@@ -527,16 +478,16 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
 
-  // Center Glowing Button
-  buttonCenterWrap: {
+  // Glowing / Shimmering Shop Now Button
+  shopNowButtonWrap: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shopNowPillBtn: {
+  shopNowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 26,
+    paddingHorizontal: 28,
     paddingVertical: 9,
     borderRadius: 22,
     overflow: 'hidden',
@@ -547,38 +498,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  shimmerOverlay: {
+  shimmerEffect: {
     position: 'absolute',
     top: -20,
     bottom: -20,
     left: 0,
     width: 60,
   },
-  shopNowBtnText: {
+  shopNowText: {
     color: '#000000',
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.2,
-  },
-
-  // Pagination
-  paginationRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  dot: {
-    height: 5,
-    borderRadius: 2.5,
-  },
-  dotActive: {
-    width: 18,
-    backgroundColor: '#00E676',
-  },
-  dotInactive: {
-    width: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
 });

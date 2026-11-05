@@ -38,7 +38,6 @@ import {
   FREE_DELIVERY_THRESHOLD_ETB,
 } from '../store/supermarketCartStore';
 import SupermarketCartModal from '../components/marketplace/SupermarketCartModal';
-import BrandLogo from '../components/ui/BrandLogo';
 import SupermarketHeroCarousel from '../components/marketplace/SupermarketHeroCarousel';
 
 export default function MarketplaceScreen() {
@@ -179,13 +178,7 @@ export default function MarketplaceScreen() {
         <BackButton fallbackRoute="/(tabs)" />
 
         <View style={styles.headerTitleWrap}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <BrandLogo size="small" showText={false} />
-            <View style={styles.headerShopBoxBadge}>
-              <Ionicons name="cube" size={13} color="#000000" />
-            </View>
-            <Text style={styles.headerTitle}>FitPulse Market</Text>
-          </View>
+          <Text style={styles.headerTitle}>FitPulse Market</Text>
         </View>
 
         {/* Right Action Icons: Coins + Basket */}
@@ -712,14 +705,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: -0.3,
-  },
-  headerShopBoxBadge: {
-    backgroundColor: '#00E676',
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   coinBadge: {
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
