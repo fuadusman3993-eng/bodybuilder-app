@@ -1,11 +1,11 @@
 /**
  * SupermarketHeroCarousel
  * ─────────────────────────────────────────────────────────────
- * Authentic Image 1 Saudi Supermarket Replica in FitPulse Green:
- * 1. Single FitPulse Green promo banner container
- * 2. Top sale headline ("WEEKLY SUPERMARKET DEALS • UP TO 30% OFF")
- * 3. Products AUTO-SCROLL horizontally across the shelf in clean white cards
- * 4. Centered glowing / shimmering "Shop Now ▶" green pill button
+ * Authentic Image 2 Saudi Supermarket Replica in FitPulse Green:
+ * 1. Curved non-rectangular banner silhouette with sculpted bottom apron
+ * 2. Center green tab extends downwards ("weta bela") matching "Shop Now ▶"
+ * 3. "Shop Now ▶" in crisp white text with looping 60fps light shimmer sweep
+ * 4. Products AUTO-SCROLL horizontally across the shelf in clean white cards
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -261,12 +261,13 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
   };
 
   return (
-    <View style={[styles.container, { width: bannerWidth }]}>
+    <View style={[styles.outerWrapper, { width: bannerWidth }]}>
+      {/* ── Main Green Shelf Body ── */}
       <LinearGradient
         colors={['#0B3B24', '#072417', '#03140C']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.bannerCard}
+        style={styles.bannerBody}
       >
         {/* Top Header Badge */}
         <View style={styles.topBadgeRow}>
@@ -324,16 +325,25 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </LinearGradient>
 
-        {/* ── Center Shining "Shop Now ▶" Green Button ── */}
-        <View style={styles.shopNowButtonWrap}>
+      {/* ── Center Sculpted Green Apron / Tab extending downwards ("weta bela") ── */}
+      <View style={styles.apronContainer}>
+        {/* Curved Green Base matching the banner */}
+        <LinearGradient
+          colors={['#072417', '#03140C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.apronTab}
+        >
+          {/* Animated Glowing & Shimmering "Shop Now ▶" Button (White text - Image 2) */}
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <TouchableOpacity
               style={styles.shopNowBtn}
               activeOpacity={0.88}
               onPress={() => onShopNow('all')}
             >
-              {/* Base Green Gradient */}
+              {/* Bright FitPulse Green Pill */}
               <LinearGradient
                 colors={['#00E676', '#00C853']}
                 start={{ x: 0, y: 0 }}
@@ -366,28 +376,37 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
                 />
               </Animated.View>
 
-              <Text style={styles.shopNowText}>Shop Now</Text>
-              <Ionicons name="play" size={13} color="#000000" style={{ marginLeft: 5 }} />
+              {/* Crisp WHITE Text & Arrow (Image 2 Replica) */}
+              <Text style={styles.shopNowWhiteText}>Shop Now</Text>
+              <Ionicons name="play" size={12} color="#FFFFFF" style={{ marginLeft: 5 }} />
             </TouchableOpacity>
           </Animated.View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outerWrapper: {
     marginHorizontal: 16,
     marginTop: 12,
+    marginBottom: 16,
     alignSelf: 'center',
+    position: 'relative',
+    alignItems: 'center',
   },
-  bannerCard: {
-    borderRadius: 20,
+  bannerBody: {
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     paddingTop: 12,
-    paddingBottom: 14,
+    paddingBottom: 10,
     borderWidth: 1.5,
     borderColor: 'rgba(0, 230, 118, 0.35)',
+    borderBottomColor: 'rgba(0, 230, 118, 0.15)',
     shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -416,7 +435,7 @@ const styles = StyleSheet.create({
   shelfScrollContent: {
     paddingHorizontal: 12,
     gap: CARD_GAP,
-    marginBottom: 12,
+    paddingBottom: 2,
   },
   productFrame: {
     width: CARD_WIDTH,
@@ -478,23 +497,44 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
 
-  // Glowing / Shimmering Shop Now Button
-  shopNowButtonWrap: {
+  // ── Protruding Center Apron / Tab ("weta bela" shape - Image 2 Replica) ──
+  apronContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: -8, // Seamlessly overlaps the bottom of the shelf
+    zIndex: 10,
   },
+  apronTab: {
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 5,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderColor: 'rgba(0, 230, 118, 0.35)',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+
+  // Glowing / Shimmering Shop Now Button with White Text
   shopNowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 9,
-    borderRadius: 22,
+    paddingHorizontal: 26,
+    paddingVertical: 8.5,
+    borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.55,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -505,8 +545,8 @@ const styles = StyleSheet.create({
     left: 0,
     width: 60,
   },
-  shopNowText: {
-    color: '#000000',
+  shopNowWhiteText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.2,
