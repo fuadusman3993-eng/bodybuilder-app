@@ -3,19 +3,17 @@ import {
   View, Text, StyleSheet, SectionList, TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
-import { doc, getDoc } from 'firebase/firestore';
+import { getProfilesBatch, isGenericName } from '../lib/profileService';
 import Skeleton from '../components/ui/Skeleton';
 import { safeBack } from '../lib/navigation';
 import BackButton from '../components/ui/BackButton';
-
-import { db } from '../lib/firebase';
+import UserAvatar, { AvatarIconStyle } from '../components/ui/UserAvatar';
 
 const BG = Colors.background;
 
@@ -92,86 +90,105 @@ export default function NotificationsScreen() {
   const fetchNotifications = async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
-      const items: any[] = [];
-
-      // 1. Coach: fetch requests from coach_requests
-      if (user.role === 'coach') {
-        const { data: reqs } = await supabase
-          .from('coach_requests')
+      // 1. Fetch coach requests and regular notifications in parallel (fast!)
+      const [reqsRes, notifsRes] = await Promise.all([
+        user.role === 'coach'
+          ? supabase
+              .from('coach_requests')
+              .select('*')
+              .eq('coach_uid', user.uid)
+              .neq('status', 'rejected')
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: null, error: null }),
+        supabase
+          .from('notifications')
           .select('*')
-          .eq('coach_uid', user.uid)
-          .neq('status', 'rejected') // Show pending and accepted
-          .order('created_at', { ascending: false });
+          .eq('user_uid', user.uid)
+          .order('created_at', { ascending: false })
+          .limit(40),
+      ]);
 
-        if (reqs) {
-          const seenTrainees = new Set<string>();
-          for (const req of reqs) {
-            // Deduplicate: only show latest request per trainee
-            if (seenTrainees.has(req.trainee_uid)) continue;
-            seenTrainees.add(req.trainee_uid);
-
-            let name = 'A user';
-            let avatar = `https://ui-avatars.com/api/?name=User&background=10B981&color=fff`;
-            try {
-              const snap = await getDoc(doc(db, 'users', req.trainee_uid));
-              if (snap.exists()) {
-                const d = snap.data();
-                name = d.name || d.username || 'A user';
-                avatar = d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${req.trainee_uid}.jpg`;
-              }
-            } catch (_) {}
-
-            items.push({
-              id: `req_${req.id}`,
-              type: 'request',
-              message: `wants you to be their coach.`,
-              sender_uid: req.trainee_uid,
-              sender_avatar: avatar,
-              sender_name: name,
-              is_read: false,
-              created_at: req.created_at,
-              request_id: req.id,
-              status: req.status,
-            });
-          }
-        }
-      }
-
-      // 2. Regular notifications (likes, follows, etc.)
-      let notifsQuery = supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_uid', user.uid);
-
+      const reqs = reqsRes.data || [];
+      let notifs = notifsRes.data || [];
       if (user.role === 'coach') {
-        // Exclude coach request notifications because they are already loaded from coach_requests above
-        notifsQuery = notifsQuery.neq('type', 'request');
+        notifs = notifs.filter((n: any) => n.type !== 'request');
       }
 
-      const { data: notifs } = await notifsQuery.order('created_at', { ascending: false });
+      // 2. Collect all unique sender UIDs
+      const allSenderUids = Array.from(
+        new Set([
+          ...reqs.map((r: any) => r.trainee_uid),
+          ...notifs.map((n: any) => n.sender_uid),
+        ])
+      ).filter(Boolean);
 
-      if (notifs) {
-        // Enrich with sender info
-        for (const n of notifs) {
-          let name = 'Someone';
-          let avatar = `https://ui-avatars.com/api/?name=User&background=10B981&color=fff`;
-          if (n.sender_uid) {
-            try {
-              const snap = await getDoc(doc(db, 'users', n.sender_uid));
-              if (snap.exists()) {
-                const d = snap.data();
-                name = d.name || d.username || 'Someone';
-                avatar = d.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${n.sender_uid}.jpg`;
-              }
-            } catch (_) {}
+      // 3. Single batch query to Supabase profiles (instant in-memory cache)
+      const profilesMap = await getProfilesBatch(allSenderUids);
+
+      const items: any[] = [];
+      const seenTrainees = new Set<string>();
+
+      // 4. Process Coach Requests with Real Trainee Profile
+      for (const req of reqs) {
+        if (seenTrainees.has(req.trainee_uid)) continue;
+        seenTrainees.add(req.trainee_uid);
+
+        const prof = profilesMap[req.trainee_uid];
+        let name = prof?.name || prof?.username || req.trainee_name;
+        if (isGenericName(name)) {
+          name = req.trainee_name || 'Member';
+        }
+
+        const avatar = prof?.avatar_url || req.trainee_avatar || null;
+
+        items.push({
+          id: `req_${req.id}`,
+          type: 'request',
+          message: 'wants you to be their coach.',
+          sender_uid: req.trainee_uid,
+          sender_avatar: avatar,
+          sender_name: name || 'Member',
+          avatar_color: prof?.avatar_color,
+          avatar_icon: prof?.avatar_icon,
+          is_read: false,
+          created_at: req.created_at,
+          request_id: req.id,
+          status: req.status,
+        });
+      }
+
+      // 5. Process Regular Notifications with Real User Profiles
+      for (const n of notifs) {
+        const prof = n.sender_uid ? profilesMap[n.sender_uid] : null;
+        let name = prof?.name || prof?.username;
+
+        // Auto-extract real sender name from notification message if profile name is missing
+        if (isGenericName(name) && n.message) {
+          const match = n.message.replace(/\s+(liked your|started following|sent you|accepted your|wants you).*/i, '').trim();
+          if (match && !isGenericName(match)) {
+            name = match;
           }
-          items.push({ ...n, sender_name: name, sender_avatar: avatar });
         }
-        // Mark as read
-        const unreadIds = notifs.filter(n => !n.is_read).map(n => n.id);
-        if (unreadIds.length > 0) {
-          supabase.from('notifications').update({ is_read: true }).in('id', unreadIds).then();
+
+        if (isGenericName(name)) {
+          name = 'Member';
         }
+
+        const avatar = prof?.avatar_url || null;
+
+        items.push({
+          ...n,
+          sender_name: name,
+          sender_avatar: avatar,
+          avatar_color: prof?.avatar_color,
+          avatar_icon: prof?.avatar_icon,
+        });
+      }
+
+      // 6. Mark as read in background
+      const unreadIds = notifs.filter((n: any) => !n.is_read).map((n: any) => n.id);
+      if (unreadIds.length > 0) {
+        supabase.from('notifications').update({ is_read: true }).in('id', unreadIds).then();
       }
 
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -181,7 +198,7 @@ export default function NotificationsScreen() {
       cachedNotifUserUid = user.uid || null;
       notifCacheTimestamp = Date.now();
     } catch (e) {
-      console.warn(e);
+      console.warn('Notifications fetch error:', e);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -276,15 +293,17 @@ export default function NotificationsScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.row}>
-      {/* Avatar — tappable to go to profile */}
+      {/* Avatar — uses universal UserAvatar (photos or real initials, NEVER 'US') */}
       <TouchableOpacity
         onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
       >
-        <Image
-          source={item.sender_avatar}
-          cachePolicy="memory-disk"
-          contentFit="cover"
-          style={styles.avatar}
+        <UserAvatar
+          uid={item.sender_uid}
+          name={item.sender_name}
+          avatarUrl={item.sender_avatar}
+          avatarColor={item.avatar_color}
+          avatarIcon={item.avatar_icon as AvatarIconStyle}
+          size={44}
         />
       </TouchableOpacity>
 
