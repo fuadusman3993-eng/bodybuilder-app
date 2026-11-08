@@ -14,12 +14,7 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 import FitPulseConfirmModal from '../../components/ui/FitPulseConfirmModal';
 import { Colors } from '../../constants/colors';
-
-const BG = '#0a0a0a';
-const PRIMARY = '#00E676';
-const SURFACE = '#121212';
-const TEXT = '#FFFFFF';
-const MUTED = '#A0A0A0';
+import { useTheme } from '../../store/themeStore';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -56,6 +51,7 @@ import { useCachedState } from '../../lib/useCachedState';
 export default function ChatScreen() {
   const router = useRouter();
   const { user, authInitialized } = useUserStore();
+  const { colors } = useTheme();
   const [conversations, setConversations, cacheLoaded] = useCachedState<ConvItem[]>(user?.uid ? `chats_${user.uid}` : '', []);
   const [loading, setLoading] = useState(true);
   
@@ -179,32 +175,32 @@ export default function ChatScreen() {
       onLongPress={() => handleDeleteConversation(item)}
       activeOpacity={0.7}
     >
-      <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: PRIMARY, borderWidth: 2 } : {}]}>
+      <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: colors.primary, borderWidth: 2 } : {}]}>
         {item.otherAvatar
           ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
-          : <View style={styles.avatarInitialWrap}>
-              <Text style={styles.avatarInitialText}>{item.otherName[0]?.toUpperCase()}</Text>
+          : <View style={[styles.avatarInitialWrap, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.avatarInitialText, { color: colors.primary }]}>{item.otherName[0]?.toUpperCase()}</Text>
             </View>}
-        {item.unreadCount ? <View style={styles.onlineDot} /> : null}
+        {item.unreadCount ? <View style={[styles.onlineDot, { backgroundColor: colors.primary, borderColor: colors.background }]} /> : null}
       </View>
       
       <View style={styles.convInfo}>
         <View style={styles.convTop}>
-          <Text style={styles.convName}>{item.otherName}</Text>
-          <Text style={[styles.convTime, item.unreadCount ? { color: PRIMARY } : {}]}>{timeAgo(item.lastAt)}</Text>
+          <Text style={[styles.convName, { color: colors.textPrimary }]}>{item.otherName}</Text>
+          <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted }]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
             {item.lastMessage?.includes('Missed call') ? (
               <Ionicons name="call-outline" size={14} color="#EF4444" />
             ) : item.lastMessage?.includes('Voice/Video call') ? (
-              <Ionicons name="call-outline" size={14} color="#00E676" />
+              <Ionicons name="call-outline" size={14} color={colors.primary} />
             ) : null}
             <Text
               style={[
                 styles.convLast,
+                { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
                 item.lastMessage?.includes('Missed call') && { color: '#EF4444', fontWeight: '500' },
-                item.unreadCount ? { color: TEXT, fontWeight: '500' } : {}
               ]}
               numberOfLines={1}
             >
@@ -212,7 +208,7 @@ export default function ChatScreen() {
             </Text>
           </View>
           {!!item.unreadCount && (
-            <View style={styles.unreadBadge}>
+            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
             </View>
           )}
@@ -222,33 +218,33 @@ export default function ChatScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* App Header */}
       <View style={styles.header}>
         <View style={styles.logoWrap}>
           <BrandLogo size="small" showText={false} />
           <View>
-            <Text style={styles.logoSub}>Stronger Together</Text>
+            <Text style={[styles.logoSub, { color: colors.textMuted }]}>Stronger Together</Text>
           </View>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={styles.iconBtn}>
-            <Ionicons name="search" size={22} color={TEXT} />
+            <Ionicons name="search" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(tabs)/community')} style={styles.iconBtn}>
-            <Ionicons name="create-outline" size={22} color={TEXT} />
+            <Ionicons name="create-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Search Input (Collapsible) */}
       {showSearch && (
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color={MUTED} style={styles.searchIcon} />
+        <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder="Search..."
-            placeholderTextColor={MUTED}
+            placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}
             autoFocus
@@ -290,7 +286,7 @@ export default function ChatScreen() {
           </View>
           <Text style={styles.guestSubtitle}>Log in to chat with coaches & friends</Text>
           <TouchableOpacity
-            style={styles.guestLoginPillBtn}
+            style={[styles.guestLoginPillBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
             activeOpacity={0.85}
             onPress={() => setShowAuthModal(true)}
           >
@@ -305,10 +301,18 @@ export default function ChatScreen() {
               {['All', 'Coaches', 'Groups'].map(filter => (
                 <TouchableOpacity 
                   key={filter} 
-                  style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: activeFilter === filter ? colors.primary : colors.surface },
+                  ]}
                   onPress={() => setActiveFilter(filter as any)}
                 >
-                  <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
+                  <Text
+                    style={[
+                      styles.filterText,
+                      { color: activeFilter === filter ? '#000000' : colors.textPrimary },
+                    ]}
+                  >
                     {filter}
                   </Text>
                 </TouchableOpacity>
@@ -337,9 +341,9 @@ export default function ChatScreen() {
             </View>
           ) : filtered.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-ellipses-outline" size={64} color={SURFACE} />
-              <Text style={styles.emptyTitle}>No messages</Text>
-              <Text style={styles.emptyText}>Find coaches or groups to start chatting.</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={64} color={colors.surfaceLight} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No messages</Text>
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>Find coaches or groups to start chatting.</Text>
             </View>
           ) : (
             <FlatList
@@ -375,34 +379,33 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
   },
   logoWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoTitle: { color: TEXT, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
-  logoSub: { color: MUTED, fontSize: 11, fontWeight: '500' },
+  logoTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  logoSub: { fontSize: 11, fontWeight: '500' },
   headerActions: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 8 },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: SURFACE,
     marginHorizontal: 16, marginBottom: 12,
     borderRadius: 20, paddingHorizontal: 14,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 10, color: TEXT, fontSize: 15 },
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 15 },
 
   filtersWrap: { paddingBottom: 16 },
   filtersScroll: { paddingHorizontal: 16, gap: 10 },
   filterChip: {
     paddingHorizontal: 20, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: SURFACE,
+    borderRadius: 20,
   },
-  filterChipActive: { backgroundColor: PRIMARY },
-  filterText: { color: TEXT, fontSize: 13, fontWeight: '600' },
+  filterChipActive: {},
+  filterText: { fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: '#000' },
 
   convRow: {
@@ -416,25 +419,24 @@ const styles = StyleSheet.create({
   avatar: { width: 52, height: 52, borderRadius: 26 },
   avatarInitialWrap: {
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: SURFACE, justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitialText: { color: PRIMARY, fontWeight: '800', fontSize: 20 },
+  avatarInitialText: { fontWeight: '800', fontSize: 20 },
   onlineDot: {
     position: 'absolute', bottom: 2, right: 2,
     width: 14, height: 14, borderRadius: 7,
-    backgroundColor: PRIMARY, borderWidth: 2, borderColor: BG,
+    borderWidth: 2,
   },
 
   convInfo: { flex: 1, justifyContent: 'center' },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  convName: { color: TEXT, fontSize: 16, fontWeight: '700' },
-  convTime: { color: MUTED, fontSize: 12, fontWeight: '500' },
+  convName: { fontSize: 16, fontWeight: '700' },
+  convTime: { fontSize: 12, fontWeight: '500' },
   
   convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  convLast: { color: MUTED, fontSize: 14, flex: 1, paddingRight: 10 },
+  convLast: { fontSize: 14, flex: 1, paddingRight: 10 },
   
   unreadBadge: {
-    backgroundColor: PRIMARY,
     minWidth: 22, height: 22, borderRadius: 11,
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 6,
@@ -442,8 +444,8 @@ const styles = StyleSheet.create({
   unreadBadgeText: { color: '#000', fontSize: 11, fontWeight: '800' },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  emptyTitle: { color: TEXT, fontSize: 18, fontWeight: '700' },
-  emptyText: { color: MUTED, fontSize: 14 },
+  emptyTitle: { fontSize: 18, fontWeight: '700' },
+  emptyText: { fontSize: 14 },
 
   /* TikTok Guest State (Image 1) */
   guestCenterWrap: {

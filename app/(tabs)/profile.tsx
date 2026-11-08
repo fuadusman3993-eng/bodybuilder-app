@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
@@ -29,6 +30,7 @@ const BORDER = Colors.border;
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, setUser, authInitialized, setTier } = useUserStore();
+  const { colors } = useTheme();
 
   const isCoach = user.role === 'coach';
   const PROFILE_TABS = [
@@ -278,7 +280,7 @@ export default function ProfileScreen() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerBrand}>
@@ -407,7 +409,7 @@ export default function ProfileScreen() {
               <View style={styles.metaRow}>
                 {city ? (
                   <View style={styles.metaItem}>
-                    <Ionicons name="location-sharp" size={12} color={Colors.primary} />
+                    <Ionicons name="location-sharp" size={12} color={colors.primary} />
                     <Text style={styles.metaText}>{city}</Text>
                   </View>
                 ) : null}
@@ -464,7 +466,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name={isCoach ? 'speedometer-outline' : 'search-outline'}
                 size={18}
-                color={Colors.primary}
+                color={colors.primary}
               />
             </TouchableOpacity>
           </View>
@@ -485,7 +487,7 @@ export default function ProfileScreen() {
                     size={23}
                     color={active ? '#FFFFFF' : '#64748B'}
                   />
-                  {active && <View style={styles.tabActiveBar} />}
+                  {active && <View style={[styles.tabActiveBar, { backgroundColor: colors.primary }]} />}
                 </TouchableOpacity>
               );
             })}

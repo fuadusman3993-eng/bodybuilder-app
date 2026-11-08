@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import PostCard, { RealPost } from '../../components/home/PostCard';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { supabase } from '../../lib/supabase';
@@ -31,6 +32,7 @@ export function invalidateCommunityCache() {
 export default function CommunityScreen() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{ justPosted?: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('For You');
   const [showSearch, setShowSearch] = useState(false);
@@ -534,7 +536,7 @@ export default function CommunityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* ── In-App Success Toast ── */}
       {showToast && (
         <Animated.View
@@ -570,7 +572,7 @@ export default function CommunityScreen() {
             <Text style={[styles.tiktokTabText, activeTab === 'Following' && styles.tiktokTabTextActive]}>
               Following
             </Text>
-            {activeTab === 'Following' && <View style={styles.activeTabIndicator} />}
+            {activeTab === 'Following' && <View style={[styles.activeTabIndicator, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -581,7 +583,7 @@ export default function CommunityScreen() {
             <Text style={[styles.tiktokTabText, activeTab === 'For You' && styles.tiktokTabTextActive]}>
               For You
             </Text>
-            {activeTab === 'For You' && <View style={styles.activeTabIndicator} />}
+            {activeTab === 'For You' && <View style={[styles.activeTabIndicator, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
         </View>
 

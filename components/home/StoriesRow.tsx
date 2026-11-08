@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { auth } from '../../lib/firebase';
@@ -36,6 +37,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — no re-fetch within this win
 export default function StoriesRow() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const avatarOuter = width < 360 ? 56 : 64;
   const avatarInner = avatarOuter - 8;
@@ -295,12 +297,12 @@ export default function StoriesRow() {
             width: avatarInner,
             height: avatarInner,
             borderRadius: avatarInner / 2,
-            backgroundColor: '#0B2E1D',
+            backgroundColor: colors.surfaceLight,
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <Ionicons name="sparkles" size={avatarInner * 0.48} color={Colors.primary} />
+          <Ionicons name="sparkles" size={avatarInner * 0.48} color={colors.primary} />
         </View>
       );
     }
@@ -328,11 +330,11 @@ export default function StoriesRow() {
         <View
           style={[
             styles.storyRing,
-            { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
+            { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2, borderColor: colors.primary },
             !item.hasStory && styles.storyRingEmpty,
             isViewed && styles.storyRingViewed,
             item.isOwn && !item.hasStory && styles.storyRingOwn,
-            isAiCoach && { borderColor: Colors.primary, shadowColor: Colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
+            isAiCoach && { borderColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
           ]}
         >
           <StoryAvatar
@@ -343,17 +345,17 @@ export default function StoriesRow() {
             avatarIcon={item.avatarIcon}
           />
           {item.isOwn && (
-            <View style={styles.addBadge}>
+            <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
               <Ionicons name="add" size={12} color={Colors.textPrimary} />
             </View>
           )}
           {isAiCoach && (
-            <View style={[styles.addBadge, { backgroundColor: Colors.primary }]}>
+            <View style={[styles.addBadge, { backgroundColor: colors.primary }]}>
               <Ionicons name="flash" size={10} color="#000" />
             </View>
           )}
         </View>
-        <Text style={[styles.storyName, isAiCoach && { color: Colors.primary, fontWeight: '700' }]} numberOfLines={1}>
+        <Text style={[styles.storyName, isAiCoach && { color: colors.primary, fontWeight: '700' }]} numberOfLines={1}>
           {item.isOwn ? 'Your story' : item.username}
         </Text>
       </TouchableOpacity>
@@ -388,7 +390,7 @@ export default function StoriesRow() {
                   avatarIcon={user.avatarIcon as AvatarIconStyle}
                   size={avatarInner}
                 />
-                <View style={styles.addBadge}>
+                <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
                   <Ionicons name="add" size={12} color={Colors.textPrimary} />
                 </View>
               </View>

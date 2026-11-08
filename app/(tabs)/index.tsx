@@ -11,14 +11,16 @@ import QuickActions from '../../components/home/QuickActions';
 import CommunityFeed from '../../components/home/CommunityFeed';
 import CoachHome from '../../components/home/CoachHome';
 import { useUserStore } from '../../store/userStore';
+import { useTheme } from '../../store/themeStore';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
+  const { colors } = useTheme();
 
   if (user.role === 'coach') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <StatusBar style="light" />
         <CoachHome />
       </SafeAreaView>
@@ -26,7 +28,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar style="light" />
       <ScrollView
         style={styles.scrollView}

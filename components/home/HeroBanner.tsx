@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image, S
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 
 const BANNERS = [
   {
@@ -50,6 +51,7 @@ const BANNERS = [
 export default function HeroBanner() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   
@@ -90,7 +92,7 @@ export default function HeroBanner() {
               {/* Top: tag badge */}
               <View style={styles.topRow}>
                 <View style={styles.tagBadge}>
-                  <View style={styles.tagDot} />
+                  <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
                   <Text style={styles.tagText}>{current.tag}</Text>
                 </View>
               </View>
@@ -99,15 +101,15 @@ export default function HeroBanner() {
               <View style={styles.quoteWrap}>
                 {current.id === '1' ? (
                   <View style={styles.quoteSignature}>
-                    <Text style={styles.quoteTextGreen}>Discipline</Text>
+                    <Text style={[styles.quoteTextGreen, { color: colors.primary }]}>Discipline</Text>
                     <Text style={styles.quoteTextWhite}>Builds</Text>
                     <View>
                       <Text style={styles.quoteTextWhite}>Freedom</Text>
-                      <View style={styles.quoteUnderline} />
+                      <View style={[styles.quoteUnderline, { backgroundColor: colors.primary }]} />
                     </View>
                   </View>
                 ) : (
-                  <Text style={styles.quoteText}>{current.quote}</Text>
+                  <Text style={[styles.quoteText, { color: colors.primary }]}>{current.quote}</Text>
                 )}
               </View>
 
@@ -115,11 +117,11 @@ export default function HeroBanner() {
               <View style={styles.bottomContent}>
                 <Text style={styles.title}>
                   {current.title}{'\n'}
-                  <Text style={styles.titleAccent}>{current.titleAccent}</Text>
+                  <Text style={[styles.titleAccent, { color: colors.primary }]}>{current.titleAccent}</Text>
                 </Text>
                 <Text style={styles.subtitle}>{current.subtitle}</Text>
                 <TouchableOpacity
-                  style={styles.joinBtn}
+                  style={[styles.joinBtn, { backgroundColor: colors.primary }]}
                   activeOpacity={0.85}
                   onPress={() => router.push(current.route as any)}
                 >
@@ -140,7 +142,7 @@ export default function HeroBanner() {
                 setActiveIndex(i);
               }}
             >
-              <View style={[styles.dot, i === activeIndex && styles.dotActive]} />
+              <View style={[styles.dot, i === activeIndex && [styles.dotActive, { backgroundColor: colors.primary }]]} />
             </TouchableOpacity>
           ))}
         </View>

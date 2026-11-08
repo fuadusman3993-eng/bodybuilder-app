@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import storage from './storage';
-import { THEMES, getTheme, applyThemeToColors, ThemeDefinition } from '../constants/themes';
+import { THEMES, getTheme, applyThemeToColors, ThemeDefinition, ThemeColors } from '../constants/themes';
 import { useUserStore, UserTier } from './userStore';
 import { supabase } from '../lib/supabase';
 
@@ -130,3 +130,14 @@ export const useThemeStore = create<ThemeState>()(
     }
   )
 );
+
+/**
+ * Convenience hook: returns active theme colors + themeId.
+ * Any component that calls this will re-render instantly on theme change.
+ */
+export function useTheme() {
+  const activeThemeId = useThemeStore((s) => s.activeThemeId);
+  const themeVersion = useThemeStore((s) => s.themeVersion);
+  const theme = getTheme(activeThemeId);
+  return { theme, colors: theme.colors, themeId: activeThemeId, themeVersion };
+}

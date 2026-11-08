@@ -8,6 +8,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { useTheme } from '../../store/themeStore';
 import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
 import SharePostModal from './SharePostModal';
@@ -84,6 +85,7 @@ export default function PostCard({
   onRequireAuth,
 }: PostCardProps) {
   const { user: currentUser } = useUserStore();
+  const { colors } = useTheme();
   // No more ui-avatars.com — UserAvatar handles fallback natively
 
   // Image Aspect Ratio & Full View State
@@ -250,7 +252,7 @@ export default function PostCard({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={styles.userName}>{post.username || 'User'}</Text>
               {post.isCoach && (
-                <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
+                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
               )}
             </View>
             <Text style={styles.postMeta} numberOfLines={1}>{subtitle}</Text>
@@ -351,10 +353,10 @@ export default function PostCard({
             <Ionicons
               name="repeat-outline"
               size={24}
-              color={post.isReposted ? Colors.primary : Colors.textPrimary}
+              color={post.isReposted ? colors.primary : Colors.textPrimary}
             />
             {(post.reposts_count || 0) > 0 && (
-              <Text style={[styles.actionText, post.isReposted && { color: Colors.primary }]}>
+              <Text style={[styles.actionText, post.isReposted && { color: colors.primary }]}>
                 {post.reposts_count}
               </Text>
             )}
@@ -389,7 +391,7 @@ export default function PostCard({
           <Ionicons
             name={post.isBookmarked ? 'bookmark' : 'bookmark-outline'}
             size={24}
-            color={post.isBookmarked ? Colors.primary : Colors.textPrimary}
+            color={post.isBookmarked ? colors.primary : Colors.textPrimary}
           />
         </TouchableOpacity>
       </View>
@@ -496,7 +498,7 @@ export default function PostCard({
 
             {loadingComments ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.loadingText}>Loading comments...</Text>
               </View>
             ) : comments.length === 0 ? (
@@ -528,7 +530,7 @@ export default function PostCard({
                       <View style={styles.commentAuthorRow}>
                         <Text style={styles.commentAuthor}>{item.username || 'User'}</Text>
                         {item.isCoach && (
-                          <Ionicons name="checkmark-circle" size={13} color={Colors.primary} />
+                          <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
                         )}
                         <Text style={styles.commentTime}>{timeAgo(item.created_at)}</Text>
                       </View>
@@ -560,7 +562,7 @@ export default function PostCard({
                 onSubmitEditing={handleAddComment}
               />
               <TouchableOpacity
-                style={[styles.sendBtn, (!commentText.trim() || submittingComment) && { opacity: 0.35 }]}
+                style={[styles.sendBtn, { backgroundColor: colors.primary }, (!commentText.trim() || submittingComment) && { opacity: 0.35 }]}
                 onPress={handleAddComment}
                 disabled={!commentText.trim() || submittingComment}
               >

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 
 interface BrandLogoProps {
   size?: 'small' | 'medium' | 'large' | 'xlarge' | 'splash';
@@ -11,6 +12,9 @@ interface BrandLogoProps {
 }
 
 export default function BrandLogo({ size = 'medium', customScale, showText = true, layout = 'row' }: BrandLogoProps) {
+  const { colors } = useTheme();
+  const primaryColor = colors.primary || Colors.primary;
+
   let scale = 1;
   if (customScale) {
     scale = customScale;
@@ -29,11 +33,11 @@ export default function BrandLogo({ size = 'medium', customScale, showText = tru
     <Svg width={46 * scale} height={34 * scale} viewBox="0 0 46 34" fill="none">
       <Path
         d="M6.5 34 L17 13.5 C19 9 22 6 27 6 L46 6 L42.5 13.5 L27 13.5 C24 13.5 22 15 20.5 18 L12.5 34 Z"
-        fill={Colors.primary}
+        fill={primaryColor}
       />
       <Path
         d="M20 34 L26 22 C27.5 18.5 30 16 34 16 L44.5 16 L41 23.5 L34 23.5 C31.5 23.5 30 25 28.5 28 L25.5 34 Z"
-        fill={Colors.primary}
+        fill={primaryColor}
       />
     </Svg>
   );
@@ -54,7 +58,7 @@ export default function BrandLogo({ size = 'medium', customScale, showText = tru
             }
           ]}
         >
-          Fit<Text style={styles.textPulse}>Pulse</Text>
+          Fit<Text style={[styles.textPulse, { color: primaryColor }]}>Pulse</Text>
         </Text>
       )}
     </View>

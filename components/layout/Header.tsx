@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
@@ -12,6 +13,7 @@ export default function Header() {
   const isCompact = width < 360;
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
   const lastFetchRef = React.useRef(0);
 
@@ -41,9 +43,9 @@ export default function Header() {
           activeOpacity={0.7}
           onPress={() => router.push('/notifications')}
         >
-          <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
+          <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
           {unreadCount > 0 && (
-            <View style={styles.notificationBadge}>
+            <View style={[styles.notificationBadge, { borderColor: colors.background }]}>
               <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
             </View>
           )}
