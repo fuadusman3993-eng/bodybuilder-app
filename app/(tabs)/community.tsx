@@ -17,6 +17,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 import AuthBottomSheetModal from '../../components/auth/AuthBottomSheetModal';
 import { captureSystemError } from '../../lib/telemetryService';
+import { sendNotification, removeNotification } from '../../lib/notificationService';
 
 type TabType = 'Following' | 'For You';
 
@@ -306,20 +307,25 @@ export default function CommunityScreen() {
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: (targetPost.likes_count || 0) + 1 }).eq('id', postId);
         if (targetPost.uid !== user.uid) {
-          try {
-            await supabase.from('notifications').insert({
-              user_uid: targetPost.uid,
-              sender_uid: user.uid,
-              type: 'like_post',
-              message: `${user.name || 'Someone'} liked your post.`,
-            });
-          } catch (_) {}
+          await sendNotification({
+            user_uid: targetPost.uid,
+            sender_uid: user.uid,
+            type: 'like_post',
+            message: `${user.name || 'Someone'} liked your post.`,
+          });
         }
       } else {
         try {
           await supabase.from('post_likes').delete().eq('post_id', postId).eq('uid', user.uid);
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: Math.max(0, (targetPost.likes_count || 1) - 1) }).eq('id', postId);
+        if (targetPost.uid !== user.uid) {
+          await removeNotification({
+            user_uid: targetPost.uid,
+            sender_uid: user.uid,
+            type: 'like_post',
+          });
+        }
       }
     } catch (e) {
       console.warn('Like toggle error:', e);
@@ -468,19 +474,22 @@ export default function CommunityScreen() {
           .delete()
           .eq('follower_uid', user.uid)
           .eq('following_uid', targetUid);
+        await removeNotification({
+          user_uid: targetUid,
+          sender_uid: user.uid,
+          type: 'follow',
+        });
       } else {
         await supabase.from('follows').insert({
           follower_uid: user.uid,
           following_uid: targetUid,
         });
-        try {
-          await supabase.from('notifications').insert({
-            user_uid: targetUid,
-            sender_uid: user.uid,
-            type: 'follow',
-            message: `${user.name || 'Someone'} started following you.`,
-          });
-        } catch (_) {}
+        await sendNotification({
+          user_uid: targetUid,
+          sender_uid: user.uid,
+          type: 'follow',
+          message: `${user.name || 'Someone'} started following you.`,
+        });
       }
     } catch (e) {
       console.warn('Follow toggle error:', e);

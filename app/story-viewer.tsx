@@ -21,6 +21,7 @@ import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
 import { Modal, ScrollView } from 'react-native';
+import { sendNotification, removeNotification } from '../lib/notificationService';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds per story
@@ -191,6 +192,13 @@ export default function StoryViewer() {
       await supabase.from('story_likes').delete().eq('story_id', story.id).eq('uid', user.uid);
       setIsLiked(false);
       setLikes(l => Math.max(0, l - 1));
+      if (story.uid !== user.uid) {
+        await removeNotification({
+          user_uid: story.uid,
+          sender_uid: user.uid,
+          type: 'like_story',
+        });
+      }
     } else {
       await supabase.from('story_likes').insert({ story_id: story.id, uid: user.uid });
       setIsLiked(true);
@@ -198,7 +206,7 @@ export default function StoryViewer() {
       
       // Notify creator
       if (story.uid !== user.uid) {
-        await supabase.from('notifications').insert({
+        await sendNotification({
           user_uid: story.uid,
           sender_uid: user.uid,
           type: 'like_story',

@@ -9,6 +9,7 @@ import { useUserStore } from '../../store/userStore';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Skeleton from '../ui/Skeleton';
+import { sendNotification, removeNotification } from '../../lib/notificationService';
 
 export default function CommunityFeed() {
   const router = useRouter();
@@ -112,11 +113,26 @@ export default function CommunityFeed() {
           await supabase.from('post_likes').insert({ post_id: postId, uid: user.uid });
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: (targetPost.likes_count || 0) + 1 }).eq('id', postId);
+        if (targetPost.uid !== user.uid) {
+          await sendNotification({
+            user_uid: targetPost.uid,
+            sender_uid: user.uid,
+            type: 'like_post',
+            message: `${user.name || 'Someone'} liked your post.`,
+          });
+        }
       } else {
         try {
           await supabase.from('post_likes').delete().eq('post_id', postId).eq('uid', user.uid);
         } catch (_) {}
         await supabase.from('posts').update({ likes_count: Math.max(0, (targetPost.likes_count || 1) - 1) }).eq('id', postId);
+        if (targetPost.uid !== user.uid) {
+          await removeNotification({
+            user_uid: targetPost.uid,
+            sender_uid: user.uid,
+            type: 'like_post',
+          });
+        }
       }
     } catch (e) {
       console.warn('Like toggle error:', e);

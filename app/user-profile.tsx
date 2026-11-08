@@ -18,6 +18,7 @@ import Skeleton from '../components/ui/Skeleton';
 import { safeBack } from '../lib/navigation';
 import BackButton from '../components/ui/BackButton';
 import UserAvatar, { AvatarIconStyle, isValidPhotoUrl } from '../components/ui/UserAvatar';
+import { sendNotification, removeNotification } from '../lib/notificationService';
 
 const { width } = Dimensions.get('window');
 const BG = Colors.background;
@@ -226,6 +227,11 @@ export default function UserProfilePage() {
           profileCache[uid!].isFollowing = false;
           profileCache[uid!].followers = Math.max(0, profileCache[uid!].followers - 1);
         }
+        await removeNotification({
+          user_uid: uid,
+          sender_uid: currentUser.uid,
+          type: 'follow',
+        });
       } else {
         await supabase.from('follows').insert({
           follower_uid: currentUser.uid,
@@ -237,6 +243,12 @@ export default function UserProfilePage() {
           profileCache[uid!].isFollowing = true;
           profileCache[uid!].followers = profileCache[uid!].followers + 1;
         }
+        await sendNotification({
+          user_uid: uid,
+          sender_uid: currentUser.uid,
+          type: 'follow',
+          message: `${currentUser.name || 'Someone'} started following you.`,
+        });
       }
     } catch (e) { console.warn(e); }
     setActionLoading(false);

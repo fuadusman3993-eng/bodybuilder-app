@@ -159,8 +159,18 @@ export default function NotificationsScreen() {
         });
       }
 
-      // 5. Process Regular Notifications with Real User Profiles
-      for (const n of notifs) {
+      // 5. Process Regular Notifications with Real User Profiles (with deduplication for likes & follows)
+      const seenActionKeys = new Set<string>();
+      const deduplicatedNotifs = notifs.filter((n: any) => {
+        if (['like_post', 'like_story', 'follow'].includes(n.type)) {
+          const key = `${n.sender_uid}_${n.type}`;
+          if (seenActionKeys.has(key)) return false;
+          seenActionKeys.add(key);
+        }
+        return true;
+      });
+
+      for (const n of deduplicatedNotifs) {
         const prof = n.sender_uid ? profilesMap[n.sender_uid] : null;
         let name = prof?.name || prof?.username;
 
