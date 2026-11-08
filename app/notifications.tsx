@@ -9,6 +9,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import { getProfilesBatch, isGenericName } from '../lib/profileService';
 import Skeleton from '../components/ui/Skeleton';
 import { safeBack } from '../lib/navigation';
@@ -61,6 +62,7 @@ const NOTIF_CACHE_TTL_MS = 2 * 60 * 1000;
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
 
   const isCacheValid = !!(user?.uid && cachedNotifUserUid === user.uid && cachedSections.length > 0);
   const [sections, setSections] = useState<any[]>(isCacheValid ? cachedSections : []);
@@ -309,23 +311,23 @@ export default function NotificationsScreen() {
 
       {/* Text */}
       <View style={styles.textWrap}>
-        <Text style={styles.msgText} numberOfLines={2}>
-          <Text style={styles.boldName}>{item.sender_name} </Text>
-          <Text>{getActionText(item.type)} </Text>
-          <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
+        <Text style={[styles.msgText, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text style={[styles.boldName, { color: colors.textPrimary }]}>{item.sender_name} </Text>
+          <Text style={{ color: colors.textPrimary }}>{getActionText(item.type)} </Text>
+          <Text style={[styles.timeText, { color: colors.textMuted }]}>{timeAgo(item.created_at)}</Text>
         </Text>
       </View>
 
       {/* Right side: request buttons OR unread dot */}
       {item.type === 'request' ? (
         item.status === 'accepted' ? (
-          <View style={styles.acceptedBadge}>
-            <Text style={styles.acceptedText}>Accepted</Text>
+          <View style={[styles.acceptedBadge, { backgroundColor: colors.primary + '1F', borderColor: colors.primary + '4D' }]}>
+            <Text style={[styles.acceptedText, { color: colors.primary }]}>Accepted</Text>
           </View>
         ) : (
           <View style={styles.requestBtns}>
             <TouchableOpacity
-              style={styles.confirmBtn}
+              style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
               disabled={actionLoading === item.id}
               onPress={() => handleRequest(item.request_id, item.id, 'accepted')}
             >
@@ -334,11 +336,11 @@ export default function NotificationsScreen() {
                 : <Text style={styles.confirmText}>Confirm</Text>}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.deleteBtn}
+              style={[styles.deleteBtn, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
               disabled={!!actionLoading}
               onPress={() => handleRequest(item.request_id, item.id, 'rejected')}
             >
-              <Text style={styles.deleteText}>Delete</Text>
+              <Text style={[styles.deleteText, { color: colors.textPrimary }]}>Delete</Text>
             </TouchableOpacity>
           </View>
         )
@@ -346,18 +348,18 @@ export default function NotificationsScreen() {
         <TouchableOpacity
           onPress={() => item.sender_uid && router.push({ pathname: '/user-profile', params: { uid: item.sender_uid } })}
         >
-          {!item.is_read && <View style={styles.unreadDot} />}
+          {!item.is_read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
         </TouchableOpacity>
       )}
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <BackButton fallbackRoute="/(tabs)/profile" />
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Notifications</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -375,8 +377,8 @@ export default function NotificationsScreen() {
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="notifications-off-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>No notifications yet</Text>
+          <Ionicons name="notifications-off-outline" size={64} color={colors.textMuted} />
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>No notifications yet</Text>
         </View>
       ) : (
         <SectionList
@@ -384,7 +386,7 @@ export default function NotificationsScreen() {
           keyExtractor={(item) => item.id}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section: { title } }) => (
-            <Text style={styles.sectionHeader}>{title}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textPrimary }]}>{title}</Text>
           )}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 40 }}

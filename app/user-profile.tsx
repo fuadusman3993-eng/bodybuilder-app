@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import Skeleton from '../components/ui/Skeleton';
 import { safeBack } from '../lib/navigation';
 import BackButton from '../components/ui/BackButton';
@@ -43,6 +44,7 @@ export default function UserProfilePage() {
   const router = useRouter();
   const { uid } = useLocalSearchParams<{ uid: string }>();
   const { user: currentUser } = useUserStore();
+  const { colors } = useTheme();
 
   const cached = uid ? profileCache[uid] : undefined;
 
@@ -357,18 +359,18 @@ export default function UserProfilePage() {
   const avatarIcon = (profile as any)?.avatar_icon as AvatarIconStyle;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <BackButton fallbackRoute="/(tabs)/community" />
-        <Text style={styles.headerTitle}>@{username}</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>@{username}</Text>
         <View style={{ width: 38 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Avatar + Stats */}
         <View style={styles.topSection}>
-          <View style={styles.avatarRing}>
+          <View style={[styles.avatarRing, { borderColor: colors.primary }]}>
             <UserAvatar
               uid={uid as string}
               name={name}
@@ -386,10 +388,10 @@ export default function UserProfilePage() {
               { label: 'Following', value: following },
             ].map((s, i) => (
               <React.Fragment key={s.label}>
-                {i > 0 && <View style={styles.statDiv} />}
+                {i > 0 && <View style={[styles.statDiv, { backgroundColor: colors.border }]} />}
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{s.value}</Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{s.value}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.label}</Text>
                 </View>
               </React.Fragment>
             ))}
@@ -399,40 +401,40 @@ export default function UserProfilePage() {
         {/* Name / role */}
         <View style={styles.nameSection}>
           <View style={styles.nameRow}>
-            <Text style={styles.nameText}>{name}</Text>
+            <Text style={[styles.nameText, { color: colors.textPrimary }]}>{name}</Text>
             {isCoach && (
-              <Ionicons name="checkmark-circle" size={16} color={Colors.primary} style={{ marginLeft: 4 }} />
+              <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={{ marginLeft: 4 }} />
             )}
           </View>
           {isCoach && (
-            <Text style={styles.roleTag}>
+            <Text style={[styles.roleTag, { color: colors.primary }]}>
               {coachData?.specialty?.join(' · ') || 'Fitness Coach'}
               {coachData?.experience_years ? `  •  ${coachData.experience_years} yrs` : ''}
             </Text>
           )}
-          {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
+          {bio ? <Text style={[styles.bioText, { color: colors.textMuted }]}>{bio}</Text> : null}
           <View style={styles.badgesRow}>
             {city ? (
-              <View style={styles.badge}>
-                <Ionicons name="location-outline" size={11} color={Colors.primary} />
-                <Text style={styles.badgeText}>{city}</Text>
+              <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
+                <Ionicons name="location-outline" size={11} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.textMuted }]}>{city}</Text>
               </View>
             ) : null}
             {goal ? (
-              <View style={styles.badge}>
-                <Ionicons name="trophy-outline" size={11} color={Colors.primary} />
-                <Text style={styles.badgeText}>Goal: {goal}</Text>
+              <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
+                <Ionicons name="trophy-outline" size={11} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.textMuted }]}>Goal: {goal}</Text>
               </View>
             ) : null}
             {coachData?.price_per_month > 0 ? (
-              <View style={styles.badge}>
-                <Ionicons name="cash-outline" size={11} color={Colors.primary} />
-                <Text style={styles.badgeText}>${coachData.price_per_month}/mo</Text>
+              <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
+                <Ionicons name="cash-outline" size={11} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.textMuted }]}>${coachData.price_per_month}/mo</Text>
               </View>
             ) : coachData ? (
-              <View style={styles.badge}>
-                <Ionicons name="gift-outline" size={11} color={Colors.primary} />
-                <Text style={styles.badgeText}>Free</Text>
+              <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
+                <Ionicons name="gift-outline" size={11} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.textMuted }]}>Free</Text>
               </View>
             ) : null}
           </View>
@@ -442,14 +444,19 @@ export default function UserProfilePage() {
         {!isOwnProfile && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, isFollowing && styles.actionBtnOutline]}
+              style={[
+                styles.actionBtn,
+                isFollowing
+                  ? [styles.actionBtnOutline, { borderColor: colors.primary, backgroundColor: 'transparent' }]
+                  : { backgroundColor: colors.primary },
+              ]}
               onPress={handleFollow}
               disabled={actionLoading}
             >
               {actionLoading ? (
-                <ActivityIndicator size="small" color={isFollowing ? Colors.primary : '#000'} />
+                <ActivityIndicator size="small" color={isFollowing ? colors.primary : '#000'} />
               ) : (
-                <Text style={[styles.actionBtnText, isFollowing && { color: Colors.primary }]}>
+                <Text style={[styles.actionBtnText, { color: isFollowing ? colors.primary : '#000' }]}>
                   {isFollowing ? 'Following' : 'Follow'}
                 </Text>
               )}
@@ -457,18 +464,18 @@ export default function UserProfilePage() {
 
             {isCoach && currentUser.role !== 'coach' && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnOutline, requestSent && { opacity: 0.5 }]}
+                style={[styles.actionBtn, styles.actionBtnOutline, { borderColor: colors.primary }, requestSent && { opacity: 0.5 }]}
                 onPress={handleSendRequest}
                 disabled={actionLoading || requestSent}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>
+                <Text style={[styles.actionBtnText, { color: colors.primary }]}>
                   {requestSent ? '✓ Request Sent' : 'Send Request'}
                 </Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity 
-              style={[styles.actionBtn, styles.actionBtnOutline]}
+              style={[styles.actionBtn, styles.actionBtnOutline, { borderColor: colors.primary }]}
               onPress={async () => {
                 if (!currentUser.uid || !uid) return;
                 try {
@@ -503,47 +510,47 @@ export default function UserProfilePage() {
                 }
               }}
             >
-              <Ionicons name="chatbubble-outline" size={16} color={Colors.primary} />
+              <Ionicons name="chatbubble-outline" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Coach stats card */}
         {isCoach && coachData && (
-          <View style={styles.coachCard}>
+          <View style={[styles.coachCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.coachStat}>
               <Ionicons name="star" size={16} color="#F59E0B" />
-              <Text style={styles.coachStatText}>{coachData.rating?.toFixed(1) || '5.0'} Rating</Text>
+              <Text style={[styles.coachStatText, { color: colors.textPrimary }]}>{coachData.rating?.toFixed(1) || '5.0'} Rating</Text>
             </View>
             <View style={styles.coachStat}>
-              <Ionicons name="people-outline" size={16} color={Colors.primary} />
-              <Text style={styles.coachStatText}>{coachData.total_trainees || 0} Clients</Text>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={[styles.coachStatText, { color: colors.textPrimary }]}>{coachData.total_trainees || 0} Clients</Text>
             </View>
             <View style={styles.coachStat}>
-              <Ionicons name="time-outline" size={16} color={Colors.primary} />
-              <Text style={styles.coachStatText}>{coachData.experience_years || 0} yrs exp</Text>
+              <Ionicons name="time-outline" size={16} color={colors.primary} />
+              <Text style={[styles.coachStatText, { color: colors.textPrimary }]}>{coachData.experience_years || 0} yrs exp</Text>
             </View>
           </View>
         )}
 
         {/* Posts & Reposts Tabs */}
-        <View style={styles.gridHeader}>
+        <View style={[styles.gridHeader, { borderBottomColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.tabButton, profileTab === 'posts' && styles.tabButtonActive]}
+            style={[styles.tabButton, profileTab === 'posts' && [styles.tabButtonActive, { borderBottomColor: colors.primary }]]}
             onPress={() => setProfileTab('posts')}
           >
             <Ionicons
               name="grid-outline"
               size={18}
-              color={profileTab === 'posts' ? Colors.primary : Colors.textMuted}
+              color={profileTab === 'posts' ? colors.primary : colors.textMuted}
             />
-            <Text style={[styles.tabButtonText, profileTab === 'posts' && styles.tabButtonTextActive]}>
+            <Text style={[styles.tabButtonText, { color: profileTab === 'posts' ? colors.primary : colors.textMuted }]}>
               Posts ({posts.length})
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, profileTab === 'reposts' && styles.tabButtonActive]}
+            style={[styles.tabButton, profileTab === 'reposts' && [styles.tabButtonActive, { borderBottomColor: colors.primary }]]}
             onPress={() => {
               setProfileTab('reposts');
               if (reposts.length === 0) fetchUserReposts();
@@ -552,9 +559,9 @@ export default function UserProfilePage() {
             <Ionicons
               name="repeat-outline"
               size={18}
-              color={profileTab === 'reposts' ? Colors.primary : Colors.textMuted}
+              color={profileTab === 'reposts' ? colors.primary : colors.textMuted}
             />
-            <Text style={[styles.tabButtonText, profileTab === 'reposts' && styles.tabButtonTextActive]}>
+            <Text style={[styles.tabButtonText, { color: profileTab === 'reposts' ? colors.primary : colors.textMuted }]}>
               Reposts
             </Text>
           </TouchableOpacity>
@@ -563,8 +570,8 @@ export default function UserProfilePage() {
         {profileTab === 'posts' ? (
           posts.length === 0 ? (
             <View style={styles.emptyPosts}>
-              <Ionicons name="images-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No posts yet</Text>
+              <Ionicons name="images-outline" size={40} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No posts yet</Text>
             </View>
           ) : (
             <View style={styles.grid}>
@@ -587,12 +594,12 @@ export default function UserProfilePage() {
         ) : (
           loadingReposts ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={Colors.primary} />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : reposts.length === 0 ? (
             <View style={styles.emptyPosts}>
-              <Ionicons name="repeat-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No reposts yet</Text>
+              <Ionicons name="repeat-outline" size={40} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No reposts yet</Text>
             </View>
           ) : (
             <View style={styles.grid}>
@@ -610,8 +617,8 @@ export default function UserProfilePage() {
                     style={styles.gridImg}
                   />
                   <View style={styles.gridLikes}>
-                    <Ionicons name="repeat" size={12} color={Colors.primary} />
-                    <Text style={[styles.gridLikesText, { color: Colors.primary }]}>Repost</Text>
+                    <Ionicons name="repeat" size={12} color={colors.primary} />
+                    <Text style={[styles.gridLikesText, { color: colors.primary }]}>Repost</Text>
                   </View>
                 </TouchableOpacity>
               ))}

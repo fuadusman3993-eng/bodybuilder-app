@@ -12,6 +12,7 @@ import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { usePresenceStore } from '../store/presenceStore';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import { safeBack } from '../lib/navigation';
 import FitPulseConfirmModal from '../components/ui/FitPulseConfirmModal';
 
@@ -41,6 +42,7 @@ export default function ChatRoom() {
   const router = useRouter();
   const { conversationId, otherUserUid } = useLocalSearchParams<{ conversationId: string; otherUserUid: string }>();
   const { user } = useUserStore();
+  const { theme, colors } = useTheme();
 
   const [messages, setMessages, cacheLoaded] = useCachedState<any[]>(conversationId ? `msgs_${conversationId}` : '', []);
   const [text, setText] = useState('');
@@ -813,16 +815,23 @@ export default function ChatRoom() {
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft, { marginBottom: isLastInGroup ? 12 : 3 }]}>
         <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-          <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+          <View
+            style={[
+              styles.bubble,
+              isMe
+                ? [styles.bubbleMe, { backgroundColor: theme.preview.bubbleColor || colors.surface, borderColor: colors.primary }]
+                : [styles.bubbleThem, { backgroundColor: colors.surface }]
+            ]}
+          >
             {isAudio ? (
               <View style={[item.isUploading && { opacity: 0.6 }]}>
                 <View style={styles.audioRow}>
                   {item.isUploading || loadingAudioId === item.id ? (
-                    <View style={styles.playIconWrap}>
-                      <ActivityIndicator size="small" color="#00E676" />
+                    <View style={[styles.playIconWrap, { backgroundColor: colors.primary }]}>
+                      <ActivityIndicator size="small" color="#000" />
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.playIconWrap} onPress={() => togglePlay(item.id, item.audio_url)}>
+                    <TouchableOpacity style={[styles.playIconWrap, { backgroundColor: colors.primary }]} onPress={() => togglePlay(item.id, item.audio_url)}>
                       <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color="#000" />
                     </TouchableOpacity>
                   )}
@@ -834,7 +843,7 @@ export default function ChatRoom() {
                           key={i}
                           style={[styles.audioBar, {
                             height: 6 + Math.abs(Math.sin(i * 0.9 + 1) * 12),
-                            backgroundColor: isPlayed ? (isMe ? '#FFF' : '#00E676') : (isMe ? 'rgba(255,255,255,0.3)' : 'rgba(0,230,118,0.3)')
+                            backgroundColor: isPlayed ? (isMe ? '#FFF' : colors.primary) : (isMe ? 'rgba(255,255,255,0.3)' : colors.primary + '4D')
                           }]}
                         />
                       );
@@ -857,7 +866,7 @@ export default function ChatRoom() {
                 style={styles.sharedPostCard}
               >
                 <View style={styles.sharedPostHeader}>
-                  <View style={styles.sharedPostBadge}>
+                  <View style={[styles.sharedPostBadge, { backgroundColor: colors.primary }]}>
                     <Ionicons name="paper-plane" size={11} color="#000" />
                   </View>
                   <Text style={styles.sharedPostAuthor} numberOfLines={1}>
@@ -878,8 +887,8 @@ export default function ChatRoom() {
                     {item.text.includes(':') ? item.text.split(':').slice(1).join(':').replace(/["']/g, '').trim() : ''}
                   </Text>
                   <View style={styles.sharedPostLinkRow}>
-                    <Text style={styles.sharedPostLinkText}>View in Community</Text>
-                    <Ionicons name="arrow-forward-circle" size={16} color="#00E676" />
+                    <Text style={[styles.sharedPostLinkText, { color: colors.primary }]}>View in Community</Text>
+                    <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -892,16 +901,16 @@ export default function ChatRoom() {
                 />
                 {item.isUploading && (
                   <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#00E676" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                   </View>
                 )}
               </TouchableOpacity>
             ) : isVideo ? (
               <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
                 {item.isUploading ? (
-                   <ActivityIndicator size="large" color="#00E676" />
+                   <ActivityIndicator size="large" color={colors.primary} />
                 ) : (
-                   <Ionicons name="play-circle" size={52} color="#00E676" />
+                   <Ionicons name="play-circle" size={52} color={colors.primary} />
                 )}
                 <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
               </View>
@@ -912,7 +921,7 @@ export default function ChatRoom() {
                     <Ionicons
                       name={isMissed ? 'call-outline' : 'call'}
                       size={18}
-                      color={isMissed ? '#EF4444' : '#00E676'}
+                      color={isMissed ? '#EF4444' : colors.primary}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -935,9 +944,9 @@ export default function ChatRoom() {
             <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
             {isMe && (
               item.isUploading ? (
-                <ActivityIndicator size={12} color="#00E676" style={{ marginLeft: 4 }} />
+                <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 4 }} />
               ) : (
-                <Text style={[styles.seenTick, item.is_read ? styles.seenRead : styles.seenSent]}>
+                <Text style={[styles.seenTick, item.is_read ? [styles.seenRead, { color: colors.primary }] : styles.seenSent]}>
                   {item.is_read ? '✓✓' : '✓'}
                 </Text>
               )
@@ -949,9 +958,9 @@ export default function ChatRoom() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => safeBack('/(tabs)/chat')} style={styles.headerBackBtn}>
           <Ionicons name="chevron-back" size={26} color="#FFF" />
         </TouchableOpacity>
@@ -964,7 +973,7 @@ export default function ChatRoom() {
           <View style={styles.headerAvatarWrap}>
             {otherUser.avatar
               ? <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
-              : <View style={styles.headerAvatarPlaceholder}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
+              : <View style={[styles.headerAvatarPlaceholder, { backgroundColor: colors.primary }]}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
           </View>
           <View style={styles.headerNameCol}>
             <View style={styles.headerNameRow}>
@@ -972,12 +981,12 @@ export default function ChatRoom() {
                 {otherUser.name}
               </Text>
               {otherUser.isCoach && (
-                <Ionicons name="checkmark-circle" size={14} color="#00E676" style={{ flexShrink: 0 }} />
+                <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={{ flexShrink: 0 }} />
               )}
             </View>
             <View style={styles.statusRow}>
-              <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#00E676' : '#666' }]} />
-              <Text style={[styles.onlineText, { color: isOnline ? '#00E676' : '#A0A0A0' }]}>
+              <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.primary : '#666' }]} />
+              <Text style={[styles.onlineText, { color: isOnline ? colors.primary : colors.textMuted }]}>
                 {isOnline ? 'Online' : 'Offline'}
               </Text>
             </View>
@@ -1050,7 +1059,7 @@ export default function ChatRoom() {
           {/* Floating Scroll-to-Bottom Button (Hidden while recording) */}
           {showScrollDownBtn && !isRecording && (
             <TouchableOpacity
-              style={styles.floatingScrollDownBtn}
+              style={[styles.floatingScrollDownBtn, { backgroundColor: colors.surface, borderColor: colors.primary }]}
               activeOpacity={0.8}
               onPress={() => {
                 // In inverted list, offset 0 = newest message at visual bottom
@@ -1058,62 +1067,62 @@ export default function ChatRoom() {
                 setShowScrollDownBtn(false);
               }}
             >
-              <Ionicons name="chevron-down" size={20} color="#00E676" />
+              <Ionicons name="chevron-down" size={20} color={colors.primary} />
             </TouchableOpacity>
           )}
 
           {/* Input / Recording Bar */}
           {isRecording ? (
-            <View style={styles.recBar}>
+            <View style={[styles.recBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
               <TouchableOpacity onPress={cancelRecording} style={styles.recTrashBtn}>
-                <Ionicons name="trash-outline" size={22} color="#A0A0A0" />
+                <Ionicons name="trash-outline" size={22} color={colors.textMuted} />
               </TouchableOpacity>
 
               <View style={styles.recCenter}>
-                <Text style={styles.recTimerInline}>{fmtSecs(recordingSecs)}</Text>
+                <Text style={[styles.recTimerInline, { color: colors.textPrimary }]}>{fmtSecs(recordingSecs)}</Text>
                 <View style={styles.recWaveInline}>
                   {waveAnims.map((anim, i) => (
                     <Animated.View
                       key={i}
-                      style={[styles.recWaveBar, { height: anim }]}
+                      style={[styles.recWaveBar, { height: anim, backgroundColor: colors.primary }]}
                     />
                   ))}
                 </View>
-                <Text style={styles.slideCancelText}>Slide to cancel ◄</Text>
+                <Text style={[styles.slideCancelText, { color: colors.textMuted }]}>Slide to cancel ◄</Text>
               </View>
 
-              <TouchableOpacity onPress={stopAndSend} style={styles.recSendBigBtn} disabled={sending}>
+              <TouchableOpacity onPress={stopAndSend} style={[styles.recSendBigBtn, { backgroundColor: colors.primary }]} disabled={sending}>
                 {sending
                   ? <ActivityIndicator size="small" color="#000" />
                   : <Ionicons name="arrow-up" size={22} color="#000" />}
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
               <TouchableOpacity style={styles.emojiBtn}>
-                <Ionicons name="happy-outline" size={26} color="#808080" />
+                <Ionicons name="happy-outline" size={26} color={colors.textMuted} />
               </TouchableOpacity>
               
-              <View style={styles.inputWrap}>
+              <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.textPrimary }]}
                   value={text}
                   onChangeText={setText}
                   placeholder="Message"
-                  placeholderTextColor="#808080"
+                  placeholderTextColor={colors.textMuted}
                   multiline
                 />
                 <TouchableOpacity style={styles.attachBtnInside} onPress={() => setShowAttachMenu(true)}>
-                  <Ionicons name="attach-outline" size={24} color="#808080" />
+                  <Ionicons name="attach-outline" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
               {text.trim() ? (
-                <TouchableOpacity style={styles.blueActionBtn} onPress={handleSend} disabled={sending}>
+                <TouchableOpacity style={[styles.blueActionBtn, { backgroundColor: colors.primary }]} onPress={handleSend} disabled={sending}>
                   {sending ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 2 }} />}
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.blueActionBtn} onPress={startRecording}>
+                <TouchableOpacity style={[styles.blueActionBtn, { backgroundColor: colors.primary }]} onPress={startRecording}>
                   <Ionicons name="mic" size={20} color="#FFF" />
                 </TouchableOpacity>
               )}
@@ -1125,7 +1134,7 @@ export default function ChatRoom() {
       {/* Settings Modal */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHandle} />
             <TouchableOpacity style={styles.modalOption} onPress={() => { setShowSettings(false); router.push({ pathname: '/user-profile', params: { uid: otherUserUid } }); }}>
               <Ionicons name="person-outline" size={22} color="#FFF" />
@@ -1198,11 +1207,11 @@ export default function ChatRoom() {
       {/* Attach Menu Modal */}
       <Modal visible={showAttachMenu} transparent animationType="fade" onRequestClose={() => setShowAttachMenu(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAttachMenu(false)}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalOptionText, { fontSize: 14, color: '#A0A0A0', paddingBottom: 8 }]}>Attach</Text>
             <TouchableOpacity style={styles.modalOption} onPress={pickImage}>
-              <View style={[styles.attachIconWrap, { backgroundColor: '#00E676' }]}>
+              <View style={[styles.attachIconWrap, { backgroundColor: colors.primary }]}>
                 <Ionicons name="image-outline" size={22} color="#000" />
               </View>
               <Text style={styles.modalOptionText}>Photo</Text>

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import { useUserStore } from '../store/userStore';
 import { supabase } from '../lib/supabase';
 import { getDoc, doc } from 'firebase/firestore';
@@ -47,6 +48,7 @@ function timeAgo(dateStr: string) {
 export default function SavedPostsPage() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const [posts, setPosts] = useState<SavedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,7 +137,7 @@ export default function SavedPostsPage() {
   const renderPost = ({ item }: { item: SavedPost }) => {
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.username)}&background=10B981&color=fff&size=150`;
     return (
-      <View style={styles.postCard}>
+      <View style={[styles.postCard, { backgroundColor: colors.surface }]}>
         {/* Header */}
         <View style={styles.postHeader}>
           <TouchableOpacity
@@ -152,12 +154,12 @@ export default function SavedPostsPage() {
             />
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={styles.username}>{item.username}</Text>
+                <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
                 {item.isCoach && (
-                  <Ionicons name="checkmark-circle" size={13} color={Colors.primary} />
+                  <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
                 )}
               </View>
-              <Text style={styles.postTime}>{timeAgo(item.created_at)}</Text>
+              <Text style={[styles.postTime, { color: colors.textMuted }]}>{timeAgo(item.created_at)}</Text>
             </View>
           </TouchableOpacity>
           {/* Unsave (remove from saved) */}
@@ -166,7 +168,7 @@ export default function SavedPostsPage() {
             style={styles.unsaveBtn}
             activeOpacity={0.8}
           >
-            <Ionicons name="bookmark" size={20} color={Colors.primary} />
+            <Ionicons name="bookmark" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -183,8 +185,8 @@ export default function SavedPostsPage() {
         {/* Caption */}
         {!!item.caption && (
           <View style={styles.captionWrap}>
-            <Text style={styles.captionText} numberOfLines={2}>
-              <Text style={styles.captionUsername}>{item.username} </Text>
+            <Text style={[styles.captionText, { color: colors.textPrimary }]} numberOfLines={2}>
+              <Text style={[styles.captionUsername, { color: colors.textPrimary }]}>{item.username} </Text>
               {item.caption}
             </Text>
           </View>
@@ -193,8 +195,8 @@ export default function SavedPostsPage() {
         {/* Footer */}
         <View style={styles.postFooter}>
           <View style={styles.footerLeft}>
-            <Ionicons name="heart-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.footerCount}>{item.likes_count || 0}</Text>
+            <Ionicons name="heart-outline" size={18} color={colors.textSecondary} />
+            <Text style={[styles.footerCount, { color: colors.textSecondary }]}>{item.likes_count || 0}</Text>
           </View>
         </View>
       </View>
@@ -202,11 +204,11 @@ export default function SavedPostsPage() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <BackButton fallbackRoute="/(tabs)/profile" />
-        <Text style={styles.headerTitle}>Saved Posts</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Saved Posts</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -227,13 +229,13 @@ export default function SavedPostsPage() {
         </View>
       ) : posts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="bookmark-outline" size={58} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Saved Posts</Text>
-          <Text style={styles.emptySubtitle}>
+          <Ionicons name="bookmark-outline" size={58} color={colors.textMuted} />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Saved Posts</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
             Posts you bookmark will appear here. Tap 🔖 on any post to save it.
           </Text>
           <TouchableOpacity
-            style={styles.browsBtn}
+            style={[styles.browsBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/(tabs)/community')}
             activeOpacity={0.85}
           >
@@ -251,8 +253,8 @@ export default function SavedPostsPage() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={Colors.primary}
-              colors={[Colors.primary]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         />

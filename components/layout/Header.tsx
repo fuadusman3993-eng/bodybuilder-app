@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
   left: {
     flexDirection: 'row',
