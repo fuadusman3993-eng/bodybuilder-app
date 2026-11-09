@@ -25,7 +25,7 @@ export default function DiscoverSection() {
       calories: '180 kcal',
       color: '#EF4444',
       badge: 'HIIT',
-      bgImg: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80',
+      bgImg: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80', // HIIT running - full outfit
       route: '/challenge',
     },
     {
@@ -36,7 +36,7 @@ export default function DiscoverSection() {
       calories: '160 kcal',
       color: '#3B82F6',
       badge: 'LOW IMPACT',
-      bgImg: 'https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=600&auto=format&fit=crop&q=80',
+      bgImg: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80', // push-up full outfit
       route: '/challenge',
     },
     {
@@ -47,7 +47,7 @@ export default function DiscoverSection() {
       calories: 'Daily Fuel',
       color: '#10B981',
       badge: 'PROGRAM',
-      bgImg: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&auto=format&fit=crop&q=80',
+      bgImg: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=600&auto=format&fit=crop&q=80', // full outfit workout
       route: '/challenge',
     },
   ];

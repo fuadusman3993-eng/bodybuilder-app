@@ -94,7 +94,7 @@ const GYM_PROGRAM_GROUPS: ProgramGroup[] = [
       bolts: 2,
       users: '8,958,192+',
       description: 'Start your journey to be leaner and stronger! Just 7 minutes daily to shed belly fat easily.',
-      image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
     },
     secondary: [
       {
@@ -128,7 +128,7 @@ const GYM_PROGRAM_GROUPS: ProgramGroup[] = [
       bolts: 2,
       users: '5,180,300+',
       description: 'Develop a wider, thicker chest with progressive push-ups and fly routines designed for steel pecs.',
-      image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=80',
     },
     secondary: [
       {
@@ -230,7 +230,7 @@ const GYM_PROGRAM_GROUPS: ProgramGroup[] = [
       bolts: 2,
       users: '7,430,900+',
       description: 'Complete full-body functional transformation to burn fat, build lean muscle, and boost stamina.',
-      image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=800&q=80',
     },
     secondary: [
       {
@@ -268,7 +268,7 @@ const HOME_PROGRAM_GROUPS: ProgramGroup[] = [
       bolts: 2,
       users: '7,850,000+',
       description: 'Complete full-body home routines with zero equipment needed. Shed fat, tone muscle, and boost energy.',
-      image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=80',
     },
     secondary: [
       {
@@ -1016,7 +1016,7 @@ export default function SelectTrainingPlanScreen() {
                 <View style={styles.featuredCard}>
                   <Image
                     source={{
-                      uri: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+                      uri: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=80',
                     }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
@@ -1358,3 +1358,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+

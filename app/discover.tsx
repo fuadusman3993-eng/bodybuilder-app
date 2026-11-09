@@ -38,14 +38,14 @@ export default function DiscoverScreen() {
       title: 'Belly Fat Burner HIIT Beginner',
       time: '20 min',
       level: 'Beginner',
-      img: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p2',
       title: 'Lose Fat (No Jumping!)',
       time: '20 min',
       level: 'Intermediate',
-      img: 'https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p3',
@@ -67,7 +67,7 @@ export default function DiscoverScreen() {
       id: 's2',
       title: 'Lower Body Stretching',
       time: '10 min',
-      img: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 's3',
@@ -230,7 +230,7 @@ export default function DiscoverScreen() {
           onPress={() => router.push('/challenge')}
         >
           <ImageBackground
-            source={{ uri: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80' }}
+            source={{ uri: 'https://images.unsplash.com/photo-1552072092-7f9b8d63efcb?w=800&auto=format&fit=crop&q=80' }}
             style={styles.programBannerBg}
             imageStyle={{ borderRadius: 18 }}
           >
