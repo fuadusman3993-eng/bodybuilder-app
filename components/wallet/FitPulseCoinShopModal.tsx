@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUserStore } from '../../store/userStore';
+import { useTheme } from '../../store/themeStore';
 import { CurrencyCode, formatCurrency } from '../../lib/currencyService';
 import FitPulseCoinSvg from '../ui/FitPulseCoinSvg';
 
@@ -54,6 +55,7 @@ export default function FitPulseCoinShopModal({
   onViewHistory,
 }: FitPulseCoinShopModalProps) {
   const { user } = useUserStore();
+  const { colors } = useTheme();
 
   const [currency, setCurrency] = useState<CurrencyCode>(initialCurrency);
   const [selectedBundleId, setSelectedBundleId] = useState<string>('50');
@@ -124,12 +126,12 @@ export default function FitPulseCoinShopModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.overlay}>
-        <View style={s.sheetContainer}>
+        <View style={[s.sheetContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {/* Header Row */}
-          <View style={s.headerRow}>
+          <View style={[s.headerRow, { borderBottomColor: colors.border }]}>
             <View style={s.headerTitleWrap}>
-              <Text style={s.headerTitle}>Get FitPulse Coins</Text>
-              <Text style={s.headerSub} numberOfLines={1}>
+              <Text style={[s.headerTitle, { color: colors.textPrimary }]}>Get FitPulse Coins</Text>
+              <Text style={[s.headerSub, { color: colors.textMuted }]} numberOfLines={1}>
                 Unlock workouts, coaches & Pro perks
               </Text>
             </View>
@@ -158,10 +160,10 @@ export default function FitPulseCoinShopModal({
             bounces={false}
           >
             {/* User Account Card */}
-            <View style={s.accountCard}>
+            <View style={[s.accountCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
               <Image source={{ uri: user.avatar || defaultAvatar }} style={s.accountAvatar} />
               <View style={s.accountDetails}>
-                <Text style={s.accountUsername} numberOfLines={1}>
+                <Text style={[s.accountUsername, { color: colors.textPrimary }]} numberOfLines={1}>
                   {user.name || user.email?.split('@')[0] || 'FitPulse Athlete'}
                 </Text>
                 <View style={s.accountBalancePill}>
@@ -173,18 +175,18 @@ export default function FitPulseCoinShopModal({
               {/* Currency Toggle Switcher */}
               <View style={s.currencyToggle}>
                 <TouchableOpacity
-                  style={[s.currencyBtn, currency === 'USD' && s.currencyBtnActive]}
+                  style={[s.currencyBtn, currency === 'USD' && [s.currencyBtnActive, { backgroundColor: colors.primary, borderColor: colors.primary }]]}
                   onPress={() => handleToggleCurrency('USD')}
                 >
-                  <Text style={[s.currencyBtnText, currency === 'USD' && s.currencyBtnTextActive]}>
+                  <Text style={[s.currencyBtnText, currency === 'USD' && [s.currencyBtnTextActive, { color: '#000' }]]}>
                     🇺🇸 USD
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.currencyBtn, currency === 'ETB' && s.currencyBtnActive]}
+                  style={[s.currencyBtn, currency === 'ETB' && [s.currencyBtnActive, { backgroundColor: colors.primary, borderColor: colors.primary }]]}
                   onPress={() => handleToggleCurrency('ETB')}
                 >
-                  <Text style={[s.currencyBtnText, currency === 'ETB' && s.currencyBtnTextActive]}>
+                  <Text style={[s.currencyBtnText, currency === 'ETB' && [s.currencyBtnTextActive, { color: '#000' }]]}>
                     🇪🇹 ETB
                   </Text>
                 </TouchableOpacity>
@@ -192,15 +194,15 @@ export default function FitPulseCoinShopModal({
             </View>
 
             {/* Promo Banner */}
-            <View style={s.promoBanner}>
-              <Ionicons name="flash" size={16} color="#00E676" />
+            <View style={[s.promoBanner, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+              <Ionicons name="flash" size={16} color={colors.primary} />
               <Text style={s.promoText}>
-                <Text style={s.promoHighlight}>Special Offer:</Text> Save around 25% with direct in-app top-ups and zero service fees.
+                <Text style={[s.promoHighlight, { color: colors.primary }]}>Special Offer:</Text> Save around 25% with direct in-app top-ups and zero service fees.
               </Text>
             </View>
 
             {/* Section Header */}
-            <Text style={s.sectionHeader}>Select Coin Bundle</Text>
+            <Text style={[s.sectionHeader, { color: colors.textMuted }]}>Select Coin Bundle</Text>
 
             {/* Strict 3-Column Grid */}
             <View style={s.bundlesGrid}>
@@ -214,12 +216,16 @@ export default function FitPulseCoinShopModal({
                 return (
                   <TouchableOpacity
                     key={bundle.id}
-                    style={[s.bundleBox, isSelected && s.bundleBoxActive]}
+                    style={[
+                      s.bundleBox,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+                    ]}
                     activeOpacity={0.82}
                     onPress={() => handleSelectBundle(bundle.id)}
                   >
                     {bundle.badge && (
-                      <View style={s.bundleBadge}>
+                      <View style={[s.bundleBadge, { backgroundColor: colors.primary }]}>
                         <Text style={s.bundleBadgeText}>{bundle.badge}</Text>
                       </View>
                     )}
@@ -227,7 +233,7 @@ export default function FitPulseCoinShopModal({
                       <FitPulseCoinSvg size={18} />
                       <Text style={s.bundleCoinNum}>{bundle.coins}</Text>
                     </View>
-                    <Text style={s.bundlePrice}>{priceFormatted}</Text>
+                    <Text style={[s.bundlePrice, { color: colors.primary }]}>{priceFormatted}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -235,7 +241,11 @@ export default function FitPulseCoinShopModal({
 
             {/* Dedicated Custom Coin Amount Card (Separated from Grid) */}
             <TouchableOpacity
-              style={[s.customCard, isCustomSelected && s.customCardActive]}
+              style={[
+                s.customCard,
+                { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                isCustomSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+              ]}
               activeOpacity={0.92}
               onPress={() => {
                 setIsCustomSelected(true);
@@ -251,7 +261,7 @@ export default function FitPulseCoinShopModal({
                 <View style={s.customInputLeft}>
                   <FitPulseCoinSvg size={20} />
                   <TextInput
-                    style={s.customInputField}
+                    style={[s.customInputField, { color: colors.textPrimary }]}
                     value={isCustomSelected ? customCoins : ''}
                     onChangeText={(text) => {
                       setIsCustomSelected(true);
@@ -262,13 +272,13 @@ export default function FitPulseCoinShopModal({
                       if (!customCoins) setCustomCoins('100');
                     }}
                     placeholder={isCustomSelected ? '100' : 'Enter custom coins...'}
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                   />
                 </View>
 
                 {isCustomSelected && currentCoins >= 30 && (
-                  <Text style={s.customConvertedPrice}>
+                  <Text style={[s.customConvertedPrice, { color: colors.primary }]}>
                     ≈ {formatCurrency(currentPrice, currency)}
                   </Text>
                 )}
@@ -276,33 +286,37 @@ export default function FitPulseCoinShopModal({
             </TouchableOpacity>
 
             {/* Special Cashback Offer */}
-            <View style={s.cashbackCard}>
-              <View style={s.cashbackBadge}>
+            <View style={[s.cashbackCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+              <View style={[s.cashbackBadge, { backgroundColor: colors.primary }]}>
                 <Text style={s.cashbackBadgeText}>5%</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.cashbackTitle}>Top-up to unlock 5% bonus coins</Text>
                 <Text style={s.cashbackSub}>Bonus coins will be credited automatically to your wallet</Text>
               </View>
-              <Ionicons name="checkmark-circle" size={18} color="#00E676" />
+              <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
             </View>
 
             {/* Payment Method Section */}
-            <Text style={s.sectionHeader}>Payment Method</Text>
+            <Text style={[s.sectionHeader, { color: colors.textMuted }]}>Payment Method</Text>
 
             <View style={s.paymentMethodContainer}>
               {currency === 'USD' ? (
                 <>
                   {/* Credit or Debit Card */}
                   <TouchableOpacity
-                    style={[s.methodRow, paymentMethod === 'card' && s.methodRowActive]}
+                    style={[
+                      s.methodRow,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'card' && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => setPaymentMethod('card')}
                   >
-                    <View style={s.radioOuter}>
-                      {paymentMethod === 'card' && <View style={s.radioInner} />}
+                    <View style={[s.radioOuter, paymentMethod === 'card' && { borderColor: colors.primary }]}>
+                      {paymentMethod === 'card' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
-                    <Text style={s.methodName}>Credit Or Debit Card</Text>
+                    <Text style={[s.methodName, { color: colors.textPrimary }]}>Credit Or Debit Card</Text>
                     <View style={s.cardIconsRow}>
                       <Text style={s.cardBrandPill}>VISA</Text>
                       <Text style={s.cardBrandPill}>MC</Text>
@@ -312,14 +326,18 @@ export default function FitPulseCoinShopModal({
 
                   {/* PayPal */}
                   <TouchableOpacity
-                    style={[s.methodRow, paymentMethod === 'paypal' && s.methodRowActive]}
+                    style={[
+                      s.methodRow,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'paypal' && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => setPaymentMethod('paypal')}
                   >
-                    <View style={s.radioOuter}>
-                      {paymentMethod === 'paypal' && <View style={s.radioInner} />}
+                    <View style={[s.radioOuter, paymentMethod === 'paypal' && { borderColor: colors.primary }]}>
+                      {paymentMethod === 'paypal' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
-                    <Text style={s.methodName}>PayPal</Text>
+                    <Text style={[s.methodName, { color: colors.textPrimary }]}>PayPal</Text>
                     <Ionicons name="logo-paypal" size={20} color="#60A5FA" />
                   </TouchableOpacity>
                 </>
@@ -327,40 +345,52 @@ export default function FitPulseCoinShopModal({
                 <>
                   {/* Telebirr */}
                   <TouchableOpacity
-                    style={[s.methodRow, paymentMethod === 'telebirr' && s.methodRowActive]}
+                    style={[
+                      s.methodRow,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'telebirr' && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => setPaymentMethod('telebirr')}
                   >
-                    <View style={s.radioOuter}>
-                      {paymentMethod === 'telebirr' && <View style={s.radioInner} />}
+                    <View style={[s.radioOuter, paymentMethod === 'telebirr' && { borderColor: colors.primary }]}>
+                      {paymentMethod === 'telebirr' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
-                    <Text style={s.methodName}>Telebirr Mobile Money</Text>
+                    <Text style={[s.methodName, { color: colors.textPrimary }]}>Telebirr Mobile Money</Text>
                     <Text style={s.localPill}>📱 Telebirr</Text>
                   </TouchableOpacity>
 
                   {/* CBE Birr */}
                   <TouchableOpacity
-                    style={[s.methodRow, paymentMethod === 'cbe_birr' && s.methodRowActive]}
+                    style={[
+                      s.methodRow,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'cbe_birr' && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => setPaymentMethod('cbe_birr')}
                   >
-                    <View style={s.radioOuter}>
-                      {paymentMethod === 'cbe_birr' && <View style={s.radioInner} />}
+                    <View style={[s.radioOuter, paymentMethod === 'cbe_birr' && { borderColor: colors.primary }]}>
+                      {paymentMethod === 'cbe_birr' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
-                    <Text style={s.methodName}>CBE Birr / CBE Bank</Text>
+                    <Text style={[s.methodName, { color: colors.textPrimary }]}>CBE Birr / CBE Bank</Text>
                     <Text style={s.localPill}>🏦 CBE</Text>
                   </TouchableOpacity>
 
                   {/* Chapa */}
                   <TouchableOpacity
-                    style={[s.methodRow, paymentMethod === 'chapa' && s.methodRowActive]}
+                    style={[
+                      s.methodRow,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'chapa' && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => setPaymentMethod('chapa')}
                   >
-                    <View style={s.radioOuter}>
-                      {paymentMethod === 'chapa' && <View style={s.radioInner} />}
+                    <View style={[s.radioOuter, paymentMethod === 'chapa' && { borderColor: colors.primary }]}>
+                      {paymentMethod === 'chapa' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
-                    <Text style={s.methodName}>Chapa (Cards & Mobile)</Text>
+                    <Text style={[s.methodName, { color: colors.textPrimary }]}>Chapa (Cards & Mobile)</Text>
                     <Text style={s.localPill}>💳 Chapa</Text>
                   </TouchableOpacity>
                 </>
@@ -369,21 +399,21 @@ export default function FitPulseCoinShopModal({
           </ScrollView>
 
           {/* Sticky Order Summary & Top Up Button */}
-          <View style={s.summaryContainer}>
+          <View style={[s.summaryContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <View style={s.summaryTotalRow}>
-              <Text style={s.summaryLabel}>
-                Total <Text style={{ color: '#8A95A5', fontSize: 13, fontWeight: '500' }}>({currentCoins} Coins)</Text>
+              <Text style={[s.summaryLabel, { color: colors.textPrimary }]}>
+                Total <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '500' }}>({currentCoins} Coins)</Text>
               </Text>
-              <Text style={s.summaryAmount}>{formatCurrency(currentPrice, currency)}</Text>
+              <Text style={[s.summaryAmount, { color: colors.primary }]}>{formatCurrency(currentPrice, currency)}</Text>
             </View>
 
             <Text style={s.disclaimerText}>
-              By tapping Top Up, you agree to our <Text style={{ color: '#A0B0C0' }}>Virtual Items Policy</Text>. Coins are delivered instantly to your balance.
+              By tapping Top Up, you agree to our <Text style={{ color: colors.textMuted }}>Virtual Items Policy</Text>. Coins are delivered instantly to your balance.
             </Text>
 
             {/* Pay / Top Up Button */}
             <TouchableOpacity
-              style={[s.payNowBtn, isProcessing && { opacity: 0.6 }]}
+              style={[s.payNowBtn, { backgroundColor: colors.primary }, isProcessing && { opacity: 0.6 }]}
               activeOpacity={0.88}
               onPress={handlePayNow}
               disabled={isProcessing}

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FitPulseCoinSvg from '../ui/FitPulseCoinSvg';
+import { useTheme } from '../../store/themeStore';
 import { CoinTransaction } from '../../lib/walletService';
 import { CurrencyCode, coinsToFiat, formatCurrency } from '../../lib/currencyService';
 
@@ -28,6 +29,7 @@ export default function TransactionReceiptModal({
   onClose,
   currency = 'ETB',
 }: TransactionReceiptModalProps) {
+  const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
 
   if (!tx) return null;
@@ -99,41 +101,45 @@ export default function TransactionReceiptModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.cardContainer}>
+        <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {/* Top Decorative Glow Dot */}
-          <View style={[styles.topGlow, { backgroundColor: isCredit ? '#00E676' : '#F59E0B' }]} />
+          <View style={[styles.topGlow, { backgroundColor: isCredit ? colors.primary : '#F59E0B' }]} />
 
           {/* Close button top-right */}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color="#8A95A5" />
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           {/* Icon Badge */}
           <View
             style={[
               styles.iconBadgeWrap,
-              isCredit ? styles.iconBadgeCredit : styles.iconBadgeDebit,
+              isCredit
+                ? { backgroundColor: colors.primary + '18' }
+                : styles.iconBadgeDebit,
             ]}
           >
             <Ionicons
               name={isCredit ? 'checkmark-circle' : 'receipt-outline'}
               size={36}
-              color={isCredit ? '#00E676' : '#F59E0B'}
+              color={isCredit ? colors.primary : '#F59E0B'}
             />
           </View>
 
           {/* Title & Status */}
-          <Text style={styles.titleText}>{displayTitle}</Text>
-          <View style={styles.statusPill}>
-            <Ionicons name="checkmark-circle" size={13} color="#00E676" />
-            <Text style={styles.statusPillText}>Completed</Text>
+          <Text style={[styles.titleText, { color: colors.textPrimary }]}>{displayTitle}</Text>
+          <View style={[styles.statusPill, { backgroundColor: colors.primary + '18' }]}>
+            <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
+            <Text style={[styles.statusPillText, { color: colors.primary }]}>Completed</Text>
           </View>
 
           {/* Amount Hero Card */}
           <View
             style={[
               styles.amountCard,
-              isCredit ? styles.amountCardCredit : styles.amountCardDebit,
+              isCredit
+                ? { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }
+                : styles.amountCardDebit,
             ]}
           >
             <View style={styles.amountCoinRow}>
@@ -141,39 +147,39 @@ export default function TransactionReceiptModal({
               <Text
                 style={[
                   styles.amountNumber,
-                  { color: isCredit ? '#00E676' : '#F59E0B' },
+                  { color: isCredit ? colors.primary : '#F59E0B' },
                 ]}
               >
                 {isCredit ? '+' : '-'}{absCoins.toLocaleString()}
               </Text>
               <Text style={styles.amountCoinsLabel}>Coins</Text>
             </View>
-            <Text style={styles.amountFiatSubtext}>
+            <Text style={[styles.amountFiatSubtext, { color: colors.textMuted }]}>
               ≈ {formatCurrency(coinsToFiat(absCoins, currency), currency)}
             </Text>
           </View>
 
           {/* Summary Details Box */}
-          <View style={styles.detailsBox}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date & Time</Text>
-              <Text style={styles.detailValueText}>
+          <View style={[styles.detailsBox, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Date & Time</Text>
+              <Text style={[styles.detailValueText, { color: colors.textPrimary }]}>
                 {formattedDate} • {formattedTime}
               </Text>
             </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Category</Text>
-              <Text style={styles.detailValueText}>{categoryLabel}</Text>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
+              <Text style={[styles.detailValueText, { color: colors.textPrimary }]}>{categoryLabel}</Text>
             </View>
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValueText}>{paymentMethod}</Text>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Payment Method</Text>
+              <Text style={[styles.detailValueText, { color: colors.textPrimary }]}>{paymentMethod}</Text>
             </View>
 
             <View style={[styles.detailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-              <Text style={styles.detailLabel}>Reference ID</Text>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Reference ID</Text>
               <TouchableOpacity
                 style={styles.copyBtn}
                 onPress={handleCopyRef}
@@ -185,16 +191,16 @@ export default function TransactionReceiptModal({
                 <Ionicons
                   name={copied ? 'checkmark' : 'copy-outline'}
                   size={14}
-                  color={copied ? '#00E676' : '#8A95A5'}
+                  color={copied ? colors.primary : colors.textMuted}
                 />
-                {copied && <Text style={styles.copiedText}>Copied</Text>}
+                {copied && <Text style={[styles.copiedText, { color: colors.primary }]}>Copied</Text>}
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Done Button */}
           <TouchableOpacity
-            style={styles.doneBtn}
+            style={[styles.doneBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
             activeOpacity={0.88}
             onPress={onClose}
           >

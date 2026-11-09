@@ -330,11 +330,11 @@ export default function StoriesRow() {
         <View
           style={[
             styles.storyRing,
-            { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2, borderColor: colors.primary },
+            { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2, borderColor: '#00E676' },
             !item.hasStory && styles.storyRingEmpty,
             isViewed && styles.storyRingViewed,
             item.isOwn && !item.hasStory && styles.storyRingOwn,
-            isAiCoach && { borderColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
+            isAiCoach && { borderColor: '#00E676', shadowColor: '#00E676', shadowOpacity: 0.4, shadowRadius: 6 },
           ]}
         >
           <StoryAvatar
@@ -345,12 +345,12 @@ export default function StoriesRow() {
             avatarIcon={item.avatarIcon}
           />
           {item.isOwn && (
-            <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
-              <Ionicons name="add" size={12} color={Colors.textPrimary} />
+            <View style={[styles.addBadge, { backgroundColor: '#00E676', borderColor: colors.background }]}>
+              <Ionicons name="add" size={12} color="#000" />
             </View>
           )}
           {isAiCoach && (
-            <View style={[styles.addBadge, { backgroundColor: colors.primary }]}>
+            <View style={[styles.addBadge, { backgroundColor: '#00E676' }]}>
               <Ionicons name="flash" size={10} color="#000" />
             </View>
           )}
@@ -390,8 +390,8 @@ export default function StoriesRow() {
                   avatarIcon={user.avatarIcon as AvatarIconStyle}
                   size={avatarInner}
                 />
-                <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
-                  <Ionicons name="add" size={12} color={Colors.textPrimary} />
+                <View style={[styles.addBadge, { backgroundColor: '#00E676', borderColor: colors.background }]}>
+                  <Ionicons name="add" size={12} color="#000" />
                 </View>
               </View>
               <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   storyItem: { alignItems: 'center', gap: 5, maxWidth: 70 },
   storyRing: {
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: '#00E676',
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',

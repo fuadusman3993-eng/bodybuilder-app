@@ -382,7 +382,7 @@ export default function UserProfilePage() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Avatar + Stats */}
         <View style={styles.topSection}>
-          <View style={[styles.avatarRing, { borderColor: colors.primary }]}>
+          <View style={[styles.avatarRing, { borderColor: '#00E676' }]}>
             <UserAvatar
               uid={uid as string}
               name={name}
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 100 },
 
   topSection: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 10, gap: 20 },
-  avatarRing: { width: 86, height: 86, borderRadius: 43, borderWidth: 2, borderColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarRing: { width: 86, height: 86, borderRadius: 43, borderWidth: 2, borderColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
   avatar: { width: 78, height: 78, borderRadius: 39 },
 
   statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },

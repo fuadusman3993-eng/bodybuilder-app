@@ -366,7 +366,7 @@ export default function ProfileScreen() {
           {/* ── Centered Pro Hero: Avatar (TikTok Compact) ── */}
           <View style={styles.heroCenterWrap}>
             <View style={styles.avatarWrap}>
-              <View style={styles.avatarRing}>
+              <View style={[styles.avatarRing, { borderColor: '#00E676' }]}>
                 <UserAvatar
                   uid={user.uid}
                   name={name}
@@ -377,7 +377,7 @@ export default function ProfileScreen() {
                 />
               </View>
               <TouchableOpacity
-                style={styles.addStoryBtn}
+                style={[styles.addStoryBtn, { backgroundColor: '#00E676', borderColor: colors.background }]}
                 activeOpacity={0.85}
                 onPress={() => router.push('/add-story')}
               >
@@ -641,11 +641,11 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: '#00E676',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#101C26',
-    shadowColor: Colors.primary,
+    shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#00E676',
     width: 24,
     height: 24,
     borderRadius: 12,

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { activateProWithCoins } from '../../lib/walletService';
 
@@ -30,6 +31,7 @@ export default function ProUpgradeModal({
   onSuccess,
   onOpenTopup,
 }: ProUpgradeModalProps) {
+  const { colors } = useTheme();
   const { user, setTier } = useUserStore();
   const [selectedPlan, setSelectedPlan] = useState<'month' | 'year'>('month');
   const [loading, setLoading] = useState(false);
@@ -67,12 +69,12 @@ export default function ProUpgradeModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity style={s.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+        <TouchableOpacity style={[s.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
           <View style={s.handle} />
 
           {/* Close button */}
           <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={22} color="#8A95A5" />
+            <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.content}>
@@ -81,11 +83,11 @@ export default function ProUpgradeModal({
               <Ionicons name="star" size={36} color="#EAB308" />
             </View>
 
-            <Text style={s.title}>FitPulse Pro ⭐</Text>
-            <Text style={s.subtitle}>Unlock your ultimate fitness potential</Text>
+            <Text style={[s.title, { color: colors.textPrimary }]}>FitPulse Pro ⭐</Text>
+            <Text style={[s.subtitle, { color: colors.textMuted }]}>Unlock your ultimate fitness potential</Text>
 
             {/* Perks List */}
-            <View style={s.perksCard}>
+            <View style={[s.perksCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
               <PerkRow icon="ribbon" text="Golden Pro Badge across your profile & feed" />
               <PerkRow icon="barbell" text="Full access to master workout programs & meal plans" />
               <PerkRow icon="sparkles" text="Unlimited AI workout & form video analysis" />
@@ -94,38 +96,46 @@ export default function ProUpgradeModal({
             </View>
 
             {/* Plan Selector */}
-            <Text style={s.sectionTitle}>Select Plan</Text>
+            <Text style={[s.sectionTitle, { color: colors.textMuted }]}>Select Plan</Text>
             <View style={s.plansRow}>
               {/* 1 Month */}
               <TouchableOpacity
-                style={[s.planCard, selectedPlan === 'month' && s.planCardActive]}
+                style={[
+                  s.planCard,
+                  { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                  selectedPlan === 'month' && s.planCardActive,
+                ]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedPlan('month')}
               >
-                <Text style={s.planDuration}>1 Month</Text>
+                <Text style={[s.planDuration, { color: colors.textPrimary }]}>1 Month</Text>
                 <Text style={s.planCoins}>🪙 500</Text>
-                <Text style={s.planSub}>Coins / month</Text>
+                <Text style={[s.planSub, { color: colors.textMuted }]}>Coins / month</Text>
               </TouchableOpacity>
 
               {/* 1 Year */}
               <TouchableOpacity
-                style={[s.planCard, selectedPlan === 'year' && s.planCardActive]}
+                style={[
+                  s.planCard,
+                  { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                  selectedPlan === 'year' && s.planCardActive,
+                ]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedPlan('year')}
               >
                 <View style={s.discountBadge}>
                   <Text style={s.discountText}>SAVE 20%</Text>
                 </View>
-                <Text style={s.planDuration}>1 Year</Text>
+                <Text style={[s.planDuration, { color: colors.textPrimary }]}>1 Year</Text>
                 <Text style={s.planCoins}>🪙 4,800</Text>
-                <Text style={s.planSub}>🪙 400 / month</Text>
+                <Text style={[s.planSub, { color: colors.textMuted }]}>🪙 400 / month</Text>
               </TouchableOpacity>
             </View>
 
             {/* Current Balance */}
-            <View style={s.balanceRow}>
-              <Text style={s.balanceLabel}>Your Balance:</Text>
-              <Text style={[s.balanceValue, { color: hasEnoughCoins ? '#00E676' : '#F87171' }]}>
+            <View style={[s.balanceRow, { borderTopColor: colors.border }]}>
+              <Text style={[s.balanceLabel, { color: colors.textMuted }]}>Your Balance:</Text>
+              <Text style={[s.balanceValue, { color: hasEnoughCoins ? colors.primary : '#F87171' }]}>
                 🪙 {coinsBalance.toLocaleString()} Coins
                 {hasEnoughCoins ? ' (Sufficient)' : ' (Needs Top-Up)'}
               </Text>

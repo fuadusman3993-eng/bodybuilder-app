@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import { useUserStore, UserTier } from '../store/userStore';
 import {
   CurrencyCode,
@@ -51,6 +52,7 @@ const { width } = Dimensions.get('window');
 
 export default function WalletScreen() {
   const router = useRouter();
+  const { theme, colors } = useTheme();
   const params = useLocalSearchParams<{
     chapa_status?: string;
     tx_ref?: string;
@@ -465,7 +467,7 @@ export default function WalletScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* ── TOP HEADER — slim bar: chevron back + currency pill only ──── */}
       <View style={styles.header}>
         <View style={styles.headerInner}>
@@ -476,19 +478,19 @@ export default function WalletScreen() {
 
           {/* Currency Rate Pill Badge */}
           <TouchableOpacity
-            style={styles.currencyPill}
+            style={[styles.currencyPill, { backgroundColor: colors.surfaceLight, borderColor: colors.primary }]}
             activeOpacity={0.8}
             onPress={() => setShowCurrencyModal(true)}
           >
-            <Text style={styles.currencyPillText}>{getRateDisplay(currency)}</Text>
+            <Text style={[styles.currencyPillText, { color: colors.primary }]}>{getRateDisplay(currency)}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading your FitPulse Wallet...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your FitPulse Wallet...</Text>
         </View>
       ) : (
         <ScrollView
@@ -497,12 +499,12 @@ export default function WalletScreen() {
           overScrollMode="never"
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           <View style={styles.pageInner}>
             {/* ── HERO BALANCE CARD ─────────────────────────────────────── */}
-          <View style={styles.heroCard}>
+          <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
             {/* Background Athlete — full card width, cinematic */}
             <Image
               source={require('../assets/images/wallet-hero-athlete.png')}
@@ -560,20 +562,20 @@ export default function WalletScreen() {
                 </Text>
 
                 {/* 7-Day Trend Pill */}
-                <View style={styles.trendPill}>
-                  <Ionicons name="arrow-up" size={11} color="#00E676" />
-                  <Text style={styles.trendPercent}>0.00%</Text>
-                  <Text style={styles.trendArrow}>→</Text>
-                  <Text style={styles.trendLabel}>vs last 7 days</Text>
+                <View style={[styles.trendPill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
+                  <Ionicons name="arrow-up" size={11} color={colors.primary} />
+                  <Text style={[styles.trendPercent, { color: colors.primary }]}>0.00%</Text>
+                  <Text style={[styles.trendArrow, { color: colors.primary }]}>→</Text>
+                  <Text style={[styles.trendLabel, { color: colors.textMuted }]}>vs last 7 days</Text>
                 </View>
               </View>
             </View>
 
             {/* Bottom Dual Action Buttons */}
             <View style={styles.heroActionRow}>
-              {/* Top Up Coins (Vibrant Neon Green) */}
+              {/* Top Up Coins */}
               <TouchableOpacity
-                style={styles.topUpBtn}
+                style={[styles.topUpBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                 activeOpacity={0.88}
                 onPress={() => setShowTopup(true)}
               >
@@ -581,30 +583,30 @@ export default function WalletScreen() {
                 <Text style={styles.topUpBtnTitle}>Top Up</Text>
               </TouchableOpacity>
 
-              {/* Withdraw (Dark Outline with Green Border) */}
+              {/* Withdraw */}
               <TouchableOpacity
-                style={styles.withdrawBtn}
+                style={[styles.withdrawBtn, { backgroundColor: colors.surfaceLight, borderColor: colors.primary }]}
                 activeOpacity={0.88}
                 onPress={() => setShowPayout(true)}
               >
-                <Ionicons name="arrow-up" size={18} color="#00E676" />
-                <Text style={styles.withdrawBtnTitle}>Withdraw</Text>
+                <Ionicons name="arrow-up" size={18} color={colors.primary} />
+                <Text style={[styles.withdrawBtnTitle, { color: colors.primary }]}>Withdraw</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* ── COACH EARNINGS SECTION ────────────────────────────────────── */}
-          <View style={styles.coachCard}>
+          <View style={[styles.coachCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
             {/* 4-Column Grid */}
             <View style={styles.metricsGrid}>
               {/* 1. Lifetime Coins Earned */}
               <View style={styles.metricCol}>
-                <View style={[styles.metricCircle, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-                  <Ionicons name="cash" size={16} color="#00E676" />
+                <View style={[styles.metricCircle, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="cash" size={16} color={colors.primary} />
                 </View>
-                <Text style={styles.metricValue}>{lifetimeEarnings.toLocaleString()}</Text>
-                <Text style={styles.metricLabel}>Lifetime Coins Earned</Text>
+                <Text style={[styles.metricValue, { color: colors.textPrimary }]}>{lifetimeEarnings.toLocaleString()}</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>Lifetime Coins Earned</Text>
               </View>
 
               {/* 2. Available Balance */}
@@ -612,10 +614,10 @@ export default function WalletScreen() {
                 <View style={[styles.metricCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
                   <Ionicons name="ellipse" size={14} color="#A855F7" />
                 </View>
-                <Text style={styles.metricValue}>
+                <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
                   {isBalanceHidden ? '••••' : balance.toLocaleString()}
                 </Text>
-                <Text style={styles.metricLabel}>Available Balance</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>Available Balance</Text>
               </View>
 
               {/* 3. Pending Payout */}
@@ -623,17 +625,17 @@ export default function WalletScreen() {
                 <View style={[styles.metricCircle, { backgroundColor: 'rgba(52, 211, 153, 0.15)' }]}>
                   <Ionicons name="calendar" size={15} color="#34D399" />
                 </View>
-                <Text style={styles.metricValue}>
+                <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
                   {(wallet?.pending_payout_etb ?? 0).toFixed(2)}
                 </Text>
-                <Text style={styles.metricLabel}>Pending Payout</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>Pending Payout</Text>
               </View>
             </View>
           </View>
 
-          {/* ── PRO TIER CALLOUT BANNER (Matching Reference Image) ───────── */}
+          {/* ── PRO TIER CALLOUT BANNER ───────────────────────────────────── */}
           <TouchableOpacity
-            style={[styles.proCalloutBanner, user.tier === UserTier.PREMIUM && { borderColor: '#EAB308', backgroundColor: 'rgba(234, 179, 8, 0.08)' }]}
+            style={[styles.proCalloutBanner, { backgroundColor: colors.surface, borderColor: colors.border }, user.tier === UserTier.PREMIUM && { borderColor: '#EAB308', backgroundColor: 'rgba(234, 179, 8, 0.08)' }]}
             activeOpacity={0.85}
             onPress={() => setShowProModal(true)}
           >
@@ -641,9 +643,9 @@ export default function WalletScreen() {
               <Ionicons
                 name={user.tier === UserTier.PREMIUM ? 'star' : 'information-circle-outline'}
                 size={20}
-                color={user.tier === UserTier.PREMIUM ? '#EAB308' : '#8A95A5'}
+                color={user.tier === UserTier.PREMIUM ? '#EAB308' : colors.textMuted}
               />
-              <Text style={styles.proCalloutText}>
+              <Text style={[styles.proCalloutText, { color: colors.textMuted }]}>
                 {user.tier === UserTier.PREMIUM ? (
                   <>
                     You are a <Text style={{ color: '#EAB308', fontWeight: 'bold' }}>FitPulse Pro Member ⭐</Text>. Tap to view perks.
@@ -651,61 +653,61 @@ export default function WalletScreen() {
                 ) : (
                   <>
                     Use coins to hire coaches, buy workout plans, or upgrade to{' '}
-                    <Text style={styles.proHighlight}>FitPulse Pro</Text>.
+                    <Text style={[styles.proHighlight, { color: colors.primary }]}>FitPulse Pro</Text>.
                   </>
                 )}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={user.tier === UserTier.PREMIUM ? '#EAB308' : '#8A95A5'} />
+            <Ionicons name="chevron-forward" size={18} color={user.tier === UserTier.PREMIUM ? '#EAB308' : colors.textMuted} />
           </TouchableOpacity>
 
-          {/* ── RECENT TRANSACTIONS (Matching Reference Image) ───────────── */}
+          {/* ── RECENT TRANSACTIONS ───────────────────────────────────────── */}
           <View style={styles.txSection}>
             <View style={styles.txHeaderRow}>
-              <Text style={styles.txSectionTitle}>Recent Transactions</Text>
-              <TouchableOpacity style={styles.viewAllPill} activeOpacity={0.7}>
-                <Text style={styles.viewAllText}>View All</Text>
-                <Ionicons name="chevron-forward" size={13} color="#8A95A5" />
+              <Text style={[styles.txSectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
+              <TouchableOpacity style={[styles.viewAllPill, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]} activeOpacity={0.7}>
+                <Text style={[styles.viewAllText, { color: colors.textMuted }]}>View All</Text>
+                <Ionicons name="chevron-forward" size={13} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             {txs.length === 0 ? (
-              /* Pixel-Perfect Sparkle Wallet Empty State */
-              <View style={styles.emptyCard}>
+              /* Sparkle Wallet Empty State */
+              <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={styles.emptySparkleWallet}>✨👛</Text>
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptySubtitle}>Your recent transactions will appear here</Text>
+                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No transactions yet</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your recent transactions will appear here</Text>
               </View>
             ) : (
               /* Real Populated Transactions List */
-              <View style={styles.txListContainer}>
+              <View style={[styles.txListContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {txs.map((tx) => {
                   const isCredit = tx.amount_coins > 0;
                   return (
                     <TouchableOpacity
                       key={tx.id}
-                      style={styles.txRow}
+                      style={[styles.txRow, { borderBottomColor: colors.border }]}
                       activeOpacity={0.7}
                       onPress={() => setSelectedTx(tx)}
                     >
-                      <View style={[styles.txIconBadge, isCredit ? styles.txBadgeCredit : styles.txBadgeDebit]}>
+                      <View style={[styles.txIconBadge, isCredit ? { backgroundColor: colors.primary + '20' } : styles.txBadgeDebit]}>
                         <Ionicons
                           name={isCredit ? 'add-circle' : 'person-circle'}
                           size={20}
-                          color={isCredit ? '#00E676' : '#F59E0B'}
+                          color={isCredit ? colors.primary : '#F59E0B'}
                         />
                       </View>
                       <View style={styles.txDetails}>
-                        <Text style={styles.txDesc} numberOfLines={1}>
+                        <Text style={[styles.txDesc, { color: colors.textPrimary }]} numberOfLines={1}>
                           {formatCleanTxTitle(tx)}
                         </Text>
-                        <Text style={styles.txDate}>{formatTxDateTime(tx.created_at)}</Text>
+                        <Text style={[styles.txDate, { color: colors.textMuted }]}>{formatTxDateTime(tx.created_at)}</Text>
                       </View>
                       <View style={styles.txAmountWrap}>
-                        <Text style={[styles.txAmount, isCredit ? styles.txAmountCredit : styles.txAmountDebit]}>
+                        <Text style={[styles.txAmount, isCredit ? { color: colors.primary } : styles.txAmountDebit]}>
                           {isCredit ? '+' : ''}{tx.amount_coins} 🪙
                         </Text>
-                        <Ionicons name="chevron-forward" size={14} color="#6B7280" style={{ marginLeft: 6 }} />
+                        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
                       </View>
                     </TouchableOpacity>
                   );
@@ -720,10 +722,10 @@ export default function WalletScreen() {
       {/* ── CURRENCY SELECTOR MODAL ────────────────────────────────────── */}
       <Modal visible={showCurrencyModal} transparent animationType="slide" onRequestClose={() => setShowCurrencyModal(false)}>
         <TouchableOpacity style={mStyles.overlay} activeOpacity={1} onPress={() => setShowCurrencyModal(false)}>
-          <TouchableOpacity style={mStyles.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity style={[mStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             <View style={mStyles.handle} />
-            <Text style={mStyles.title}>Select Currency</Text>
-            <Text style={mStyles.subtitle}>FitPulse automatically converts coins to your preferred currency</Text>
+            <Text style={[mStyles.title, { color: colors.textPrimary }]}>Select Currency</Text>
+            <Text style={[mStyles.subtitle, { color: colors.textMuted }]}>FitPulse automatically converts coins to your preferred currency</Text>
 
             <View style={mStyles.currencyList}>
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
@@ -732,16 +734,16 @@ export default function WalletScreen() {
                 return (
                   <TouchableOpacity
                     key={code}
-                    style={[mStyles.currencyOption, isSelected && mStyles.currencyOptionActive]}
+                    style={[mStyles.currencyOption, { backgroundColor: colors.surfaceLight, borderColor: isSelected ? colors.primary : colors.border }, isSelected && { backgroundColor: colors.primary + '18' }]}
                     activeOpacity={0.8}
                     onPress={() => handleSelectCurrency(code)}
                   >
                     <Text style={mStyles.currencyFlag}>{c.flag}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={mStyles.currencyName}>{c.name} ({c.code})</Text>
-                      <Text style={mStyles.currencyRate}>{getRateDisplay(code)}</Text>
+                      <Text style={[mStyles.currencyName, { color: colors.textPrimary }]}>{c.name} ({c.code})</Text>
+                      <Text style={[mStyles.currencyRate, { color: colors.textMuted }]}>{getRateDisplay(code)}</Text>
                     </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />}
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                   </TouchableOpacity>
                 );
               })}
@@ -804,30 +806,30 @@ export default function WalletScreen() {
       {/* ── COACH WITHDRAWAL MODAL ─────────────────────────────────────── */}
       <Modal visible={showPayout} transparent animationType="slide" onRequestClose={() => setShowPayout(false)}>
         <TouchableOpacity style={mStyles.overlay} activeOpacity={1} onPress={() => setShowPayout(false)}>
-          <TouchableOpacity style={mStyles.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity style={[mStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             <View style={mStyles.handle} />
-            <Text style={mStyles.title}>Withdraw Earnings</Text>
-            <Text style={mStyles.subtitle}>
+            <Text style={[mStyles.title, { color: colors.textPrimary }]}>Withdraw Earnings</Text>
+            <Text style={[mStyles.subtitle, { color: colors.textMuted }]}>
               Available Balance: 🪙 {balance.toLocaleString()} Coins (
               {formatCurrency(coinsToFiat(balance, currency), currency)})
             </Text>
 
-            <Text style={mStyles.sectionLabel}>Coins to Withdraw</Text>
+            <Text style={[mStyles.sectionLabel, { color: colors.textMuted }]}>Coins to Withdraw</Text>
             <TextInput
-              style={mStyles.input}
+              style={[mStyles.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
               value={payoutCoins}
               onChangeText={setPayoutCoins}
               keyboardType="numeric"
               placeholder={`Max: ${balance} coins`}
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.textMuted}
             />
             {payoutCoins !== '' && (
-              <Text style={mStyles.inputHint}>
+              <Text style={[mStyles.inputHint, { color: colors.primary }]}>
                 = {formatCurrency(coinsToFiat(parseInt(payoutCoins) || 0, currency), currency)}
               </Text>
             )}
 
-            <Text style={mStyles.sectionLabel}>Withdrawal Method</Text>
+            <Text style={[mStyles.sectionLabel, { color: colors.textMuted }]}>Withdrawal Method</Text>
             <View style={mStyles.methodRow}>
               {currency === 'ETB' ? (
                 <>
@@ -858,29 +860,29 @@ export default function WalletScreen() {
               )}
             </View>
 
-            <Text style={mStyles.sectionLabel}>
+            <Text style={[mStyles.sectionLabel, { color: colors.textMuted }]}>
               {payoutMethod === 'paypal' ? 'PayPal Email' : 'Account / Phone Number'}
             </Text>
             <TextInput
-              style={mStyles.input}
+              style={[mStyles.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
               value={payoutAccount}
               onChangeText={setPayoutAccount}
               placeholder={payoutMethod === 'paypal' ? 'you@example.com' : 'e.g. 0911223344 or IBAN'}
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
             />
 
-            <Text style={mStyles.sectionLabel}>Account Holder Name</Text>
+            <Text style={[mStyles.sectionLabel, { color: colors.textMuted }]}>Account Holder Name</Text>
             <TextInput
-              style={mStyles.input}
+              style={[mStyles.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
               value={payoutName}
               onChangeText={setPayoutName}
               placeholder="Your full legal name"
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.textMuted}
             />
 
             <TouchableOpacity
-              style={[mStyles.confirmBtn, payoutLoading && { opacity: 0.6 }]}
+              style={[mStyles.confirmBtn, { backgroundColor: colors.primary }, payoutLoading && { opacity: 0.6 }]}
               activeOpacity={0.88}
               onPress={handlePayout}
               disabled={payoutLoading}
@@ -892,7 +894,7 @@ export default function WalletScreen() {
               )}
             </TouchableOpacity>
 
-            <Text style={[mStyles.sandboxNote, { color: '#60A5FA' }]}>
+            <Text style={[mStyles.sandboxNote, { color: colors.textMuted }]}>
               ℹ️ Payouts are verified and sent to your account within 24 hours.
             </Text>
           </TouchableOpacity>
@@ -911,13 +913,18 @@ export default function WalletScreen() {
 }
 
 function MethodPill({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
   return (
     <TouchableOpacity
-      style={[mStyles.methodBtn, selected && mStyles.methodBtnActive]}
+      style={[
+        mStyles.methodBtn,
+        { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+        selected && { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+      ]}
       activeOpacity={0.8}
       onPress={onPress}
     >
-      <Text style={[mStyles.methodBtnText, selected && mStyles.methodBtnTextActive]}>
+      <Text style={[mStyles.methodBtnText, { color: colors.textMuted }, selected && { color: colors.primary, fontWeight: '700' }]}>
         {label}
       </Text>
     </TouchableOpacity>

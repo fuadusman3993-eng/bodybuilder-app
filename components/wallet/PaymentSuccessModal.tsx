@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FitPulseCoinSvg from '../ui/FitPulseCoinSvg';
+import { useTheme } from '../../store/themeStore';
 
 interface PaymentSuccessModalProps {
   visible: boolean;
@@ -33,6 +34,7 @@ export default function PaymentSuccessModal({
   title,
   subtitle,
 }: PaymentSuccessModalProps) {
+  const { colors } = useTheme();
   const isPro = coinsAdded === 0;
   const displayTitle = title || (isPro ? 'FitPulse Pro Activated! ⭐' : 'Payment Successful!');
   const displaySubtitle = subtitle || (isPro ? 'Your Pro perks and golden badge are now active.' : 'Your coins have been added to your FitPulse Wallet.');
@@ -40,13 +42,13 @@ export default function PaymentSuccessModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.cardContainer}>
+        <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {/* Top Decorative Glow Dot */}
-          <View style={styles.topGlow} />
+          <View style={[styles.topGlow, { backgroundColor: colors.primary }]} />
 
           {/* Close button top-right */}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color="#8A95A5" />
+            <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           {/* 3D FitPulse Coin Icon Badge */}
@@ -59,12 +61,16 @@ export default function PaymentSuccessModal({
           </View>
 
           {/* Title & Celebration Header */}
-          <Text style={styles.titleText}>{displayTitle}</Text>
-          <Text style={styles.subtitleText}>{displaySubtitle}</Text>
+          <Text style={[styles.titleText, { color: colors.textPrimary }]}>{displayTitle}</Text>
+          <Text style={[styles.subtitleText, { color: colors.textMuted }]}>{displaySubtitle}</Text>
 
           {/* Coins Added Highlight Card */}
-          <View style={[styles.coinsAddedCard, isPro && { backgroundColor: 'rgba(234, 179, 8, 0.12)', borderColor: 'rgba(234, 179, 8, 0.3)' }]}>
-            <Text style={[styles.coinsAddedNumber, isPro && { color: '#EAB308', fontSize: 24 }]}>
+          <View style={[
+            styles.coinsAddedCard,
+            { backgroundColor: colors.primary + '18', borderColor: colors.primary + '35' },
+            isPro && { backgroundColor: 'rgba(234, 179, 8, 0.12)', borderColor: 'rgba(234, 179, 8, 0.3)' }
+          ]}>
+            <Text style={[styles.coinsAddedNumber, { color: colors.primary }, isPro && { color: '#EAB308', fontSize: 24 }]}>
               {isPro ? '⭐ PRO ACTIVATED' : `+${coinsAdded.toLocaleString()}`}
             </Text>
             <Text style={styles.coinsAddedLabel}>
@@ -73,36 +79,36 @@ export default function PaymentSuccessModal({
           </View>
 
           {/* Summary Details Box */}
-          <View style={styles.detailsBox}>
+          <View style={[styles.detailsBox, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
             {typeof newBalance === 'number' && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>New Balance</Text>
+              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>New Balance</Text>
                 <View style={styles.detailValueRow}>
                   <FitPulseCoinSvg size={14} />
-                  <Text style={styles.detailValueBold}>
+                  <Text style={[styles.detailValueBold, { color: colors.textPrimary }]}>
                     {newBalance.toLocaleString()} Coins
                   </Text>
                 </View>
               </View>
             )}
 
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValueText}>{paymentMethod}</Text>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Payment Method</Text>
+              <Text style={[styles.detailValueText, { color: colors.textSecondary }]}>{paymentMethod}</Text>
             </View>
 
             <View style={[styles.detailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-              <Text style={styles.detailLabel}>Status</Text>
-              <View style={styles.statusPill}>
-                <Ionicons name="checkmark-circle" size={13} color="#00E676" />
-                <Text style={styles.statusPillText}>Completed</Text>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Status</Text>
+              <View style={[styles.statusPill, { backgroundColor: colors.primary + '18' }]}>
+                <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
+                <Text style={[styles.statusPillText, { color: colors.primary }]}>Completed</Text>
               </View>
             </View>
           </View>
 
           {/* Large Action Done Button */}
           <TouchableOpacity
-            style={styles.doneBtn}
+            style={[styles.doneBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
             activeOpacity={0.88}
             onPress={onClose}
           >

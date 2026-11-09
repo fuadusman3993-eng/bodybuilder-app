@@ -9,7 +9,7 @@ import { Colors } from '../../constants/colors';
 import { useUserStore, UserTier } from '../../store/userStore';
 import { signOut } from '../../lib/authService';
 import { getWallet } from '../../lib/walletService';
-import { useThemeStore } from '../../store/themeStore';
+import { useThemeStore, useTheme } from '../../store/themeStore';
 import ThemeSelectorModal from '../theme/ThemeSelectorModal';
 
 interface ProfileMoreModalProps {
@@ -20,6 +20,7 @@ interface ProfileMoreModalProps {
 export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalProps) {
   const router = useRouter();
   const { user, setUser, updateCoins } = useUserStore();
+  const { theme, colors } = useTheme();
   const isCoach = user.role === 'coach';
   const coinsBalance = user.coinsBalance ?? 0;
 
@@ -116,7 +117,7 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
           onPress={onClose}
         >
           <TouchableOpacity
-            style={styles.sheet}
+            style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={1}
             onPress={e => e.stopPropagation()}
           >
@@ -125,16 +126,16 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
 
             {/* Header: Title + Close Button */}
             <View style={styles.headerRow}>
-              <Text style={styles.sheetTitle}>More</Text>
+              <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>More</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-                <Ionicons name="close" size={22} color={Colors.textMuted} />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
               {/* ── 1. SETTINGS ── */}
               <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>Settings</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Settings</Text>
 
                 {/* FitPulse Wallet & Coins */}
                 <TouchableOpacity
@@ -143,11 +144,11 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={() => handleNavigate('/wallet')}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="wallet-outline" size={22} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>FitPulse Wallet & Coins</Text>
+                    <Ionicons name="wallet-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>FitPulse Wallet & Coins</Text>
                   </View>
-                  <View style={styles.coinBadgePill}>
-                    <Text style={styles.coinBadgePillText}>🪙 {coinsBalance}</Text>
+                  <View style={[styles.coinBadgePill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
+                    <Text style={[styles.coinBadgePillText, { color: colors.primary }]}>🪙 {coinsBalance}</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -158,10 +159,10 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={() => handleNavigate('/edit-profile')}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="settings-outline" size={22} color={Colors.textPrimary} />
-                    <Text style={styles.menuItemText}>General</Text>
+                    <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>General</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {/* Language Switcher */}
@@ -171,14 +172,14 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={handleToggleLanguage}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="language-outline" size={22} color={Colors.textPrimary} />
-                    <Text style={styles.menuItemText}>
+                    <Ionicons name="language-outline" size={22} color={colors.textPrimary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
                       {language === 'en' ? 'English (US)' : 'አማርኛ (ET)'}
                     </Text>
                   </View>
-                  <View style={styles.langPill}>
-                    <Text style={styles.langPillText}>{language === 'en' ? 'EN' : 'አማ'}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+                  <View style={[styles.langPill, { backgroundColor: colors.surfaceLight }]}>
+                    <Text style={[styles.langPillText, { color: colors.textMuted }]}>{language === 'en' ? 'EN' : 'አማ'}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                   </View>
                 </TouchableOpacity>
 
@@ -189,22 +190,22 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={() => setShowThemeModal(true)}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="color-palette-outline" size={22} color={activeTheme.colors.primary} />
-                    <Text style={styles.menuItemText}>Theme</Text>
+                    <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Theme</Text>
                   </View>
-                  <View style={styles.themePill}>
-                    <View style={[styles.themeColorDot, { backgroundColor: activeTheme.colors.primary }]} />
-                    <Text style={styles.themePillText}>{activeTheme.label}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+                  <View style={[styles.themePill, { backgroundColor: colors.surfaceLight }]}>
+                    <View style={[styles.themeColorDot, { backgroundColor: colors.primary }]} />
+                    <Text style={[styles.themePillText, { color: colors.textSecondary }]}>{activeTheme.label}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                   </View>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.sectionDivider} />
+              <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
 
               {/* ── 2. TOOLS (FitPulse Athlete & Coach Tools) ── */}
               <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>Tools</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Tools</Text>
 
                 {/* Coach Dashboard / My Coach */}
                 <TouchableOpacity
@@ -216,13 +217,13 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                     <Ionicons
                       name={isCoach ? 'analytics-outline' : 'person-circle-outline'}
                       size={22}
-                      color={Colors.primary}
+                      color={colors.primary}
                     />
-                    <Text style={styles.menuItemText}>
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
                       {isCoach ? 'Coach Studio & Clients' : 'My Coach & Program'}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {/* Workout Plans / Find Coaches */}
@@ -235,13 +236,13 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                     <Ionicons
                       name={isCoach ? 'create-outline' : 'search-outline'}
                       size={22}
-                      color={Colors.textPrimary}
+                      color={colors.textPrimary}
                     />
-                    <Text style={styles.menuItemText}>
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
                       {isCoach ? 'Create Workout Plan' : 'Find Fitness Coaches'}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {/* Fitness Challenges */}
@@ -252,9 +253,9 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                 >
                   <View style={styles.menuItemLeft}>
                     <Ionicons name="trophy-outline" size={22} color="#F59E0B" />
-                    <Text style={styles.menuItemText}>Fitness Challenges</Text>
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Fitness Challenges</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {/* Saved Posts & Workouts */}
@@ -264,18 +265,18 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={() => handleNavigate('/saved-posts')}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="bookmark-outline" size={22} color={Colors.textPrimary} />
-                    <Text style={styles.menuItemText}>Saved Posts & Workouts</Text>
+                    <Ionicons name="bookmark-outline" size={22} color={colors.textPrimary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Saved Posts & Workouts</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.sectionDivider} />
+              <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
 
               {/* ── 3. OTHER (Help Center & Logout) ── */}
               <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>Other</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Other</Text>
 
                 {/* Help Center */}
                 <TouchableOpacity
@@ -284,10 +285,10 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   onPress={() => setShowHelp(true)}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name="document-text-outline" size={22} color={Colors.textPrimary} />
-                    <Text style={styles.menuItemText}>Help Center</Text>
+                    <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Help Center</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {/* Log Out */}
@@ -319,47 +320,47 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
           activeOpacity={1}
           onPress={() => setShowHelp(false)}
         >
-          <View style={styles.helpCard}>
+          <View style={[styles.helpCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.helpHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="information-circle" size={24} color={Colors.primary} />
-                <Text style={styles.helpTitle}>Help Center</Text>
+                <Ionicons name="information-circle" size={24} color={colors.primary} />
+                <Text style={[styles.helpTitle, { color: colors.textPrimary }]}>Help Center</Text>
               </View>
               <TouchableOpacity onPress={() => setShowHelp(false)}>
-                <Ionicons name="close" size={22} color={Colors.textMuted} />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.helpDesc}>
+            <Text style={[styles.helpDesc, { color: colors.textMuted }]}>
               Welcome to FitPulse Support. We are here to help athletes and fitness coaches succeed.
             </Text>
 
-            <View style={styles.helpItem}>
-              <Ionicons name="mail-outline" size={18} color={Colors.primary} />
+            <View style={[styles.helpItem, { borderBottomColor: colors.border }]}>
+              <Ionicons name="mail-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.helpItemTitle}>Contact Support</Text>
-                <Text style={styles.helpItemValue}>support@fitpulse.app</Text>
+                <Text style={[styles.helpItemTitle, { color: colors.textMuted }]}>Contact Support</Text>
+                <Text style={[styles.helpItemValue, { color: colors.textPrimary }]}>support@fitpulse.app</Text>
               </View>
             </View>
 
-            <View style={styles.helpItem}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
+            <View style={[styles.helpItem, { borderBottomColor: colors.border }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.helpItemTitle}>Community Guidelines</Text>
-                <Text style={styles.helpItemValue}>Safe & empowering fitness environment</Text>
+                <Text style={[styles.helpItemTitle, { color: colors.textMuted }]}>Community Guidelines</Text>
+                <Text style={[styles.helpItemValue, { color: colors.textPrimary }]}>Safe & empowering fitness environment</Text>
               </View>
             </View>
 
-            <View style={styles.helpItem}>
-              <Ionicons name="phone-portrait-outline" size={18} color={Colors.primary} />
+            <View style={[styles.helpItem, { borderBottomColor: colors.border }]}>
+              <Ionicons name="phone-portrait-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.helpItemTitle}>FitPulse Version</Text>
-                <Text style={styles.helpItemValue}>v1.0.4 (Build 2026.10)</Text>
+                <Text style={[styles.helpItemTitle, { color: colors.textMuted }]}>FitPulse Version</Text>
+                <Text style={[styles.helpItemValue, { color: colors.textPrimary }]}>v1.0.4 (Build 2026.10)</Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.helpDoneBtn}
+              style={[styles.helpDoneBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowHelp(false)}
               activeOpacity={0.85}
             >
@@ -381,18 +382,18 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
           activeOpacity={1}
           onPress={() => setShowLogoutConfirm(false)}
         >
-          <View style={styles.logoutCard}>
+          <View style={[styles.logoutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="log-out-outline" size={38} color="#EF4444" style={{ alignSelf: 'center', marginBottom: 12 }} />
-            <Text style={styles.logoutTitle}>Log Out</Text>
-            <Text style={styles.logoutDesc}>Are you sure you want to log out of your FitPulse account?</Text>
+            <Text style={[styles.logoutTitle, { color: colors.textPrimary }]}>Log Out</Text>
+            <Text style={[styles.logoutDesc, { color: colors.textMuted }]}>Are you sure you want to log out of your FitPulse account?</Text>
 
             <View style={styles.logoutBtnRow}>
               <TouchableOpacity
-                style={styles.logoutCancelBtn}
+                style={[styles.logoutCancelBtn, { backgroundColor: colors.surfaceLight }]}
                 onPress={() => setShowLogoutConfirm(false)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.logoutCancelText}>Cancel</Text>
+                <Text style={[styles.logoutCancelText, { color: colors.textPrimary }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

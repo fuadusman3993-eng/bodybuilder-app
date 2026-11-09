@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import {
   detectCardBrand,
   formatCardNumber,
@@ -38,6 +39,7 @@ export default function CardPaymentModal({
   currency,
   onSuccess,
 }: CardPaymentModalProps) {
+  const { colors } = useTheme();
   const [name, setName]         = useState('');
   const [number, setNumber]     = useState('');
   const [expiry, setExpiry]     = useState('');
@@ -82,19 +84,19 @@ export default function CardPaymentModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity style={s.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+        <TouchableOpacity style={[s.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
           <View style={s.handle} />
 
           {/* Header */}
           <View style={s.headerRow}>
             <View>
-              <Text style={s.title}>Card Payment</Text>
-              <Text style={s.subtitle}>
+              <Text style={[s.title, { color: colors.textPrimary }]}>Card Payment</Text>
+              <Text style={[s.subtitle, { color: colors.textMuted }]}>
                 Top up 🪙 {coins} Coins for {formatCurrency(price, currency)}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color="#8A95A5" />
+              <Ionicons name="close" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -109,33 +111,33 @@ export default function CardPaymentModal({
           {/* Form */}
           <View style={s.form}>
             {/* Cardholder Name */}
-            <Text style={s.label}>Cardholder Name</Text>
+            <Text style={[s.label, { color: colors.textMuted }]}>Cardholder Name</Text>
             <TextInput
-              style={s.input}
+              style={[s.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
               value={name}
               onChangeText={setName}
               placeholder="e.g. John Doe"
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.textMuted}
               autoCapitalize="words"
             />
 
             {/* Card Number */}
-            <Text style={s.label}>Card Number</Text>
-            <View style={s.inputWithIcon}>
+            <Text style={[s.label, { color: colors.textMuted }]}>Card Number</Text>
+            <View style={[s.inputWithIcon, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
               <TextInput
-                style={[s.input, { flex: 1, borderWidth: 0 }]}
+                style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: 'transparent', color: colors.textPrimary }]}
                 value={number}
                 onChangeText={(t) => setNumber(formatCardNumber(t))}
                 placeholder="4242 4242 4242 4242"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numeric"
                 maxLength={19}
               />
-              <View style={s.brandBadge}>
+              <View style={[s.brandBadge, { backgroundColor: colors.border }]}>
                 <Ionicons
                   name={brand === 'visa' || brand === 'mastercard' ? 'card' : 'card-outline'}
                   size={20}
-                  color={brand === 'visa' ? '#60A5FA' : brand === 'mastercard' ? '#F87171' : Colors.primary}
+                  color={brand === 'visa' ? '#60A5FA' : brand === 'mastercard' ? '#F87171' : colors.primary}
                 />
                 <Text style={s.brandText}>{brand.toUpperCase()}</Text>
               </View>
@@ -144,25 +146,25 @@ export default function CardPaymentModal({
             {/* Expiry & CVC */}
             <View style={s.row}>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>Expires (MM/YY)</Text>
+                <Text style={[s.label, { color: colors.textMuted }]}>Expires (MM/YY)</Text>
                 <TextInput
-                  style={s.input}
+                  style={[s.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
                   value={expiry}
                   onChangeText={(t) => setExpiry(formatExpiry(t))}
                   placeholder="MM/YY"
-                  placeholderTextColor="#555"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   maxLength={5}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>CVC / CVV</Text>
+                <Text style={[s.label, { color: colors.textMuted }]}>CVC / CVV</Text>
                 <TextInput
-                  style={s.input}
+                  style={[s.input, { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary }]}
                   value={cvc}
                   onChangeText={(t) => setCvc(t.replace(/\D/g, '').slice(0, 4))}
                   placeholder="123"
-                  placeholderTextColor="#555"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   maxLength={4}
                   secureTextEntry
@@ -172,7 +174,7 @@ export default function CardPaymentModal({
 
             {/* Pay Button */}
             <TouchableOpacity
-              style={[s.payBtn, loading && { opacity: 0.6 }]}
+              style={[s.payBtn, { backgroundColor: colors.primary }, loading && { opacity: 0.6 }]}
               onPress={handlePay}
               disabled={loading}
               activeOpacity={0.85}
