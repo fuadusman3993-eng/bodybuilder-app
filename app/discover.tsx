@@ -38,14 +38,14 @@ export default function DiscoverScreen() {
       title: 'Belly Fat Burner HIIT Beginner',
       time: '20 min',
       level: 'Beginner',
-      img: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p2',
       title: 'Lose Fat (No Jumping!)',
       time: '20 min',
       level: 'Intermediate',
-      img: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p3',

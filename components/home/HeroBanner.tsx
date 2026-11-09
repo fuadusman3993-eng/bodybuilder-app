@@ -13,7 +13,7 @@ const BANNERS = [
     titleAccent: 'Better You',
     subtitle: 'Build healthy habits. See real results.',
     quote: 'Discipline\nBuilds\nFreedom',
-    image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=1000&q=80', // push-up full outfit male athlete
+    image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=1000&q=80', // man squatting in gym - full t-shirt and shorts
     route: '/challenge',
   },
   {
@@ -23,7 +23,7 @@ const BANNERS = [
     titleAccent: 'Coach',
     subtitle: 'Train with certified professionals.',
     quote: 'Stronger\nEvery\nDay',
-    image: 'https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=1000&q=80', // coach/trainer full sport outfit
+    image: 'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=1000&q=80', // male athlete running track - full outfit
     route: '/(tabs)/chat',
   },
   {

@@ -25,7 +25,7 @@ export default function DiscoverSection() {
       calories: '180 kcal',
       color: '#EF4444',
       badge: 'HIIT',
-      bgImg: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80', // HIIT running - full outfit
+      bgImg: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&auto=format&fit=crop&q=80', // man boxing HIIT full gloves shirt
       route: '/challenge',
     },
     {
@@ -47,7 +47,7 @@ export default function DiscoverSection() {
       calories: 'Daily Fuel',
       color: '#10B981',
       badge: 'PROGRAM',
-      bgImg: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=600&auto=format&fit=crop&q=80', // full outfit workout
+      bgImg: 'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=600&auto=format&fit=crop&q=80', // man gym full outfit stay active
       route: '/challenge',
     },
   ];
