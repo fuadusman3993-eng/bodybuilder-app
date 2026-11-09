@@ -8,6 +8,8 @@ import Header from '../../components/layout/Header';
 import HeroBanner from '../../components/home/HeroBanner';
 import StoriesRow from '../../components/home/StoriesRow';
 import QuickActions from '../../components/home/QuickActions';
+import DiscoverSection from '../../components/home/DiscoverSection';
+import ReportBmiSection from '../../components/home/ReportBmiSection';
 import CommunityFeed from '../../components/home/CommunityFeed';
 import CoachHome from '../../components/home/CoachHome';
 import { useUserStore } from '../../store/userStore';
@@ -41,6 +43,8 @@ export default function HomeScreen() {
         <StoriesRow />
         <HeroBanner />
         <QuickActions />
+        <DiscoverSection />
+        <ReportBmiSection />
         <CommunityFeed />
       </ScrollView>
     </SafeAreaView>

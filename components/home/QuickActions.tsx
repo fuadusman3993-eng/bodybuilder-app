@@ -4,29 +4,71 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../store/themeStore';
-
 import { trackInteraction } from '../../lib/interactionTelemetry';
 
 export default function QuickActions() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
-  const cardW = 120; // Fixed width to prevent text truncation
+
+  // Equal balanced card sizing:
+  // On mobile screen width (~380-420), a width of 132 gives equal aesthetic proportion
+  const cardW = Math.max(128, Math.min(150, Math.floor((width - 48) / 3)));
 
   const ACTIONS = [
-    { id: '1', title: 'My Workout', subtitle: 'Track & improve', icon: 'barbell-outline', color: '#3B82F6', route: '/workout' },
-    { id: '2', title: 'AI Assistant', subtitle: 'Ask anything', icon: 'hardware-chip-outline', color: '#8B5CF6', route: '/(tabs)/chat' },
-    { id: '3', title: 'Find Gym', subtitle: 'Near you', icon: 'location-outline', color: '#F59E0B', route: '/gym' },
-    { id: '4', title: 'Market Place', subtitle: 'Sport gear & more', icon: 'cart-outline', color: colors.primary, route: '/marketplace' },
+    {
+      id: 'workout',
+      title: 'My Workout',
+      subtitle: 'Track & Improve',
+      icon: 'barbell-outline',
+      color: '#3B82F6',
+      badge: 'TRAIN',
+      route: '/challenge',
+    },
+    {
+      id: 'marketplace',
+      title: 'Market Place',
+      subtitle: 'Food & Gear',
+      icon: 'cart-outline',
+      color: colors.primary,
+      badge: 'SHOP',
+      route: '/marketplace',
+    },
+    {
+      id: 'discover',
+      title: 'Discover',
+      subtitle: 'Routines & Focus',
+      icon: 'compass-outline',
+      color: '#A855F7',
+      badge: 'EXPLORE',
+      route: '/discover',
+    },
+    {
+      id: 'report',
+      title: 'Report (BMI)',
+      subtitle: 'Body Analytics',
+      icon: 'speedometer-outline',
+      color: '#10B981',
+      badge: 'HEALTH',
+      route: '/report',
+    },
   ];
 
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Hub</Text>
+          <View style={[styles.activePill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '35' }]}>
+            <Text style={[styles.activePillText, { color: colors.primary }]}>4 Pillars</Text>
+          </View>
+        </View>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => trackInteraction('HomePage', 'See all → Quick Actions')}
+          onPress={() => {
+            trackInteraction('HomePage', 'See all → Quick Actions');
+            router.push('/discover');
+          }}
         >
           <Text style={[styles.seeAll, { color: colors.primary }]}>See all →</Text>
         </TouchableOpacity>
@@ -36,15 +78,38 @@ export default function QuickActions() {
         {ACTIONS.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={[styles.card, { width: cardW + 10, backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.75}
-            onPress={() => trackInteraction('HomePage', item.title, undefined, item.route)}
+            style={[
+              styles.card,
+              {
+                width: cardW,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.78}
+            onPress={() => {
+              trackInteraction('HomePage', item.title, undefined, item.route);
+              router.push(item.route as any);
+            }}
           >
-            <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
-              <Ionicons name={item.icon as any} size={26} color={item.color} />
+            {/* Top Action Pill Badge */}
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
+                <Ionicons name={item.icon as any} size={24} color={item.color} />
+              </View>
+              <View style={[styles.badgeTag, { backgroundColor: item.color + '1A' }]}>
+                <Text style={[styles.badgeTagText, { color: item.color }]}>{item.badge}</Text>
+              </View>
             </View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-            <Text style={[styles.cardSub, { color: colors.textMuted }]} numberOfLines={1}>{item.subtitle}</Text>
+
+            <View style={styles.textWrap}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={[styles.cardSub, { color: colors.textMuted }]} numberOfLines={1}>
+                {item.subtitle}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -53,33 +118,66 @@ export default function QuickActions() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 22, paddingHorizontal: 16 },
+  container: { marginTop: 20, paddingHorizontal: 16 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  seeAll: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
-  row: { gap: 10 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  activePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  activePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  seeAll: { fontSize: 12.5, color: Colors.primary, fontWeight: '700' },
+  row: { gap: 10, paddingRight: 8 },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'flex-start',
-    gap: 8,
+    borderRadius: 18,
+    padding: 13,
     borderWidth: 1,
     borderColor: Colors.border,
+    justifyContent: 'space-between',
+    minHeight: 118,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   iconBox: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 2,
   },
-  cardTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, lineHeight: 17 },
-  cardSub: { fontSize: 11, color: Colors.textSecondary },
+  badgeTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  textWrap: {
+    marginTop: 8,
+  },
+  cardTitle: { fontSize: 13.5, fontWeight: '800', lineHeight: 18 },
+  cardSub: { fontSize: 11, marginTop: 2, fontWeight: '500' },
 });
