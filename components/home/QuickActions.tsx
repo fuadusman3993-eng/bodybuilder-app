@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/colors';
@@ -11,11 +11,12 @@ export default function QuickActions() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
 
-  // Equal balanced card sizing:
-  // On mobile screen width (~380-420), a width of 132 gives equal aesthetic proportion
-  const cardW = Math.max(128, Math.min(150, Math.floor((width - 48) / 3)));
+  // 2x2 Grid Layout (4 Angles):
+  // Screen padding is 16 on each side (32 total), gap between columns is 10
+  const cardW = Math.floor((width - 32 - 10) / 2);
 
   const ACTIONS = [
+    // Column 1, Row 1 (Top-Left):
     {
       id: 'workout',
       title: 'My Workout',
@@ -25,6 +26,7 @@ export default function QuickActions() {
       badge: 'TRAIN',
       route: '/challenge',
     },
+    // Column 2, Row 1 (Top-Right):
     {
       id: 'marketplace',
       title: 'Market Place',
@@ -34,6 +36,7 @@ export default function QuickActions() {
       badge: 'SHOP',
       route: '/marketplace',
     },
+    // Column 1, Row 2 (Bottom-Left, positioned UNDER My Workout):
     {
       id: 'discover',
       title: 'Discover',
@@ -43,6 +46,7 @@ export default function QuickActions() {
       badge: 'EXPLORE',
       route: '/discover',
     },
+    // Column 2, Row 2 (Bottom-Right, positioned UNDER Market Place):
     {
       id: 'report',
       title: 'Report (BMI)',
@@ -74,7 +78,8 @@ export default function QuickActions() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      {/* ── 2x2 Grid: 4 Angles (Zero Horizontal Scroll, 100% Full Visibility) ── */}
+      <View style={styles.grid}>
         {ACTIONS.map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -112,7 +117,7 @@ export default function QuickActions() {
             </View>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -143,7 +148,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   seeAll: { fontSize: 12.5, color: Colors.primary, fontWeight: '700' },
-  row: { gap: 10, paddingRight: 8 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: 18,
@@ -151,7 +160,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     justifyContent: 'space-between',
-    minHeight: 118,
+    minHeight: 114,
   },
   cardHeader: {
     flexDirection: 'row',
