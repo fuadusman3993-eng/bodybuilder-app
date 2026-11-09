@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../store/themeStore';
 import BackButton from '../components/ui/BackButton';
@@ -158,16 +159,21 @@ export default function DiscoverScreen() {
       >
         {/* ── Top Featured Hero Card (Image 2) ── */}
         <TouchableOpacity
-          style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[styles.heroCard, { borderColor: colors.border }]}
           activeOpacity={0.9}
           onPress={() => router.push('/challenge')}
         >
           <ImageBackground
-            source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&auto=format&fit=crop&q=80' }}
+            source={{
+              uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80',
+            }}
             style={styles.heroBg}
             imageStyle={styles.heroImg}
           >
-            <View style={styles.heroOverlay}>
+            <LinearGradient
+              colors={['rgba(5, 11, 16, 0.15)', 'rgba(5, 11, 16, 0.75)', 'rgba(5, 11, 16, 0.95)']}
+              style={styles.heroGradient}
+            >
               <View style={[styles.heroBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.heroBadgeText}>TOP PICK</Text>
               </View>
@@ -182,7 +188,7 @@ export default function DiscoverScreen() {
                 </View>
                 <Text style={styles.heroMetaText}>⏱️ 12 min • No equipment</Text>
               </View>
-            </View>
+            </LinearGradient>
           </ImageBackground>
         </TouchableOpacity>
 
@@ -380,17 +386,17 @@ const styles = StyleSheet.create({
   },
   heroBg: {
     width: '100%',
-    minHeight: 200,
+    minHeight: 210,
     justifyContent: 'flex-end',
   },
   heroImg: {
-    borderRadius: 22,
+    borderRadius: 21,
   },
-  heroOverlay: {
+  heroGradient: {
     padding: 18,
-    backgroundColor: 'rgba(5, 11, 16, 0.78)',
-    borderRadius: 22,
+    paddingTop: 38,
     gap: 6,
+    justifyContent: 'flex-end',
   },
   heroBadge: {
     alignSelf: 'flex-start',

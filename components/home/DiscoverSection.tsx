@@ -5,26 +5,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  useWindowDimensions,
   ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../store/themeStore';
-import {
-  ChestSvg,
-  ArmShoulderSvg,
-  ButtLegSvg,
-  SixPackSvg,
-} from '../ui/BodyFocusSvg';
 
 export default function DiscoverSection() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const { colors } = useTheme();
-
-  // Grid item width for the 2x2 Body focus layout (padding 16 on sides, gap 10)
-  const gridItemWidth = Math.floor((width - 32 - 10) / 2);
 
   const PICKS = [
     {
@@ -62,48 +52,6 @@ export default function DiscoverSection() {
     },
   ];
 
-  const BODY_FOCUS = [
-    {
-      id: 'chest',
-      title: 'Chest',
-      sub: 'Pectoral & Upper',
-      SvgComp: ChestSvg,
-      color: '#38BDF8',
-      filter: 'chest',
-    },
-    {
-      id: 'arm',
-      title: 'Arm & Shoulder',
-      sub: 'Biceps & Deltoids',
-      SvgComp: ArmShoulderSvg,
-      color: '#F59E0B',
-      filter: 'arm',
-    },
-    {
-      id: 'legs',
-      title: 'Butt & Leg',
-      sub: 'Glutes, Quads & Calves',
-      SvgComp: ButtLegSvg,
-      color: '#EC4899',
-      filter: 'legs',
-    },
-    {
-      id: 'abs',
-      title: 'Six pack',
-      sub: 'Core & Obliques',
-      SvgComp: SixPackSvg,
-      color: '#10B981',
-      filter: 'abs',
-    },
-  ];
-
-  const STRETCHING = [
-    { id: 'str-1', title: 'Upper Body Stretching', time: '8 min', icon: 'body-outline' },
-    { id: 'str-2', title: 'Lower Body Stretching', time: '10 min', icon: 'walk-outline' },
-    { id: 'str-3', title: 'Lower Back Pain Relief', time: '6 min', icon: 'fitness-outline' },
-    { id: 'str-4', title: 'Back Stretching', time: '7 min', icon: 'accessibility-outline' },
-  ];
-
   return (
     <View style={styles.container}>
       {/* ── Section Header ── */}
@@ -117,18 +65,24 @@ export default function DiscoverSection() {
         </TouchableOpacity>
       </View>
 
-      {/* ── 1. Hero Feature Card: "Only 4 Moves for Abs" (Image 2) ── */}
+      {/* ── 1. Hero Feature Card: "Only 4 Moves for Abs" (Male Athlete Photo, Seamless Edge-to-Edge) ── */}
       <TouchableOpacity
-        style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        activeOpacity={0.88}
+        style={[styles.heroCard, { borderColor: colors.border }]}
+        activeOpacity={0.9}
         onPress={() => router.push('/challenge')}
       >
         <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&auto=format&fit=crop&q=80' }}
+          source={{
+            uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80',
+          }}
           style={styles.heroBg}
           imageStyle={styles.heroImg}
         >
-          <View style={styles.heroOverlay}>
+          {/* Edge-to-edge seamless gradient (No inner nested rounded box) */}
+          <LinearGradient
+            colors={['rgba(5, 11, 16, 0.15)', 'rgba(5, 11, 16, 0.75)', 'rgba(5, 11, 16, 0.95)']}
+            style={styles.heroGradient}
+          >
             <View style={[styles.heroBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.heroBadgeText}>TRENDING ROUTINE</Text>
             </View>
@@ -143,11 +97,11 @@ export default function DiscoverSection() {
               </View>
               <Text style={styles.heroMetaText}>⏱️ 12 min • No gear</Text>
             </View>
-          </View>
+          </LinearGradient>
         </ImageBackground>
       </TouchableOpacity>
 
-      {/* ── 2. Picks for you (Image 2) ── */}
+      {/* ── 2. Picks for you (Horizontal Carousel) ── */}
       <View style={styles.subSectionHeader}>
         <Text style={[styles.subSectionTitle, { color: colors.textPrimary }]}>Picks for you</Text>
         <Text style={[styles.subSectionMeta, { color: colors.textMuted }]}>Custom tailored</Text>
@@ -179,92 +133,15 @@ export default function DiscoverSection() {
           </TouchableOpacity>
         ))}
       </ScrollView>
-
-      {/* ── 3. Body focus (Image 3 - 4 Corner 2x2 Grid) ── */}
-      <View style={styles.subSectionHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={[styles.subSectionTitle, { color: colors.textPrimary }]}>Body focus</Text>
-          <View style={[styles.focusPill, { backgroundColor: colors.primary + '18' }]}>
-            <Text style={[styles.focusPillText, { color: colors.primary }]}>4 TARGETS</Text>
-          </View>
-        </View>
-        <Text style={[styles.subSectionMeta, { color: colors.textMuted }]}>Coded muscle vaults</Text>
-      </View>
-
-      <View style={styles.focusGrid}>
-        {BODY_FOCUS.map((focus) => {
-          const { SvgComp } = focus;
-          return (
-            <TouchableOpacity
-              key={focus.id}
-              style={[
-                styles.focusCard,
-                {
-                  width: gridItemWidth,
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              activeOpacity={0.85}
-              onPress={() => router.push('/challenge')}
-            >
-              {/* Pure Vector Code Muscle Graphic */}
-              <View style={[styles.focusSvgWrap, { backgroundColor: colors.surfaceLight }]}>
-                <SvgComp size={48} color={colors.primary} />
-              </View>
-
-              <View style={styles.focusTextBlock}>
-                <Text style={[styles.focusTitle, { color: colors.textPrimary }]}>
-                  {focus.title}
-                </Text>
-                <Text style={[styles.focusSub, { color: colors.textMuted }]} numberOfLines={1}>
-                  {focus.sub}
-                </Text>
-              </View>
-
-              <View style={styles.focusCardFooter}>
-                <Text style={[styles.focusLaunchText, { color: colors.primary }]}>Explore</Text>
-                <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ── 4. Stretching & Flexibility (Image 3) ── */}
-      <View style={styles.subSectionHeader}>
-        <Text style={[styles.subSectionTitle, { color: colors.textPrimary }]}>Stretching & Mobility</Text>
-        <TouchableOpacity onPress={() => router.push('/challenge')}>
-          <Text style={[styles.subSectionMeta, { color: colors.primary }]}>View all</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stretchRow}>
-        {STRETCHING.map((str) => (
-          <TouchableOpacity
-            key={str.id}
-            style={[styles.stretchCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.85}
-            onPress={() => router.push('/challenge')}
-          >
-            <View style={[styles.stretchIconWrap, { backgroundColor: colors.surfaceLight }]}>
-              <Ionicons name={str.icon as any} size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.stretchTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-              {str.title}
-            </Text>
-            <Text style={[styles.stretchTime, { color: colors.textMuted }]}>{str.time}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 26,
+    marginTop: 24,
     paddingHorizontal: 16,
+    marginBottom: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -287,7 +164,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 1. Featured Hero Card
+  // 1. Featured Hero Card (Seamless edge-to-edge)
   heroCard: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -296,17 +173,17 @@ const styles = StyleSheet.create({
   },
   heroBg: {
     width: '100%',
-    minHeight: 180,
+    minHeight: 210,
     justifyContent: 'flex-end',
   },
   heroImg: {
-    borderRadius: 20,
+    borderRadius: 19,
   },
-  heroOverlay: {
+  heroGradient: {
     padding: 18,
-    backgroundColor: 'rgba(5, 11, 16, 0.78)',
-    borderRadius: 20,
+    paddingTop: 38,
     gap: 6,
+    justifyContent: 'flex-end',
   },
   heroBadge: {
     alignSelf: 'flex-start',
@@ -362,7 +239,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    marginTop: 4,
   },
   subSectionTitle: {
     fontSize: 16,
@@ -420,89 +296,6 @@ const styles = StyleSheet.create({
   },
   pickMeta: {
     fontSize: 11.5,
-    fontWeight: '500',
-  },
-
-  // 3. Body focus 2x2 grid
-  focusPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  focusPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  focusGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 18,
-  },
-  focusCard: {
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    gap: 8,
-  },
-  focusSvgWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  focusTextBlock: {
-    gap: 2,
-  },
-  focusTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  focusSub: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  focusCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 4,
-  },
-  focusLaunchText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-  },
-
-  // 4. Stretching row
-  stretchRow: {
-    gap: 10,
-    paddingBottom: 4,
-    paddingRight: 8,
-  },
-  stretchCard: {
-    width: 150,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  stretchIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stretchTitle: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  stretchTime: {
-    fontSize: 11,
     fontWeight: '500',
   },
 });
