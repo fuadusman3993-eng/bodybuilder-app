@@ -7,6 +7,7 @@ import {
   ScrollView,
   TextInput,
   useWindowDimensions,
+  Image,
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -163,13 +164,14 @@ export default function DiscoverScreen() {
           activeOpacity={0.9}
           onPress={() => router.push('/challenge')}
         >
-          <ImageBackground
-            source={require('../assets/images/abs-plank-hero.jpg')}
-            style={styles.heroBg}
-            imageStyle={styles.heroImg}
-          >
+          <View style={styles.heroCardInner}>
+            <Image
+              source={require('../assets/images/abs-plank-hero.jpg')}
+              style={styles.heroBgImage}
+              resizeMode="cover"
+            />
             <LinearGradient
-              colors={['rgba(5, 11, 16, 0.94)', 'rgba(5, 11, 16, 0.65)', 'rgba(5, 11, 16, 0.08)']}
+              colors={['rgba(5, 11, 16, 0.94)', 'rgba(5, 11, 16, 0.55)', 'rgba(5, 11, 16, 0.04)']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroGradient}
@@ -191,7 +193,7 @@ export default function DiscoverScreen() {
                 </View>
               </View>
             </LinearGradient>
-          </ImageBackground>
+          </View>
         </TouchableOpacity>
 
         {/* ── Picks for you Section (Image 2) ── */}
@@ -386,22 +388,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
-  heroBg: {
+  heroCardInner: {
     width: '100%',
-    minHeight: 210,
-    justifyContent: 'flex-end',
+    minHeight: 220,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  heroImg: {
-    borderRadius: 21,
+  heroBgImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   heroGradient: {
+    flex: 1,
     padding: 18,
-    paddingTop: 34,
-    gap: 6,
-    justifyContent: 'flex-end',
+    paddingTop: 32,
+    paddingBottom: 22,
+    justifyContent: 'center',
   },
   heroTextContainer: {
-    maxWidth: '65%',
+    maxWidth: '58%',
     gap: 6,
   },
   heroBadge: {
