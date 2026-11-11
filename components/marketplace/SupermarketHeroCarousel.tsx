@@ -24,6 +24,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MarketplaceCategory } from '../../lib/marketplaceData';
+import { useTheme } from '../../store/themeStore';
 
 export interface ShelfProduct {
   id: string;
@@ -160,6 +161,7 @@ interface Props {
 
 export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: Props) {
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
   const bannerWidth = Math.min(width - 32, 600);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -264,15 +266,15 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
     <View style={[styles.outerWrapper, { width: bannerWidth }]}>
       {/* ── Main Green Shelf Body ── */}
       <LinearGradient
-        colors={['#0B3B24', '#072417', '#03140C']}
+        colors={[colors.surfaceLight, colors.surface, colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.bannerBody}
+        style={[styles.bannerBody, { borderColor: `${colors.primary}40`, shadowColor: colors.primary }]}
       >
         {/* Top Header Badge */}
         <View style={styles.topBadgeRow}>
-          <View style={styles.pillBadge}>
-            <Text style={styles.pillBadgeText}>⚡ WEEKLY SUPERMARKET DEALS • UP TO 30% OFF</Text>
+          <View style={[styles.pillBadge, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}50` }]}>
+            <Text style={[styles.pillBadgeText, { color: colors.primary }]}>⚡ WEEKLY SUPERMARKET DEALS • UP TO 30% OFF</Text>
           </View>
         </View>
 
@@ -331,21 +333,20 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
       <View style={styles.apronContainer}>
         {/* Curved Green Base matching the banner */}
         <LinearGradient
-          colors={['#072417', '#03140C']}
+          colors={[colors.surface, colors.background]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.apronTab}
+          style={[styles.apronTab, { borderColor: `${colors.primary}40` }]}
         >
           {/* Animated Glowing & Shimmering "Shop Now ▶" Button (White text - Image 2) */}
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <TouchableOpacity
-              style={styles.shopNowBtn}
+              style={[styles.shopNowBtn, { shadowColor: colors.primary }]}
               activeOpacity={0.88}
               onPress={() => onShopNow('all')}
             >
-              {/* Bright FitPulse Green Pill */}
               <LinearGradient
-                colors={['#00E676', '#00C853']}
+                colors={[colors.primary, colors.primaryDark || colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFillObject}
@@ -376,9 +377,9 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
                 />
               </Animated.View>
 
-              {/* Crisp WHITE Text & Arrow (Image 2 Replica) */}
-              <Text style={styles.shopNowWhiteText}>Shop Now</Text>
-              <Ionicons name="play" size={12} color="#FFFFFF" style={{ marginLeft: 5 }} />
+              {/* Crisp High-Contrast Text & Arrow */}
+              <Text style={[styles.shopNowWhiteText, { color: '#000000', fontWeight: '900' }]}>Shop Now</Text>
+              <Ionicons name="play" size={12} color="#000000" style={{ marginLeft: 5 }} />
             </TouchableOpacity>
           </Animated.View>
         </LinearGradient>

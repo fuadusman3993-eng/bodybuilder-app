@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 import BackButton from '../components/ui/BackButton';
+import { useTheme } from '../store/themeStore';
 import {
   PRODUCTS_CATALOG,
   MARKETPLACE_CATEGORIES,
@@ -47,6 +48,7 @@ export default function MarketplaceScreen() {
   const { user } = useUserStore();
 
   const isWide = width >= 768;
+  const { colors } = useTheme();
 
   // Cart store
   const {
@@ -170,15 +172,15 @@ export default function MarketplaceScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top']}>
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar style="light" />
 
       {/* ── 1. TOP HEADER BAR ── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <BackButton fallbackRoute="/(tabs)" />
 
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>FitPulse Market</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>FitPulse Market</Text>
         </View>
 
         {/* Right Action Icons: Coins + Basket */}
@@ -192,15 +194,15 @@ export default function MarketplaceScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.cartHeaderBtn}
+            style={[styles.cartHeaderBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => setShowCartModal(true)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Shopping Cart"
           >
-            <Ionicons name="cart" size={22} color="#FFFFFF" />
+            <Ionicons name="cart" size={22} color={colors.textPrimary} />
             {cartTotalCount > 0 && (
-              <View style={styles.cartHeaderBadge}>
+              <View style={[styles.cartHeaderBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.cartHeaderBadgeText}>{cartTotalCount}</Text>
               </View>
             )}
@@ -214,19 +216,19 @@ export default function MarketplaceScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
       >
         {/* ── 2. SEARCH BAR ── */}
-        <View style={styles.searchBarWrap}>
-          <Ionicons name="search" size={18} color="#8A95A5" style={{ marginRight: 8 }} />
+        <View style={[styles.searchBarWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder="Search chicken breasts, eggs, oats, fruits, whey..."
-            placeholderTextColor="#64748B"
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#8A95A5" />
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -244,18 +246,18 @@ export default function MarketplaceScreen() {
         <View style={styles.weeklyOffersSection}>
           <View style={styles.sectionHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={styles.percentIconCircle}>
-                <Text style={styles.percentIconText}>%</Text>
+              <View style={[styles.percentIconCircle, { backgroundColor: `${colors.primary}20` }]}>
+                <Text style={[styles.percentIconText, { color: colors.primary }]}>%</Text>
               </View>
-              <Text style={styles.sectionTitle}>Weekly Offers</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Weekly Offers</Text>
             </View>
 
             <TouchableOpacity
-              style={styles.goBtn}
+              style={[styles.goBtn, { backgroundColor: `${colors.primary}18` }]}
               activeOpacity={0.7}
               onPress={() => setSelectedCategory('all')}
             >
-              <Text style={styles.goBtnText}>GO &gt;</Text>
+              <Text style={[styles.goBtnText, { color: colors.primary }]}>GO &gt;</Text>
             </TouchableOpacity>
           </View>
 
@@ -268,7 +270,7 @@ export default function MarketplaceScreen() {
             {weeklyOffers.map((product) => {
               const qty = getItemQuantity(product.id);
               return (
-                <View key={product.id} style={styles.weeklyCard}>
+                <View key={product.id} style={[styles.weeklyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   {/* Top Discount Badge */}
                   {product.discountPercent && (
                     <View style={styles.offerDiscountBadge}>
@@ -288,24 +290,24 @@ export default function MarketplaceScreen() {
                   <View style={styles.cardCornerAddWrap}>
                     {qty === 0 ? (
                       <TouchableOpacity
-                        style={styles.quickAddCircleBtn}
+                        style={[styles.quickAddCircleBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                         onPress={() => addItem(product, 1)}
                         activeOpacity={0.75}
                       >
                         <Ionicons name="add" size={18} color="#000000" />
                       </TouchableOpacity>
                     ) : (
-                      <View style={styles.cardMiniStepper}>
+                      <View style={[styles.cardMiniStepper, { backgroundColor: colors.surfaceLight }]}>
                         <TouchableOpacity
                           style={styles.cardStepperBtn}
                           onPress={() => updateQuantity(product.id, qty - 1)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="remove" size={13} color="#FFFFFF" />
+                          <Ionicons name="remove" size={13} color={colors.textPrimary} />
                         </TouchableOpacity>
-                        <Text style={styles.cardStepperQty}>{qty}</Text>
+                        <Text style={[styles.cardStepperQty, { color: colors.textPrimary }]}>{qty}</Text>
                         <TouchableOpacity
-                          style={[styles.cardStepperBtn, { backgroundColor: '#00E676' }]}
+                          style={[styles.cardStepperBtn, { backgroundColor: colors.primary }]}
                           onPress={() => updateQuantity(product.id, qty + 1)}
                           activeOpacity={0.7}
                         >
@@ -319,16 +321,16 @@ export default function MarketplaceScreen() {
                   <View style={styles.weeklyPriceRow}>
                     <Text style={styles.weeklySalePrice}>{product.priceEtb} ETB</Text>
                     {product.originalPriceEtb && (
-                      <Text style={styles.weeklyOriginalPrice}>{product.originalPriceEtb}</Text>
+                      <Text style={[styles.weeklyOriginalPrice, { color: colors.textMuted }]}>{product.originalPriceEtb}</Text>
                     )}
                   </View>
 
                   {/* Title & Weight */}
-                  <Text style={styles.weeklyTitle} numberOfLines={2}>
+                  <Text style={[styles.weeklyTitle, { color: colors.textPrimary }]} numberOfLines={2}>
                     {product.title}
                   </Text>
                   {product.weight && (
-                    <Text style={styles.weeklyWeightText}>{product.weight}</Text>
+                    <Text style={[styles.weeklyWeightText, { color: colors.textMuted }]}>{product.weight}</Text>
                   )}
                 </View>
               );
@@ -338,7 +340,7 @@ export default function MarketplaceScreen() {
 
         {/* ── 5. DEPARTMENT AISLES (CIRCULAR ICONS MATCHING IMAGE 2) ── */}
         <View style={styles.departmentsSection}>
-          <Text style={styles.departmentsTitle}>Fresh &amp; Aisles</Text>
+          <Text style={[styles.departmentsTitle, { color: colors.textPrimary }]}>Fresh &amp; Aisles</Text>
 
           <ScrollView
             horizontal
@@ -354,11 +356,15 @@ export default function MarketplaceScreen() {
                   onPress={() => setSelectedCategory(cat.key)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.aisleIconCircle, isActive && styles.aisleIconCircleActive]}>
+                  <View style={[
+                    styles.aisleIconCircle,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    isActive && { borderColor: colors.primary, backgroundColor: `${colors.primary}20` }
+                  ]}>
                     <Text style={styles.aisleEmoji}>{cat.emoji}</Text>
                   </View>
                   <Text
-                    style={[styles.aisleLabel, isActive && styles.aisleLabelActive]}
+                    style={[styles.aisleLabel, { color: colors.textMuted }, isActive && { color: colors.primary, fontWeight: '800' }]}
                     numberOfLines={1}
                   >
                     {cat.label}
@@ -371,12 +377,12 @@ export default function MarketplaceScreen() {
 
         {/* ── 6. ALL AISLE PRODUCTS GRID ── */}
         <View style={styles.gridSectionHeader}>
-          <Text style={styles.gridSectionTitle}>
+          <Text style={[styles.gridSectionTitle, { color: colors.textPrimary }]}>
             {selectedCategory === 'all'
               ? 'All Supermarket Items'
               : MARKETPLACE_CATEGORIES.find((c) => c.key === selectedCategory)?.label}
           </Text>
-          <Text style={styles.gridSectionCount}>{filteredProducts.length} items</Text>
+          <Text style={[styles.gridSectionCount, { color: colors.textMuted }]}>{filteredProducts.length} items</Text>
         </View>
 
         <View style={[styles.productsGrid, isWide && { flexDirection: 'row', flexWrap: 'wrap' }]}>
@@ -387,11 +393,12 @@ export default function MarketplaceScreen() {
                 key={product.id}
                 style={[
                   styles.productCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
                   isWide && { width: '31.5%', marginHorizontal: '0.9%', marginBottom: 16 },
                 ]}
               >
                 {/* Product Image & Badges */}
-                <View style={styles.cardImageWrap}>
+                <View style={[styles.cardImageWrap, { backgroundColor: colors.surfaceLight }]}>
                   <Image source={{ uri: product.imageUrl }} style={styles.productImage} contentFit="cover" />
 
                   <View style={styles.cardTopPills}>
@@ -412,34 +419,34 @@ export default function MarketplaceScreen() {
                 <View style={styles.cardBody}>
                   {/* Category & Weight */}
                   <View style={styles.cardHeaderMeta}>
-                    <Text style={styles.brandText}>{product.brand.toUpperCase()}</Text>
-                    {product.weight && <Text style={styles.weightBadge}>{product.weight}</Text>}
+                    <Text style={[styles.brandText, { color: colors.primary }]}>{product.brand.toUpperCase()}</Text>
+                    {product.weight && <Text style={[styles.weightBadge, { backgroundColor: colors.surfaceLight, color: colors.textSecondary }]}>{product.weight}</Text>}
                   </View>
 
-                  <Text style={styles.productTitle} numberOfLines={2}>
+                  <Text style={[styles.productTitle, { color: colors.textPrimary }]} numberOfLines={2}>
                     {product.title}
                   </Text>
 
                   {/* Fitness Macro Hero Badge */}
                   {product.proteinGrams && (
-                    <View style={styles.macroPill}>
-                      <Text style={styles.macroPillText}>
+                    <View style={[styles.macroPill, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}35` }]}>
+                      <Text style={[styles.macroPillText, { color: colors.primary }]}>
                         ⚡ {product.proteinGrams}g Protein
                         {product.caloriesPerServing ? ` • ${product.caloriesPerServing} kcal` : ''}
                       </Text>
                     </View>
                   )}
 
-                  <Text style={styles.productShortDesc} numberOfLines={2}>
+                  <Text style={[styles.productShortDesc, { color: colors.textMuted }]} numberOfLines={2}>
                     {product.shortDescription}
                   </Text>
 
                   {/* Price */}
                   <View style={styles.priceRow}>
                     <View>
-                      <Text style={styles.priceEtbText}>{product.priceEtb.toLocaleString()} ETB</Text>
+                      <Text style={[styles.priceEtbText, { color: colors.textPrimary }]}>{product.priceEtb.toLocaleString()} ETB</Text>
                       {product.originalPriceEtb && (
-                        <Text style={styles.originalPriceText}>
+                        <Text style={[styles.originalPriceText, { color: colors.textMuted }]}>
                           {product.originalPriceEtb.toLocaleString()} ETB
                         </Text>
                       )}
@@ -453,7 +460,7 @@ export default function MarketplaceScreen() {
                   <View style={styles.cardActionRow}>
                     {qty === 0 ? (
                       <TouchableOpacity
-                        style={styles.addBasketBtn}
+                        style={[styles.addBasketBtn, { backgroundColor: colors.primary }]}
                         onPress={() => addItem(product, 1)}
                         activeOpacity={0.85}
                       >
@@ -461,17 +468,17 @@ export default function MarketplaceScreen() {
                         <Text style={styles.addBasketBtnText}>Add to Basket</Text>
                       </TouchableOpacity>
                     ) : (
-                      <View style={styles.gridStepper}>
+                      <View style={[styles.gridStepper, { backgroundColor: colors.surfaceLight }]}>
                         <TouchableOpacity
                           style={styles.gridStepperBtn}
                           onPress={() => updateQuantity(product.id, qty - 1)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="remove" size={16} color="#FFFFFF" />
+                          <Ionicons name="remove" size={16} color={colors.textPrimary} />
                         </TouchableOpacity>
-                        <Text style={styles.gridStepperQty}>{qty}</Text>
+                        <Text style={[styles.gridStepperQty, { color: colors.textPrimary }]}>{qty}</Text>
                         <TouchableOpacity
-                          style={[styles.gridStepperBtn, { backgroundColor: '#00E676' }]}
+                          style={[styles.gridStepperBtn, { backgroundColor: colors.primary }]}
                           onPress={() => updateQuantity(product.id, qty + 1)}
                           activeOpacity={0.7}
                         >
@@ -481,12 +488,12 @@ export default function MarketplaceScreen() {
                     )}
 
                     <TouchableOpacity
-                      style={styles.askAiMiniBtn}
+                      style={[styles.askAiMiniBtn, { backgroundColor: colors.surface, borderColor: `${colors.primary}40` }]}
                       onPress={() => handleOpenAiConsultation(product)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="sparkles" size={14} color="#00E676" />
-                      <Text style={styles.askAiMiniText}>AI</Text>
+                      <Ionicons name="sparkles" size={14} color={colors.primary} />
+                      <Text style={[styles.askAiMiniText, { color: colors.primary }]}>AI</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -499,16 +506,16 @@ export default function MarketplaceScreen() {
       {/* ── 7. FLOATING SUPERMARKET DELIVERY BAR (IMAGE 2 REPLICA) ── */}
       <View style={[styles.floatingDeliveryContainer, { bottom: insets.bottom + 8 }]}>
         <TouchableOpacity
-          style={styles.floatingDeliveryPill}
+          style={[styles.floatingDeliveryPill, { backgroundColor: colors.surface, borderColor: colors.primary, shadowColor: colors.primary }]}
           activeOpacity={0.9}
           onPress={() => setShowCartModal(true)}
         >
           {/* Left: Free delivery status */}
           <View style={styles.floatingLeft}>
-            <View style={styles.floatingBagIconWrap}>
-              <Ionicons name="bag-handle" size={16} color="#00E676" />
+            <View style={[styles.floatingBagIconWrap, { backgroundColor: `${colors.primary}20` }]}>
+              <Ionicons name="bag-handle" size={16} color={colors.primary} />
             </View>
-            <Text style={styles.floatingDeliveryText}>
+            <Text style={[styles.floatingDeliveryText, { color: colors.textPrimary }]}>
               {isFreeDelivery
                 ? 'FREE Delivery Unlocked!'
                 : `Free delivery at 1,500 ETB`}
@@ -516,7 +523,7 @@ export default function MarketplaceScreen() {
           </View>
 
           {/* Right: Cart Summary Pill */}
-          <View style={styles.floatingRightPill}>
+          <View style={[styles.floatingRightPill, { backgroundColor: colors.primary }]}>
             <Text style={styles.floatingCartSummary}>
               {cartTotalCount > 0
                 ? `${cartTotalCount} items • ${cartTotalEtb.toLocaleString()} ETB`
@@ -548,45 +555,45 @@ export default function MarketplaceScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.aiModalContainer}>
-            <View style={styles.aiModalHeader}>
+          <View style={[styles.aiModalContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.aiModalHeader, { borderBottomColor: colors.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                <View style={styles.aiAvatar}>
-                  <Ionicons name="sparkles" size={18} color="#00E676" />
+                <View style={[styles.aiAvatar, { backgroundColor: `${colors.primary}20`, borderColor: colors.primary }]}>
+                  <Ionicons name="sparkles" size={18} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.aiModalTitle}>FitPulse Nutrition AI</Text>
-                  <Text style={styles.aiModalSub} numberOfLines={1}>
+                  <Text style={[styles.aiModalTitle, { color: colors.textPrimary }]}>FitPulse Nutrition AI</Text>
+                  <Text style={[styles.aiModalSub, { color: colors.textMuted }]} numberOfLines={1}>
                     Nutrition &amp; Diet Advisor for {selectedProductForAi?.title}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
                 onPress={() => setSelectedProductForAi(null)}
-                style={styles.modalCloseBtn}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.surfaceLight }]}
               >
-                <Ionicons name="close" size={20} color="#FFF" />
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
             {/* Pinned Product Preview */}
             {selectedProductForAi && (
-              <View style={styles.pinnedProductBar}>
+              <View style={[styles.pinnedProductBar, { backgroundColor: colors.surfaceLight, borderBottomColor: colors.border }]}>
                 <Image
                   source={{ uri: selectedProductForAi.imageUrl }}
                   style={styles.pinnedProductImg}
                   contentFit="cover"
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pinnedProductTitle} numberOfLines={1}>
+                  <Text style={[styles.pinnedProductTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                     {selectedProductForAi.title}
                   </Text>
-                  <Text style={styles.pinnedProductPrice}>
+                  <Text style={[styles.pinnedProductPrice, { color: colors.primary }]}>
                     {selectedProductForAi.priceEtb.toLocaleString()} ETB • 🪙 {selectedProductForAi.priceCoins} Coins
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.pinnedAddBtn}
+                  style={[styles.pinnedAddBtn, { backgroundColor: colors.primary }]}
                   onPress={() => {
                     addItem(selectedProductForAi, 1);
                     setSelectedProductForAi(null);
@@ -608,33 +615,38 @@ export default function MarketplaceScreen() {
               {aiChatMessages.map((msg) => (
                 <View
                   key={msg.id}
-                  style={[styles.aiChatBubble, msg.sender === 'user' ? styles.userBubble : styles.aiBubble]}
+                  style={[
+                    styles.aiChatBubble,
+                    msg.sender === 'user'
+                      ? [styles.userBubble, { backgroundColor: `${colors.primary}25`, borderColor: `${colors.primary}50` }]
+                      : [styles.aiBubble, { backgroundColor: colors.surfaceLight }]
+                  ]}
                 >
-                  <Text style={styles.aiChatText}>{msg.text}</Text>
-                  <Text style={styles.aiChatTime}>{msg.timestamp}</Text>
+                  <Text style={[styles.aiChatText, { color: colors.textPrimary }]}>{msg.text}</Text>
+                  <Text style={[styles.aiChatTime, { color: colors.textMuted }]}>{msg.timestamp}</Text>
                 </View>
               ))}
               {aiLoading && (
-                <View style={[styles.aiChatBubble, styles.aiBubble, { flexDirection: 'row', gap: 6 }]}>
-                  <ActivityIndicator size="small" color="#00E676" />
-                  <Text style={styles.aiChatText}>Analyzing nutritional macros...</Text>
+                <View style={[styles.aiChatBubble, styles.aiBubble, { backgroundColor: colors.surfaceLight, flexDirection: 'row', gap: 6 }]}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.aiChatText, { color: colors.textPrimary }]}>Analyzing nutritional macros...</Text>
                 </View>
               )}
             </ScrollView>
 
             {/* Chat Input */}
-            <View style={styles.aiInputRow}>
+            <View style={[styles.aiInputRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
               <TextInput
-                style={styles.aiTextInput}
+                style={[styles.aiTextInput, { backgroundColor: colors.surfaceLight, color: colors.textPrimary }]}
                 placeholder="Ask about protein content, calories, prep..."
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={aiInputText}
                 onChangeText={setAiInputText}
                 onSubmitEditing={() => handleSendAiMessage()}
                 returnKeyType="send"
               />
               <TouchableOpacity
-                style={[styles.aiSendBtn, (!aiInputText.trim() || aiLoading) && { opacity: 0.5 }]}
+                style={[styles.aiSendBtn, { backgroundColor: colors.primary }, (!aiInputText.trim() || aiLoading) && { opacity: 0.5 }]}
                 onPress={() => handleSendAiMessage()}
                 disabled={!aiInputText.trim() || aiLoading}
               >
@@ -648,29 +660,29 @@ export default function MarketplaceScreen() {
       {/* ── 10. ORDER SUCCESS CELEBRATION MODAL ── */}
       <Modal visible={!!orderSuccessSummary} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.successBox}>
-            <View style={styles.successIconCircle}>
-              <Ionicons name="checkmark-done" size={40} color="#00E676" />
+          <View style={[styles.successBox, { backgroundColor: colors.surface, borderColor: `${colors.primary}40` }]}>
+            <View style={[styles.successIconCircle, { backgroundColor: `${colors.primary}20` }]}>
+              <Ionicons name="checkmark-done" size={40} color={colors.primary} />
             </View>
-            <Text style={styles.successTitle}>Supermarket Order Placed! 🎉</Text>
-            <Text style={styles.successSubtitle}>
+            <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Supermarket Order Placed! 🎉</Text>
+            <Text style={[styles.successSubtitle, { color: colors.textMuted }]}>
               Your fresh high-protein groceries ({orderSuccessSummary?.itemsCount} items) have been confirmed.
             </Text>
 
-            <View style={styles.successDetailsBox}>
-              <Text style={styles.successDetailText}>
-                💵 Paid: <Text style={{ color: '#00E676', fontWeight: '800' }}>{orderSuccessSummary?.totalEtb.toLocaleString()} ETB</Text>
+            <View style={[styles.successDetailsBox, { backgroundColor: colors.surfaceLight }]}>
+              <Text style={[styles.successDetailText, { color: colors.textPrimary }]}>
+                💵 Paid: <Text style={{ color: colors.primary, fontWeight: '800' }}>{orderSuccessSummary?.totalEtb.toLocaleString()} ETB</Text>
               </Text>
-              <Text style={styles.successDetailText}>
+              <Text style={[styles.successDetailText, { color: colors.textPrimary }]}>
                 💳 Method: {orderSuccessSummary?.paymentMethod}
               </Text>
-              <Text style={styles.successDetailText}>
+              <Text style={[styles.successDetailText, { color: colors.textPrimary }]}>
                 🚚 Delivery: Fast courier dispatch to Addis Ababa
               </Text>
             </View>
 
             <TouchableOpacity
-              style={styles.successCloseBtn}
+              style={[styles.successCloseBtn, { backgroundColor: colors.primary }]}
               onPress={() => setOrderSuccessSummary(null)}
               activeOpacity={0.85}
             >

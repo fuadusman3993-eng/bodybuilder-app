@@ -268,7 +268,7 @@ const HOME_PROGRAM_GROUPS: ProgramGroup[] = [
       bolts: 2,
       users: '7,850,000+',
       description: 'Complete full-body home routines with zero equipment needed. Shed fat, tone muscle, and boost energy.',
-      image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
     },
     secondary: [
       {
@@ -1016,7 +1016,7 @@ export default function SelectTrainingPlanScreen() {
                 <View style={styles.featuredCard}>
                   <Image
                     source={{
-                      uri: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=80',
+                      uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
                     }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"

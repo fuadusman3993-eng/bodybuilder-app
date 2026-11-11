@@ -38,14 +38,14 @@ export default function DiscoverScreen() {
       title: 'Belly Fat Burner HIIT Beginner',
       time: '20 min',
       level: 'Beginner',
-      img: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p2',
       title: 'Lose Fat (No Jumping!)',
       time: '20 min',
       level: 'Intermediate',
-      img: 'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=600&auto=format&fit=crop&q=80',
+      img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80',
     },
     {
       id: 'p3',
@@ -164,9 +164,7 @@ export default function DiscoverScreen() {
           onPress={() => router.push('/challenge')}
         >
           <ImageBackground
-            source={{
-              uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80',
-            }}
+            source={require('../assets/images/abs-plank-hero.jpg')}
             style={styles.heroBg}
             imageStyle={styles.heroImg}
           >

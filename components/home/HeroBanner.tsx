@@ -13,7 +13,7 @@ const BANNERS = [
     titleAccent: 'Better You',
     subtitle: 'Build healthy habits. See real results.',
     quote: 'Discipline\nBuilds\nFreedom',
-    image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=1000&q=80', // man squatting in gym - full t-shirt and shorts
+    image: require('../../assets/images/hero-30days-athletic.jpg'),
     route: '/challenge',
   },
   {
@@ -23,7 +23,7 @@ const BANNERS = [
     titleAccent: 'Coach',
     subtitle: 'Train with certified professionals.',
     quote: 'Stronger\nEvery\nDay',
-    image: 'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=1000&q=80', // male athlete running track - full outfit
+    image: 'https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=1000&q=80', // coach/trainer full sport outfit
     route: '/(tabs)/chat',
   },
   {
@@ -33,7 +33,7 @@ const BANNERS = [
     titleAccent: 'Limits',
     subtitle: 'Daily exercises for maximum growth.',
     quote: 'No Pain\nNo Gain',
-    image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000&q=80',
     route: '/workout',
   },
   {
@@ -79,7 +79,7 @@ export default function HeroBanner() {
             <View key={current.id} style={{ width: bannerWidth, height: heroHeight }}>
               {/* Background Photo */}
               <Image
-                source={{ uri: current.image }}
+                source={typeof current.image === 'string' ? { uri: current.image } : current.image}
                 style={StyleSheet.absoluteFillObject}
                 resizeMode="cover"
               />

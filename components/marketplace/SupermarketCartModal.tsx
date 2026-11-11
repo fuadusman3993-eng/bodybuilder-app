@@ -16,6 +16,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/userStore';
+import { useTheme } from '../../store/themeStore';
 import {
   useSupermarketCartStore,
   FREE_DELIVERY_THRESHOLD_ETB,
@@ -34,6 +35,7 @@ export default function SupermarketCartModal({
   onOrderSuccess,
   onOpenWallet,
 }: SupermarketCartModalProps) {
+  const { colors } = useTheme();
   const { user, updateCoins } = useUserStore();
   const {
     items,
@@ -124,48 +126,48 @@ export default function SupermarketCartModal({
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-        <View style={styles.sheetContainer}>
+        <View style={[styles.sheetContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           {/* Handle */}
-          <View style={styles.dragHandle} />
+          <View style={[styles.dragHandle, { backgroundColor: colors.border }]} />
 
           {/* Sheet Header */}
-          <View style={styles.sheetHeader}>
+          <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={styles.headerIconCircle}>
-                <Ionicons name="basket" size={18} color="#00E676" />
+              <View style={[styles.headerIconCircle, { backgroundColor: `${colors.primary}20` }]}>
+                <Ionicons name="basket" size={18} color={colors.primary} />
               </View>
               <View>
-                <Text style={styles.sheetTitle}>Supermarket Basket</Text>
-                <Text style={styles.sheetSubtitle}>{totalCount} healthy items selected</Text>
+                <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Supermarket Basket</Text>
+                <Text style={[styles.sheetSubtitle, { color: colors.textMuted }]}>{totalCount} healthy items selected</Text>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <Ionicons name="close" size={20} color="#FFFFFF" />
+            <TouchableOpacity style={[styles.closeBtn, { backgroundColor: colors.surfaceLight }]} onPress={onClose} activeOpacity={0.7}>
+              <Ionicons name="close" size={20} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Free Delivery Meter */}
-          <View style={styles.deliveryProgressCard}>
+          <View style={[styles.deliveryProgressCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
             <View style={styles.deliveryProgressHeader}>
               <Ionicons
                 name={isFreeDelivery ? 'checkmark-circle' : 'bicycle'}
                 size={16}
-                color={isFreeDelivery ? '#00E676' : '#60A5FA'}
+                color={isFreeDelivery ? colors.primary : '#60A5FA'}
               />
-              <Text style={styles.deliveryProgressTitle}>
+              <Text style={[styles.deliveryProgressTitle, { color: colors.textPrimary }]}>
                 {isFreeDelivery
                   ? '🎉 You unlocked FREE Supermarket Delivery!'
                   : `Add ${amountToFreeDelivery.toLocaleString()} ETB more for FREE Delivery`}
               </Text>
             </View>
 
-            <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarTrack, { backgroundColor: colors.surface }]}>
               <View
                 style={[
                   styles.progressBarFill,
                   { width: `${freeDeliveryProgress}%` },
-                  isFreeDelivery && { backgroundColor: '#00E676' },
+                  isFreeDelivery ? { backgroundColor: colors.primary } : { backgroundColor: '#38BDF8' },
                 ]}
               />
             </View>
@@ -175,11 +177,11 @@ export default function SupermarketCartModal({
           {cartItemsList.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={{ fontSize: 48, marginBottom: 12 }}>🧺</Text>
-              <Text style={styles.emptyTitle}>Your basket is empty</Text>
-              <Text style={styles.emptySubtitle}>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Your basket is empty</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 Add chicken breasts, farm eggs, fresh fruits, or oats to fuel your workouts!
               </Text>
-              <TouchableOpacity style={styles.startShoppingBtn} onPress={onClose} activeOpacity={0.8}>
+              <TouchableOpacity style={[styles.startShoppingBtn, { backgroundColor: colors.primary }]} onPress={onClose} activeOpacity={0.8}>
                 <Text style={styles.startShoppingBtnText}>Browse Supermarket ➔</Text>
               </TouchableOpacity>
             </View>
@@ -187,7 +189,7 @@ export default function SupermarketCartModal({
             <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsScroll}>
               <View style={styles.itemsList}>
                 {cartItemsList.map(({ product, quantity }) => (
-                  <View key={product.id} style={styles.cartItemRow}>
+                  <View key={product.id} style={[styles.cartItemRow, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                     {/* Thumbnail */}
                     <Image
                       source={{ uri: product.imageUrl }}
@@ -198,23 +200,23 @@ export default function SupermarketCartModal({
 
                     {/* Details */}
                     <View style={styles.itemDetails}>
-                      <Text style={styles.itemTitle} numberOfLines={1}>
+                      <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                         {product.title}
                       </Text>
                       <View style={styles.itemMetaRow}>
-                        {product.weight && <Text style={styles.itemWeightPill}>{product.weight}</Text>}
+                        {product.weight && <Text style={[styles.itemWeightPill, { backgroundColor: colors.surface, color: colors.textSecondary }]}>{product.weight}</Text>}
                         {product.proteinGrams && (
-                          <Text style={styles.itemProteinBadge}>⚡ {product.proteinGrams}g Protein</Text>
+                          <Text style={[styles.itemProteinBadge, { color: colors.primary }]}>⚡ {product.proteinGrams}g Protein</Text>
                         )}
                       </View>
-                      <Text style={styles.itemPriceText}>
+                      <Text style={[styles.itemPriceText, { color: colors.textPrimary }]}>
                         {(product.priceEtb * quantity).toLocaleString()} ETB
                         <Text style={styles.itemCoinsSub}> • 🪙 {product.priceCoins * quantity}</Text>
                       </Text>
                     </View>
 
                     {/* Stepper */}
-                    <View style={styles.stepperContainer}>
+                    <View style={[styles.stepperContainer, { backgroundColor: colors.surface }]}>
                       <TouchableOpacity
                         style={styles.stepperBtn}
                         onPress={() => updateQuantity(product.id, quantity - 1)}
@@ -227,10 +229,10 @@ export default function SupermarketCartModal({
                         />
                       </TouchableOpacity>
 
-                      <Text style={styles.stepperQtyText}>{quantity}</Text>
+                      <Text style={[styles.stepperQtyText, { color: colors.textPrimary }]}>{quantity}</Text>
 
                       <TouchableOpacity
-                        style={[styles.stepperBtn, styles.stepperBtnAdd]}
+                        style={[styles.stepperBtn, styles.stepperBtnAdd, { backgroundColor: colors.primary }]}
                         onPress={() => updateQuantity(product.id, quantity + 1)}
                         activeOpacity={0.7}
                       >
@@ -242,11 +244,11 @@ export default function SupermarketCartModal({
               </View>
 
               {/* Delivery Address Section */}
-              <View style={styles.addressCard}>
+              <View style={[styles.addressCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                 <View style={styles.addressHeaderRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="location" size={16} color="#00E676" />
-                    <Text style={styles.addressHeaderTitle}>Delivery Destination</Text>
+                    <Ionicons name="location" size={16} color={colors.primary} />
+                    <Text style={[styles.addressHeaderTitle, { color: colors.textPrimary }]}>Delivery Destination</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => {
@@ -258,7 +260,7 @@ export default function SupermarketCartModal({
                       }
                     }}
                   >
-                    <Text style={styles.addressEditBtnText}>
+                    <Text style={[styles.addressEditBtnText, { color: colors.primary }]}>
                       {isEditingAddress ? 'Save' : 'Change'}
                     </Text>
                   </TouchableOpacity>
@@ -266,27 +268,28 @@ export default function SupermarketCartModal({
 
                 {isEditingAddress ? (
                   <TextInput
-                    style={styles.addressInput}
+                    style={[styles.addressInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
                     value={tempAddress}
                     onChangeText={setTempAddress}
                     placeholder="Enter delivery address in Addis Ababa..."
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                   />
                 ) : (
-                  <Text style={styles.addressText}>{deliveryAddress}</Text>
+                  <Text style={[styles.addressText, { color: colors.textPrimary }]}>{deliveryAddress}</Text>
                 )}
               </View>
 
               {/* Payment Method Selector */}
               <View style={styles.paymentSection}>
-                <Text style={styles.paymentSectionTitle}>Payment Method</Text>
+                <Text style={[styles.paymentSectionTitle, { color: colors.textPrimary }]}>Payment Method</Text>
 
                 <View style={styles.paymentOptionsRow}>
                   {/* Telebirr / Chapa */}
                   <TouchableOpacity
                     style={[
                       styles.paymentOptionCard,
-                      paymentMethod === 'telebirr' && styles.paymentOptionCardActive,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'telebirr' && { borderColor: colors.primary, backgroundColor: `${colors.primary}18` },
                     ]}
                     onPress={() => setPaymentMethod('telebirr')}
                     activeOpacity={0.8}
@@ -295,25 +298,27 @@ export default function SupermarketCartModal({
                       <Ionicons
                         name="phone-portrait"
                         size={18}
-                        color={paymentMethod === 'telebirr' ? '#00E676' : '#94A3B8'}
+                        color={paymentMethod === 'telebirr' ? colors.primary : colors.textMuted}
                       />
                       <Text
                         style={[
                           styles.paymentOptionTitle,
-                          paymentMethod === 'telebirr' && styles.paymentOptionTitleActive,
+                          { color: colors.textPrimary },
+                          paymentMethod === 'telebirr' && { color: colors.primary, fontWeight: '800' },
                         ]}
                       >
                         Telebirr / CBE
                       </Text>
                     </View>
-                    <Text style={styles.paymentOptionSub}>Instant Chapa mobile payment</Text>
+                    <Text style={[styles.paymentOptionSub, { color: colors.textMuted }]}>Instant Chapa mobile payment</Text>
                   </TouchableOpacity>
 
                   {/* FitPulse Coins */}
                   <TouchableOpacity
                     style={[
                       styles.paymentOptionCard,
-                      paymentMethod === 'coins' && styles.paymentOptionCardActive,
+                      { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                      paymentMethod === 'coins' && { borderColor: colors.primary, backgroundColor: `${colors.primary}18` },
                     ]}
                     onPress={() => setPaymentMethod('coins')}
                     activeOpacity={0.8}
@@ -323,40 +328,42 @@ export default function SupermarketCartModal({
                       <Text
                         style={[
                           styles.paymentOptionTitle,
-                          paymentMethod === 'coins' && styles.paymentOptionTitleActive,
+                          { color: colors.textPrimary },
+                          paymentMethod === 'coins' && { color: colors.primary, fontWeight: '800' },
                         ]}
                       >
                         Coins ({user.coinsBalance || 0})
                       </Text>
                     </View>
-                    <Text style={styles.paymentOptionSub}>Pay {totalCoins} FitPulse Coins</Text>
+                    <Text style={[styles.paymentOptionSub, { color: colors.textMuted }]}>Pay {totalCoins} FitPulse Coins</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Price Breakdown */}
-              <View style={styles.billCard}>
+              <View style={[styles.billCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                 <View style={styles.billRow}>
-                  <Text style={styles.billLabel}>Groceries Subtotal</Text>
-                  <Text style={styles.billValue}>{subtotalEtb.toLocaleString()} ETB</Text>
+                  <Text style={[styles.billLabel, { color: colors.textMuted }]}>Groceries Subtotal</Text>
+                  <Text style={[styles.billValue, { color: colors.textPrimary }]}>{subtotalEtb.toLocaleString()} ETB</Text>
                 </View>
 
                 <View style={styles.billRow}>
-                  <Text style={styles.billLabel}>Supermarket Delivery</Text>
+                  <Text style={[styles.billLabel, { color: colors.textMuted }]}>Supermarket Delivery</Text>
                   <Text
                     style={[
                       styles.billValue,
-                      deliveryFee === 0 && { color: '#00E676', fontWeight: '800' },
+                      { color: colors.textPrimary },
+                      deliveryFee === 0 && { color: colors.primary, fontWeight: '800' },
                     ]}
                   >
                     {deliveryFee === 0 ? 'FREE' : `${deliveryFee} ETB`}
                   </Text>
                 </View>
 
-                <View style={[styles.billRow, styles.grandTotalRow]}>
-                  <Text style={styles.grandTotalLabel}>Total Amount</Text>
+                <View style={[styles.billRow, styles.grandTotalRow, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.grandTotalLabel, { color: colors.textPrimary }]}>Total Amount</Text>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.grandTotalValue}>{grandTotalEtb.toLocaleString()} ETB</Text>
+                    <Text style={[styles.grandTotalValue, { color: colors.primary }]}>{grandTotalEtb.toLocaleString()} ETB</Text>
                     <Text style={styles.grandTotalCoinsSub}>or 🪙 {totalCoins} Coins</Text>
                   </View>
                 </View>
@@ -366,9 +373,9 @@ export default function SupermarketCartModal({
 
           {/* Checkout Action Footer */}
           {cartItemsList.length > 0 && (
-            <View style={styles.sheetFooter}>
+            <View style={[styles.sheetFooter, { borderTopColor: colors.border }]}>
               <TouchableOpacity
-                style={[styles.checkoutBtn, isSubmitting && { opacity: 0.7 }]}
+                style={[styles.checkoutBtn, { backgroundColor: colors.primary }, isSubmitting && { opacity: 0.7 }]}
                 onPress={handleCheckout}
                 disabled={isSubmitting}
                 activeOpacity={0.88}

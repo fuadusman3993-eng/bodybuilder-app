@@ -25,7 +25,7 @@ export default function DiscoverSection() {
       calories: '180 kcal',
       color: '#EF4444',
       badge: 'HIIT',
-      bgImg: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&auto=format&fit=crop&q=80', // man boxing HIIT full gloves shirt
+      bgImg: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80', // HIIT running - full outfit
       route: '/challenge',
     },
     {
@@ -47,7 +47,7 @@ export default function DiscoverSection() {
       calories: 'Daily Fuel',
       color: '#10B981',
       badge: 'PROGRAM',
-      bgImg: 'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=600&auto=format&fit=crop&q=80', // man gym full outfit stay active
+      bgImg: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80', // modest training
       route: '/challenge',
     },
   ];
@@ -72,9 +72,7 @@ export default function DiscoverSection() {
         onPress={() => router.push('/challenge')}
       >
         <ImageBackground
-          source={{
-            uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80',
-          }}
+          source={require('../../assets/images/abs-plank-hero.jpg')}
           style={styles.heroBg}
           imageStyle={styles.heroImg}
         >
