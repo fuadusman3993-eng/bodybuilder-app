@@ -169,22 +169,26 @@ export default function DiscoverScreen() {
             imageStyle={styles.heroImg}
           >
             <LinearGradient
-              colors={['rgba(5, 11, 16, 0.15)', 'rgba(5, 11, 16, 0.75)', 'rgba(5, 11, 16, 0.95)']}
+              colors={['rgba(5, 11, 16, 0.94)', 'rgba(5, 11, 16, 0.65)', 'rgba(5, 11, 16, 0.08)']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
               style={styles.heroGradient}
             >
-              <View style={[styles.heroBadge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.heroBadgeText}>TOP PICK</Text>
-              </View>
-              <Text style={styles.heroTitle}>Only 4 Moves for Abs</Text>
-              <Text style={styles.heroSubtitle}>
-                4 simple exercises only! Burn belly fat and firm your abs. Get a flat belly fast!
-              </Text>
-              <View style={styles.heroBtnRow}>
-                <View style={[styles.heroActionBtn, { backgroundColor: colors.primary }]}>
-                  <Ionicons name="play" size={14} color="#000" />
-                  <Text style={styles.heroActionBtnText}>Start Workout</Text>
+              <View style={styles.heroTextContainer}>
+                <View style={[styles.heroBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.heroBadgeText}>TOP PICK</Text>
                 </View>
-                <Text style={styles.heroMetaText}>⏱️ 12 min • No equipment</Text>
+                <Text style={styles.heroTitle}>Only 4 Moves for Abs</Text>
+                <Text style={styles.heroSubtitle}>
+                  4 simple exercises only! Burn belly fat and firm your abs. Get a flat belly fast!
+                </Text>
+                <View style={styles.heroBtnRow}>
+                  <View style={[styles.heroActionBtn, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="play" size={14} color="#000" />
+                    <Text style={styles.heroActionBtnText}>Start Workout</Text>
+                  </View>
+                  <Text style={styles.heroMetaText}>⏱️ 12 min • No equipment</Text>
+                </View>
               </View>
             </LinearGradient>
           </ImageBackground>
@@ -392,9 +396,13 @@ const styles = StyleSheet.create({
   },
   heroGradient: {
     padding: 18,
-    paddingTop: 38,
+    paddingTop: 34,
     gap: 6,
     justifyContent: 'flex-end',
+  },
+  heroTextContainer: {
+    maxWidth: '65%',
+    gap: 6,
   },
   heroBadge: {
     alignSelf: 'flex-start',

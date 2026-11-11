@@ -13,7 +13,7 @@ const BANNERS = [
     titleAccent: 'Better You',
     subtitle: 'Build healthy habits. See real results.',
     quote: 'Discipline\nBuilds\nFreedom',
-    image: require('../../assets/images/hero-30days-athletic.jpg'),
+    image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1000&q=80',
     route: '/challenge',
   },
   {
