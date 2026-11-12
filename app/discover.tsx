@@ -27,7 +27,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
-  const heroHeight = Math.max(Math.round(width * 0.62), 200);
+  const heroHeight = Math.max(Math.round(width * 0.68), 230);
 
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -191,19 +191,22 @@ export default function DiscoverScreen() {
           {/* Bottom content */}
           <View style={styles.bottomContent}>
             <Text style={styles.title}>
-              Only 4 Moves for{'\n'}
-              <Text style={[styles.titleAccent, { color: colors.primary }]}>Abs</Text>
+              Only 4 Moves{'\n'}
+              <Text style={[styles.titleAccent, { color: colors.primary }]}>for Abs</Text>
             </Text>
-            <Text style={styles.subtitle} numberOfLines={2}>
-              4 simple exercises only! Burn belly fat &amp; firm your abs.
+            <Text style={styles.subtitle} numberOfLines={1}>
+              Burn belly fat &amp; firm your abs. No gear needed.
             </Text>
-            <TouchableOpacity
-              style={[styles.joinBtn, { backgroundColor: colors.primary }]}
-              activeOpacity={0.85}
-              onPress={() => router.push('/challenge')}
-            >
-              <Text style={styles.joinBtnText}>Start Workout  →</Text>
-            </TouchableOpacity>
+            <View style={styles.btnMetaRow}>
+              <TouchableOpacity
+                style={[styles.joinBtn, { backgroundColor: colors.primary }]}
+                activeOpacity={0.85}
+                onPress={() => router.push('/challenge')}
+              >
+                <Text style={styles.joinBtnText}>▶  Start Workout</Text>
+              </TouchableOpacity>
+              <Text style={styles.metaText}>⏱ 12 min · No gear</Text>
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -422,40 +425,51 @@ const styles = StyleSheet.create({
   tagText: { color: '#FFF', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
   bottomContent: {
     position: 'absolute',
-    bottom: 22,
-    left: 18,
-    right: 18,
-    maxWidth: '62%',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    maxWidth: '65%',
     zIndex: 2,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     color: '#FFF',
-    lineHeight: 34,
+    lineHeight: 30,
     letterSpacing: -0.5,
-    marginBottom: 6,
+    marginBottom: 5,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
   titleAccent: {},
   subtitle: {
-    fontSize: 12.5,
-    color: 'rgba(255,255,255,0.95)',
-    marginBottom: 14,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.90)',
+    marginBottom: 12,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     lineHeight: 16,
   },
+  btnMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
   joinBtn: {
-    paddingHorizontal: 22,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 30,
     alignSelf: 'flex-start',
   },
-  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  metaText: {
+    color: 'rgba(255,255,255,0.80)',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
 
   // Headings
   sectionTitleRow: {
