@@ -27,6 +27,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
+  const heroHeight = Math.max(Math.round(width * 0.62), 200);
 
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -158,41 +159,51 @@ export default function DiscoverScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Top Featured Hero Card (Image 2) ── */}
+        {/* ── Top Featured Hero Card (HeroBanner Style Replica) ── */}
         <TouchableOpacity
-          style={[styles.heroCard, { borderColor: colors.border }]}
+          style={[styles.heroCard, { height: heroHeight, borderColor: colors.border }]}
           activeOpacity={0.9}
           onPress={() => router.push('/challenge')}
         >
-          <View style={styles.heroCardInner}>
-            <Image
-              source={require('../assets/images/abs-plank-hero.jpg')}
-              style={styles.heroBgImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['rgba(5, 11, 16, 0.94)', 'rgba(5, 11, 16, 0.55)', 'rgba(5, 11, 16, 0.04)']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroGradient}
+          {/* Background Photo */}
+          <Image
+            source={require('../assets/images/abs-plank-hero.jpg')}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+
+          {/* Dark gradient overlay */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.05)']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+
+          {/* Top: tag badge */}
+          <View style={styles.topRow}>
+            <View style={styles.tagBadge}>
+              <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
+              <Text style={styles.tagText}>TRENDING ROUTINE</Text>
+            </View>
+          </View>
+
+          {/* Bottom content */}
+          <View style={styles.bottomContent}>
+            <Text style={styles.title}>
+              Only 4 Moves for{'\n'}
+              <Text style={[styles.titleAccent, { color: colors.primary }]}>Abs</Text>
+            </Text>
+            <Text style={styles.subtitle} numberOfLines={2}>
+              4 simple exercises only! Burn belly fat &amp; firm your abs.
+            </Text>
+            <TouchableOpacity
+              style={[styles.joinBtn, { backgroundColor: colors.primary }]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/challenge')}
             >
-              <View style={styles.heroTextContainer}>
-                <View style={[styles.heroBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.heroBadgeText}>TOP PICK</Text>
-                </View>
-                <Text style={styles.heroTitle}>Only 4 Moves for Abs</Text>
-                <Text style={styles.heroSubtitle}>
-                  4 simple exercises only! Burn belly fat and firm your abs. Get a flat belly fast!
-                </Text>
-                <View style={styles.heroBtnRow}>
-                  <View style={[styles.heroActionBtn, { backgroundColor: colors.primary }]}>
-                    <Ionicons name="play" size={14} color="#000" />
-                    <Text style={styles.heroActionBtnText}>Start Workout</Text>
-                  </View>
-                  <Text style={styles.heroMetaText}>⏱️ 12 min • No equipment</Text>
-                </View>
-              </View>
-            </LinearGradient>
+              <Text style={styles.joinBtnText}>Start Workout  →</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
 
@@ -382,81 +393,69 @@ const styles = StyleSheet.create({
     gap: 20,
   },
 
-  // Hero Card
+  // Hero Card (HeroBanner Replica)
   heroCard: {
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-  },
-  heroCardInner: {
-    width: '100%',
-    minHeight: 220,
     position: 'relative',
-    overflow: 'hidden',
   },
-  heroBgImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
+  topRow: {
+    padding: 14,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 2,
   },
-  heroGradient: {
-    flex: 1,
-    padding: 18,
-    paddingTop: 32,
-    paddingBottom: 22,
-    justifyContent: 'center',
+  tagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  heroTextContainer: {
-    maxWidth: '58%',
-    gap: 6,
+  tagDot: { width: 6, height: 6, borderRadius: 3 },
+  tagText: { color: '#FFF', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  bottomContent: {
+    position: 'absolute',
+    bottom: 22,
+    left: 18,
+    right: 18,
+    maxWidth: '62%',
+    zIndex: 2,
   },
-  heroBadge: {
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFF',
+    lineHeight: 34,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  titleAccent: {},
+  subtitle: {
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.95)',
+    marginBottom: 14,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    lineHeight: 16,
+  },
+  joinBtn: {
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 30,
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
   },
-  heroBadgeText: {
-    color: '#000',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
-  heroSubtitle: {
-    color: '#CBD5E1',
-    fontSize: 12.5,
-    lineHeight: 17,
-  },
-  heroBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 6,
-  },
-  heroActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  heroActionBtnText: {
-    color: '#000',
-    fontSize: 12.5,
-    fontWeight: '800',
-  },
-  heroMetaText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
 
   // Headings
   sectionTitleRow: {
