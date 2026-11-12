@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 16,
     right: 16,
-    maxWidth: '65%',
+    maxWidth: '56%',
     zIndex: 2,
   },
   title: {
