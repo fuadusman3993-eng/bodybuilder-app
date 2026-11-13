@@ -24,14 +24,14 @@ interface ChatAttachmentSheetProps {
   onPickGallery: () => void;
   onOpenCamera: () => void;
   onShareLocation: () => void;
-  onShareContact: () => void;
-  onPickDocument: () => void;
-  onCreatePoll: () => void;
-  onShareEvent: () => void;
   onShareWorkout: () => void;
   onSelectRecentMedia: (uri: string) => void;
   conversationId?: string;
   userUid?: string;
+  onShareContact?: () => void;
+  onPickDocument?: () => void;
+  onCreatePoll?: () => void;
+  onShareEvent?: () => void;
 }
 
 interface ActionItem {
@@ -49,14 +49,12 @@ export default function ChatAttachmentSheet({
   onPickGallery,
   onOpenCamera,
   onShareLocation,
-  onShareContact,
-  onPickDocument,
-  onCreatePoll,
-  onShareEvent,
   onShareWorkout,
   onSelectRecentMedia,
   conversationId,
   userUid,
+  onPickDocument,
+  onShareEvent,
 }: ChatAttachmentSheetProps) {
   const { colors } = useTheme();
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
@@ -96,8 +94,8 @@ export default function ChatAttachmentSheet({
     }
   };
 
-  // Grid Actions matching WhatsApp screenshot + FitPulse Workout
-  const actions: ActionItem[] = [
+  // 1. Primary Row Actions (The 4 core features: Gallery, Camera, Location, Workout)
+  const primaryActions: ActionItem[] = [
     {
       id: 'gallery',
       title: 'Gallery',
@@ -129,15 +127,19 @@ export default function ChatAttachmentSheet({
       },
     },
     {
-      id: 'contact',
-      title: 'Contact',
-      icon: 'person',
-      color: '#06B6D4',
+      id: 'workout',
+      title: 'Workout',
+      icon: 'barbell',
+      color: '#00E676',
       onPress: () => {
         onClose();
-        onShareContact();
+        onShareWorkout();
       },
     },
+  ];
+
+  // 2. Secondary Row Actions (Tucked neatly underneath: Document, Event)
+  const secondaryActions: ActionItem[] = [
     {
       id: 'document',
       title: 'Document',
@@ -145,17 +147,7 @@ export default function ChatAttachmentSheet({
       color: '#8B5CF6',
       onPress: () => {
         onClose();
-        onPickDocument();
-      },
-    },
-    {
-      id: 'poll',
-      title: 'Poll',
-      icon: 'stats-chart',
-      color: '#F59E0B',
-      onPress: () => {
-        onClose();
-        onCreatePoll();
+        if (onPickDocument) onPickDocument();
       },
     },
     {
@@ -166,17 +158,7 @@ export default function ChatAttachmentSheet({
       badge: 'New',
       onPress: () => {
         onClose();
-        onShareEvent();
-      },
-    },
-    {
-      id: 'workout',
-      title: 'Workout',
-      icon: 'barbell',
-      color: '#00E676',
-      onPress: () => {
-        onClose();
-        onShareWorkout();
+        if (onShareEvent) onShareEvent();
       },
     },
   ];
@@ -203,9 +185,9 @@ export default function ChatAttachmentSheet({
           {/* Top Handle Pill */}
           <View style={styles.handle} />
 
-          {/* ── 1. WhatsApp Actions Grid (2 Rows of 4 Circles) ── */}
-          <View style={styles.gridContainer}>
-            {actions.map((item) => (
+          {/* ── 1. Primary 4 FitPulse Actions (Gallery, Camera, Location, Workout) ── */}
+          <View style={styles.primaryRow}>
+            {primaryActions.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.actionBtn}
@@ -214,11 +196,6 @@ export default function ChatAttachmentSheet({
               >
                 <View style={[styles.circleIconWrap, { backgroundColor: item.color }]}>
                   <Ionicons name={item.icon} size={24} color="#FFFFFF" />
-                  {item.badge && (
-                    <View style={styles.badgeWrap}>
-                      <Text style={styles.badgeText}>{item.badge}</Text>
-                    </View>
-                  )}
                 </View>
                 <Text style={styles.actionTitle} numberOfLines={1}>
                   {item.title}
@@ -227,7 +204,31 @@ export default function ChatAttachmentSheet({
             ))}
           </View>
 
-          {/* ── 2. Real Recent Gallery Photos Horizontal Strip (Image 1 bottom) ── */}
+          {/* ── 2. Secondary Actions (Tucked underneath: Document & Event) ── */}
+          <View style={styles.secondaryRow}>
+            {secondaryActions.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.secondaryActionBtn}
+                activeOpacity={0.8}
+                onPress={item.onPress}
+              >
+                <View style={[styles.secondaryCircleWrap, { backgroundColor: item.color }]}>
+                  <Ionicons name={item.icon} size={20} color="#FFFFFF" />
+                  {item.badge && (
+                    <View style={styles.badgeWrap}>
+                      <Text style={styles.badgeText}>{item.badge}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.secondaryActionTitle} numberOfLines={1}>
+                  {item.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── 3. Real Recent Gallery Photos (Clear, Visible 76x76 Size) ── */}
           <View style={styles.recentSection}>
             <View style={styles.recentHeaderRow}>
               <Text style={styles.recentHeaderText}>Recent Photos</Text>
@@ -252,7 +253,7 @@ export default function ChatAttachmentSheet({
                 activeOpacity={0.8}
                 onPress={handlePickFromDevice}
               >
-                <Ionicons name="images-outline" size={24} color={colors.primary} />
+                <Ionicons name="images-outline" size={26} color={colors.primary} />
                 <Text style={[styles.pickFromDeviceText, { color: colors.textPrimary }]}>
                   Pick From{'\n'}Device
                 </Text>
@@ -288,8 +289,8 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 28,
+    paddingTop: 10,
+    paddingBottom: 22,
     borderTopWidth: 1,
   },
   handle: {
@@ -298,39 +299,76 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.3)',
     alignSelf: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
 
-  // 4x2 Action Grid
-  gridContainer: {
+  // Primary Row (4 Core Actions)
+  primaryRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    rowGap: 20,
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   actionBtn: {
-    width: (width - 70) / 4,
+    width: (width - 64) / 4,
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
   },
   circleIconWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  actionTitle: {
+    color: '#E5E7EB',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Secondary Row (Tucked Underneath: Document & Event)
+  secondaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 40,
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  secondaryActionBtn: {
+    alignItems: 'center',
+    gap: 5,
+    width: 64,
+  },
+  secondaryCircleWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  secondaryActionTitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   badgeWrap: {
     position: 'absolute',
     top: -4,
-    right: -4,
+    right: -6,
     backgroundColor: '#10B981',
     borderRadius: 8,
     paddingHorizontal: 5,
@@ -341,17 +379,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
-  actionTitle: {
-    color: '#E5E7EB',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
 
-  // Recent Photos Carousel
+  // Recent Photos Carousel (Clear 76x76 size)
   recentSection: {
-    marginTop: 22,
-    paddingTop: 14,
+    marginTop: 4,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)',
   },
@@ -374,12 +406,12 @@ const styles = StyleSheet.create({
   },
   recentScroll: {
     paddingHorizontal: 16,
-    gap: 8,
+    gap: 10,
     alignItems: 'center',
   },
   pickFromDeviceCard: {
-    width: 82,
-    height: 82,
+    width: 76,
+    height: 76,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1.5,
@@ -397,13 +429,13 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
   recentThumbWrap: {
-    width: 82,
-    height: 82,
+    width: 76,
+    height: 76,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#2A323D',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#1E293B',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   recentThumbImg: {
     width: '100%',
