@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
+import { useTheme } from '../store/themeStore';
 import BackButton from '../components/ui/BackButton';
 import { useChallengeStore } from '../store/challengeStore';
 
@@ -498,6 +500,7 @@ const HOME_PROGRAM_GROUPS: ProgramGroup[] = [
 export default function SelectTrainingPlanScreen() {
   const router = useRouter();
   const { setGoal, setLevel } = useChallengeStore();
+  const { colors } = useTheme();
 
   // Top Master Switch: 'gym' or 'home'
   const [activeTab, setActiveTab] = useState<MainTab>('gym');
@@ -536,32 +539,31 @@ export default function SelectTrainingPlanScreen() {
   const showHomeVaultCard = activeTab === 'home' && (homeFilter === 'all' || homeFilter === 'home-vault');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* HEADER BAR: Back button + Title */}
-      <View style={styles.header}>
+      {/* HEADER BAR: compact title + 30-DAY pill */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <BackButton fallbackRoute="/(tabs)" />
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Training Hub & Challenges</Text>
-          <Text style={styles.headerSubtitle}>Choose Gym or Home workouts and explore 800+ movements</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Training Hub</Text>
+        <View style={[styles.headerBadgePill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="flash" size={12} color={colors.primary} />
+          <Text style={[styles.headerBadgeText, { color: colors.primary }]}>30-DAY</Text>
         </View>
-        {/* Balanced spacer */}
-        <View style={{ width: 38 }} />
       </View>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* MASTER SEGMENTED SWITCH: [ 🏋️ Gym Workouts ] [ 🏠 Home Workouts ] */}
+      {/* MASTER PILL SWITCH: [ 🏋️ Gym Workouts ] [ 🏠 Home Workouts ] */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <View style={styles.masterTabWrap}>
-        <View style={styles.masterTabContainer}>
+      <View style={[styles.masterTabWrap, { backgroundColor: colors.background }]}>
+        <View style={[styles.masterTabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.masterTabBtn, activeTab === 'gym' && styles.masterTabBtnActive]}
             activeOpacity={0.85}
             onPress={() => setActiveTab('gym')}
           >
-            <Text style={styles.masterTabEmoji}>🏋️</Text>
-            <Text style={[styles.masterTabText, activeTab === 'gym' && styles.masterTabTextActive]}>
+            <Ionicons name="barbell" size={16} color={activeTab === 'gym' ? '#000' : colors.textMuted} />
+            <Text style={[styles.masterTabText, { color: activeTab === 'gym' ? '#000' : colors.textMuted }, activeTab === 'gym' && styles.masterTabTextActive]}>
               Gym Workouts
             </Text>
           </TouchableOpacity>
@@ -571,8 +573,8 @@ export default function SelectTrainingPlanScreen() {
             activeOpacity={0.85}
             onPress={() => setActiveTab('home')}
           >
-            <Text style={styles.masterTabEmoji}>🏠</Text>
-            <Text style={[styles.masterTabText, activeTab === 'home' && styles.masterTabTextActive]}>
+            <Ionicons name="home" size={16} color={activeTab === 'home' ? '#000' : colors.textMuted} />
+            <Text style={[styles.masterTabText, { color: activeTab === 'home' ? '#000' : colors.textMuted }, activeTab === 'home' && styles.masterTabTextActive]}>
               Home Workouts
             </Text>
           </TouchableOpacity>
@@ -580,7 +582,7 @@ export default function SelectTrainingPlanScreen() {
       </View>
 
       {/* SUB-FILTER CHIPS BAR */}
-      <View style={styles.filterBarContainer}>
+      <View style={[styles.filterBarContainer, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -589,73 +591,73 @@ export default function SelectTrainingPlanScreen() {
           {activeTab === 'gym' ? (
             <>
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'all' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'all' && styles.filterChipActive]}
                 onPress={() => setGymFilter('all')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'all' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'all' && styles.filterChipTextActive]}>
                   🔥 All Gym
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'arm' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'arm' && styles.filterChipActive]}
                 onPress={() => setGymFilter('arm')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'arm' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'arm' && styles.filterChipTextActive]}>
                   💪 Arm Workout
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'abs' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'abs' && styles.filterChipActive]}
                 onPress={() => setGymFilter('abs')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'abs' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'abs' && styles.filterChipTextActive]}>
                   🎯 Abs & Core
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'chest' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'chest' && styles.filterChipActive]}
                 onPress={() => setGymFilter('chest')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'chest' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'chest' && styles.filterChipTextActive]}>
                   🛡️ Chest
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'legs' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'legs' && styles.filterChipActive]}
                 onPress={() => setGymFilter('legs')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'legs' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'legs' && styles.filterChipTextActive]}>
                   🦵 Legs
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'shoulder-back' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'shoulder-back' && styles.filterChipActive]}
                 onPress={() => setGymFilter('shoulder-back')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'shoulder-back' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'shoulder-back' && styles.filterChipTextActive]}>
                   ⚡ Shoulder & Back
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'full-body' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'full-body' && styles.filterChipActive]}
                 onPress={() => setGymFilter('full-body')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'full-body' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'full-body' && styles.filterChipTextActive]}>
                   🔥 Full Body
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, gymFilter === 'gym-vault' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, gymFilter === 'gym-vault' && styles.filterChipActive]}
                 onPress={() => setGymFilter('gym-vault')}
               >
-                <Text style={[styles.filterChipText, gymFilter === 'gym-vault' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, gymFilter === 'gym-vault' && styles.filterChipTextActive]}>
                   🏋️ 800+ Gym Vault
                 </Text>
               </TouchableOpacity>
@@ -663,82 +665,82 @@ export default function SelectTrainingPlanScreen() {
           ) : (
             <>
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'all' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'all' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('all')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'all' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'all' && styles.filterChipTextActive]}>
                   🔥 All Home
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'home-main' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'home-main' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('home-main')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'home-main' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'home-main' && styles.filterChipTextActive]}>
                   🏠 Zero Equipment
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'yoga' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'yoga' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('yoga')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'yoga' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'yoga' && styles.filterChipTextActive]}>
                   🧘 Yoga & Stretch
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'pilates' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'pilates' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('pilates')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'pilates' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'pilates' && styles.filterChipTextActive]}>
                   ⚡ Pilates Core
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'office' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'office' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('office')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'office' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'office' && styles.filterChipTextActive]}>
                   💼 Office Workouts
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'face' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'face' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('face')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'face' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'face' && styles.filterChipTextActive]}>
                   😊 Face Yoga
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'women' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'women' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('women')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'women' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'women' && styles.filterChipTextActive]}>
                   💃 Women Sculpt
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'mobility' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'mobility' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('mobility')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'mobility' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'mobility' && styles.filterChipTextActive]}>
                   ♾️ Mobility
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterChip, homeFilter === 'home-vault' && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, homeFilter === 'home-vault' && styles.filterChipActive]}
                 onPress={() => setHomeFilter('home-vault')}
               >
-                <Text style={[styles.filterChipText, homeFilter === 'home-vault' && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.textMuted }, homeFilter === 'home-vault' && styles.filterChipTextActive]}>
                   🏠 800+ Home Vault
                 </Text>
               </TouchableOpacity>
@@ -758,51 +760,54 @@ export default function SelectTrainingPlanScreen() {
           <>
             {currentGymGroups.map((group) => (
               <View key={group.id} style={styles.groupContainer}>
-                {/* Section Header */}
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleRow}>
-                    <View style={styles.sectionIconBadge}>
-                      <Ionicons name="barbell" size={16} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.sectionTitle}>{group.name} 30-Day Programs</Text>
-                  </View>
-                  <Text style={styles.sectionBadge}>{group.badge}</Text>
-                </View>
-
-                {/* FEATURED CARD */}
-                <View style={styles.featuredCard}>
+                {/* FEATURED CARD — no separate section header above */}
+                <View style={[styles.featuredCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Image
                     source={{ uri: group.featured.image }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                   />
-                  <View style={styles.featuredOverlay} />
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.92)']}
+                    style={StyleSheet.absoluteFill}
+                  />
 
-                  <View style={styles.usersBadge}>
-                    <Text style={styles.usersBadgeNumber}>{group.featured.users}</Text>
-                    <Text style={styles.usersBadgeLabel}>Active Users</Text>
+                  {/* Top row: category badge (left) + users pill (right) */}
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.categoryBadge}>
+                      <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
+                      <Text style={styles.categoryBadgeText}>{group.badge}</Text>
+                    </View>
+                    <View style={styles.usersPill}>
+                      <Ionicons name="people" size={12} color={colors.primary} />
+                      <Text style={styles.usersPillText}>{group.featured.users}</Text>
+                    </View>
                   </View>
 
                   <View style={styles.featuredBody}>
                     <Text style={styles.featuredTitle}>{group.featured.title}</Text>
 
                     <View style={styles.levelRow}>
-                      <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
-                      {Array.from({ length: 3 }).map((_, idx) => (
-                        <Ionicons
-                          key={idx}
-                          name="flash"
-                          size={14}
-                          color={idx < group.featured.bolts ? Colors.primary : 'rgba(255,255,255,0.3)'}
-                        />
-                      ))}
+                      <View style={styles.levelTag}>
+                        <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
+                      </View>
+                      <View style={styles.boltsWrap}>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <Ionicons
+                            key={idx}
+                            name="flash"
+                            size={14}
+                            color={idx < group.featured.bolts ? colors.primary : 'rgba(255,255,255,0.3)'}
+                          />
+                        ))}
+                      </View>
                       <Text style={styles.timeTagText}>• {group.featured.time}</Text>
                     </View>
 
-                    <Text style={styles.featuredDesc}>{group.featured.description}</Text>
+                    <Text style={styles.featuredDesc} numberOfLines={2}>{group.featured.description}</Text>
 
                     <TouchableOpacity
-                      style={styles.startDay1Btn}
+                      style={[styles.startDay1Btn, { backgroundColor: colors.primary }]}
                       activeOpacity={0.9}
                       onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
                     >
@@ -815,31 +820,31 @@ export default function SelectTrainingPlanScreen() {
                 {group.secondary.map((item, sIndex) => (
                   <TouchableOpacity
                     key={sIndex}
-                    style={styles.challengeItemCard}
+                    style={[styles.challengeItemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     activeOpacity={0.85}
                     onPress={() => handleStartPlan(item.goalId, item.level, false)}
                   >
                     <View style={styles.challengeCardContent}>
-                      <View style={styles.challengeIconBox}>
-                        <Ionicons name={item.icon as any} size={22} color={Colors.primary} />
+                      <View style={[styles.challengeIconBox, { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}33` }]}>
+                        <Ionicons name={item.icon as any} size={22} color={colors.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.challengeTitle}>{item.title}</Text>
+                        <Text style={[styles.challengeTitle, { color: colors.textPrimary }]}>{item.title}</Text>
                         <View style={styles.levelRowSmall}>
-                          <Text style={styles.challengeLevelText}>{item.level}</Text>
+                          <Text style={[styles.challengeLevelText, { color: colors.textMuted }]}>{item.level}</Text>
                           {Array.from({ length: 3 }).map((_, idx) => (
                             <Ionicons
                               key={idx}
                               name="flash"
                               size={12}
-                              color={idx < item.bolts ? Colors.primary : 'rgba(255,255,255,0.25)'}
+                              color={idx < item.bolts ? colors.primary : 'rgba(255,255,255,0.25)'}
                             />
                           ))}
-                          <Text style={styles.challengeTimeText}>• {item.time}</Text>
+                          <Text style={[styles.challengeTimeText, { color: colors.textMuted }]}>• {item.time}</Text>
                         </View>
                       </View>
-                      <View style={styles.circleChevron}>
-                        <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                      <View style={[styles.circleChevron, { backgroundColor: colors.surfaceLight }]}>
+                        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -850,17 +855,7 @@ export default function SelectTrainingPlanScreen() {
             {/* GYM VAULT CARD */}
             {showGymVaultCard && (
               <View style={[styles.groupContainer, { marginTop: 10 }]}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleRow}>
-                    <View style={styles.sectionIconBadge}>
-                      <Ionicons name="library" size={16} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.sectionTitle}>Gym Exercises Vault</Text>
-                  </View>
-                  <Text style={styles.sectionBadge}>800+ HD MOVEMENTS</Text>
-                </View>
-
-                <View style={styles.featuredCard}>
+                <View style={[styles.featuredCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Image
                     source={{
                       uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
@@ -868,30 +863,43 @@ export default function SelectTrainingPlanScreen() {
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                   />
-                  <View style={styles.featuredOverlay} />
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.92)']}
+                    style={StyleSheet.absoluteFill}
+                  />
 
-                  <View style={styles.usersBadge}>
-                    <Text style={styles.usersBadgeNumber}>800+ HD</Text>
-                    <Text style={styles.usersBadgeLabel}>Animations</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.categoryBadge}>
+                      <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
+                      <Text style={styles.categoryBadgeText}>GYM VAULT</Text>
+                    </View>
+                    <View style={styles.usersPill}>
+                      <Ionicons name="library" size={12} color={colors.primary} />
+                      <Text style={styles.usersPillText}>800+ HD</Text>
+                    </View>
                   </View>
 
                   <View style={styles.featuredBody}>
                     <Text style={styles.featuredTitle}>Gym Exercises Vault</Text>
 
                     <View style={styles.levelRow}>
-                      <Text style={styles.featuredLevelText}>Male (592) & Female (305)</Text>
-                      <Ionicons name="flash" size={14} color={Colors.primary} />
-                      <Ionicons name="flash" size={14} color={Colors.primary} />
-                      <Ionicons name="flash" size={14} color={Colors.primary} />
+                      <View style={styles.levelTag}>
+                        <Text style={styles.featuredLevelText}>Male & Female</Text>
+                      </View>
+                      <View style={styles.boltsWrap}>
+                        <Ionicons name="flash" size={14} color={colors.primary} />
+                        <Ionicons name="flash" size={14} color={colors.primary} />
+                        <Ionicons name="flash" size={14} color={colors.primary} />
+                      </View>
                       <Text style={styles.timeTagText}>• 8 Body Parts</Text>
                     </View>
 
-                    <Text style={styles.featuredDesc}>
-                      Explore full gym movement catalog: Barbell, Dumbbell, Cable, and Machines with HD animated preview, rep counts, and voice coaching.
+                    <Text style={styles.featuredDesc} numberOfLines={2}>
+                      Explore full gym movement catalog: Barbell, Dumbbell, Cable, and Machines with HD animated preview.
                     </Text>
 
                     <TouchableOpacity
-                      style={styles.startDay1Btn}
+                      style={[styles.startDay1Btn, { backgroundColor: colors.primary }]}
                       activeOpacity={0.9}
                       onPress={() => router.push('/exercises/gym')}
                     >
@@ -911,51 +919,53 @@ export default function SelectTrainingPlanScreen() {
           <>
             {currentHomeGroups.map((group) => (
               <View key={group.id} style={styles.groupContainer}>
-                {/* Section Header */}
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleRow}>
-                    <View style={styles.sectionIconBadge}>
-                      <Ionicons name={group.icon as any} size={16} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.sectionTitle}>{group.name}</Text>
-                  </View>
-                  <Text style={styles.sectionBadge}>{group.badge}</Text>
-                </View>
-
-                {/* FEATURED HOME CARD */}
-                <View style={styles.featuredCard}>
+                {/* FEATURED HOME CARD — no separate section header */}
+                <View style={[styles.featuredCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Image
                     source={{ uri: group.featured.image }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                   />
-                  <View style={styles.featuredOverlay} />
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.92)']}
+                    style={StyleSheet.absoluteFill}
+                  />
 
-                  <View style={styles.usersBadge}>
-                    <Text style={styles.usersBadgeNumber}>{group.featured.users}</Text>
-                    <Text style={styles.usersBadgeLabel}>Active Users</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.categoryBadge}>
+                      <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
+                      <Text style={styles.categoryBadgeText}>{group.badge}</Text>
+                    </View>
+                    <View style={styles.usersPill}>
+                      <Ionicons name="people" size={12} color={colors.primary} />
+                      <Text style={styles.usersPillText}>{group.featured.users}</Text>
+                    </View>
                   </View>
 
                   <View style={styles.featuredBody}>
                     <Text style={styles.featuredTitle}>{group.featured.title}</Text>
 
                     <View style={styles.levelRow}>
-                      <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
-                      {Array.from({ length: 3 }).map((_, idx) => (
-                        <Ionicons
-                          key={idx}
-                          name="flash"
-                          size={14}
-                          color={idx < group.featured.bolts ? Colors.primary : 'rgba(255,255,255,0.3)'}
-                        />
-                      ))}
+                      <View style={styles.levelTag}>
+                        <Text style={styles.featuredLevelText}>{group.featured.level}</Text>
+                      </View>
+                      <View style={styles.boltsWrap}>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <Ionicons
+                            key={idx}
+                            name="flash"
+                            size={14}
+                            color={idx < group.featured.bolts ? colors.primary : 'rgba(255,255,255,0.3)'}
+                          />
+                        ))}
+                      </View>
                       <Text style={styles.timeTagText}>• {group.featured.time}</Text>
                     </View>
 
-                    <Text style={styles.featuredDesc}>{group.featured.description}</Text>
+                    <Text style={styles.featuredDesc} numberOfLines={2}>{group.featured.description}</Text>
 
                     <TouchableOpacity
-                      style={styles.startDay1Btn}
+                      style={[styles.startDay1Btn, { backgroundColor: colors.primary }]}
                       activeOpacity={0.9}
                       onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
                     >
@@ -968,31 +978,31 @@ export default function SelectTrainingPlanScreen() {
                 {group.secondary.map((item, sIndex) => (
                   <TouchableOpacity
                     key={sIndex}
-                    style={styles.challengeItemCard}
+                    style={[styles.challengeItemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     activeOpacity={0.85}
                     onPress={() => handleStartPlan(item.goalId, item.level, false)}
                   >
                     <View style={styles.challengeCardContent}>
-                      <View style={styles.challengeIconBox}>
-                        <Ionicons name={item.icon as any} size={22} color={Colors.primary} />
+                      <View style={[styles.challengeIconBox, { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}33` }]}>
+                        <Ionicons name={item.icon as any} size={22} color={colors.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.challengeTitle}>{item.title}</Text>
+                        <Text style={[styles.challengeTitle, { color: colors.textPrimary }]}>{item.title}</Text>
                         <View style={styles.levelRowSmall}>
-                          <Text style={styles.challengeLevelText}>{item.level}</Text>
+                          <Text style={[styles.challengeLevelText, { color: colors.textMuted }]}>{item.level}</Text>
                           {Array.from({ length: 3 }).map((_, idx) => (
                             <Ionicons
                               key={idx}
                               name="flash"
                               size={12}
-                              color={idx < item.bolts ? Colors.primary : 'rgba(255,255,255,0.25)'}
+                              color={idx < item.bolts ? colors.primary : 'rgba(255,255,255,0.25)'}
                             />
                           ))}
-                          <Text style={styles.challengeTimeText}>• {item.time}</Text>
+                          <Text style={[styles.challengeTimeText, { color: colors.textMuted }]}>• {item.time}</Text>
                         </View>
                       </View>
-                      <View style={styles.circleChevron}>
-                        <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                      <View style={[styles.circleChevron, { backgroundColor: colors.surfaceLight }]}>
+                        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -1003,17 +1013,7 @@ export default function SelectTrainingPlanScreen() {
             {/* HOME VAULT CARD */}
             {showHomeVaultCard && (
               <View style={[styles.groupContainer, { marginTop: 10 }]}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleRow}>
-                    <View style={styles.sectionIconBadge}>
-                      <Ionicons name="home" size={16} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.sectionTitle}>Home Workouts Vault</Text>
-                  </View>
-                  <Text style={styles.sectionBadge}>ZERO EQUIPMENT</Text>
-                </View>
-
-                <View style={styles.featuredCard}>
+                <View style={[styles.featuredCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Image
                     source={{
                       uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
@@ -1021,29 +1021,42 @@ export default function SelectTrainingPlanScreen() {
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                   />
-                  <View style={styles.featuredOverlay} />
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.92)']}
+                    style={StyleSheet.absoluteFill}
+                  />
 
-                  <View style={styles.usersBadge}>
-                    <Text style={styles.usersBadgeNumber}>NO EQUIPMENT</Text>
-                    <Text style={styles.usersBadgeLabel}>800+ Workouts</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.categoryBadge}>
+                      <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
+                      <Text style={styles.categoryBadgeText}>HOME VAULT</Text>
+                    </View>
+                    <View style={styles.usersPill}>
+                      <Ionicons name="home" size={12} color={colors.primary} />
+                      <Text style={styles.usersPillText}>800+</Text>
+                    </View>
                   </View>
 
                   <View style={styles.featuredBody}>
                     <Text style={styles.featuredTitle}>Home Workouts Vault</Text>
 
                     <View style={styles.levelRow}>
-                      <Text style={styles.featuredLevelText}>Zero Equipment</Text>
-                      <Ionicons name="flash" size={14} color={Colors.primary} />
-                      <Ionicons name="flash" size={14} color={Colors.primary} />
-                      <Text style={styles.timeTagText}>• 7 Categories • 16+ Routines</Text>
+                      <View style={styles.levelTag}>
+                        <Text style={styles.featuredLevelText}>Zero Equipment</Text>
+                      </View>
+                      <View style={styles.boltsWrap}>
+                        <Ionicons name="flash" size={14} color={colors.primary} />
+                        <Ionicons name="flash" size={14} color={colors.primary} />
+                      </View>
+                      <Text style={styles.timeTagText}>• 7 Categories</Text>
                     </View>
 
-                    <Text style={styles.featuredDesc}>
+                    <Text style={styles.featuredDesc} numberOfLines={2}>
                       Equipment-free routines for office breaks, yoga & flexibility, pilates core, mobility stretches, face yoga, and women routines.
                     </Text>
 
                     <TouchableOpacity
-                      style={styles.startDay1Btn}
+                      style={[styles.startDay1Btn, { backgroundColor: colors.primary }]}
                       activeOpacity={0.9}
                       onPress={() => router.push('/exercises/home')}
                     >
@@ -1063,7 +1076,6 @@ export default function SelectTrainingPlanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -1072,31 +1084,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitleWrap: {
-    flex: 1,
-    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.3,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    flex: 1,
+    textAlign: 'center',
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 2,
+  headerBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  headerBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
 
   // MASTER TAB SWITCH (Gym vs Home)
@@ -1104,15 +1112,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
-    backgroundColor: Colors.background,
   },
   masterTabContainer: {
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
     padding: 4,
-    borderRadius: 14,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   masterTabBtn: {
     flex: 1,
@@ -1121,16 +1126,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingVertical: 11,
-    borderRadius: 10,
+    borderRadius: 24,
   },
   masterTabBtnActive: {
     backgroundColor: Colors.primary,
   },
-  masterTabEmoji: {
-    fontSize: 16,
-  },
   masterTabText: {
-    color: Colors.textMuted,
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1142,8 +1143,6 @@ const styles = StyleSheet.create({
   // FILTER BAR
   filterBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
   },
   filterScroll: {
     paddingHorizontal: 16,
@@ -1151,19 +1150,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    backgroundColor: Colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   filterChipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   filterChipText: {
-    color: Colors.textMuted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1183,80 +1179,65 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // SECTION HEADERS
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sectionIconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  sectionBadge: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.primary,
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    letterSpacing: 0.5,
-  },
-
-  // FEATURED CARD: Exactly as in User's Screenshot
+  // FEATURED CARD — cinematic gradient style
   featuredCard: {
     height: 330,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     position: 'relative',
     justifyContent: 'flex-end',
     padding: 20,
-    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  featuredOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 10, 10, 0.74)',
-  },
-  usersBadge: {
+
+  // TOP ROW: category badge (left) + users pill (right) INSIDE the card
+  cardTopRow: {
     position: 'absolute',
     top: 16,
+    left: 16,
     right: 16,
-    alignItems: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  usersBadgeNumber: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: '900',
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  usersBadgeLabel: {
-    color: Colors.textMuted,
+  categoryBadgeText: {
+    color: '#FFF',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
+  usersPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  usersPillText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
   featuredBody: {
     zIndex: 1,
   },
@@ -1265,24 +1246,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.textPrimary,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   levelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     marginBottom: 8,
   },
+  levelTag: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
   featuredLevelText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginRight: 4,
+  },
+  boltsWrap: {
+    flexDirection: 'row',
+    gap: 2,
   },
   timeTagText: {
     fontSize: 12,
     color: Colors.textMuted,
-    marginLeft: 4,
     fontWeight: '600',
   },
   featuredDesc: {
@@ -1292,9 +1281,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   startDay1Btn: {
-    backgroundColor: Colors.primary,
-    height: 48,
-    borderRadius: 14,
+    height: 46,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1306,11 +1294,9 @@ const styles = StyleSheet.create({
 
   // SECONDARY LIST CARDS
   challengeItemCard: {
-    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   challengeCardContent: {
     flexDirection: 'row',
@@ -1321,16 +1307,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 230, 118, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0, 230, 118, 0.2)',
   },
   challengeTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: Colors.textPrimary,
     marginBottom: 3,
   },
   levelRowSmall: {
@@ -1341,19 +1324,16 @@ const styles = StyleSheet.create({
   challengeLevelText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textMuted,
     marginRight: 2,
   },
   challengeTimeText: {
     fontSize: 12,
-    color: Colors.textMuted,
     marginLeft: 4,
   },
   circleChevron: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.surfaceLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
