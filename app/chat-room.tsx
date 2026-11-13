@@ -23,6 +23,9 @@ if (Platform.OS !== 'web') {
 }
 
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import ChatAttachmentSheet from '../components/chat/ChatAttachmentSheet';
+import ChatCameraModal from '../components/chat/ChatCameraModal';
 
 const BG = Colors.background;
 
@@ -61,6 +64,7 @@ export default function ChatRoom() {
   const [isMuted, setIsMuted] = useState(false);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
   const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false;
 
@@ -572,6 +576,92 @@ export default function ChatRoom() {
 
   const pickImage = () => pickMedia('image');
   const pickVideo = () => pickMedia('video');
+
+  const sendTextMessage = async (msgText: string) => {
+    if (!msgText || !conversationId) return;
+    try {
+      const { data: insertedMsg, error } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_uid: user.uid,
+        text: msgText,
+        is_read: false,
+        type: 'text',
+      }).select().single();
+      if (!error && insertedMsg) {
+        setMessages((prev: any[]) => [...prev, insertedMsg]);
+        await supabase.from('conversations')
+          .update({ last_message: msgText.split('\n')[0], last_message_at: new Date().toISOString() })
+          .eq('id', conversationId);
+        scrollToNewest(true);
+        setShowScrollDownBtn(false);
+      }
+    } catch (err) {
+      console.warn('sendTextMessage error:', err);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Needed', 'Location permission is required to share your location.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({});
+      const mapUrl = `https://maps.google.com/?q=${loc.coords.latitude},${loc.coords.longitude}`;
+      await sendTextMessage(`📍 Shared Location\n${mapUrl}`);
+    } catch (err: any) {
+      console.warn('Location error:', err);
+      Alert.alert('Location Error', 'Could not get current location.');
+    }
+  };
+
+  const handleShareContact = async () => {
+    const contactText = `👤 Contact Card\nName: ${user.name || 'FitPulse Athlete'}\nEmail: ${user.email || 'athlete@fitpulse.app'}`;
+    await sendTextMessage(contactText);
+  };
+
+  const handlePickDocument = () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.doc,.docx,.txt';
+      input.onchange = (e: any) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const docText = `📄 Document: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+          sendTextMessage(docText);
+        }
+      };
+      input.click();
+    } else {
+      pickImage();
+    }
+  };
+
+  const handleCreatePoll = async () => {
+    const pollText = `📊 Fitness Question\n"Which workout today?"\n1️⃣ Chest & Triceps\n2️⃣ Abs & Core Burn\n3️⃣ Leg Day HIIT`;
+    await sendTextMessage(pollText);
+  };
+
+  const handleShareEvent = async () => {
+    const eventText = `📅 Fitness Event: 30-Day Shred Challenge\nStarts Tomorrow at 6:00 AM\nJoin in Training Hub!`;
+    await sendTextMessage(eventText);
+  };
+
+  const handleShareWorkout = async () => {
+    const workoutText = `🏋️ Shared Workout: Only 4 Moves for Abs\nTarget: Core & Transverse Abs • 12 mins • Beginner\nTap Discover to start this routine!`;
+    await sendTextMessage(workoutText);
+  };
+
+  const handleSendCapturedMedia = async (uri: string, type: 'image' | 'video') => {
+    const mimeType = type === 'image' ? 'image/jpeg' : 'video/mp4';
+    await sendMedia(uri, type, mimeType);
+  };
+
+  const handleSelectRecentMedia = async (uri: string) => {
+    await sendMedia(uri, 'image', 'image/jpeg');
+  };
   // ────────────────────────────────────────────────────────────
 
   const configureAudioForPlayback = async () => {
@@ -1115,6 +1205,9 @@ export default function ChatRoom() {
                 <TouchableOpacity style={styles.attachBtnInside} onPress={() => setShowAttachMenu(true)}>
                   <Ionicons name="attach-outline" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.cameraBtnInside} onPress={() => setShowCameraModal(true)}>
+                  <Ionicons name="camera-outline" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
               </View>
 
               {text.trim() ? (
@@ -1204,28 +1297,30 @@ export default function ChatRoom() {
         onCancel={() => setShowDeleteModal(false)}
       />
 
-      {/* Attach Menu Modal */}
-      <Modal visible={showAttachMenu} transparent animationType="fade" onRequestClose={() => setShowAttachMenu(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAttachMenu(false)}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
-            <View style={styles.modalHandle} />
-            <Text style={[styles.modalOptionText, { fontSize: 14, color: '#A0A0A0', paddingBottom: 8 }]}>Attach</Text>
-            <TouchableOpacity style={styles.modalOption} onPress={pickImage}>
-              <View style={[styles.attachIconWrap, { backgroundColor: colors.primary }]}>
-                <Ionicons name="image-outline" size={22} color="#000" />
-              </View>
-              <Text style={styles.modalOptionText}>Photo</Text>
-            </TouchableOpacity>
-            <View style={styles.modalDivider} />
-            <TouchableOpacity style={styles.modalOption} onPress={pickVideo}>
-              <View style={[styles.attachIconWrap, { backgroundColor: '#7C3AED' }]}>
-                <Ionicons name="videocam-outline" size={22} color="#FFF" />
-              </View>
-              <Text style={styles.modalOptionText}>Video</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* WhatsApp-Style Rich Attachment Bottom Sheet (Image 1) */}
+      <ChatAttachmentSheet
+        visible={showAttachMenu}
+        onClose={() => setShowAttachMenu(false)}
+        onPickGallery={pickImage}
+        onOpenCamera={() => {
+          setShowAttachMenu(false);
+          setShowCameraModal(true);
+        }}
+        onShareLocation={handleShareLocation}
+        onShareContact={handleShareContact}
+        onPickDocument={handlePickDocument}
+        onCreatePoll={handleCreatePoll}
+        onShareEvent={handleShareEvent}
+        onShareWorkout={handleShareWorkout}
+        onSelectRecentMedia={handleSelectRecentMedia}
+      />
+
+      {/* Full-Screen In-App Camera Screen (Image 2) */}
+      <ChatCameraModal
+        visible={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onSendMedia={handleSendCapturedMedia}
+      />
 
       {/* Fullscreen Image Viewer */}
       <Modal visible={!!fullscreenImg} transparent={false} animationType="fade" onRequestClose={() => setFullscreenImg(null)}>
@@ -1342,7 +1437,10 @@ const styles = StyleSheet.create({
     color: '#FFF', fontSize: 16, maxHeight: 120,
   },
   attachBtnInside: {
-    padding: 10, paddingRight: 14,
+    padding: 10, paddingRight: 4,
+  },
+  cameraBtnInside: {
+    padding: 10, paddingRight: 12,
   },
   blueActionBtn: { 
     width: 44, height: 44, borderRadius: 22, 
