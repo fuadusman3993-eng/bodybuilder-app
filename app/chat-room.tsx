@@ -26,6 +26,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import ChatAttachmentSheet from '../components/chat/ChatAttachmentSheet';
 import ChatCameraModal from '../components/chat/ChatCameraModal';
+import ChatEmojiPicker from '../components/chat/ChatEmojiPicker';
 
 const BG = Colors.background;
 
@@ -65,6 +66,7 @@ export default function ChatRoom() {
   const [isDeletingChat, setIsDeletingChat] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
   const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false;
 
@@ -1189,8 +1191,22 @@ export default function ChatRoom() {
             </View>
           ) : (
             <View style={[styles.inputRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-              <TouchableOpacity style={styles.emojiBtn}>
-                <Ionicons name="happy-outline" size={26} color={colors.textMuted} />
+              <TouchableOpacity
+                style={styles.emojiBtn}
+                onPress={() => {
+                  if (showEmojiPicker) {
+                    setShowEmojiPicker(false);
+                  } else {
+                    setShowAttachMenu(false);
+                    setShowEmojiPicker(true);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={showEmojiPicker ? 'keypad-outline' : 'happy-outline'}
+                  size={26}
+                  color={showEmojiPicker ? colors.primary : colors.textMuted}
+                />
               </TouchableOpacity>
               
               <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
@@ -1201,11 +1217,12 @@ export default function ChatRoom() {
                   placeholder="Message"
                   placeholderTextColor={colors.textMuted}
                   multiline
+                  onFocus={() => setShowEmojiPicker(false)}
                 />
-                <TouchableOpacity style={styles.attachBtnInside} onPress={() => setShowAttachMenu(true)}>
+                <TouchableOpacity style={styles.attachBtnInside} onPress={() => { setShowEmojiPicker(false); setShowAttachMenu(true); }}>
                   <Ionicons name="attach-outline" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cameraBtnInside} onPress={() => setShowCameraModal(true)}>
+                <TouchableOpacity style={styles.cameraBtnInside} onPress={() => { setShowEmojiPicker(false); setShowCameraModal(true); }}>
                   <Ionicons name="camera-outline" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -1221,6 +1238,21 @@ export default function ChatRoom() {
               )}
             </View>
           )}
+
+          {/* WhatsApp-style Emoji / GIF / Sticker keyboard */}
+          <ChatEmojiPicker
+            visible={showEmojiPicker}
+            onSelectEmoji={(emoji) => setText((prev) => prev + emoji)}
+            onBackspace={() => setText((prev) => prev.slice(0, -1))}
+            onSelectGif={(url) => {
+              setShowEmojiPicker(false);
+              sendMedia(url, 'image', 'image/gif');
+            }}
+            onSelectSticker={(url) => {
+              setShowEmojiPicker(false);
+              sendMedia(url, 'image', 'image/jpeg');
+            }}
+          />
         </KeyboardAvoidingView>
       )}
 
