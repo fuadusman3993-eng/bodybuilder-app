@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -68,6 +69,7 @@ export default function ChatCameraModal({
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [mode, setMode] = useState<CameraMode>('photo');
+  const modeTranslateX = useRef(new Animated.Value(0)).current;
 
   // Capture & Preview
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
@@ -160,10 +162,20 @@ export default function ChatCameraModal({
     }
   }, [conversationId, userUid]);
 
-  // Handle mode switch: if switching to video/note, include audio stream
+  // Handle mode switch: smoothly slide the selected mode to center & update camera stream
   const handleModeChange = (newMode: CameraMode) => {
     if (isRecording) return; // Prevent switching while recording
     setMode(newMode);
+
+    // Slot 0 (Video) offset +110, Slot 1 (Photo) offset 0, Slot 2 (Video note) offset -110
+    const targetX = newMode === 'video' ? 110 : newMode === 'note' ? -110 : 0;
+    Animated.spring(modeTranslateX, {
+      toValue: targetX,
+      friction: 8,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+
     if (Platform.OS === 'web') {
       const needsAudio = newMode === 'video' || newMode === 'note';
       startWebCamera(facing, needsAudio);
@@ -625,8 +637,8 @@ export default function ChatCameraModal({
 
             {/* Bottom Controls Area (Recent Strip + Shutter + Modes) */}
             <View style={styles.bottomControls}>
-              {/* 1. Real Recent Photos Preview Strip (Horizontal swipe next, next, next) */}
-              {!isRecording && (
+              {/* 1. Real Recent Photos Preview Strip (ONLY in Photo mode to keep Video modes free and clean) */}
+              {mode === 'photo' && !isRecording && (
                 <View style={styles.recentStripWrap}>
                   <ScrollView
                     horizontal
@@ -662,18 +674,22 @@ export default function ChatCameraModal({
 
               {/* 2. Shutter Control Row: [Gallery] [ Shutter ○ ] [ Flip 🔄 ] */}
               <View style={styles.shutterRow}>
-                {/* Gallery Picker Shortcut */}
-                <TouchableOpacity
-                  style={styles.sideBtn}
-                  onPress={handleOpenGallery}
-                  disabled={isRecording}
-                >
-                  {recentPhotos[0] ? (
-                    <Image source={{ uri: recentPhotos[0] }} style={styles.galleryShortcutThumb} />
-                  ) : (
-                    <Ionicons name="images" size={28} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
+                {/* Gallery Picker Shortcut (Visible only in Photo mode to keep space free) */}
+                {mode === 'photo' ? (
+                  <TouchableOpacity
+                    style={styles.sideBtn}
+                    onPress={handleOpenGallery}
+                    disabled={isRecording}
+                  >
+                    {recentPhotos[0] ? (
+                      <Image source={{ uri: recentPhotos[0] }} style={styles.galleryShortcutThumb} />
+                    ) : (
+                      <Ionicons name="images" size={28} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.sideBtnPlaceholder} />
+                )}
 
                 {/* Main Shutter Button */}
                 <TouchableOpacity
@@ -707,46 +723,53 @@ export default function ChatCameraModal({
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Bottom Mode Selector: EXACTLY CENTERED [ Video ] [ Photo ] [ Video note ] */}
-              <View style={styles.modeRow}>
-                {/* Slot 1: Video */}
-                <TouchableOpacity
-                  style={styles.modeSlot}
-                  onPress={() => handleModeChange('video')}
-                  disabled={isRecording}
+              {/* 3. Bottom Mode Selector: DYNAMICALLY SLIDING CAROUSEL */}
+              <View style={styles.modeContainer}>
+                <Animated.View
+                  style={[
+                    styles.modeTrack,
+                    { transform: [{ translateX: modeTranslateX }] },
+                  ]}
                 >
-                  <View style={[styles.modePill, mode === 'video' && styles.modePillActive]}>
-                    <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>
-                      Video
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  {/* Slot 1: Video */}
+                  <TouchableOpacity
+                    style={styles.modeSlot}
+                    onPress={() => handleModeChange('video')}
+                    disabled={isRecording}
+                  >
+                    <View style={[styles.modePill, mode === 'video' && styles.modePillActive]}>
+                      <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>
+                        Video
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
 
-                {/* Slot 2: Photo (GUARANTEED dead center below shutter) */}
-                <TouchableOpacity
-                  style={styles.modeSlot}
-                  onPress={() => handleModeChange('photo')}
-                  disabled={isRecording}
-                >
-                  <View style={[styles.modePill, mode === 'photo' && styles.modePillActive]}>
-                    <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>
-                      Photo
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  {/* Slot 2: Photo */}
+                  <TouchableOpacity
+                    style={styles.modeSlot}
+                    onPress={() => handleModeChange('photo')}
+                    disabled={isRecording}
+                  >
+                    <View style={[styles.modePill, mode === 'photo' && styles.modePillActive]}>
+                      <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>
+                        Photo
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
 
-                {/* Slot 3: Video note */}
-                <TouchableOpacity
-                  style={styles.modeSlot}
-                  onPress={() => handleModeChange('note')}
-                  disabled={isRecording}
-                >
-                  <View style={[styles.modePill, mode === 'note' && styles.modePillActive]}>
-                    <Text style={[styles.modeText, mode === 'note' && styles.modeTextActive]}>
-                      Video note
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  {/* Slot 3: Video note */}
+                  <TouchableOpacity
+                    style={styles.modeSlot}
+                    onPress={() => handleModeChange('note')}
+                    disabled={isRecording}
+                  >
+                    <View style={[styles.modePill, mode === 'note' && styles.modePillActive]}>
+                      <Text style={[styles.modeText, mode === 'note' && styles.modeTextActive]}>
+                        Video note
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
             </View>
           </View>
@@ -966,15 +989,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
 
-  // ── Mode Row (Mathematically 100% Centered with Shutter) ──
-  modeRow: {
+  sideBtnPlaceholder: {
+    width: 52,
+    height: 52,
+  },
+
+  // ── Mode Carousel Slider (Dynamically centers active mode under shutter) ──
+  modeContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    height: 44,
+  },
+  modeTrack: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
   },
   modeSlot: {
-    width: 106,
+    width: 110,
     alignItems: 'center',
     justifyContent: 'center',
   },
