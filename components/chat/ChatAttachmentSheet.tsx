@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
@@ -16,7 +17,9 @@ import {
   pickRealPhotosFromDevice,
 } from '../../lib/recentPhotosService';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const TILE_GAP = 2;
+const TILE_SIZE = Math.floor((width - TILE_GAP * 2) / 3);
 
 interface ChatAttachmentSheetProps {
   visible: boolean;
@@ -34,15 +37,6 @@ interface ChatAttachmentSheetProps {
   onShareEvent?: () => void;
 }
 
-interface ActionItem {
-  id: string;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  badge?: string;
-  onPress: () => void;
-}
-
 export default function ChatAttachmentSheet({
   visible,
   onClose,
@@ -58,8 +52,9 @@ export default function ChatAttachmentSheet({
 }: ChatAttachmentSheetProps) {
   const { colors } = useTheme();
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'gallery' | 'file' | 'location' | 'workout'>('gallery');
 
-  // Fetch real recent photos (zero dummy stock data)
+  // Load real recent photos
   useEffect(() => {
     if (!visible) return;
 
@@ -94,82 +89,13 @@ export default function ChatAttachmentSheet({
     }
   };
 
-  // 1. Primary Row Actions (The 4 core features: Gallery, Camera, Location, Workout)
-  const primaryActions: ActionItem[] = [
-    {
-      id: 'gallery',
-      title: 'Gallery',
-      icon: 'images',
-      color: '#3B82F6',
-      onPress: () => {
-        onClose();
-        onPickGallery();
-      },
-    },
-    {
-      id: 'camera',
-      title: 'Camera',
-      icon: 'camera',
-      color: '#EC4899',
-      onPress: () => {
-        onClose();
-        onOpenCamera();
-      },
-    },
-    {
-      id: 'location',
-      title: 'Location',
-      icon: 'location',
-      color: '#10B981',
-      onPress: () => {
-        onClose();
-        onShareLocation();
-      },
-    },
-    {
-      id: 'workout',
-      title: 'Workout',
-      icon: 'barbell',
-      color: '#00E676',
-      onPress: () => {
-        onClose();
-        onShareWorkout();
-      },
-    },
-  ];
-
-  // 2. Secondary Row Actions (Tucked neatly underneath: Document, Event)
-  const secondaryActions: ActionItem[] = [
-    {
-      id: 'document',
-      title: 'Document',
-      icon: 'document-text',
-      color: '#8B5CF6',
-      onPress: () => {
-        onClose();
-        if (onPickDocument) onPickDocument();
-      },
-    },
-    {
-      id: 'event',
-      title: 'Event',
-      icon: 'calendar',
-      color: '#F43F5E',
-      badge: 'New',
-      onPress: () => {
-        onClose();
-        if (onShareEvent) onShareEvent();
-      },
-    },
-  ];
-
   if (!visible) return null;
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
       <TouchableOpacity
@@ -178,101 +104,133 @@ export default function ChatAttachmentSheet({
         onPress={onClose}
       >
         <TouchableOpacity
-          style={[styles.sheet, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
+          style={[styles.sheet, { backgroundColor: '#17212B' }]}
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
           {/* Top Handle Pill */}
           <View style={styles.handle} />
 
-          {/* ── 1. Primary 4 FitPulse Actions (Gallery, Camera, Location, Workout) ── */}
-          <View style={styles.primaryRow}>
-            {primaryActions.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.actionBtn}
-                activeOpacity={0.8}
-                onPress={item.onPress}
-              >
-                <View style={[styles.circleIconWrap, { backgroundColor: item.color }]}>
-                  <Ionicons name={item.icon} size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.actionTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {/* ── 1. Telegram 3-Column Photo Grid ── */}
+          <ScrollView
+            style={styles.gridScroll}
+            contentContainerStyle={styles.gridContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Tile 0: Live Camera Shortcut Tile (Top-Left) */}
+            <TouchableOpacity
+              style={styles.cameraTile}
+              activeOpacity={0.8}
+              onPress={() => {
+                onClose();
+                onOpenCamera();
+              }}
+            >
+              <View style={styles.cameraIconCircle}>
+                <Ionicons name="camera" size={30} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
 
-          {/* ── 2. Secondary Actions (Tucked underneath: Document & Event) ── */}
-          <View style={styles.secondaryRow}>
-            {secondaryActions.map((item) => (
+            {/* Tiles 1..N: Real Photos from Device / Gallery with Selection Circles */}
+            {recentPhotos.map((uri, idx) => (
               <TouchableOpacity
-                key={item.id}
-                style={styles.secondaryActionBtn}
-                activeOpacity={0.8}
-                onPress={item.onPress}
-              >
-                <View style={[styles.secondaryCircleWrap, { backgroundColor: item.color }]}>
-                  <Ionicons name={item.icon} size={20} color="#FFFFFF" />
-                  {item.badge && (
-                    <View style={styles.badgeWrap}>
-                      <Text style={styles.badgeText}>{item.badge}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.secondaryActionTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ── 3. Real Recent Gallery Photos (Clear, Visible 76x76 Size) ── */}
-          <View style={styles.recentSection}>
-            <View style={styles.recentHeaderRow}>
-              <Text style={styles.recentHeaderText}>Recent Photos</Text>
-              <TouchableOpacity
+                key={idx}
+                style={styles.photoTile}
+                activeOpacity={0.85}
                 onPress={() => {
                   onClose();
-                  onPickGallery();
+                  onSelectRecentMedia(uri);
                 }}
               >
-                <Text style={[styles.seeAllText, { color: colors.primary }]}>All Media →</Text>
-              </TouchableOpacity>
-            </View>
+                <Image source={{ uri }} style={styles.photoImg} resizeMode="cover" />
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.recentScroll}
+                {/* Telegram-style Circular Selection Checkmark [○] */}
+                <View style={styles.selectCircle}>
+                  <View style={styles.selectInnerDot} />
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* Extra Tile: Pick More from Device */}
+            <TouchableOpacity
+              style={styles.pickMoreTile}
+              activeOpacity={0.8}
+              onPress={handlePickFromDevice}
             >
-              {/* + Pick directly from device */}
+              <Ionicons name="add" size={34} color="#5288C1" />
+              <Text style={styles.pickMoreText}>More Photos</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* ── 2. Floating Bottom Action Navigation Bar (Exact Telegram Style) ── */}
+          <View style={styles.bottomBarWrap}>
+            <View style={styles.bottomBar}>
+              {/* Tab 1: Gallery (Active Pill) */}
               <TouchableOpacity
-                style={styles.pickFromDeviceCard}
+                style={[
+                  styles.tabBtn,
+                  activeTab === 'gallery' && styles.tabBtnActive,
+                ]}
                 activeOpacity={0.8}
-                onPress={handlePickFromDevice}
+                onPress={() => {
+                  setActiveTab('gallery');
+                  handlePickFromDevice();
+                }}
               >
-                <Ionicons name="images-outline" size={26} color={colors.primary} />
-                <Text style={[styles.pickFromDeviceText, { color: colors.textPrimary }]}>
-                  Pick From{'\n'}Device
+                <Ionicons
+                  name="images"
+                  size={20}
+                  color={activeTab === 'gallery' ? '#5288C1' : '#8E9BA8'}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    activeTab === 'gallery' && styles.tabLabelActive,
+                  ]}
+                >
+                  Gallery
                 </Text>
               </TouchableOpacity>
 
-              {recentPhotos.map((uri, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.recentThumbWrap}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    onClose();
-                    onSelectRecentMedia(uri);
-                  }}
-                >
-                  <Image source={{ uri }} style={styles.recentThumbImg} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              {/* Tab 2: File */}
+              <TouchableOpacity
+                style={styles.tabBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  onClose();
+                  if (onPickDocument) onPickDocument();
+                }}
+              >
+                <Ionicons name="document-text-outline" size={20} color="#8E9BA8" />
+                <Text style={styles.tabLabel}>File</Text>
+              </TouchableOpacity>
+
+              {/* Tab 3: Location */}
+              <TouchableOpacity
+                style={styles.tabBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  onClose();
+                  onShareLocation();
+                }}
+              >
+                <Ionicons name="location-outline" size={20} color="#8E9BA8" />
+                <Text style={styles.tabLabel}>Location</Text>
+              </TouchableOpacity>
+
+              {/* Tab 4: Workout */}
+              <TouchableOpacity
+                style={styles.tabBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  onClose();
+                  onShareWorkout();
+                }}
+              >
+                <Ionicons name="barbell-outline" size={20} color="#00E676" />
+                <Text style={[styles.tabLabel, { color: '#00E676' }]}>Workout</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -283,162 +241,145 @@ export default function ChatAttachmentSheet({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 10,
-    paddingBottom: 22,
-    borderTopWidth: 1,
+    height: height * 0.62,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#17212B',
   },
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginVertical: 8,
   },
 
-  // Primary Row (4 Core Actions)
-  primaryRow: {
+  // 3-Column Photo Grid
+  gridScroll: {
+    flex: 1,
+  },
+  gridContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  actionBtn: {
-    width: (width - 64) / 4,
-    alignItems: 'center',
-    gap: 7,
-  },
-  circleIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  actionTitle: {
-    color: '#E5E7EB',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+    flexWrap: 'wrap',
+    gap: TILE_GAP,
+    paddingBottom: 90, // Space so floating bottom bar doesn't obscure photos
   },
 
-  // Secondary Row (Tucked Underneath: Document & Event)
-  secondaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 40,
-    paddingHorizontal: 20,
-    marginBottom: 14,
-  },
-  secondaryActionBtn: {
-    alignItems: 'center',
-    gap: 5,
-    width: 64,
-  },
-  secondaryCircleWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  // Tile 0: Camera Shortcut
+  cameraTile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    backgroundColor: '#0E1621',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  cameraIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Tiles 1..N: Real Photo Tiles
+  photoTile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    backgroundColor: '#242F3D',
   },
-  secondaryActionTitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  badgeWrap: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  badgeText: {
-    color: '#000',
-    fontSize: 9,
-    fontWeight: '800',
+  photoImg: {
+    width: '100%',
+    height: '100%',
   },
 
-  // Recent Photos Carousel (Clear 76x76 size)
-  recentSection: {
-    marginTop: 4,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-  },
-  recentHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  recentHeaderText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  seeAllText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  recentScroll: {
-    paddingHorizontal: 16,
-    gap: 10,
-    alignItems: 'center',
-  },
-  pickFromDeviceCard: {
-    width: 76,
-    height: 76,
+  // Telegram Selection Checkmark Circle [○]
+  selectCircle: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectInnerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
+  },
+
+  // Pick More Tile
+  pickMoreTile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    backgroundColor: '#1E2B3A',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
-    padding: 4,
   },
-  pickFromDeviceText: {
-    fontSize: 10.5,
+  pickMoreText: {
+    color: '#5288C1',
+    fontSize: 11,
     fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 13,
   },
-  recentThumbWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#1E293B',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+
+  // Floating Bottom Navigation Bar (Docked at bottom of sheet)
+  bottomBarWrap: {
+    position: 'absolute',
+    bottom: 12,
+    left: 14,
+    right: 14,
+    alignItems: 'center',
   },
-  recentThumbImg: {
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
     width: '100%',
-    height: '100%',
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(14, 22, 33, 0.94)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  tabBtnActive: {
+    backgroundColor: 'rgba(82, 136, 193, 0.18)',
+  },
+  tabLabel: {
+    color: '#8E9BA8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tabLabelActive: {
+    color: '#5288C1',
+    fontWeight: '700',
   },
 });

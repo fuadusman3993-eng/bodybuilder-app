@@ -1255,9 +1255,6 @@ export default function ChatRoom() {
                 <TouchableOpacity style={styles.attachBtnInside} onPress={() => { setShowEmojiPicker(false); setShowAttachMenu(true); }}>
                   <Ionicons name="attach-outline" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cameraBtnInside} onPress={() => { setShowEmojiPicker(false); setShowCameraModal(true); }}>
-                  <Ionicons name="camera-outline" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
               </View>
 
               {text.trim() ? (
@@ -1507,10 +1504,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   attachBtnInside: {
-    padding: 10, paddingRight: 4,
-  },
-  cameraBtnInside: {
-    padding: 10, paddingRight: 12,
+    padding: 10, paddingRight: 14,
   },
   blueActionBtn: { 
     width: 44, height: 44, borderRadius: 22, 
