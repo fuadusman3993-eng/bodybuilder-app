@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,15 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
-import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../store/themeStore';
-
-const { width, height } = Dimensions.get('window');
+import {
+  getRealRecentPhotos,
+  saveRealPhoto,
+  pickRealPhotosFromDevice,
+} from '../../lib/recentPhotosService';
 
 type CameraMode = 'video' | 'photo' | 'note';
 
@@ -25,18 +25,30 @@ interface ChatCameraModalProps {
   visible: boolean;
   onClose: () => void;
   onSendMedia: (uri: string, type: 'image' | 'video') => void;
+  conversationId?: string;
+  userUid?: string;
 }
 
 export default function ChatCameraModal({
   visible,
   onClose,
   onSendMedia,
+  conversationId,
+  userUid,
 }: ChatCameraModalProps) {
   const { colors } = useTheme();
 
-  // Camera permissions & state
+  // Native Camera permissions & ref
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+
+  // WebRTC HTML5 Video stream refs & state (for mobile browser / Vercel)
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webStreamRef = useRef<MediaStream | null>(null);
+  const [webCameraActive, setWebCameraActive] = useState(false);
+  const [webCameraError, setWebCameraError] = useState<string | null>(null);
+
+  // Camera Settings
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [mode, setMode] = useState<CameraMode>('photo');
@@ -45,82 +57,174 @@ export default function ChatCameraModal({
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Recent media strip
+  // Real device recent photos (zero dummy stock data)
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
 
-  // Request permissions on visible
-  useEffect(() => {
-    if (!visible) return;
-
-    if (!permission?.granted) {
-      requestPermission();
+  // Stop web camera stream cleanly (hardware LED/camera turns off)
+  const stopWebCamera = useCallback(() => {
+    if (webStreamRef.current) {
+      try {
+        webStreamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (_) {}
+      webStreamRef.current = null;
     }
+    if (webVideoRef.current) {
+      try {
+        webVideoRef.current.srcObject = null;
+      } catch (_) {}
+    }
+    setWebCameraActive(false);
+  }, []);
 
-    let isMounted = true;
-    async function fetchRecentPhotos() {
-      if (Platform.OS === 'web') {
-        setRecentPhotos([
-          'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80',
-          'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&q=80',
-          'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&q=80',
-        ]);
+  // Start real HTML5 camera stream on Web
+  const startWebCamera = useCallback(async (currentFacing: 'back' | 'front') => {
+    if (Platform.OS !== 'web') return;
+    stopWebCamera();
+    setWebCameraError(null);
+
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        setWebCameraError('Camera is not supported on this browser.');
         return;
       }
 
+      let stream: MediaStream;
       try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status === 'granted') {
-          const res = await MediaLibrary.getAssetsAsync({
-            first: 8,
-            mediaType: ['photo'],
-            sortBy: [MediaLibrary.SortBy.creationTime],
-          });
-          if (isMounted && res.assets && res.assets.length > 0) {
-            setRecentPhotos(res.assets.map((a) => a.uri));
-          }
-        }
-      } catch (err) {
-        console.warn('[ChatCameraModal] Recent photos error:', err);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: currentFacing === 'back' ? { ideal: 'environment' } : 'user',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
+      } catch (_) {
+        // Fallback constraint if exact facingMode is not recognized
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
       }
+
+      webStreamRef.current = stream;
+      setWebCameraActive(true);
+
+      if (webVideoRef.current) {
+        webVideoRef.current.srcObject = stream;
+        webVideoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.warn('[ChatCameraModal] Web camera start error:', err);
+      setWebCameraError(
+        err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+          ? 'Camera permission denied. Please allow camera access in your browser.'
+          : 'Unable to start camera. Please verify device camera is available.'
+      );
+    }
+  }, [stopWebCamera]);
+
+  // Load real recent photos
+  const loadRecentPhotos = useCallback(async () => {
+    try {
+      const photos = await getRealRecentPhotos(conversationId, userUid);
+      setRecentPhotos(photos);
+    } catch (err) {
+      console.warn('[ChatCameraModal] loadRecentPhotos error:', err);
+    }
+  }, [conversationId, userUid]);
+
+  // Handle visibility & camera lifecycle
+  useEffect(() => {
+    if (!visible) {
+      if (Platform.OS === 'web') {
+        stopWebCamera();
+      }
+      return;
     }
 
-    fetchRecentPhotos();
+    // Modal is opened
+    loadRecentPhotos();
+
+    if (Platform.OS === 'web') {
+      startWebCamera(facing);
+    } else if (!permission?.granted) {
+      requestPermission();
+    }
+
     return () => {
-      isMounted = false;
+      if (Platform.OS === 'web') {
+        stopWebCamera();
+      }
     };
-  }, [visible, permission]);
+  }, [visible, facing, permission?.granted, requestPermission, startWebCamera, stopWebCamera, loadRecentPhotos]);
 
   // Flash Mode Toggle
-  const toggleFlash = () => {
-    if (flash === 'off') setFlash('on');
-    else if (flash === 'on') setFlash('auto');
-    else setFlash('off');
+  const toggleFlash = async () => {
+    const nextFlash = flash === 'off' ? 'on' : flash === 'on' ? 'auto' : 'off';
+    setFlash(nextFlash);
+
+    // If web browser supports torch constraint
+    if (Platform.OS === 'web' && webStreamRef.current) {
+      try {
+        const track = webStreamRef.current.getVideoTracks()[0];
+        const capabilities = track?.getCapabilities?.() as any;
+        if (capabilities && 'torch' in capabilities) {
+          await track.applyConstraints({
+            advanced: [{ torch: nextFlash === 'on' }] as any,
+          });
+        }
+      } catch (_) {}
+    }
   };
 
   // Flip Front/Back Camera
   const toggleFacing = () => {
-    setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
+    const nextFacing = facing === 'back' ? 'front' : 'back';
+    setFacing(nextFacing);
+    if (Platform.OS === 'web') {
+      startWebCamera(nextFacing);
+    }
   };
 
-  // Capture Photo
+  // Capture Photo (Real capture on both Web and Native)
   const handleCapture = async () => {
+    // 1. Web HTML5 Canvas Frame Capture
     if (Platform.OS === 'web') {
-      // Web fallback: use file picker
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.capture = 'environment';
-      input.onchange = (e: any) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const url = URL.createObjectURL(file);
-          setCapturedUri(url);
+      const video = webVideoRef.current;
+      if (!video || !webStreamRef.current) {
+        await handleOpenGallery();
+        return;
+      }
+
+      try {
+        setIsProcessing(true);
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          if (facing === 'front') {
+            // Mirror selfie
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          setCapturedUri(dataUrl);
+
+          // Save to real recent storage
+          await saveRealPhoto(dataUrl);
+          loadRecentPhotos();
         }
-      };
-      input.click();
+      } catch (err) {
+        console.warn('[ChatCameraModal] Web capture error:', err);
+      } finally {
+        setIsProcessing(false);
+      }
       return;
     }
 
+    // 2. Native Expo Camera Capture
     if (!cameraRef.current) return;
     try {
       setIsProcessing(true);
@@ -130,6 +234,8 @@ export default function ChatCameraModal({
       });
       if (photo?.uri) {
         setCapturedUri(photo.uri);
+        await saveRealPhoto(photo.uri);
+        loadRecentPhotos();
       }
     } catch (err) {
       console.warn('[ChatCameraModal] Capture error:', err);
@@ -138,19 +244,16 @@ export default function ChatCameraModal({
     }
   };
 
-  // Pick from Gallery shortcut
+  // Open Real Device Gallery
   const handleOpenGallery = async () => {
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.85,
-      });
-      if (!res.canceled && res.assets[0]?.uri) {
-        setCapturedUri(res.assets[0].uri);
+      const picked = await pickRealPhotosFromDevice();
+      if (picked && picked.length > 0) {
+        setCapturedUri(picked[0]);
+        loadRecentPhotos();
       }
     } catch (err) {
-      console.warn('[ChatCameraModal] Gallery picker error:', err);
+      console.warn('[ChatCameraModal] Open gallery error:', err);
     }
   };
 
@@ -159,17 +262,31 @@ export default function ChatCameraModal({
     if (!capturedUri) return;
     onSendMedia(capturedUri, 'image');
     setCapturedUri(null);
+    if (Platform.OS === 'web') {
+      stopWebCamera();
+    }
     onClose();
   };
 
   const handleRetake = () => {
     setCapturedUri(null);
+    if (Platform.OS === 'web') {
+      startWebCamera(facing);
+    }
+  };
+
+  const handleClose = () => {
+    if (Platform.OS === 'web') {
+      stopWebCamera();
+    }
+    setCapturedUri(null);
+    onClose();
   };
 
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={handleClose}>
       <View style={styles.container}>
         {capturedUri ? (
           /* ── Preview Screen: Review photo before sending ── */
@@ -202,12 +319,49 @@ export default function ChatCameraModal({
         ) : (
           /* ── Camera Viewfinder Screen (Image 2 Replica) ── */
           <View style={styles.cameraWrap}>
-            {/* Camera View */}
+            {/* Camera Viewfinder: Real WebRTC on Web, CameraView on Native */}
             {Platform.OS === 'web' ? (
-              <View style={styles.webFallbackWrap}>
-                <Ionicons name="camera" size={64} color="rgba(255,255,255,0.4)" />
-                <Text style={styles.webFallbackText}>Tap the shutter button to take a photo</Text>
-              </View>
+              webCameraError ? (
+                <View style={styles.permissionWrap}>
+                  <Ionicons name="videocam-off-outline" size={54} color="#EF4444" />
+                  <Text style={styles.permissionText}>{webCameraError}</Text>
+                  <TouchableOpacity
+                    style={[styles.grantBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => startWebCamera(facing)}
+                  >
+                    <Text style={styles.grantBtnText}>Retry Camera</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.grantBtn, { backgroundColor: '#374151', marginTop: 10 }]}
+                    onPress={handleOpenGallery}
+                  >
+                    <Text style={[styles.grantBtnText, { color: '#FFF' }]}>Choose from Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={StyleSheet.absoluteFillObject}>
+                  {/* Real Live HTML5 Video Stream */}
+                  <video
+                    ref={(el) => {
+                      webVideoRef.current = el;
+                      if (el && webStreamRef.current && el.srcObject !== webStreamRef.current) {
+                        el.srcObject = webStreamRef.current;
+                        el.play().catch(() => {});
+                      }
+                    }}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transform: facing === 'front' ? 'scaleX(-1)' : 'none',
+                      backgroundColor: '#000000',
+                    }}
+                  />
+                </View>
+              )
             ) : permission?.granted ? (
               <CameraView
                 ref={cameraRef}
@@ -230,7 +384,7 @@ export default function ChatCameraModal({
 
             {/* Top Action Bar: Close (X) & Flash Toggle */}
             <View style={styles.topBar}>
-              <TouchableOpacity style={styles.iconCircle} onPress={onClose}>
+              <TouchableOpacity style={styles.iconCircle} onPress={handleClose}>
                 <Ionicons name="close" size={26} color="#FFFFFF" />
               </TouchableOpacity>
 
@@ -251,27 +405,35 @@ export default function ChatCameraModal({
 
             {/* Bottom Controls Area (Recent Strip + Shutter + Modes) */}
             <View style={styles.bottomControls}>
-              {/* 1. Recent Photos Preview Strip (Image 2 style) */}
-              {recentPhotos.length > 0 && (
-                <View style={styles.recentStripWrap}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.recentStripScroll}
+              {/* 1. Real Recent Photos Preview Strip (Image 2 style) */}
+              <View style={styles.recentStripWrap}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentStripScroll}
+                >
+                  {/* + Pick From Device Button */}
+                  <TouchableOpacity
+                    style={styles.recentStripPickBtn}
+                    activeOpacity={0.8}
+                    onPress={handleOpenGallery}
                   >
-                    {recentPhotos.map((uri, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={styles.recentStripThumb}
-                        activeOpacity={0.8}
-                        onPress={() => setCapturedUri(uri)}
-                      >
-                        <Image source={{ uri }} style={styles.recentStripImg} />
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+                    <Ionicons name="images-outline" size={22} color="#FFFFFF" />
+                    <Text style={styles.recentStripPickText}>Gallery</Text>
+                  </TouchableOpacity>
+
+                  {recentPhotos.map((uri, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.recentStripThumb}
+                      activeOpacity={0.8}
+                      onPress={() => setCapturedUri(uri)}
+                    >
+                      <Image source={{ uri }} style={styles.recentStripImg} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
 
               {/* 2. Shutter Control Row: [Gallery] [ Shutter ○ ] [ Flip 🔄 ] */}
               <View style={styles.shutterRow}>
@@ -371,19 +533,6 @@ const styles = StyleSheet.create({
   },
 
   // Fallback views
-  webFallbackWrap: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#111827',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    padding: 24,
-  },
-  webFallbackText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    textAlign: 'center',
-  },
   permissionWrap: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#111827',
@@ -394,18 +543,20 @@ const styles = StyleSheet.create({
   },
   permissionText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
     fontWeight: '600',
+    lineHeight: 22,
   },
   grantBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
   },
   grantBtnText: {
     color: '#000',
     fontWeight: '800',
+    fontSize: 14,
   },
 
   // Bottom Controls
@@ -426,6 +577,23 @@ const styles = StyleSheet.create({
   },
   recentStripScroll: {
     gap: 8,
+    alignItems: 'center',
+  },
+  recentStripPickBtn: {
+    width: 62,
+    height: 62,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+  },
+  recentStripPickText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
   },
   recentStripThumb: {
     width: 62,
@@ -450,22 +618,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   sideBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   galleryShortcutThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: '100%',
+    height: '100%',
   },
   shutterOuterRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     borderWidth: 4,
     borderColor: '#FFFFFF',
     justifyContent: 'center',
@@ -473,40 +641,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   shutterInnerCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FFFFFF',
   },
 
-  // Mode Selector (Video / Photo / Video note)
+  // Modes Row
   modeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   modePill: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
   },
   modePillActive: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   modeText: {
     color: 'rgba(255,255,255,0.6)',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modeTextActive: {
     color: '#FFFFFF',
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   // Preview Screen
   previewContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
     justifyContent: 'space-between',
   },
   previewImage: {
@@ -517,6 +685,8 @@ const styles = StyleSheet.create({
   previewTopBar: {
     paddingTop: 48,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     zIndex: 10,
   },
   previewBottomBar: {
@@ -524,34 +694,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 36,
     zIndex: 10,
   },
   retakeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 24,
   },
   retakeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   sendBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 24,
   },
   sendBtnText: {
-    color: '#000000',
+    color: '#000',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

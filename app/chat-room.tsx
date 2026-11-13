@@ -1345,6 +1345,8 @@ export default function ChatRoom() {
         onShareEvent={handleShareEvent}
         onShareWorkout={handleShareWorkout}
         onSelectRecentMedia={handleSelectRecentMedia}
+        conversationId={conversationId}
+        userUid={user?.uid}
       />
 
       {/* Full-Screen In-App Camera Screen (Image 2) */}
@@ -1352,6 +1354,8 @@ export default function ChatRoom() {
         visible={showCameraModal}
         onClose={() => setShowCameraModal(false)}
         onSendMedia={handleSendCapturedMedia}
+        conversationId={conversationId}
+        userUid={user?.uid}
       />
 
       {/* Fullscreen Image Viewer */}

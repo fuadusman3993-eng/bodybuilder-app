@@ -7,12 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
-import * as MediaLibrary from 'expo-media-library';
+import {
+  getRealRecentPhotos,
+  pickRealPhotosFromDevice,
+} from '../../lib/recentPhotosService';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +30,8 @@ interface ChatAttachmentSheetProps {
   onShareEvent: () => void;
   onShareWorkout: () => void;
   onSelectRecentMedia: (uri: string) => void;
+  conversationId?: string;
+  userUid?: string;
 }
 
 interface ActionItem {
@@ -51,41 +55,25 @@ export default function ChatAttachmentSheet({
   onShareEvent,
   onShareWorkout,
   onSelectRecentMedia,
+  conversationId,
+  userUid,
 }: ChatAttachmentSheetProps) {
   const { colors } = useTheme();
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
 
-  // Fetch recent photos on native devices
+  // Fetch real recent photos (zero dummy stock data)
   useEffect(() => {
     if (!visible) return;
 
     let isMounted = true;
     async function loadRecentPhotos() {
-      if (Platform.OS === 'web') {
-        // Fallback sample previews on web
-        setRecentPhotos([
-          'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80',
-          'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&q=80',
-          'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&q=80',
-          'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=300&q=80',
-        ]);
-        return;
-      }
-
       try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status === 'granted') {
-          const res = await MediaLibrary.getAssetsAsync({
-            first: 10,
-            mediaType: ['photo'],
-            sortBy: [MediaLibrary.SortBy.creationTime],
-          });
-          if (isMounted && res.assets && res.assets.length > 0) {
-            setRecentPhotos(res.assets.map((a) => a.uri));
-          }
+        const photos = await getRealRecentPhotos(conversationId, userUid);
+        if (isMounted) {
+          setRecentPhotos(photos);
         }
       } catch (err) {
-        console.warn('[ChatAttachmentSheet] MediaLibrary error:', err);
+        console.warn('[ChatAttachmentSheet] loadRecentPhotos error:', err);
       }
     }
 
@@ -93,7 +81,20 @@ export default function ChatAttachmentSheet({
     return () => {
       isMounted = false;
     };
-  }, [visible]);
+  }, [visible, conversationId, userUid]);
+
+  // Pick photos directly from device
+  const handlePickFromDevice = async () => {
+    try {
+      const picked = await pickRealPhotosFromDevice();
+      if (picked && picked.length > 0) {
+        onClose();
+        onSelectRecentMedia(picked[0]);
+      }
+    } catch (err) {
+      console.warn('[ChatAttachmentSheet] handlePickFromDevice error:', err);
+    }
+  };
 
   // Grid Actions matching WhatsApp screenshot + FitPulse Workout
   const actions: ActionItem[] = [
@@ -173,7 +174,6 @@ export default function ChatAttachmentSheet({
       title: 'Workout',
       icon: 'barbell',
       color: '#00E676',
-      badge: 'FitPulse',
       onPress: () => {
         onClose();
         onShareWorkout();
@@ -181,11 +181,22 @@ export default function ChatAttachmentSheet({
     },
   ];
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      >
         <TouchableOpacity
-          style={[styles.sheet, { backgroundColor: '#181E24', borderColor: colors.border }]}
+          style={[styles.sheet, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
@@ -216,42 +227,52 @@ export default function ChatAttachmentSheet({
             ))}
           </View>
 
-          {/* ── 2. Recent Gallery Photos Horizontal Strip (Image 1 bottom) ── */}
-          {recentPhotos.length > 0 && (
-            <View style={styles.recentSection}>
-              <View style={styles.recentHeaderRow}>
-                <Text style={styles.recentHeaderText}>Recent Photos</Text>
+          {/* ── 2. Real Recent Gallery Photos Horizontal Strip (Image 1 bottom) ── */}
+          <View style={styles.recentSection}>
+            <View style={styles.recentHeaderRow}>
+              <Text style={styles.recentHeaderText}>Recent Photos</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  onPickGallery();
+                }}
+              >
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>All Media →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.recentScroll}
+            >
+              {/* + Pick directly from device */}
+              <TouchableOpacity
+                style={styles.pickFromDeviceCard}
+                activeOpacity={0.8}
+                onPress={handlePickFromDevice}
+              >
+                <Ionicons name="images-outline" size={24} color={colors.primary} />
+                <Text style={[styles.pickFromDeviceText, { color: colors.textPrimary }]}>
+                  Pick From{'\n'}Device
+                </Text>
+              </TouchableOpacity>
+
+              {recentPhotos.map((uri, idx) => (
                 <TouchableOpacity
+                  key={idx}
+                  style={styles.recentThumbWrap}
+                  activeOpacity={0.85}
                   onPress={() => {
                     onClose();
-                    onPickGallery();
+                    onSelectRecentMedia(uri);
                   }}
                 >
-                  <Text style={[styles.seeAllText, { color: colors.primary }]}>All Media →</Text>
+                  <Image source={{ uri }} style={styles.recentThumbImg} />
                 </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.recentScroll}
-              >
-                {recentPhotos.map((uri, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.recentThumbWrap}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      onClose();
-                      onSelectRecentMedia(uri);
-                    }}
-                  >
-                    <Image source={{ uri }} style={styles.recentThumbImg} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+              ))}
+            </ScrollView>
+          </View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -279,43 +300,44 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 18,
   },
+
+  // 4x2 Action Grid
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    rowGap: 18,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    rowGap: 20,
   },
   actionBtn: {
-    width: (width - 32) / 4,
+    width: (width - 70) / 4,
     alignItems: 'center',
     gap: 8,
   },
   circleIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 5,
-    elevation: 4,
+    elevation: 5,
   },
   badgeWrap: {
     position: 'absolute',
     top: -4,
-    right: -6,
+    right: -4,
     backgroundColor: '#10B981',
+    borderRadius: 8,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#181E24',
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: '#000',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -353,6 +375,26 @@ const styles = StyleSheet.create({
   recentScroll: {
     paddingHorizontal: 16,
     gap: 8,
+    alignItems: 'center',
+  },
+  pickFromDeviceCard: {
+    width: 82,
+    height: 82,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+    padding: 4,
+  },
+  pickFromDeviceText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 13,
   },
   recentThumbWrap: {
     width: 82,
