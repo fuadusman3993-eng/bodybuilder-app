@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { EXERCISES, Exercise } from '../../constants/exercises';
 import { VAULT_EXERCISES } from '../../constants/exerciseVaultData';
-import { getWorkoutForDay } from '../../constants/workouts';
+import { getWorkoutForDay, Workout } from '../../constants/workouts';
+import { getDiscoverRoutine } from '../../constants/discoverRoutines';
 import { useChallengeStore } from '../../store/challengeStore';
 import LeapFitnessCharacter from '../../components/workout/LeapFitnessCharacter';
 import WorkoutRestScreen from '../../components/workout/WorkoutRestScreen';
@@ -24,13 +25,29 @@ import { captureSystemError } from '../../lib/telemetryService';
 
 export default function LeapFitnessWorkoutPlayer() {
   const router = useRouter();
-  const { exerciseId, day, index } = useLocalSearchParams();
+  const { exerciseId, day, index, routineId } = useLocalSearchParams();
 
   const dayNumber = parseInt((day as string) || '1', 10);
   const exerciseIndex = parseInt((index as string) || '0', 10);
 
   const { activeGoal, completeDay } = useChallengeStore();
-  const workout = getWorkoutForDay(activeGoal, dayNumber);
+  const routineMatch = routineId ? getDiscoverRoutine(routineId as string) : null;
+  const routineWorkout: Workout | null = routineMatch
+    ? {
+        id: routineMatch.id,
+        title: routineMatch.title,
+        duration: routineMatch.time,
+        estimatedCalories: parseInt(routineMatch.calories, 10) || 150,
+        exercises: routineMatch.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          sets: 1,
+          reps: e.reps || '00:30',
+          durationSeconds: e.durationSeconds || 30,
+          restSeconds: 20,
+        })),
+      }
+    : null;
+  const workout = routineWorkout || getWorkoutForDay(activeGoal, dayNumber);
   const totalExercises = workout?.exercises.length || 15;
   const workoutEx = workout?.exercises[exerciseIndex];
   
@@ -167,6 +184,7 @@ export default function LeapFitnessWorkoutPlayer() {
           exerciseId: nextEx.exerciseId,
           day: dayNumber.toString(),
           index: nextIndex.toString(),
+          ...(routineId ? { routineId: routineId as string } : {}),
         },
       } as any);
     } else {
@@ -184,6 +202,7 @@ export default function LeapFitnessWorkoutPlayer() {
           exerciseId: prevEx.exerciseId,
           day: dayNumber.toString(),
           index: prevIndex.toString(),
+          ...(routineId ? { routineId: routineId as string } : {}),
         },
       } as any);
     }

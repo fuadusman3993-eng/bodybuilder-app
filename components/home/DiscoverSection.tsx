@@ -25,34 +25,34 @@ export default function DiscoverSection() {
       id: 'pick-1',
       title: 'Belly Fat Burner HIIT',
       level: 'Beginner',
-      duration: '20 min',
+      duration: '15 min',
       calories: '180 kcal',
       color: '#EF4444',
       badge: 'HIIT',
       bgImg: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80', // HIIT running - full outfit
-      route: '/challenge',
+      route: '/routine/belly-fat-burner',
     },
     {
       id: 'pick-2',
       title: 'Lose Fat (No Jumping!)',
       level: 'Intermediate',
-      duration: '20 min',
+      duration: '14 min',
       calories: '160 kcal',
       color: '#3B82F6',
       badge: 'LOW IMPACT',
       bgImg: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80', // push-up full outfit
-      route: '/challenge',
+      route: '/routine/lose-fat-no-jumping',
     },
     {
       id: 'pick-3',
       title: 'Stay Active, Stay in Shape',
       level: 'All Levels',
-      duration: '5 workouts',
+      duration: '4 moves',
       calories: 'Daily Fuel',
       color: '#10B981',
       badge: 'PROGRAM',
       bgImg: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80', // modest training
-      route: '/challenge',
+      route: '/routine/stay-active',
     },
   ];
 
@@ -73,7 +73,7 @@ export default function DiscoverSection() {
       <TouchableOpacity
         style={[styles.heroCard, { height: heroHeight, borderColor: colors.border }]}
         activeOpacity={0.9}
-        onPress={() => router.push('/challenge')}
+        onPress={() => router.push('/routine/abs-4-moves')}
       >
         {/* Background Photo */}
         <Image
@@ -96,6 +96,10 @@ export default function DiscoverSection() {
             <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
             <Text style={styles.tagText}>TRENDING ROUTINE</Text>
           </View>
+          <View style={[styles.tagBadge, { backgroundColor: 'rgba(234, 179, 8, 0.25)', borderColor: '#EAB308' }]}>
+            <Ionicons name="lock-closed" size={11} color="#EAB308" />
+            <Text style={[styles.tagText, { color: '#EAB308' }]}>PRO</Text>
+          </View>
         </View>
 
         {/* Bottom content */}
@@ -111,7 +115,7 @@ export default function DiscoverSection() {
             <TouchableOpacity
               style={[styles.joinBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}
-              onPress={() => router.push('/challenge')}
+              onPress={() => router.push('/routine/abs-4-moves')}
             >
               <Text style={styles.joinBtnText}>▶  Start Workout</Text>
             </TouchableOpacity>

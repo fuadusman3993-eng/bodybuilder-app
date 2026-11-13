@@ -36,23 +36,23 @@ export default function DiscoverScreen() {
 
   const PICKS = [
     {
-      id: 'p1',
+      id: 'belly-fat-burner',
       title: 'Belly Fat Burner HIIT Beginner',
-      time: '20 min',
+      time: '15 min',
       level: 'Beginner',
       img: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80',
     },
     {
-      id: 'p2',
+      id: 'lose-fat-no-jumping',
       title: 'Lose Fat (No Jumping!)',
-      time: '20 min',
+      time: '14 min',
       level: 'Intermediate',
       img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80',
     },
     {
-      id: 'p3',
+      id: 'morning-ignition',
       title: 'Full Body Morning Ignition',
-      time: '15 min',
+      time: '12 min',
       level: 'All Levels',
       img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80',
     },
@@ -60,25 +60,25 @@ export default function DiscoverScreen() {
 
   const STRETCHES = [
     {
-      id: 's1',
+      id: 'upper-body-stretch',
       title: 'Upper Body Stretching',
       time: '8 min',
       img: 'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?w=600&auto=format&fit=crop&q=80',
     },
     {
-      id: 's2',
+      id: 'lower-body-stretch',
       title: 'Lower Body Stretching',
       time: '10 min',
       img: 'https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=600&auto=format&fit=crop&q=80',
     },
     {
-      id: 's3',
+      id: 'back-pain-relief',
       title: 'Lower Back Pain Relief',
       time: '6 min',
       img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80',
     },
     {
-      id: 's4',
+      id: 'back-stretch',
       title: 'Back Stretching',
       time: '7 min',
       img: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=80',
@@ -163,7 +163,7 @@ export default function DiscoverScreen() {
         <TouchableOpacity
           style={[styles.heroCard, { height: heroHeight, borderColor: colors.border }]}
           activeOpacity={0.9}
-          onPress={() => router.push('/challenge')}
+          onPress={() => router.push('/routine/abs-4-moves')}
         >
           {/* Background Photo */}
           <Image
@@ -186,6 +186,10 @@ export default function DiscoverScreen() {
               <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
               <Text style={styles.tagText}>TRENDING ROUTINE</Text>
             </View>
+            <View style={[styles.tagBadge, { backgroundColor: 'rgba(234, 179, 8, 0.25)', borderColor: '#EAB308' }]}>
+              <Ionicons name="lock-closed" size={11} color="#EAB308" />
+              <Text style={[styles.tagText, { color: '#EAB308' }]}>PRO</Text>
+            </View>
           </View>
 
           {/* Bottom content */}
@@ -201,7 +205,7 @@ export default function DiscoverScreen() {
               <TouchableOpacity
                 style={[styles.joinBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.85}
-                onPress={() => router.push('/challenge')}
+                onPress={() => router.push('/routine/abs-4-moves')}
               >
                 <Text style={styles.joinBtnText}>▶  Start Workout</Text>
               </TouchableOpacity>
@@ -221,7 +225,7 @@ export default function DiscoverScreen() {
               key={pick.id}
               style={[styles.pickRowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
               activeOpacity={0.85}
-              onPress={() => router.push('/challenge')}
+              onPress={() => router.push(`/routine/${pick.id}` as any)}
             >
               <ImageBackground
                 source={{ uri: pick.img }}
@@ -245,7 +249,7 @@ export default function DiscoverScreen() {
         <TouchableOpacity
           style={[styles.programBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}
           activeOpacity={0.88}
-          onPress={() => router.push('/challenge')}
+          onPress={() => router.push('/routine/stay-active')}
         >
           <ImageBackground
             source={{ uri: 'https://images.unsplash.com/photo-1552072092-7f9b8d63efcb?w=800&auto=format&fit=crop&q=80' }}
@@ -254,9 +258,9 @@ export default function DiscoverScreen() {
           >
             <View style={styles.programBannerOverlay}>
               <Text style={styles.programBannerTitle}>Stay active, stay in shape</Text>
-              <Text style={styles.programBannerSub}>5 targeted workouts</Text>
+              <Text style={styles.programBannerSub}>4 targeted moves • Daily Tone</Text>
               <View style={[styles.programBannerBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.programBannerBtnText}>View Program →</Text>
+                <Text style={styles.programBannerBtnText}>View Routine →</Text>
               </View>
             </View>
           </ImageBackground>
@@ -280,7 +284,7 @@ export default function DiscoverScreen() {
                 },
               ]}
               activeOpacity={0.85}
-              onPress={() => router.push('/challenge')}
+              onPress={() => router.push(`/routine/${str.id}` as any)}
             >
               <ImageBackground
                 source={{ uri: str.img }}
