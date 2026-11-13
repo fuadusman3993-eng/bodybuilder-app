@@ -1000,11 +1000,28 @@ export default function ChatRoom() {
             ) : isVideo ? (
               <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
                 {item.isUploading ? (
-                   <ActivityIndicator size="large" color={colors.primary} />
+                  <ActivityIndicator size="large" color={colors.primary} />
+                ) : Platform.OS === 'web' ? (
+                  <video
+                    src={item.media_url}
+                    controls
+                    playsInline
+                    style={{
+                      width: 220,
+                      height: 180,
+                      borderRadius: 14,
+                      backgroundColor: '#000',
+                    }}
+                  />
                 ) : (
-                   <Ionicons name="play-circle" size={52} color={colors.primary} />
+                  <TouchableOpacity
+                    onPress={() => item.media_url && setFullscreenImg(item.media_url)}
+                    style={{ alignItems: 'center' }}
+                  >
+                    <Ionicons name="play-circle" size={52} color={colors.primary} />
+                    <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Play Video</Text>
+                  </TouchableOpacity>
                 )}
-                <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>{item.isUploading ? 'Uploading...' : 'Video'}</Text>
               </View>
             ) : isCall ? (
               <View style={styles.callCard}>
@@ -1590,8 +1607,9 @@ const styles = StyleSheet.create({
     color: '#00E676',
   },
   videoBubbleWrap: {
-    width: 160, height: 100, borderRadius: 16,
+    minWidth: 160, minHeight: 100, borderRadius: 16,
     backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
   },
 
   // Attach icon

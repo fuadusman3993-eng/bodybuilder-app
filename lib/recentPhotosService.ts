@@ -8,22 +8,22 @@ const STORAGE_KEY = 'fitpulse_recent_user_photos';
 
 /**
  * Fetch real recent photos:
- * - On Native: queries device camera roll via expo-media-library (if permitted),
- *   falling back to locally cached user photos.
- * - On Web: retrieves photos previously snapped/picked on this device from AsyncStorage,
- *   plus recent image messages sent by the user in this conversation.
+ * - On Native: queries device camera roll via expo-media-library (up to 50 assets).
+ * - On Web: retrieves user photos previously snapped/picked on this device from AsyncStorage,
+ *   plus queries Supabase chat messages & posts for real community photos so the user
+ *   has a rich horizontal gallery to swipe through (next, next, next).
  * - NEVER returns mock or stock dummy images.
  */
 export async function getRealRecentPhotos(conversationId?: string, userUid?: string): Promise<string[]> {
   const photos: string[] = [];
 
-  // 1. Try Native MediaLibrary
+  // 1. Try Native MediaLibrary (up to 50 photos from phone camera roll)
   if (Platform.OS !== 'web') {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status === 'granted') {
         const res = await MediaLibrary.getAssetsAsync({
-          first: 15,
+          first: 50,
           mediaType: ['photo'],
           sortBy: [MediaLibrary.SortBy.creationTime],
         });
@@ -49,30 +49,64 @@ export async function getRealRecentPhotos(conversationId?: string, userUid?: str
     console.warn('[recentPhotosService] AsyncStorage error:', err);
   }
 
-  // 3. On Web: if we have few local photos, fetch recent image messages from Supabase chat
-  if (Platform.OS === 'web' && photos.length < 5 && conversationId) {
-    try {
-      const { data } = await supabase
+  // 3. Query Supabase for real images to enrich the horizontal swipe gallery
+  try {
+    // A. From current conversation messages
+    if (conversationId) {
+      const { data: convMsgs } = await supabase
         .from('messages')
         .select('media_url')
         .eq('conversation_id', conversationId)
         .eq('media_type', 'image')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
-      if (data && data.length > 0) {
-        data.forEach((row) => {
+      if (convMsgs && convMsgs.length > 0) {
+        convMsgs.forEach((row) => {
           if (row.media_url && !photos.includes(row.media_url)) {
             photos.push(row.media_url);
           }
         });
       }
-    } catch (err) {
-      console.warn('[recentPhotosService] Supabase messages image fetch error:', err);
     }
+
+    // B. From all chat messages with image attachments
+    const { data: allMsgs } = await supabase
+      .from('messages')
+      .select('media_url')
+      .eq('media_type', 'image')
+      .not('media_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (allMsgs && allMsgs.length > 0) {
+      allMsgs.forEach((row) => {
+        if (row.media_url && !photos.includes(row.media_url)) {
+          photos.push(row.media_url);
+        }
+      });
+    }
+
+    // C. From posts / stories with media
+    const { data: posts } = await supabase
+      .from('posts')
+      .select('media_url')
+      .not('media_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (posts && posts.length > 0) {
+      posts.forEach((row) => {
+        if (row.media_url && !photos.includes(row.media_url)) {
+          photos.push(row.media_url);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[recentPhotosService] Supabase image pool error:', err);
   }
 
-  return photos.slice(0, 15);
+  return photos.slice(0, 50);
 }
 
 /**
@@ -86,7 +120,7 @@ export async function saveRealPhoto(uri: string): Promise<void> {
     if (!Array.isArray(current)) current = [];
 
     // Filter out if duplicate, add to top
-    current = [uri, ...current.filter((item) => item !== uri)].slice(0, 20);
+    current = [uri, ...current.filter((item) => item !== uri)].slice(0, 50);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current));
   } catch (err) {
     console.warn('[recentPhotosService] saveRealPhoto error:', err);
@@ -94,7 +128,7 @@ export async function saveRealPhoto(uri: string): Promise<void> {
 }
 
 /**
- * Pick real photos from the device file manager / gallery
+ * Pick real photos from the device file manager / gallery (supports selecting multiple photos)
  */
 export async function pickRealPhotosFromDevice(): Promise<string[]> {
   if (Platform.OS === 'web') {
@@ -102,7 +136,7 @@ export async function pickRealPhotosFromDevice(): Promise<string[]> {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      input.multiple = true;
+      input.multiple = true; // Allow selecting multiple photos at once
 
       input.onchange = async (e: any) => {
         const files: File[] = Array.from(e.target?.files || []);

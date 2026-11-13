@@ -9,6 +9,7 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -19,6 +20,8 @@ import {
   pickRealPhotosFromDevice,
 } from '../../lib/recentPhotosService';
 
+const { width } = Dimensions.get('window');
+
 type CameraMode = 'video' | 'photo' | 'note';
 
 interface ChatCameraModalProps {
@@ -27,6 +30,12 @@ interface ChatCameraModalProps {
   onSendMedia: (uri: string, type: 'image' | 'video') => void;
   conversationId?: string;
   userUid?: string;
+}
+
+function fmtSecs(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
 export default function ChatCameraModal({
@@ -48,6 +57,13 @@ export default function ChatCameraModal({
   const [webCameraActive, setWebCameraActive] = useState(false);
   const [webCameraError, setWebCameraError] = useState<string | null>(null);
 
+  // Video recording refs & state (both Web & Native)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const videoChunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSecs, setRecordingSecs] = useState(0);
+  const recTimerRef = useRef<any>(null);
+
   // Camera Settings
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
@@ -55,13 +71,23 @@ export default function ChatCameraModal({
 
   // Capture & Preview
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [capturedType, setCapturedType] = useState<'image' | 'video'>('image');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Real device recent photos (zero dummy stock data)
+  // Real device recent photos (up to 50 real photos for horizontal swipe)
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
 
   // Stop web camera stream cleanly (hardware LED/camera turns off)
   const stopWebCamera = useCallback(() => {
+    if (recTimerRef.current) {
+      clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (_) {}
+    }
     if (webStreamRef.current) {
       try {
         webStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -74,10 +100,11 @@ export default function ChatCameraModal({
       } catch (_) {}
     }
     setWebCameraActive(false);
+    setIsRecording(false);
   }, []);
 
   // Start real HTML5 camera stream on Web
-  const startWebCamera = useCallback(async (currentFacing: 'back' | 'front') => {
+  const startWebCamera = useCallback(async (currentFacing: 'back' | 'front', withAudio = false) => {
     if (Platform.OS !== 'web') return;
     stopWebCamera();
     setWebCameraError(null);
@@ -96,13 +123,13 @@ export default function ChatCameraModal({
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
-          audio: false,
+          audio: withAudio,
         });
       } catch (_) {
         // Fallback constraint if exact facingMode is not recognized
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: false,
+          audio: withAudio,
         });
       }
 
@@ -117,7 +144,7 @@ export default function ChatCameraModal({
       console.warn('[ChatCameraModal] Web camera start error:', err);
       setWebCameraError(
         err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
-          ? 'Camera permission denied. Please allow camera access in your browser.'
+          ? 'Camera or microphone permission denied. Please allow access in browser.'
           : 'Unable to start camera. Please verify device camera is available.'
       );
     }
@@ -133,6 +160,16 @@ export default function ChatCameraModal({
     }
   }, [conversationId, userUid]);
 
+  // Handle mode switch: if switching to video/note, include audio stream
+  const handleModeChange = (newMode: CameraMode) => {
+    if (isRecording) return; // Prevent switching while recording
+    setMode(newMode);
+    if (Platform.OS === 'web') {
+      const needsAudio = newMode === 'video' || newMode === 'note';
+      startWebCamera(facing, needsAudio);
+    }
+  };
+
   // Handle visibility & camera lifecycle
   useEffect(() => {
     if (!visible) {
@@ -146,7 +183,8 @@ export default function ChatCameraModal({
     loadRecentPhotos();
 
     if (Platform.OS === 'web') {
-      startWebCamera(facing);
+      const needsAudio = mode === 'video' || mode === 'note';
+      startWebCamera(facing, needsAudio);
     } else if (!permission?.granted) {
       requestPermission();
     }
@@ -179,15 +217,16 @@ export default function ChatCameraModal({
 
   // Flip Front/Back Camera
   const toggleFacing = () => {
+    if (isRecording) return;
     const nextFacing = facing === 'back' ? 'front' : 'back';
     setFacing(nextFacing);
     if (Platform.OS === 'web') {
-      startWebCamera(nextFacing);
+      startWebCamera(nextFacing, mode === 'video' || mode === 'note');
     }
   };
 
-  // Capture Photo (Real capture on both Web and Native)
-  const handleCapture = async () => {
+  // ── PHOTO CAPTURE ──
+  const capturePhoto = async () => {
     // 1. Web HTML5 Canvas Frame Capture
     if (Platform.OS === 'web') {
       const video = webVideoRef.current;
@@ -211,6 +250,7 @@ export default function ChatCameraModal({
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
           setCapturedUri(dataUrl);
+          setCapturedType('image');
 
           // Save to real recent storage
           await saveRealPhoto(dataUrl);
@@ -234,6 +274,7 @@ export default function ChatCameraModal({
       });
       if (photo?.uri) {
         setCapturedUri(photo.uri);
+        setCapturedType('image');
         await saveRealPhoto(photo.uri);
         loadRecentPhotos();
       }
@@ -244,12 +285,125 @@ export default function ChatCameraModal({
     }
   };
 
-  // Open Real Device Gallery
+  // ── VIDEO RECORDING (START / STOP) ──
+  const startRecording = async () => {
+    if (isRecording) return;
+
+    if (Platform.OS === 'web') {
+      if (!webStreamRef.current) {
+        await startWebCamera(facing, true);
+      }
+      const stream = webStreamRef.current;
+      if (!stream) return;
+
+      try {
+        videoChunksRef.current = [];
+        const mimeTypes = [
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm',
+          'video/mp4',
+        ];
+        const selectedMime = mimeTypes.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || '';
+        const mr = selectedMime
+          ? new MediaRecorder(stream, { mimeType: selectedMime })
+          : new MediaRecorder(stream);
+
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            videoChunksRef.current.push(e.data);
+          }
+        };
+
+        mr.onstop = () => {
+          const blob = new Blob(videoChunksRef.current, { type: selectedMime || 'video/mp4' });
+          const videoUrl = URL.createObjectURL(blob);
+          setCapturedUri(videoUrl);
+          setCapturedType('video');
+        };
+
+        mr.start(100);
+        mediaRecorderRef.current = mr;
+        setIsRecording(true);
+        setRecordingSecs(0);
+        recTimerRef.current = setInterval(() => setRecordingSecs((s) => s + 1), 1000);
+      } catch (err) {
+        console.warn('[ChatCameraModal] Web video record start error:', err);
+      }
+      return;
+    }
+
+    // Native CameraView recording
+    if (!cameraRef.current) return;
+    try {
+      setIsRecording(true);
+      setRecordingSecs(0);
+      recTimerRef.current = setInterval(() => setRecordingSecs((s) => s + 1), 1000);
+
+      const video = await cameraRef.current.recordAsync({
+        maxDuration: 60,
+      });
+
+      if (video?.uri) {
+        setCapturedUri(video.uri);
+        setCapturedType('video');
+      }
+    } catch (err) {
+      console.warn('[ChatCameraModal] Native record error:', err);
+    } finally {
+      setIsRecording(false);
+      if (recTimerRef.current) {
+        clearInterval(recTimerRef.current);
+        recTimerRef.current = null;
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (!isRecording) return;
+    if (recTimerRef.current) {
+      clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+
+    if (Platform.OS === 'web') {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+      return;
+    }
+
+    // Native stop recording
+    if (cameraRef.current) {
+      try {
+        cameraRef.current.stopRecording();
+      } catch (_) {}
+    }
+    setIsRecording(false);
+  };
+
+  // Main Shutter Button Action based on mode
+  const handleShutterPress = () => {
+    if (mode === 'photo') {
+      capturePhoto();
+    } else {
+      // Video or Video note
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
+  };
+
+  // Open Real Device Gallery (multi-photo)
   const handleOpenGallery = async () => {
     try {
       const picked = await pickRealPhotosFromDevice();
       if (picked && picked.length > 0) {
         setCapturedUri(picked[0]);
+        setCapturedType('image');
         loadRecentPhotos();
       }
     } catch (err) {
@@ -260,7 +414,7 @@ export default function ChatCameraModal({
   // Confirm and Send Media
   const handleSend = () => {
     if (!capturedUri) return;
-    onSendMedia(capturedUri, 'image');
+    onSendMedia(capturedUri, capturedType);
     setCapturedUri(null);
     if (Platform.OS === 'web') {
       stopWebCamera();
@@ -271,11 +425,15 @@ export default function ChatCameraModal({
   const handleRetake = () => {
     setCapturedUri(null);
     if (Platform.OS === 'web') {
-      startWebCamera(facing);
+      const needsAudio = mode === 'video' || mode === 'note';
+      startWebCamera(facing, needsAudio);
     }
   };
 
   const handleClose = () => {
+    if (isRecording) {
+      stopRecording();
+    }
     if (Platform.OS === 'web') {
       stopWebCamera();
     }
@@ -289,9 +447,35 @@ export default function ChatCameraModal({
     <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={handleClose}>
       <View style={styles.container}>
         {capturedUri ? (
-          /* ── Preview Screen: Review photo before sending ── */
+          /* ── Preview Screen: Review photo or video before sending ── */
           <View style={styles.previewContainer}>
-            <Image source={{ uri: capturedUri }} style={styles.previewImage} resizeMode="contain" />
+            {capturedType === 'video' ? (
+              Platform.OS === 'web' ? (
+                <video
+                  src={capturedUri}
+                  autoPlay
+                  loop
+                  playsInline
+                  controls
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    backgroundColor: '#000',
+                  }}
+                />
+              ) : (
+                <View style={styles.previewVideoWrap}>
+                  <Ionicons name="play-circle" size={80} color="#00E676" />
+                  <Text style={styles.previewVideoText}>Video Ready to Send</Text>
+                </View>
+              )
+            ) : (
+              <Image source={{ uri: capturedUri }} style={styles.previewImage} resizeMode="contain" />
+            )}
 
             {/* Top Toolbar */}
             <View style={styles.previewTopBar}>
@@ -311,7 +495,7 @@ export default function ChatCameraModal({
                 style={[styles.sendBtn, { backgroundColor: colors.primary }]}
                 onPress={handleSend}
               >
-                <Text style={styles.sendBtnText}>Send</Text>
+                <Text style={styles.sendBtnText}>Send {capturedType === 'video' ? 'Video' : 'Photo'}</Text>
                 <Ionicons name="send" size={18} color="#000000" />
               </TouchableOpacity>
             </View>
@@ -327,7 +511,7 @@ export default function ChatCameraModal({
                   <Text style={styles.permissionText}>{webCameraError}</Text>
                   <TouchableOpacity
                     style={[styles.grantBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => startWebCamera(facing)}
+                    onPress={() => startWebCamera(facing, mode === 'video' || mode === 'note')}
                   >
                     <Text style={styles.grantBtnText}>Retry Camera</Text>
                   </TouchableOpacity>
@@ -338,9 +522,34 @@ export default function ChatCameraModal({
                     <Text style={[styles.grantBtnText, { color: '#FFF' }]}>Choose from Gallery</Text>
                   </TouchableOpacity>
                 </View>
+              ) : mode === 'note' ? (
+                /* WhatsApp Circular Video Note Viewfinder */
+                <View style={styles.circularNoteContainer}>
+                  <View style={[styles.circularNoteMask, isRecording && styles.circularNoteMaskRec]}>
+                    <video
+                      ref={(el) => {
+                        webVideoRef.current = el;
+                        if (el && webStreamRef.current && el.srcObject !== webStreamRef.current) {
+                          el.srcObject = webStreamRef.current;
+                          el.play().catch(() => {});
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transform: facing === 'front' ? 'scaleX(-1)' : 'none',
+                        backgroundColor: '#000000',
+                      }}
+                    />
+                  </View>
+                </View>
               ) : (
                 <View style={StyleSheet.absoluteFillObject}>
-                  {/* Real Live HTML5 Video Stream */}
+                  {/* Fullscreen Video Stream */}
                   <video
                     ref={(el) => {
                       webVideoRef.current = el;
@@ -365,14 +574,15 @@ export default function ChatCameraModal({
             ) : permission?.granted ? (
               <CameraView
                 ref={cameraRef}
-                style={StyleSheet.absoluteFillObject}
+                style={mode === 'note' ? styles.circularNoteMask : StyleSheet.absoluteFillObject}
                 facing={facing}
                 enableTorch={flash === 'on'}
+                mode={mode === 'photo' ? 'picture' : 'video'}
               />
             ) : (
               <View style={styles.permissionWrap}>
                 <Ionicons name="camera-outline" size={54} color="#FFF" />
-                <Text style={styles.permissionText}>Camera permission is needed to take photos</Text>
+                <Text style={styles.permissionText}>Camera permission is needed to take photos and video</Text>
                 <TouchableOpacity
                   style={[styles.grantBtn, { backgroundColor: colors.primary }]}
                   onPress={requestPermission}
@@ -382,11 +592,21 @@ export default function ChatCameraModal({
               </View>
             )}
 
-            {/* Top Action Bar: Close (X) & Flash Toggle */}
+            {/* Top Action Bar: Close (X), Active Recording Timer, & Flash Toggle */}
             <View style={styles.topBar}>
               <TouchableOpacity style={styles.iconCircle} onPress={handleClose}>
                 <Ionicons name="close" size={26} color="#FFFFFF" />
               </TouchableOpacity>
+
+              {/* Active Recording Pill */}
+              {isRecording ? (
+                <View style={styles.recBadge}>
+                  <View style={styles.recDotRed} />
+                  <Text style={styles.recBadgeText}>{fmtSecs(recordingSecs)}</Text>
+                </View>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
 
               <TouchableOpacity style={styles.iconCircle} onPress={toggleFlash}>
                 <Ionicons
@@ -405,40 +625,49 @@ export default function ChatCameraModal({
 
             {/* Bottom Controls Area (Recent Strip + Shutter + Modes) */}
             <View style={styles.bottomControls}>
-              {/* 1. Real Recent Photos Preview Strip (Image 2 style) */}
-              <View style={styles.recentStripWrap}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.recentStripScroll}
-                >
-                  {/* + Pick From Device Button */}
-                  <TouchableOpacity
-                    style={styles.recentStripPickBtn}
-                    activeOpacity={0.8}
-                    onPress={handleOpenGallery}
+              {/* 1. Real Recent Photos Preview Strip (Horizontal swipe next, next, next) */}
+              {!isRecording && (
+                <View style={styles.recentStripWrap}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentStripScroll}
                   >
-                    <Ionicons name="images-outline" size={22} color="#FFFFFF" />
-                    <Text style={styles.recentStripPickText}>Gallery</Text>
-                  </TouchableOpacity>
-
-                  {recentPhotos.map((uri, idx) => (
+                    {/* + Pick From Device Button */}
                     <TouchableOpacity
-                      key={idx}
-                      style={styles.recentStripThumb}
+                      style={styles.recentStripPickBtn}
                       activeOpacity={0.8}
-                      onPress={() => setCapturedUri(uri)}
+                      onPress={handleOpenGallery}
                     >
-                      <Image source={{ uri }} style={styles.recentStripImg} />
+                      <Ionicons name="images-outline" size={22} color="#FFFFFF" />
+                      <Text style={styles.recentStripPickText}>Gallery</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
+
+                    {recentPhotos.map((uri, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.recentStripThumb}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setCapturedUri(uri);
+                          setCapturedType('image');
+                        }}
+                      >
+                        <Image source={{ uri }} style={styles.recentStripImg} />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* 2. Shutter Control Row: [Gallery] [ Shutter ○ ] [ Flip 🔄 ] */}
               <View style={styles.shutterRow}>
                 {/* Gallery Picker Shortcut */}
-                <TouchableOpacity style={styles.sideBtn} onPress={handleOpenGallery}>
+                <TouchableOpacity
+                  style={styles.sideBtn}
+                  onPress={handleOpenGallery}
+                  disabled={isRecording}
+                >
                   {recentPhotos[0] ? (
                     <Image source={{ uri: recentPhotos[0] }} style={styles.galleryShortcutThumb} />
                   ) : (
@@ -448,51 +677,75 @@ export default function ChatCameraModal({
 
                 {/* Main Shutter Button */}
                 <TouchableOpacity
-                  style={styles.shutterOuterRing}
+                  style={[
+                    styles.shutterOuterRing,
+                    (mode === 'video' || mode === 'note') && styles.shutterOuterRingVideo,
+                    isRecording && styles.shutterOuterRingRec,
+                  ]}
                   activeOpacity={0.85}
-                  onPress={handleCapture}
+                  onPress={handleShutterPress}
                   disabled={isProcessing}
                 >
                   {isProcessing ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : isRecording ? (
+                    <View style={styles.shutterStopSquare} />
+                  ) : mode === 'video' || mode === 'note' ? (
+                    <View style={styles.shutterInnerCircleVideo} />
                   ) : (
-                    <View style={styles.shutterInnerCircle} />
+                    <View style={styles.shutterInnerCirclePhoto} />
                   )}
                 </TouchableOpacity>
 
                 {/* Flip Camera Button */}
-                <TouchableOpacity style={styles.sideBtn} onPress={toggleFacing}>
+                <TouchableOpacity
+                  style={styles.sideBtn}
+                  onPress={toggleFacing}
+                  disabled={isRecording}
+                >
                   <Ionicons name="camera-reverse" size={32} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
 
-              {/* 3. Bottom Mode Selector: [ Video ] [ Photo ] [ Video note ] */}
+              {/* 3. Bottom Mode Selector: EXACTLY CENTERED [ Video ] [ Photo ] [ Video note ] */}
               <View style={styles.modeRow}>
+                {/* Slot 1: Video */}
                 <TouchableOpacity
-                  style={[styles.modePill, mode === 'video' && styles.modePillActive]}
-                  onPress={() => setMode('video')}
+                  style={styles.modeSlot}
+                  onPress={() => handleModeChange('video')}
+                  disabled={isRecording}
                 >
-                  <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>
-                    Video
-                  </Text>
+                  <View style={[styles.modePill, mode === 'video' && styles.modePillActive]}>
+                    <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>
+                      Video
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
+                {/* Slot 2: Photo (GUARANTEED dead center below shutter) */}
                 <TouchableOpacity
-                  style={[styles.modePill, mode === 'photo' && styles.modePillActive]}
-                  onPress={() => setMode('photo')}
+                  style={styles.modeSlot}
+                  onPress={() => handleModeChange('photo')}
+                  disabled={isRecording}
                 >
-                  <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>
-                    Photo
-                  </Text>
+                  <View style={[styles.modePill, mode === 'photo' && styles.modePillActive]}>
+                    <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>
+                      Photo
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
+                {/* Slot 3: Video note */}
                 <TouchableOpacity
-                  style={[styles.modePill, mode === 'note' && styles.modePillActive]}
-                  onPress={() => setMode('note')}
+                  style={styles.modeSlot}
+                  onPress={() => handleModeChange('note')}
+                  disabled={isRecording}
                 >
-                  <Text style={[styles.modeText, mode === 'note' && styles.modeTextActive]}>
-                    Video note
-                  </Text>
+                  <View style={[styles.modePill, mode === 'note' && styles.modePillActive]}>
+                    <Text style={[styles.modeText, mode === 'note' && styles.modeTextActive]}>
+                      Video note
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -532,6 +785,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  // Active recording timer pill
+  recBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  recDotRed: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+  },
+  recBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
+    fontVariant: ['tabular-nums'],
+  },
+
   // Fallback views
   permissionWrap: {
     ...StyleSheet.absoluteFillObject,
@@ -559,6 +837,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
+  // Circular Video Note Mask
+  circularNoteContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#050505',
+  },
+  circularNoteMask: {
+    width: width * 0.76,
+    height: width * 0.76,
+    borderRadius: (width * 0.76) / 2,
+    overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#000000',
+  },
+  circularNoteMaskRec: {
+    borderColor: '#00E676',
+  },
+
   // Bottom Controls
   bottomControls: {
     position: 'absolute',
@@ -566,7 +864,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    gap: 18,
+    gap: 16,
     zIndex: 10,
   },
 
@@ -630,6 +928,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+
+  // Shutter Styles (Photo vs Video vs Recording)
   shutterOuterRing: {
     width: 78,
     height: 78,
@@ -640,18 +940,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
-  shutterInnerCircle: {
+  shutterOuterRingVideo: {
+    borderColor: '#EF4444',
+  },
+  shutterOuterRingRec: {
+    borderColor: '#EF4444',
+    transform: [{ scale: 1.06 }],
+  },
+  shutterInnerCirclePhoto: {
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: '#FFFFFF',
   },
+  shutterInnerCircleVideo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EF4444',
+  },
+  shutterStopSquare: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#EF4444',
+  },
 
-  // Modes Row
+  // ── Mode Row (Mathematically 100% Centered with Shutter) ──
   modeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  modeSlot: {
+    width: 106,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modePill: {
     paddingHorizontal: 16,
@@ -681,6 +1006,18 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
+  },
+  previewVideoWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: '#111827',
+  },
+  previewVideoText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
   previewTopBar: {
     paddingTop: 48,
