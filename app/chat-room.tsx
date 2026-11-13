@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, KeyboardAvoidingView, Platform, Image,
+  StyleSheet, KeyboardAvoidingView, Platform, Image, Keyboard,
   ActivityIndicator, Alert, Modal, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,6 +50,7 @@ export default function ChatRoom() {
 
   const [messages, setMessages, cacheLoaded] = useCachedState<any[]>(conversationId ? `msgs_${conversationId}` : '', []);
   const [text, setText] = useState('');
+  const textInputRef = useRef<TextInput>(null);
   const [loading, setLoading] = useState(true);
   
   // Hide loading spinner if cache loaded and has items
@@ -1213,7 +1214,12 @@ export default function ChatRoom() {
                 onPress={() => {
                   if (showEmojiPicker) {
                     setShowEmojiPicker(false);
+                    setTimeout(() => {
+                      textInputRef.current?.focus();
+                    }, 50);
                   } else {
+                    Keyboard.dismiss();
+                    textInputRef.current?.blur();
                     setShowAttachMenu(false);
                     setShowEmojiPicker(true);
                   }
@@ -1228,7 +1234,17 @@ export default function ChatRoom() {
               
               <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                 <TextInput
-                  style={[styles.input, { color: colors.textPrimary }]}
+                  ref={textInputRef}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.textPrimary,
+                      outlineStyle: 'none',
+                      outlineWidth: 0,
+                      outline: 'none',
+                      borderWidth: 0,
+                    } as any,
+                  ]}
                   value={text}
                   onChangeText={setText}
                   placeholder="Message"
@@ -1488,6 +1504,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
     color: '#FFF', fontSize: 16, maxHeight: 120,
+    borderWidth: 0,
   },
   attachBtnInside: {
     padding: 10, paddingRight: 4,
