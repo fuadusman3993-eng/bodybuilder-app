@@ -908,160 +908,213 @@ export default function ChatRoom() {
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft, { marginBottom: isLastInGroup ? 12 : 3 }]}>
         <View style={{ alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-          <View
-            style={[
-              styles.bubble,
-              isMe
-                ? [styles.bubbleMe, { backgroundColor: theme.preview.bubbleColor || colors.surface, borderColor: colors.primary }]
-                : [styles.bubbleThem, { backgroundColor: colors.surface }]
-            ]}
-          >
-            {isAudio ? (
-              <View style={[item.isUploading && { opacity: 0.6 }]}>
-                <View style={styles.audioRow}>
-                  {item.isUploading || loadingAudioId === item.id ? (
-                    <View style={[styles.playIconWrap, { backgroundColor: colors.primary }]}>
-                      <ActivityIndicator size="small" color="#000" />
-                    </View>
-                  ) : (
-                    <TouchableOpacity style={[styles.playIconWrap, { backgroundColor: colors.primary }]} onPress={() => togglePlay(item.id, item.audio_url)}>
-                      <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color="#000" />
-                    </TouchableOpacity>
-                  )}
-                  <View style={styles.audioWave}>
-                    {[...Array(20)].map((_, i) => {
-                      const isPlayed = (i / 20) <= progressRatio;
-                      return (
-                        <View
-                          key={i}
-                          style={[styles.audioBar, {
-                            height: 6 + Math.abs(Math.sin(i * 0.9 + 1) * 12),
-                            backgroundColor: isPlayed ? (isMe ? '#FFF' : colors.primary) : (isMe ? 'rgba(255,255,255,0.3)' : colors.primary + '4D')
-                          }]}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                  <Text style={styles.audioDurMe}>{fmtSecs(displayDuration)}</Text>
-                  {isPlaying && (
-                    <TouchableOpacity onPress={togglePlaybackRate} style={styles.speedBtn}>
-                      <Text style={styles.speedBtnText}>{playbackRate}x</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ) : isSharedPost ? (
+          {isAudio ? (
+            /* ── Telegram Compact Voice Bubble (Image 1) ── */
+            <View
+              style={[
+                styles.telegramVoiceBubble,
+                isMe ? styles.telegramVoiceMe : styles.telegramVoiceThem,
+                item.isUploading && { opacity: 0.6 },
+              ]}
+            >
+              {/* White Play Button Circle */}
               <TouchableOpacity
-                onPress={() => router.push('/(tabs)/community')}
-                activeOpacity={0.88}
-                style={styles.sharedPostCard}
+                style={styles.telegramPlayBtn}
+                onPress={() => togglePlay(item.id, item.audio_url)}
+                activeOpacity={0.8}
               >
-                <View style={styles.sharedPostHeader}>
-                  <View style={[styles.sharedPostBadge, { backgroundColor: colors.primary }]}>
-                    <Ionicons name="paper-plane" size={11} color="#000" />
-                  </View>
-                  <Text style={styles.sharedPostAuthor} numberOfLines={1}>
-                    {item.text.split(':')[0]?.replace('📷 ', '') || 'Shared Post'}
-                  </Text>
-                </View>
-
-                {item.media_url ? (
-                  <Image
-                    source={{ uri: item.media_url }}
-                    style={styles.sharedPostPhoto}
-                    resizeMode="cover"
-                  />
-                ) : null}
-
-                <View style={styles.sharedPostFooter}>
-                  <Text style={styles.sharedPostCaption} numberOfLines={2}>
-                    {item.text.includes(':') ? item.text.split(':').slice(1).join(':').replace(/["']/g, '').trim() : ''}
-                  </Text>
-                  <View style={styles.sharedPostLinkRow}>
-                    <Text style={[styles.sharedPostLinkText, { color: colors.primary }]}>View in Community</Text>
-                    <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ) : isImage ? (
-              <TouchableOpacity onPress={() => item.isUploading ? null : setFullscreenImg(item.media_url)} activeOpacity={0.9} style={{ position: 'relative' }}>
-                <Image
-                  source={{ uri: item.media_url }}
-                  style={[styles.mediaBubble, item.isUploading && { opacity: 0.5 }]}
-                  resizeMode="cover"
-                />
-                {item.isUploading && (
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            ) : isVideo ? (
-              <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
-                {item.isUploading ? (
-                  <ActivityIndicator size="large" color={colors.primary} />
-                ) : Platform.OS === 'web' ? (
-                  <video
-                    src={item.media_url}
-                    controls
-                    playsInline
-                    style={{
-                      width: 220,
-                      height: 180,
-                      borderRadius: 14,
-                      backgroundColor: '#000',
-                    }}
-                  />
+                {item.isUploading || loadingAudioId === item.id ? (
+                  <ActivityIndicator size="small" color="#2B5278" />
                 ) : (
-                  <TouchableOpacity
-                    onPress={() => item.media_url && setFullscreenImg(item.media_url)}
-                    style={{ alignItems: 'center' }}
-                  >
-                    <Ionicons name="play-circle" size={52} color={colors.primary} />
-                    <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Play Video</Text>
-                  </TouchableOpacity>
+                  <Ionicons
+                    name={isPlaying ? 'pause' : 'play'}
+                    size={18}
+                    color="#2B5278"
+                    style={{ marginLeft: isPlaying ? 0 : 2 }}
+                  />
                 )}
-              </View>
-            ) : isCall ? (
-              <View style={styles.callCard}>
-                <View style={styles.callCardHeader}>
-                  <View style={[styles.callIconBadge, isMissed ? styles.callBadgeMissed : styles.callBadgeSuccess]}>
-                    <Ionicons
-                      name={isMissed ? 'call-outline' : 'call'}
-                      size={18}
-                      color={isMissed ? '#EF4444' : colors.primary}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.callTitle, isMissed && styles.callTitleMissed]}>
-                      {isMissed ? 'Missed Call' : item.text?.replace(/[📞]/g, '').trim()}
+              </TouchableOpacity>
+
+              {/* Waveform & Internal Duration + Timestamp */}
+              <View style={styles.telegramVoiceContent}>
+                <View style={styles.telegramVoiceWaveRow}>
+                  {[...Array(22)].map((_, i) => {
+                    const isPlayed = i / 22 <= progressRatio;
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.telegramWaveBar,
+                          {
+                            height: 4 + Math.abs(Math.sin(i * 0.8 + 1) * 14),
+                            backgroundColor: isPlayed
+                              ? '#FFFFFF'
+                              : 'rgba(255,255,255,0.4)',
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+
+                <View style={styles.telegramVoiceBottomRow}>
+                  <Text style={styles.telegramVoiceDur}>
+                    {fmtSecs(displayDuration)} •
+                  </Text>
+                  <View style={styles.telegramVoiceTimeWrap}>
+                    <Text style={styles.telegramVoiceTime}>
+                      {timeStr(item.created_at)}
                     </Text>
-                    <Text style={styles.callSubtitle}>
-                      {isMissed ? (isMe ? 'Outgoing missed call' : 'Incoming missed call') : 'Call finished'}
-                    </Text>
+                    {isMe && (
+                      <Text style={styles.telegramVoiceTick}>
+                        {item.is_read ? '✓✓' : '✓'}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </View>
-            ) : (
-              <Text style={styles.bubbleText}>
-                {item.text}
-              </Text>
-            )}
-          </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
-            {isMe && (
-              item.isUploading ? (
-                <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 4 }} />
+            </View>
+          ) : isImage ? (
+            /* ── Telegram Photo Bubble with Corner Badge (Image 1 & 2) ── */
+            <TouchableOpacity
+              onPress={() => (item.isUploading ? null : setFullscreenImg(item.media_url))}
+              activeOpacity={0.9}
+              style={styles.telegramPhotoWrap}
+            >
+              <Image
+                source={{ uri: item.media_url }}
+                style={[styles.telegramPhotoImg, item.isUploading && { opacity: 0.5 }]}
+                resizeMode="cover"
+              />
+              {item.isUploading ? (
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
               ) : (
-                <Text style={[styles.seenTick, item.is_read ? [styles.seenRead, { color: colors.primary }] : styles.seenSent]}>
-                  {item.is_read ? '✓✓' : '✓'}
+                <View style={styles.telegramPhotoTimeBadge}>
+                  <Text style={styles.telegramPhotoTimeText}>
+                    {timeStr(item.created_at)}
+                  </Text>
+                  {isMe && (
+                    <Text style={styles.telegramPhotoTickText}>
+                      {item.is_read ? '✓✓' : '✓'}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : (
+            /* ── Regular Messages / Calls ── */
+            <View
+              style={[
+                styles.bubble,
+                isMe
+                  ? [styles.bubbleMe, { backgroundColor: theme.preview.bubbleColor || colors.surface, borderColor: colors.primary }]
+                  : [styles.bubbleThem, { backgroundColor: colors.surface }]
+              ]}
+            >
+              {isSharedPost ? (
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/community')}
+                  activeOpacity={0.88}
+                  style={styles.sharedPostCard}
+                >
+                  <View style={styles.sharedPostHeader}>
+                    <View style={[styles.sharedPostBadge, { backgroundColor: colors.primary }]}>
+                      <Ionicons name="paper-plane" size={11} color="#000" />
+                    </View>
+                    <Text style={styles.sharedPostAuthor} numberOfLines={1}>
+                      {item.text.split(':')[0]?.replace('📷 ', '') || 'Shared Post'}
+                    </Text>
+                  </View>
+
+                  {item.media_url ? (
+                    <Image
+                      source={{ uri: item.media_url }}
+                      style={styles.sharedPostPhoto}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+
+                  <View style={styles.sharedPostFooter}>
+                    <Text style={styles.sharedPostCaption} numberOfLines={2}>
+                      {item.text.includes(':') ? item.text.split(':').slice(1).join(':').replace(/["']/g, '').trim() : ''}
+                    </Text>
+                    <View style={styles.sharedPostLinkRow}>
+                      <Text style={[styles.sharedPostLinkText, { color: colors.primary }]}>View in Community</Text>
+                      <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ) : isVideo ? (
+                <View style={[styles.videoBubbleWrap, item.isUploading && { opacity: 0.5 }]}>
+                  {item.isUploading ? (
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  ) : Platform.OS === 'web' ? (
+                    <video
+                      src={item.media_url}
+                      controls
+                      playsInline
+                      style={{
+                        width: 220,
+                        height: 180,
+                        borderRadius: 14,
+                        backgroundColor: '#000',
+                      }}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => item.media_url && setFullscreenImg(item.media_url)}
+                      style={{ alignItems: 'center' }}
+                    >
+                      <Ionicons name="play-circle" size={52} color={colors.primary} />
+                      <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Play Video</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : isCall ? (
+                <View style={styles.callCard}>
+                  <View style={styles.callCardHeader}>
+                    <View style={[styles.callIconBadge, isMissed ? styles.callBadgeMissed : styles.callBadgeSuccess]}>
+                      <Ionicons
+                        name={isMissed ? 'call-outline' : 'call'}
+                        size={18}
+                        color={isMissed ? '#EF4444' : colors.primary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.callTitle, isMissed && styles.callTitleMissed]}>
+                        {isMissed ? 'Missed Call' : item.text?.replace(/[📞]/g, '').trim()}
+                      </Text>
+                      <Text style={styles.callSubtitle}>
+                        {isMissed ? (isMe ? 'Outgoing missed call' : 'Incoming missed call') : 'Call finished'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.bubbleText}>
+                  {item.text}
                 </Text>
-              )
-            )}
-          </View>
+              )}
+            </View>
+          )}
+
+          {/* External metadata row only for text, call and shared posts */}
+          {!isAudio && !isImage && (
+            <View style={styles.metaRow}>
+              <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
+              {isMe && (
+                item.isUploading ? (
+                  <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 4 }} />
+                ) : (
+                  <Text style={[styles.seenTick, item.is_read ? [styles.seenRead, { color: colors.primary }] : styles.seenSent]}>
+                    {item.is_read ? '✓✓' : '✓'}
+                  </Text>
+                )
+              )}
+            </View>
+          )}
         </View>
       </View>
     );
@@ -1232,7 +1285,7 @@ export default function ChatRoom() {
                 />
               </TouchableOpacity>
               
-              <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+              <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: 'rgba(255,255,255,0.08)' }]}>
                 <TextInput
                   ref={textInputRef}
                   style={[
@@ -1243,6 +1296,7 @@ export default function ChatRoom() {
                       outlineWidth: 0,
                       outline: 'none',
                       borderWidth: 0,
+                      boxShadow: 'none',
                     } as any,
                   ]}
                   value={text}
@@ -1493,15 +1547,135 @@ const styles = StyleSheet.create({
   emojiBtn: { 
     paddingBottom: 10, paddingLeft: 4
   },
+  // Telegram Compact Voice Bubble (Image 1)
+  telegramVoiceBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    minWidth: 210,
+    maxWidth: 270,
+    gap: 10,
+  },
+  telegramVoiceMe: {
+    backgroundColor: '#2B5278', // Telegram sent voice blue
+    borderBottomRightRadius: 4,
+  },
+  telegramVoiceThem: {
+    backgroundColor: '#1E2B3A',
+    borderBottomLeftRadius: 4,
+  },
+  telegramPlayBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  telegramVoiceContent: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  telegramVoiceWaveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2.5,
+    height: 18,
+  },
+  telegramWaveBar: {
+    width: 2.2,
+    borderRadius: 1.5,
+  },
+  telegramVoiceBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  telegramVoiceDur: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)',
+  },
+  telegramVoiceTimeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  telegramVoiceTime: {
+    fontSize: 10.5,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500',
+  },
+  telegramVoiceTick: {
+    fontSize: 10.5,
+    color: '#00E676',
+    fontWeight: '700',
+    marginLeft: 2,
+  },
+
+  // Telegram Photo Bubble (Image 1 & 2)
+  telegramPhotoWrap: {
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    maxWidth: 270,
+  },
+  telegramPhotoImg: {
+    width: 260,
+    height: 250,
+    borderRadius: 16,
+  },
+  telegramPhotoTimeBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 10,
+  },
+  telegramPhotoTimeText: {
+    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '500',
+  },
+  telegramPhotoTickText: {
+    color: '#00E676',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+
   inputWrap: {
     flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 24,
     minHeight: 44, flexDirection: 'row', alignItems: 'flex-end',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
   },
   input: {
     flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
     color: '#FFF', fontSize: 16, maxHeight: 120,
     borderWidth: 0,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'web'
+      ? {
+          outline: 'none',
+          outlineStyle: 'none',
+          outlineWidth: 0,
+          boxShadow: 'none',
+          borderWidth: 0,
+        }
+      : {}),
   },
   attachBtnInside: {
     padding: 10, paddingRight: 14,

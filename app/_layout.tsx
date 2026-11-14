@@ -25,6 +25,35 @@ if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
     document.body.style.backgroundColor = '#050B0E';
     document.documentElement.style.backgroundColor = '#050B0E';
+    if (!document.getElementById('fitpulse-global-kill-outline')) {
+      const style = document.createElement('style');
+      style.id = 'fitpulse-global-kill-outline';
+      style.textContent = `
+        input, textarea, select, [contenteditable] {
+          outline: none !important;
+          outline-style: none !important;
+          outline-width: 0 !important;
+          border: none !important;
+          border-width: 0 !important;
+          box-shadow: none !important;
+          -webkit-appearance: none !important;
+        }
+        input:focus, textarea:focus, select:focus, [contenteditable]:focus,
+        input:active, textarea:active, select:active, [contenteditable]:active,
+        input:focus-visible, textarea:focus-visible {
+          outline: none !important;
+          outline-style: none !important;
+          outline-width: 0 !important;
+          border: none !important;
+          border-width: 0 !important;
+          box-shadow: none !important;
+        }
+        * {
+          -webkit-tap-highlight-color: transparent !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 } else {
   SplashScreen.preventAutoHideAsync().catch(() => {});
