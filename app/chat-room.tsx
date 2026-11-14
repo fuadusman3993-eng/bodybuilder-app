@@ -1159,13 +1159,30 @@ export default function ChatRoom() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerActionBtn}
-            onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid } })}
+            onPress={() => router.push({
+              pathname: '/voice-call',
+              params: {
+                channelId: conversationId,
+                otherUserUid,
+                otherUserName: otherUser.name,
+                otherUserAvatar: otherUser.avatar,
+              }
+            })}
           >
             <Ionicons name="call" size={19} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerActionBtn}
-            onPress={() => router.push({ pathname: '/voice-call', params: { channelId: conversationId, otherUserUid, initialVideo: 'true' } })}
+            onPress={() => router.push({
+              pathname: '/voice-call',
+              params: {
+                channelId: conversationId,
+                otherUserUid,
+                otherUserName: otherUser.name,
+                otherUserAvatar: otherUser.avatar,
+                initialVideo: 'true',
+              }
+            })}
           >
             <Ionicons name="videocam" size={21} color="#FFF" />
           </TouchableOpacity>

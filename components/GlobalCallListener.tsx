@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useUserStore } from '../store/userStore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getProfile } from '../lib/profileService';
 
 export default function GlobalCallListener() {
   const { user } = useUserStore();
@@ -38,13 +39,22 @@ export default function GlobalCallListener() {
         let callerName = 'User';
         let callerAvatar = '';
         try {
-          const snap = await getDoc(doc(db, 'users', payload.callerUid));
-          if (snap.exists()) {
-            const d = snap.data();
-            callerName = d.name || d.displayName || d.username || 'User';
-            callerAvatar = d.avatar || d.photoURL || '';
+          const profile = await getProfile(payload.callerUid);
+          if (profile) {
+            callerName = profile.name || profile.username || 'User';
+            callerAvatar = profile.avatar_url || '';
           }
         } catch (_) {}
+        if (callerName === 'User') {
+          try {
+            const snap = await getDoc(doc(db, 'users', payload.callerUid));
+            if (snap.exists()) {
+              const d = snap.data();
+              callerName = d.name || d.displayName || d.username || 'User';
+              callerAvatar = d.avatar || d.photoURL || '';
+            }
+          } catch (_) {}
+        }
 
         setIncomingCall({
           callerUid: payload.callerUid,
@@ -69,12 +79,18 @@ export default function GlobalCallListener() {
 
   const handleAccept = () => {
     if (!incomingCall) return;
-    const { channelId, callerUid } = incomingCall;
+    const { channelId, callerUid, callerName, callerAvatar } = incomingCall;
     setIncomingCall(null);
     setTimeout(() => {
       router.push({
         pathname: '/voice-call',
-        params: { channelId, otherUserUid: callerUid, isIncoming: 'true' },
+        params: {
+          channelId,
+          otherUserUid: callerUid,
+          otherUserName: callerName,
+          otherUserAvatar: callerAvatar,
+          isIncoming: 'true',
+        },
       });
     }, 100);
   };

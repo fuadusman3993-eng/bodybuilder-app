@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useUserStore } from '../store/userStore';
+import { useTheme } from '../store/themeStore';
+import { getProfile } from '../lib/profileService';
 import BrandLogo from '../components/ui/BrandLogo';
 
 let RTCView: any = null;
@@ -41,21 +43,35 @@ const AGORA_APP_ID = '511e8cc7f06a4bd89ba9e4aad921c158';
 
 export default function VoiceCallScreen() {
   const router = useRouter();
-  const { channelId, otherUserUid, isIncoming, initialVideo } = useLocalSearchParams<{
+  const { colors } = useTheme();
+  const {
+    channelId,
+    otherUserUid,
+    isIncoming,
+    initialVideo,
+    otherUserName,
+    otherUserAvatar,
+  } = useLocalSearchParams<{
     channelId: string;
     otherUserUid: string;
     isIncoming?: string;
     initialVideo?: string;
+    otherUserName?: string;
+    otherUserAvatar?: string;
   }>();
   const { user } = useUserStore();
   const incoming = isIncoming === 'true';
 
-  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string }>({ name: 'User', avatar: '' });
+  const [otherUser, setOtherUser] = useState<{ name: string; avatar: string }>({
+    name: otherUserName || 'Calling...',
+    avatar: otherUserAvatar || '',
+  });
   const [callState, setCallState] = useState<'calling' | 'connected' | 'ended'>('calling');
   const callStateRef = useRef<'calling' | 'connected' | 'ended'>('calling');
   
   const [micMuted, setMicMuted] = useState(false);
   const [videoOn, setVideoOn] = useState(initialVideo === 'true');
+  const [speakerOn, setSpeakerOn] = useState(true);
   const [duration, setDuration] = useState(0);
   const durationRef = useRef(0);
 
@@ -91,22 +107,40 @@ export default function VoiceCallScreen() {
   };
 
   useEffect(() => {
-    if (otherUserUid) {
-      getDoc(doc(db, 'users', otherUserUid)).then(snap => {
-        if (snap.exists()) {
-          const d = snap.data();
-          setOtherUser({ 
-            name: d.name || d.displayName || d.username || 'User',
-            avatar: d.avatar || d.photoURL || '',
-          });
+    let isMounted = true;
+    async function loadOtherUserData() {
+      if (!otherUserUid) return;
+      try {
+        const profile = await getProfile(otherUserUid);
+        if (profile && isMounted) {
+          const name = profile.name || profile.username || otherUserName || 'Athlete';
+          const avatar = profile.avatar_url || otherUserAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
+          setOtherUser({ name, avatar });
+          return;
         }
-      }).catch(() => {});
+      } catch (err) {
+        console.warn('[voice-call] getProfile error:', err);
+      }
+
+      try {
+        const snap = await getDoc(doc(db, 'users', otherUserUid));
+        if (snap.exists() && isMounted) {
+          const d = snap.data();
+          const name = d.name || d.displayName || d.username || otherUserName || 'Athlete';
+          const avatar = d.avatar || d.photoURL || otherUserAvatar || '';
+          setOtherUser({ name, avatar });
+        }
+      } catch (_) {}
     }
 
+    loadOtherUserData();
     initWebRTC();
 
-    return () => { silentCleanup(); };
-  }, []);
+    return () => {
+      isMounted = false;
+      silentCleanup();
+    };
+  }, [otherUserUid, otherUserName, otherUserAvatar]);
 
 
 
@@ -482,6 +516,10 @@ export default function VoiceCallScreen() {
     }
   };
 
+  const toggleSpeaker = () => {
+    setSpeakerOn(prev => !prev);
+  };
+
   const toggleVideo = () => {
     // Agora Video not yet implemented here, voice only for now
     if (agoraClientRef.current) return;
@@ -490,6 +528,8 @@ export default function VoiceCallScreen() {
     if (track) {
       track.enabled = !track.enabled;
       setVideoOn(track.enabled);
+    } else {
+      setVideoOn(prev => !prev);
     }
   };
 
@@ -540,10 +580,10 @@ export default function VoiceCallScreen() {
         <View style={styles.header}>
           <BrandLogo size="small" showText={false} />
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIconBtn}>
-              <Ionicons name="settings-outline" size={20} color="#FFF" />
+            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.8}>
+              <Ionicons name="settings" size={20} color="#FFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconBtn}>
+            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.8}>
               <Ionicons name="expand-outline" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
@@ -551,9 +591,9 @@ export default function VoiceCallScreen() {
 
         {/* Center Content */}
         <View style={styles.centerSection}>
-          {/* Main Avatar / Local Video Ring */}
-          <View style={styles.avatarRingWrap}>
-            <View style={styles.avatarRingInner}>
+          {/* Main Avatar / Local Video Ring with Dynamic Theme Sync */}
+          <View style={[styles.avatarRingWrap, { borderColor: colors.primary + '33' }]}>
+            <View style={[styles.avatarRingInner, { borderColor: colors.primary, shadowColor: colors.primary }]}>
                {videoOn ? (
                  <View style={styles.localVideoWrap}>
                    {renderVideoNode(localStreamObj, true)}
@@ -562,7 +602,7 @@ export default function VoiceCallScreen() {
                  <Image source={{ uri: otherUser.avatar }} style={styles.avatar} />
                ) : (
                  <View style={[styles.avatar, { backgroundColor: '#1A1D21', justifyContent: 'center', alignItems: 'center' }]}>
-                   <Ionicons name="person" size={60} color="#333" />
+                   <Ionicons name="person" size={60} color="#555" />
                  </View>
                )}
             </View>
@@ -570,7 +610,7 @@ export default function VoiceCallScreen() {
 
           <Text style={styles.name}>{otherUser.name}</Text>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, callState === 'connected' ? { backgroundColor: '#00E676' } : { backgroundColor: '#FBBF24' }]} />
+            <View style={[styles.statusDot, callState === 'connected' ? { backgroundColor: colors.primary } : { backgroundColor: '#FBBF24' }]} />
             <Text style={styles.statusText}>
               {callState === 'calling'
                 ? (incoming ? 'Connecting...' : 'Calling...')
@@ -581,21 +621,46 @@ export default function VoiceCallScreen() {
           </View>
         </View>
 
-        {/* Bottom Controls */}
+        {/* Bottom Controls (Image 2 & Image 3 Exact Icons) */}
         <View style={styles.controlsRow}>
-          <TouchableOpacity style={[styles.roundBtn, videoOn && styles.roundBtnActive]} onPress={toggleVideo}>
-            <Ionicons name={videoOn ? "videocam" : "videocam-outline"} size={24} color="#FFF" />
+          {/* 1. Video Toggle (videocam / videocam-off) */}
+          <TouchableOpacity
+            style={[
+              styles.roundBtn,
+              videoOn && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
+            ]}
+            onPress={toggleVideo}
+            activeOpacity={0.8}
+          >
+            <Ionicons name={videoOn ? "videocam" : "videocam-off"} size={24} color="#FFF" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.roundBtn, !micMuted && styles.roundBtnActive]} onPress={toggleMic}>
-            <Ionicons name={micMuted ? "mic-off-outline" : "mic"} size={24} color="#FFF" />
+          {/* 2. Mic Toggle (mic / mic-off) */}
+          <TouchableOpacity
+            style={[
+              styles.roundBtn,
+              !micMuted && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
+            ]}
+            onPress={toggleMic}
+            activeOpacity={0.8}
+          >
+            <Ionicons name={micMuted ? "mic-off" : "mic"} size={24} color="#FFF" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.roundBtn}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
+          {/* 3. Speaker Toggle (volume-high / volume-mute) */}
+          <TouchableOpacity
+            style={[
+              styles.roundBtn,
+              speakerOn && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
+            ]}
+            onPress={toggleSpeaker}
+            activeOpacity={0.8}
+          >
+            <Ionicons name={speakerOn ? "volume-high" : "volume-mute"} size={24} color="#FFF" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)}>
+          {/* 4. End Call Button (Image 3) */}
+          <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)} activeOpacity={0.85}>
             <Ionicons name="call" size={28} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
           </TouchableOpacity>
         </View>
@@ -622,13 +687,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingTop: 16 
   },
   logoWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoIcon: { color: '#00E676', fontSize: 24, fontWeight: '900', fontStyle: 'italic' },
+  logoIcon: { fontSize: 24, fontWeight: '900', fontStyle: 'italic' },
   logoText: { color: '#FFF', fontSize: 20, fontWeight: '700' },
   
   headerRight: { flexDirection: 'row', gap: 12 },
   headerIconBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
   },
@@ -638,16 +703,16 @@ const styles = StyleSheet.create({
   
   avatarRingWrap: {
     width: 180, height: 180, borderRadius: 90,
-    borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.2)',
+    borderWidth: 1,
     justifyContent: 'center', alignItems: 'center',
     marginBottom: 24
   },
   avatarRingInner: {
     width: 150, height: 150, borderRadius: 75,
-    borderWidth: 3, borderColor: '#00E676',
+    borderWidth: 3,
     justifyContent: 'center', alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#00E676', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20,
     elevation: 10
   },
   avatar: { width: '100%', height: '100%' },
@@ -658,27 +723,26 @@ const styles = StyleSheet.create({
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 16, color: '#A0A0A0' },
 
-  // Bottom Controls
+  // Bottom Controls (Image 2 & 3 Replica)
   controlsRow: { 
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, 
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, 
     paddingBottom: 40 
   },
   roundBtn: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#2A2D32',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.4)'
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)'
   },
   roundBtnActive: {
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
-    borderColor: '#00E676'
+    borderWidth: 1.5,
   },
   endCallBtn: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#ef4444',
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#E53935',
     justifyContent: 'center', alignItems: 'center',
-    marginLeft: 10,
-    shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
-    elevation: 5
+    marginLeft: 6,
+    shadowColor: '#E53935', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
+    elevation: 8,
   },
 });
