@@ -347,7 +347,7 @@ export default function ChatRoom() {
           id: tempId,
           conversation_id: conversationId,
           sender_uid: user.uid,
-          text: '🎤 Voice message',
+          text: 'Voice message',
           audio_url: localUrl,
           audio_duration: dur,
           type: 'audio',
@@ -370,7 +370,7 @@ export default function ChatRoom() {
         const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
           conversation_id: conversationId,
           sender_uid: user.uid,
-          text: '🎤 Voice message',
+          text: 'Voice message',
           audio_url: urlData.publicUrl,
           audio_duration: dur,
           is_read: false,
@@ -382,7 +382,7 @@ export default function ChatRoom() {
         setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
 
         await supabase.from('conversations')
-          .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
+          .update({ last_message: 'Voice message', last_message_at: new Date().toISOString() })
           .eq('id', conversationId);
       } catch (e: any) {
         Alert.alert('Upload Error', JSON.stringify(e) + (e.message ? ' - ' + e.message : ''));
@@ -438,7 +438,7 @@ export default function ChatRoom() {
         id: tempId,
         conversation_id: conversationId,
         sender_uid: user.uid,
-        text: '🎤 Voice message',
+        text: 'Voice message',
         audio_url: uri,
         audio_duration: dur,
         type: 'audio',
@@ -463,7 +463,7 @@ export default function ChatRoom() {
       const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
-        text: '🎤 Voice message',
+        text: 'Voice message',
         audio_url: urlData.publicUrl,
         audio_duration: dur,
         is_read: false,
@@ -475,7 +475,7 @@ export default function ChatRoom() {
       setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
       
       await supabase.from('conversations')
-        .update({ last_message: '🎤 Voice message', last_message_at: new Date().toISOString() })
+        .update({ last_message: 'Voice message', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not send');
@@ -506,7 +506,7 @@ export default function ChatRoom() {
       id: tempId,
       conversation_id: conversationId,
       sender_uid: user.uid,
-      text: type === 'image' ? '📷 Photo' : '🎥 Video',
+      text: type === 'image' ? 'Photo' : 'Video',
       media_url: uri,
       type,
       is_read: false,
@@ -535,7 +535,7 @@ export default function ChatRoom() {
       const { data: insertedMsg, error: insertErr } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_uid: user.uid,
-        text: type === 'image' ? '📷 Photo' : '🎥 Video',
+        text: type === 'image' ? 'Photo' : 'Video',
         media_url: urlData.publicUrl,
         is_read: false,
         type,
@@ -546,7 +546,7 @@ export default function ChatRoom() {
       setMessages((prev: any[]) => prev.map((m: any) => m.id === tempId ? insertedMsg : m));
 
       await supabase.from('conversations')
-        .update({ last_message: type === 'image' ? '📷 Photo' : '🎥 Video', last_message_at: new Date().toISOString() })
+        .update({ last_message: type === 'image' ? 'Photo' : 'Video', last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
 
     } catch (e: any) {

@@ -243,43 +243,106 @@ export default function ChatScreen() {
         </View>
         <View style={styles.convBottom}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 }}>
-            {/* If I sent the last message, show status dots: 1 thick dot if sent, 2 thick dots if read */}
+            {/* If I sent the last message, show status dots: 1 thick dot if sent, 2 thick dots if read (Both in FitPulse Green #00E676) */}
             {item.lastMessageSenderUid === user.uid && (
               <View style={styles.dotsWrap}>
                 <View
                   style={[
                     styles.thickDot,
-                    { backgroundColor: item.lastMessageIsRead ? colors.primary : colors.textMuted },
+                    { backgroundColor: '#00E676' },
                   ]}
                 />
                 {item.lastMessageIsRead && (
                   <View
                     style={[
                       styles.thickDot,
-                      { backgroundColor: colors.primary },
+                      { backgroundColor: '#00E676' },
                     ]}
                   />
                 )}
               </View>
             )}
-            {item.lastMessage?.includes('Missed call') ? (
-              <Ionicons name="call-outline" size={14} color="#EF4444" />
+
+            {/* Instagram-style media icons & clean text (No broken glyphs) */}
+            {item.lastMessage?.toLowerCase().includes('photo') ? (
+              <>
+                <Ionicons name="camera-outline" size={15} color="#00E676" />
+                <Text
+                  style={[
+                    styles.convLast,
+                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Photo
+                </Text>
+              </>
+            ) : item.lastMessage?.toLowerCase().includes('voice message') ? (
+              <>
+                <Ionicons name="mic-outline" size={15} color="#00E676" />
+                <Text
+                  style={[
+                    styles.convLast,
+                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Voice message
+                </Text>
+              </>
+            ) : item.lastMessage?.toLowerCase().includes('video') ? (
+              <>
+                <Ionicons name="videocam-outline" size={15} color="#00E676" />
+                <Text
+                  style={[
+                    styles.convLast,
+                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Video
+                </Text>
+              </>
+            ) : item.lastMessage?.includes('Missed call') ? (
+              <>
+                <Ionicons name="call-outline" size={14} color="#EF4444" />
+                <Text
+                  style={[
+                    styles.convLast,
+                    { color: '#EF4444', fontWeight: '500' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Missed call
+                </Text>
+              </>
             ) : item.lastMessage?.includes('Voice/Video call') ? (
-              <Ionicons name="call-outline" size={14} color={colors.primary} />
-            ) : null}
-            <Text
-              style={[
-                styles.convLast,
-                { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
-                item.lastMessage?.includes('Missed call') && { color: '#EF4444', fontWeight: '500' },
-              ]}
-              numberOfLines={1}
-            >
-              {(item.lastMessage || '').replace(/[📞📵]/g, '').trim() || 'Start a conversation...'}
-            </Text>
+              <>
+                <Ionicons name="call-outline" size={14} color="#00E676" />
+                <Text
+                  style={[
+                    styles.convLast,
+                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {(item.lastMessage || '').replace(/[📞📵]/g, '').trim()}
+                </Text>
+              </>
+            ) : (
+              <Text
+                style={[
+                  styles.convLast,
+                  { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                ]}
+                numberOfLines={1}
+              >
+                {(item.lastMessage || '').replace(/[📞📵]/g, '').trim() || 'Start a conversation...'}
+              </Text>
+            )}
           </View>
           {!!item.unreadCount && (
-            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+            <View style={[styles.unreadBadge, { backgroundColor: '#00E676' }]}>
               <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
             </View>
           )}
@@ -516,6 +579,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
+    backgroundColor: '#00E676',
   },
   
   unreadBadge: {
