@@ -501,42 +501,48 @@ export default function ChatCameraModal({
               </View>
             )}
 
-            {/* Top Bar: Close (X) on Top Left & Recording Pill */}
-            <View style={styles.topBar}>
-              <TouchableOpacity style={styles.iconCircle} onPress={handleClose}>
-                <Ionicons name="close" size={26} color="#FFFFFF" />
-              </TouchableOpacity>
-
-              {/* Active Recording Pill */}
-              {isRecording ? (
-                <View style={styles.recBadge}>
-                  <View style={styles.recDotRed} />
-                  <Text style={styles.recBadgeText}>{fmtSecs(recordingSecs)}</Text>
+            {/* Top Center Floating Recording Pill (Image 2) */}
+            {isRecording && (
+              <View style={styles.topCenterTimerWrap}>
+                <View style={styles.recFloatingPill}>
+                  <View style={styles.recRedDot} />
+                  <Text style={styles.recTimerText}>{fmtSecs(recordingSecs)}</Text>
                 </View>
-              ) : (
-                <View style={{ flex: 1 }} />
-              )}
-            </View>
+              </View>
+            )}
+
+            {/* Top Bar: Close (X) on Top Left (Hidden during recording) */}
+            {!isRecording && (
+              <View style={styles.topBar}>
+                <TouchableOpacity style={styles.iconCircle} onPress={handleClose}>
+                  <Ionicons name="close" size={26} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* ── Bottom Controls (Telegram Screenshot Replica) ── */}
             <View style={styles.bottomControls}>
               <View style={styles.shutterRow}>
-                {/* Left: Flash Toggle */}
-                <TouchableOpacity style={styles.iconCircleBottom} onPress={toggleFlash}>
+                {/* Left: Flash Toggle (Hidden during recording) */}
+                <TouchableOpacity
+                  style={[styles.iconCircleBottom, { opacity: isRecording ? 0 : 1 }]}
+                  onPress={toggleFlash}
+                  disabled={isRecording}
+                >
                   <Ionicons
                     name={
                       flash === 'on'
                         ? 'flash'
                         : flash === 'auto'
                         ? 'flash-outline'
-                        : 'flash-off-outline'
+                        : 'flash-off'
                     }
-                    size={26}
+                    size={24}
                     color={flash === 'on' ? '#FBBF24' : '#FFFFFF'}
                   />
                 </TouchableOpacity>
 
-                {/* Center: Shutter Button (Tap = Photo, Hold = Video) */}
+                {/* Center: Shutter Button (Hollow White Ring in Photo mode, Solid Red Circle in Video mode) */}
                 <TouchableOpacity
                   style={[
                     styles.shutterOuterRing,
@@ -552,26 +558,24 @@ export default function ChatCameraModal({
                   {isProcessing ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : isRecording ? (
-                    <View style={styles.shutterStopSquare} />
-                  ) : (
-                    <View style={styles.shutterInnerCirclePhoto} />
-                  )}
+                    <View style={styles.shutterInnerCircleRecording} />
+                  ) : null}
                 </TouchableOpacity>
 
-                {/* Right: Camera Flip Toggle */}
+                {/* Right: Camera Flip Toggle (Hidden during recording) */}
                 <TouchableOpacity
-                  style={styles.iconCircleBottom}
+                  style={[styles.iconCircleBottom, { opacity: isRecording ? 0 : 1 }]}
                   onPress={toggleFacing}
                   disabled={isRecording}
                 >
-                  <Ionicons name="camera-reverse-outline" size={28} color="#FFFFFF" />
+                  <Ionicons name="camera-reverse-outline" size={26} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
 
-              {/* Telegram Subtitle: "Tap for photo, hold for video" */}
-              <Text style={styles.shutterHintText}>
-                {isRecording ? 'Release to send video' : 'Tap for photo, hold for video'}
-              </Text>
+              {/* Telegram Subtitle: "Tap for photo, hold for video" (Hidden during recording) */}
+              {!isRecording && (
+                <Text style={styles.shutterHintText}>Tap for photo, hold for video</Text>
+              )}
             </View>
           </View>
         )}
@@ -609,27 +613,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Active recording timer pill
-  recBadge: {
+  // Active recording floating timer pill (Image 2)
+  topCenterTimerWrap: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 36,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  recFloatingPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#EF4444',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  recDotRed: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  recRedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-  recBadgeText: {
+  recTimerText: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 14,
     fontVariant: ['tabular-nums'],
   },
@@ -687,11 +697,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Shutter button (Telegram White Ring)
+  // Shutter button (Telegram White Ring in Idle, Solid Red Circle in Video)
   shutterOuterRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     borderWidth: 4,
     borderColor: '#FFFFFF',
     justifyContent: 'center',
@@ -699,20 +709,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   shutterOuterRingRec: {
-    borderColor: '#EF4444',
-    transform: [{ scale: 1.08 }],
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.05 }],
   },
-  shutterInnerCirclePhoto: {
+  shutterInnerCircleRecording: {
     width: 66,
     height: 66,
     borderRadius: 33,
-    backgroundColor: '#FFFFFF',
-  },
-  shutterStopSquare: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#E53935', // Solid Telegram Red
   },
 
   // Hint text
