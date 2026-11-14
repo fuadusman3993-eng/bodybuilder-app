@@ -242,27 +242,7 @@ export default function ChatScreen() {
           <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted }]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 }}>
-            {/* If I sent the last message, show status dots: 1 thick dot if sent, 2 thick dots if read (Both in FitPulse Green #00E676) */}
-            {item.lastMessageSenderUid === user.uid && (
-              <View style={styles.dotsWrap}>
-                <View
-                  style={[
-                    styles.thickDot,
-                    { backgroundColor: '#00E676' },
-                  ]}
-                />
-                {item.lastMessageIsRead && (
-                  <View
-                    style={[
-                      styles.thickDot,
-                      { backgroundColor: '#00E676' },
-                    ]}
-                  />
-                )}
-              </View>
-            )}
-
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
             {/* Instagram-style media icons & clean text (No broken glyphs) */}
             {item.lastMessage?.toLowerCase().includes('photo') ? (
               <>
@@ -341,11 +321,33 @@ export default function ChatScreen() {
               </Text>
             )}
           </View>
-          {!!item.unreadCount && (
-            <View style={[styles.unreadBadge, { backgroundColor: '#00E676' }]}>
-              <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
-            </View>
-          )}
+
+          {/* Right Side: Status Dots (1 dot sent, 2 dots read in FitPulse Green #00E676) & Unread Badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+            {item.lastMessageSenderUid === user.uid && (
+              <View style={styles.dotsWrap}>
+                <View
+                  style={[
+                    styles.thickDot,
+                    { backgroundColor: '#00E676' },
+                  ]}
+                />
+                {item.lastMessageIsRead && (
+                  <View
+                    style={[
+                      styles.thickDot,
+                      { backgroundColor: '#00E676' },
+                    ]}
+                  />
+                )}
+              </View>
+            )}
+            {!!item.unreadCount && (
+              <View style={[styles.unreadBadge, { backgroundColor: '#00E676' }]}>
+                <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>

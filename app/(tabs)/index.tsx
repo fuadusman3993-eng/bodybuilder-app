@@ -11,13 +11,17 @@ import QuickActions from '../../components/home/QuickActions';
 import DiscoverSection from '../../components/home/DiscoverSection';
 import CommunityFeed from '../../components/home/CommunityFeed';
 import CoachHome from '../../components/home/CoachHome';
+import HealthSection from '../../components/home/HealthSection';
+import FootballSection from '../../components/home/FootballSection';
 import { useUserStore } from '../../store/userStore';
 import { useTheme } from '../../store/themeStore';
+import { useDomainStore } from '../../store/domainStore';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const { colors } = useTheme();
+  const { currentDomain } = useDomainStore();
 
   if (user.role === 'coach') {
     return (
@@ -39,11 +43,19 @@ export default function HomeScreen() {
         overScrollMode="always"
       >
         <Header />
-        <StoriesRow />
-        <HeroBanner />
-        <QuickActions />
-        <DiscoverSection />
-        <CommunityFeed />
+        {currentDomain === 'Fitness' ? (
+          <>
+            <StoriesRow />
+            <HeroBanner />
+            <QuickActions />
+            <DiscoverSection />
+            <CommunityFeed />
+          </>
+        ) : currentDomain === 'Health' ? (
+          <HealthSection />
+        ) : (
+          <FootballSection />
+        )}
       </ScrollView>
     </SafeAreaView>
   );

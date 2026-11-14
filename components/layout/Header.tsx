@@ -7,6 +7,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
 import BrandLogo from '../ui/BrandLogo';
+import HomeTopTabBar from '../home/HomeTopTabBar';
 
 export default function Header() {
   const { width } = useWindowDimensions();
@@ -37,6 +38,7 @@ export default function Header() {
       <View style={styles.left}>
         <BrandLogo size="small" showText={false} />
       </View>
+      <HomeTopTabBar />
       <View style={styles.right}>
         <TouchableOpacity 
           style={styles.iconButton} 
@@ -69,7 +71,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1,
   },
   logoIcon: {
     marginRight: 4,
