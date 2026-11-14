@@ -45,8 +45,11 @@ interface ConvItem {
   unreadCount?: number;
   isGroup?: boolean;
   isCoach?: boolean;
+  lastMessageSenderUid?: string;
+  lastMessageIsRead?: boolean;
 }
 import { useCachedState } from '../../lib/useCachedState';
+import { useChatStore } from '../../store/chatStore';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -101,6 +104,7 @@ export default function ChatScreen() {
       const profileMap = await getProfilesBatch(otherUids);
 
       const enriched: ConvItem[] = [];
+      let totalUnread = 0;
       for (const conv of data) {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
         const profile = profileMap[otherUid];
@@ -117,6 +121,24 @@ export default function ChatScreen() {
             .eq('is_read', false)
             .neq('sender_uid', user.uid);
           unreadCount = count || 0;
+          totalUnread += unreadCount;
+        } catch (_) {}
+
+        let lastMessageSenderUid = '';
+        let lastMessageIsRead = false;
+        try {
+          const { data: lastMsg } = await supabase
+            .from('messages')
+            .select('sender_uid, is_read')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (lastMsg) {
+            lastMessageSenderUid = lastMsg.sender_uid;
+            lastMessageIsRead = !!lastMsg.is_read;
+          }
         } catch (_) {}
 
         enriched.push({
@@ -129,15 +151,45 @@ export default function ChatScreen() {
           unreadCount,
           isCoach,
           isGroup: false, // Future proofing
+          lastMessageSenderUid,
+          lastMessageIsRead,
         });
       }
       setConversations(enriched);
+      useChatStore.getState().setUnreadCount(totalUnread);
     } catch (e) {
       console.warn(e);
     } finally {
       setLoading(false);
     }
   };
+
+  // Real-time listener for chat list: automatically update status dots & message previews
+  useEffect(() => {
+    if (!user?.uid || user.tier === UserTier.GUEST) return;
+
+    const channel = supabase
+      .channel(`chat_screen_realtime_${user.uid}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        () => {
+          fetchConversations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.uid]);
 
   useFocusEffect(
     useCallback(() => {
@@ -190,7 +242,26 @@ export default function ChatScreen() {
           <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted }]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 }}>
+            {/* If I sent the last message, show status dots: 1 thick dot if sent, 2 thick dots if read */}
+            {item.lastMessageSenderUid === user.uid && (
+              <View style={styles.dotsWrap}>
+                <View
+                  style={[
+                    styles.thickDot,
+                    { backgroundColor: item.lastMessageIsRead ? colors.primary : colors.textMuted },
+                  ]}
+                />
+                {item.lastMessageIsRead && (
+                  <View
+                    style={[
+                      styles.thickDot,
+                      { backgroundColor: colors.primary },
+                    ]}
+                  />
+                )}
+              </View>
+            )}
             {item.lastMessage?.includes('Missed call') ? (
               <Ionicons name="call-outline" size={14} color="#EF4444" />
             ) : item.lastMessage?.includes('Voice/Video call') ? (
@@ -435,6 +506,17 @@ const styles = StyleSheet.create({
   
   convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   convLast: { fontSize: 14, flex: 1, paddingRight: 10 },
+  dotsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+    marginRight: 4,
+  },
+  thickDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
   
   unreadBadge: {
     minWidth: 22, height: 22, borderRadius: 11,

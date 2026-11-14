@@ -16,6 +16,7 @@ import { useUserStore, UserTier } from '../store/userStore';
 import { captureSystemError } from '../lib/telemetryService';
 import { setupUniversalInteractionEngine, auditScreenRoute } from '../lib/universalInteractionEngine';
 import GlobalCallListener from '../components/GlobalCallListener';
+import GlobalChatListener from '../components/GlobalChatListener';
 import GlobalPresence from '../components/GlobalPresence';
 import OfflineNotice from '../components/ui/OfflineNotice';
 import { useThemeStore } from '../store/themeStore';
@@ -252,6 +253,7 @@ export default function RootLayout() {
         <StatusBar style="light" backgroundColor={activeTheme.colors.background} />
         <OfflineNotice />
         <GlobalCallListener />
+        <GlobalChatListener />
         <GlobalPresence />
         <Stack
           screenOptions={{

@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/profileService';
 import { useUserStore } from '../store/userStore';
 import { usePresenceStore } from '../store/presenceStore';
+import { useChatStore } from '../store/chatStore';
 import { Colors } from '../constants/colors';
 import { useTheme } from '../store/themeStore';
 import { safeBack } from '../lib/navigation';
@@ -153,7 +154,9 @@ export default function ChatRoom() {
     if (user.uid) {
       supabase.from('messages').update({ is_read: true })
         .eq('conversation_id', conversationId)
-        .neq('sender_uid', user.uid).then();
+        .neq('sender_uid', user.uid).then(() => {
+          if (user.uid) useChatStore.getState().refreshUnreadCount(user.uid);
+        });
     }
   }, [conversationId, user.uid]);
 
@@ -181,7 +184,9 @@ export default function ChatRoom() {
           flatRef.current?.scrollToOffset({ offset: 0, animated: false });
         }
         if (payload.new.sender_uid !== user.uid) {
-          supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
+          supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then(() => {
+            if (user.uid) useChatStore.getState().refreshUnreadCount(user.uid);
+          });
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
@@ -267,24 +272,34 @@ export default function ChatRoom() {
     if (!trimmed || sending || !conversationId) return;
     setSending(true);
     setText('');
-    const { error } = await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_uid: user.uid,
-      text: trimmed,
-      is_read: false,
-      type: 'text',
-    });
-    if (error) {
-      Alert.alert('Send Error', error.message);
-    } else {
-      await supabase.from('conversations')
-        .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
-        .eq('id', conversationId);
-      // Inverted list: scroll to offset 0 = newest message (visual bottom)
-      scrollToNewest(true);
-      setShowScrollDownBtn(false);
+    try {
+      const { data: insertedMsg, error } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_uid: user.uid,
+        text: trimmed,
+        is_read: false,
+        type: 'text',
+      }).select().single();
+
+      if (error) {
+        Alert.alert('Send Error', error.message);
+      } else if (insertedMsg) {
+        setMessages((prev: any[]) => {
+          if (prev.some((m: any) => m.id === insertedMsg.id)) return prev;
+          return [...prev, insertedMsg];
+        });
+        await supabase.from('conversations')
+          .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
+          .eq('id', conversationId);
+        // Inverted list: scroll to offset 0 = newest message (visual bottom)
+        scrollToNewest(true);
+        setShowScrollDownBtn(false);
+      }
+    } catch (err: any) {
+      console.warn('Send message error:', err);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const startRecordingWeb = async () => {

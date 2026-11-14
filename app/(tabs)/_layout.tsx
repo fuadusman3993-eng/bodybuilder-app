@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { useThemeStore } from '../../store/themeStore';
+import { useChatStore } from '../../store/chatStore';
 
 function CreateTabButton({ onPress, primaryColor, bgColor }: { onPress?: any; primaryColor?: string; bgColor?: string }) {
   const bg = primaryColor || Colors.primary;
@@ -21,6 +22,7 @@ function CreateTabButton({ onPress, primaryColor, bgColor }: { onPress?: any; pr
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const activeTheme = useThemeStore((s) => s.getActiveTheme());
+  const unreadCount = useChatStore((s) => s.unreadCount);
 
   return (
     <Tabs
@@ -77,6 +79,17 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: 'Chat',
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: activeTheme.colors.primary,
+            color: '#000000',
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 18,
+            height: 18,
+            lineHeight: Platform.OS === 'android' ? 17 : 18,
+            borderRadius: 9,
+          },
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={24} color={color} />
           ),
