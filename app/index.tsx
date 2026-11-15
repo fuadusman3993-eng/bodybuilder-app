@@ -36,9 +36,9 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    // On Web: 0ms — the +html.tsx inline script already painted the right theme background,
-    // so there is no visual flash; skip the artificial delay entirely.
-    const MIN_SPLASH_MS = Platform.OS === 'web' ? 0 : 800;
+    // Splash screen entrance duration: 800ms minimum on all platforms
+    // so every user (new or returning) sees the branded intro animation
+    const MIN_SPLASH_MS = 800;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
@@ -106,8 +106,8 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Uses the pre-hydrated Colors.background so the splash matches the active theme
-    backgroundColor: Colors.background,
+    // Branded splash is always pure black #000000 with theme-glowing FitPulse logo
+    backgroundColor: '#000000',
   },
   centerContainer: {
     flex: 1,
