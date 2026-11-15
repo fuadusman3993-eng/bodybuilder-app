@@ -288,8 +288,17 @@ export default function ProfileScreen() {
         </View>
         {(!user?.uid || user.tier === UserTier.GUEST) ? null : (
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setShowMoreModal(true)}>
-              <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textPrimary} />
+            <TouchableOpacity
+              style={[
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => setShowMoreModal(true)}
+            >
+              <Ionicons name="ellipsis-horizontal" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
         )}
@@ -389,9 +398,9 @@ export default function ProfileScreen() {
           {/* ── Centered Identity Block: Name, @Username, Bio, Meta ── */}
           <View style={styles.heroIdentityBlock}>
             <View style={styles.nameRow}>
-              <Text style={styles.nameText}>{name}</Text>
+              <Text style={[styles.nameText, { color: colors.textPrimary }]}>{name}</Text>
               {isCoach && (
-                <Ionicons name="checkmark-circle" size={17} color={Colors.primary} style={{ marginLeft: 4 }} />
+                <Ionicons name="checkmark-circle" size={17} color={colors.primary} style={{ marginLeft: 4 }} />
               )}
               {user.tier === UserTier.PREMIUM && (
                 <View style={styles.proPillBadge}>
@@ -401,23 +410,23 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            <Text style={styles.usernameText}>@{username}</Text>
+            <Text style={[styles.usernameText, { color: colors.textMuted }]}>@{username}</Text>
 
-            {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
+            {bio ? <Text style={[styles.bioText, { color: colors.textSecondary }]}>{bio}</Text> : null}
 
             {(city || goal) ? (
               <View style={styles.metaRow}>
                 {city ? (
                   <View style={styles.metaItem}>
                     <Ionicons name="location-sharp" size={12} color={colors.primary} />
-                    <Text style={styles.metaText}>{city}</Text>
+                    <Text style={[styles.metaText, { color: colors.textMuted }]}>{city}</Text>
                   </View>
                 ) : null}
-                {city && goal ? <Text style={styles.metaDot}>•</Text> : null}
+                {city && goal ? <Text style={[styles.metaDot, { color: colors.textMuted }]}>•</Text> : null}
                 {goal ? (
                   <View style={styles.metaItem}>
                     <Ionicons name="trophy" size={12} color="#EAB308" />
-                    <Text style={styles.metaText}>{goal}</Text>
+                    <Text style={[styles.metaText, { color: colors.textMuted }]}>{goal}</Text>
                   </View>
                 ) : null}
               </View>
@@ -427,46 +436,67 @@ export default function ProfileScreen() {
           {/* ── Floating Border-Free Stats (TikTok Image 2 Style) ── */}
           <View style={styles.statsRow}>
             <View style={styles.statCol}>
-              <Text style={styles.statCount}>{stat1Value}</Text>
-              <Text style={styles.statName}>{stat1Label}</Text>
+              <Text style={[styles.statCount, { color: colors.textPrimary }]}>{stat1Value}</Text>
+              <Text style={[styles.statName, { color: colors.textMuted }]}>{stat1Label}</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={styles.statCount}>{stat2Value}</Text>
-              <Text style={styles.statName}>{stat2Label}</Text>
+              <Text style={[styles.statCount, { color: colors.textPrimary }]}>{stat2Value}</Text>
+              <Text style={[styles.statName, { color: colors.textMuted }]}>{stat2Label}</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={styles.statCount}>{stat3Value}</Text>
-              <Text style={styles.statName}>{stat3Label}</Text>
+              <Text style={[styles.statCount, { color: colors.textPrimary }]}>{stat3Value}</Text>
+              <Text style={[styles.statName, { color: colors.textMuted }]}>{stat3Label}</Text>
             </View>
           </View>
 
           {/* ── Single-Row Action Bar (TikTok Style) ── */}
           <View style={styles.actionRow}>
             <TouchableOpacity
-              style={styles.actionBtnDark}
+              style={[
+                styles.actionBtnDark,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                },
+              ]}
               activeOpacity={0.8}
               onPress={() => router.push('/edit-profile')}
             >
-              <Text style={styles.actionBtnDarkText}>Edit profile</Text>
+              <Text style={[styles.actionBtnDarkText, { color: colors.textPrimary }]}>Edit profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.actionBtnDark}
+              style={[
+                styles.actionBtnDark,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                },
+              ]}
               activeOpacity={0.8}
               onPress={handleShareProfile}
             >
-              <Text style={styles.actionBtnDarkText}>Share profile</Text>
+              <Text style={[styles.actionBtnDarkText, { color: colors.textPrimary }]}>Share profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.actionIconBtn}
+              style={[
+                styles.actionIconBtn,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                },
+              ]}
               activeOpacity={0.8}
               onPress={() => router.push(isCoach ? '/coach-dashboard' : '/coaches')}
             >
               <Ionicons
                 name={isCoach ? 'speedometer-outline' : 'search-outline'}
                 size={18}
-                color={colors.primary}
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
           </View>
@@ -485,7 +515,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name={(active ? tab.iconFilled : tab.iconOutline) as any}
                     size={23}
-                    color={active ? '#FFFFFF' : '#64748B'}
+                    color={active ? colors.textPrimary : colors.textMuted}
                   />
                   {active && <View style={[styles.tabActiveBar, { backgroundColor: colors.primary }]} />}
                 </TouchableOpacity>

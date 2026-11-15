@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { TELEGRAM_THEMES, ThemeDefinition, getTheme } from '../../constants/themes';
+import { THEME_LIST, ThemeDefinition, getTheme } from '../../constants/themes';
 import { useThemeStore, AutoNightMode, AppFontFamily } from '../../store/themeStore';
 import { useUserStore, UserTier } from '../../store/userStore';
 
@@ -86,6 +86,10 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
   };
 
   const handleSelectTheme = (theme: ThemeDefinition) => {
+    if (!theme.isFree && !isPro) {
+      requirePro(`${theme.label} Theme`, () => setTheme(theme.id));
+      return;
+    }
     setTheme(theme.id);
   };
 
@@ -118,24 +122,38 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
-          {/* Top Swipe Handle */}
+          {/* Top Handle */}
           <View style={styles.handle} />
 
           {/* Header */}
           <View style={styles.headerRow}>
-            <Text style={[styles.headerTitle, { color: activeTheme.colors.textPrimary }]}>
-              Themes
-            </Text>
+            <View style={styles.headerLeft}>
+              <Ionicons name="color-palette" size={24} color={activeAccent} />
+              <Text style={[styles.headerTitle, { color: activeTheme.colors.textPrimary }]}>
+                Themes
+              </Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
               <Ionicons name="close" size={22} color={activeTheme.colors.textMuted} />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-            {/* ── 1. THEMES ROW (Classic | Day | Tinted | Night - Image 2) ── */}
-            <View style={styles.themesGrid}>
-              {TELEGRAM_THEMES.map((theme) => {
+            {/* Subtitle */}
+            <Text style={[styles.sectionSubtitle, { color: activeTheme.colors.textMuted }]}>
+              Select your preferred app atmosphere
+            </Text>
+
+            {/* ── 1. ORIGINAL PHONE MOCKUP CARDS CAROUSEL (Image 1 Restored with Day) ── */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.cardsRow}
+            >
+              {THEME_LIST.map((theme) => {
                 const isActive = activeThemeId === theme.id;
+                const isThemeLocked = !theme.isFree && !isPro;
+
                 return (
                   <TouchableOpacity
                     key={theme.id}
@@ -143,51 +161,73 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                     activeOpacity={0.85}
                     onPress={() => handleSelectTheme(theme)}
                   >
-                    {/* Phone Preview Mockup (Image 2 Style) */}
+                    {/* Exact Original Phone Mockup (Image 1) */}
                     <View
                       style={[
                         styles.phoneMockup,
                         {
                           backgroundColor: theme.preview.bgColor,
-                          borderColor: isActive ? '#00E676' : theme.colors.border,
+                          borderColor: isActive ? theme.preview.accentColor : theme.colors.border,
                           borderWidth: isActive ? 2.5 : 1,
                         },
                       ]}
                     >
-                      {/* Incoming bubble (white / light surface) */}
-                      <View
-                        style={[
-                          styles.mockupBubbleTop,
-                          {
-                            backgroundColor:
-                              theme.id === 'day' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.16)',
-                          },
-                        ]}
-                      />
+                      {/* Top mini header notch */}
+                      <View style={[styles.mockupHeader, { backgroundColor: theme.preview.surfaceColor }]}>
+                        <View style={[styles.mockupDot, { backgroundColor: theme.preview.accentColor }]} />
+                        <View style={[styles.mockupBar, { backgroundColor: theme.colors.borderLight }]} />
+                      </View>
 
-                      {/* Outgoing bubble */}
-                      <View
-                        style={[
-                          styles.mockupBubbleBottom,
-                          {
-                            backgroundColor:
-                              theme.id === 'day'
-                                ? '#D6EBF8'
-                                : theme.id === 'classic'
-                                ? '#163824'
-                                : theme.preview.bubbleColor,
-                          },
-                        ]}
-                      />
+                      {/* Mockup Chat Bubbles (Image 1) */}
+                      <View style={styles.mockupBody}>
+                        {/* Bubble 1: Incoming message */}
+                        <View
+                          style={[
+                            styles.mockupBubbleLeft,
+                            { backgroundColor: theme.preview.surfaceColor },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.mockupTextLine,
+                              { backgroundColor: theme.colors.borderLight, width: '70%' },
+                            ]}
+                          />
+                          <View
+                            style={[
+                              styles.mockupTextLine,
+                              { backgroundColor: theme.colors.borderLight, width: '40%' },
+                            ]}
+                          />
+                        </View>
 
-                      {/* Radio Circle */}
-                      <View style={styles.mockupRadioWrap}>
+                        {/* Bubble 2: Outgoing accent message */}
+                        <View
+                          style={[
+                            styles.mockupBubbleRight,
+                            {
+                              backgroundColor: theme.preview.bubbleColor,
+                              borderColor: theme.preview.accentColor,
+                            },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.mockupTextLine,
+                              { backgroundColor: theme.preview.accentColor, width: '80%' },
+                            ]}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Bottom Radio Circle (Image 1) */}
+                      <View style={styles.mockupBottom}>
                         <View
                           style={[
                             styles.radioCircle,
                             {
                               borderColor: isActive
-                                ? '#00E676'
+                                ? theme.preview.accentColor
                                 : 'rgba(255, 255, 255, 0.35)',
                               backgroundColor: isActive ? 'transparent' : 'rgba(0, 0, 0, 0.2)',
                             },
@@ -197,34 +237,59 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                             <View
                               style={[
                                 styles.radioCircleInner,
-                                { backgroundColor: '#00E676' },
+                                { backgroundColor: theme.preview.accentColor },
                               ]}
                             />
                           )}
                         </View>
                       </View>
+
+                      {/* PRO Lock overlay */}
+                      {isThemeLocked && (
+                        <View style={styles.lockOverlay}>
+                          <View style={styles.lockBadge}>
+                            <Ionicons name="lock-closed" size={11} color="#000" />
+                            <Text style={styles.lockBadgeText}>PRO</Text>
+                          </View>
+                        </View>
+                      )}
                     </View>
 
-                    {/* Label below phone */}
+                    {/* Label below phone card */}
                     <Text
                       style={[
                         styles.themeCardLabel,
                         {
-                          color: isActive
-                            ? activeTheme.colors.textPrimary
-                            : activeTheme.colors.textMuted,
+                          color: isActive ? theme.preview.accentColor : activeTheme.colors.textPrimary,
                           fontWeight: isActive ? '800' : '600',
                         },
                       ]}
+                      numberOfLines={1}
                     >
                       {theme.label}
                     </Text>
+
+                    {/* Free or PRO status text */}
+                    {theme.isFree ? (
+                      <Text style={[styles.themeStatusText, { color: activeTheme.colors.textMuted }]}>
+                        Free
+                      </Text>
+                    ) : (
+                      <View style={styles.proTag}>
+                        <Ionicons name="sparkles" size={10} color="#FDBF2D" />
+                        <Text style={styles.proTagText}>PRO</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
 
             {/* ── 2. COLOR ACCENT SWATCHES & CUSTOM COLOR CREATOR ── */}
+            <Text style={[styles.sectionHeading, { color: activeTheme.colors.textSecondary }]}>
+              Color Accent
+            </Text>
+
             <View style={styles.swatchesRow}>
               {ACCENT_SWATCHES.map((swatch) => {
                 const isSelected = activeAccent.toLowerCase() === swatch.color.toLowerCase();
@@ -282,8 +347,8 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                 style={[
                   styles.checkboxSquare,
                   {
-                    borderColor: useSystemAccent ? '#00E676' : activeTheme.colors.borderLight,
-                    backgroundColor: useSystemAccent ? '#00E676' : 'transparent',
+                    borderColor: useSystemAccent ? activeAccent : activeTheme.colors.borderLight,
+                    backgroundColor: useSystemAccent ? activeAccent : 'transparent',
                   },
                 ]}
               >
@@ -302,7 +367,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             <View style={[styles.divider, { backgroundColor: activeTheme.colors.border }]} />
 
             {/* ── 4. THEME SETTINGS (IMAGE 2) ── */}
-            <Text style={[styles.sectionTitle, { color: activeTheme.colors.primary }]}>
+            <Text style={[styles.sectionHeading, { color: activeAccent, marginTop: 4 }]}>
               Theme settings
             </Text>
 
@@ -379,7 +444,12 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
               onPress={() => setShowFontModal(true)}
             >
               <View style={styles.settingLeft}>
-                <View style={styles.fontAIcon}>
+                <View
+                  style={[
+                    styles.fontAIcon,
+                    { borderColor: activeTheme.colors.borderLight },
+                  ]}
+                >
                   <Text style={[styles.fontAIconText, { color: activeTheme.colors.textMuted }]}>
                     A
                   </Text>
@@ -398,7 +468,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             </TouchableOpacity>
           </ScrollView>
 
-          {/* ── MODAL A: Custom Color Creator (PRO) ── */}
+          {/* ── SUB-MODAL A: Custom Color Creator (PRO) ── */}
           <Modal visible={showColorCreator} transparent animationType="fade">
             <View style={styles.subModalOverlay}>
               <View
@@ -443,7 +513,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                   />
                 </View>
 
-                {/* Quick Preset Colors */}
+                {/* Quick Presets */}
                 <View style={styles.presetColorRow}>
                   {['#FF1493', '#00F0FF', '#7928CA', '#FF4D4D', '#F5A623', '#50E3C2'].map((c) => (
                     <TouchableOpacity
@@ -455,7 +525,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.applyBtn, { backgroundColor: '#00E676' }]}
+                  style={[styles.applyBtn, { backgroundColor: activeAccent }]}
                   onPress={handleApplyCustomHex}
                   activeOpacity={0.8}
                 >
@@ -465,7 +535,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             </View>
           </Modal>
 
-          {/* ── MODAL B: Your Name Color Picker (PRO) ── */}
+          {/* ── SUB-MODAL B: Choose Your Name Color (PRO) ── */}
           <Modal visible={showNameColorModal} transparent animationType="fade">
             <View style={styles.subModalOverlay}>
               <View
@@ -490,7 +560,6 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                   Select the accent color used to highlight your name in chats and profiles:
                 </Text>
 
-                {/* Swatches */}
                 <View style={styles.nameColorsGrid}>
                   {NAME_COLORS.map((color) => {
                     const isSelected = nameColor === color;
@@ -522,7 +591,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             </View>
           </Modal>
 
-          {/* ── MODAL C: Auto-Night Mode Picker ── */}
+          {/* ── SUB-MODAL C: Auto-Night Mode Picker ── */}
           <Modal visible={showNightModal} transparent animationType="fade">
             <View style={styles.subModalOverlay}>
               <View
@@ -556,7 +625,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                       key={mode}
                       style={[
                         styles.pickerOptionRow,
-                        isSelected && { backgroundColor: activeTheme.colors.primary + '15' },
+                        isSelected && { backgroundColor: activeTheme.colors.primary + '18' },
                       ]}
                       onPress={() => {
                         setAutoNightMode(mode);
@@ -576,7 +645,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             </View>
           </Modal>
 
-          {/* ── MODAL D: Font Family Picker ── */}
+          {/* ── SUB-MODAL D: Font Family Picker ── */}
           <Modal visible={showFontModal} transparent animationType="fade">
             <View style={styles.subModalOverlay}>
               <View
@@ -604,7 +673,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                       key={f}
                       style={[
                         styles.pickerOptionRow,
-                        isSelected && { backgroundColor: activeTheme.colors.primary + '15' },
+                        isSelected && { backgroundColor: activeTheme.colors.primary + '18' },
                       ]}
                       onPress={() => {
                         setFontFamily(f);
@@ -624,7 +693,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
             </View>
           </Modal>
 
-          {/* ── MODAL E: PRO Upgrade Prompt Sheet ── */}
+          {/* ── SUB-MODAL E: PRO Upgrade Prompt ── */}
           <Modal visible={showProPrompt} transparent animationType="fade">
             <View style={styles.subModalOverlay}>
               <View
@@ -681,8 +750,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
   },
@@ -702,9 +771,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
   closeBtn: {
     padding: 6,
@@ -715,47 +790,82 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
+  sectionSubtitle: {
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginBottom: 12,
+  },
 
-  // 1. Phone Cards Grid
-  themesGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
+  // 1. EXACT ORIGINAL PHONE MOCKUPS (Image 1 Style Restored)
+  cardsRow: {
+    gap: 12,
+    paddingRight: 20,
     marginBottom: 20,
   },
   cardItem: {
     alignItems: 'center',
-    width: '23%',
+    width: 90,
   },
   phoneMockup: {
-    width: '100%',
-    aspectRatio: 0.58,
-    borderRadius: 14,
-    padding: 6,
+    width: 90,
+    height: 154,
+    borderRadius: 22,
+    padding: 7,
     justifyContent: 'space-between',
     position: 'relative',
+    overflow: 'hidden',
   },
-  mockupBubbleTop: {
-    height: 14,
-    borderRadius: 4,
-    width: '75%',
-    marginTop: 4,
-  },
-  mockupBubbleBottom: {
-    height: 14,
-    borderRadius: 4,
-    width: '65%',
-    alignSelf: 'flex-end',
-    marginTop: 6,
-  },
-  mockupRadioWrap: {
+  mockupHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 4,
+    gap: 5,
+    paddingHorizontal: 4,
+    paddingTop: 2,
+  },
+  mockupDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  mockupBar: {
+    width: 28,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  mockupBody: {
+    gap: 6,
+    marginVertical: 4,
+  },
+  mockupBubbleLeft: {
+    padding: 5,
+    borderRadius: 6,
+    width: '82%',
+    gap: 3,
+  },
+  mockupBubbleRight: {
+    padding: 5,
+    borderRadius: 6,
+    width: '82%',
+    alignSelf: 'flex-end',
+    borderWidth: 0.5,
+  },
+  mockupTextLine: {
+    height: 3,
+    borderRadius: 1.5,
+  },
+  mockupBottom: {
+    alignItems: 'center',
+    paddingBottom: 2,
   },
   radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
@@ -765,10 +875,45 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FDBF2D',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  lockBadgeText: {
+    color: '#000',
+    fontSize: 9.5,
+    fontWeight: '900',
+  },
   themeCardLabel: {
     fontSize: 12,
     marginTop: 6,
     textAlign: 'center',
+  },
+  themeStatusText: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  proTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 1,
+  },
+  proTagText: {
+    color: '#FDBF2D',
+    fontSize: 10.5,
+    fontWeight: '800',
   },
 
   // 2. Swatches Row
@@ -813,7 +958,7 @@ const styles = StyleSheet.create({
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 12,
   },
   checkboxSquare: {
@@ -850,12 +995,6 @@ const styles = StyleSheet.create({
   },
 
   // 4. Theme Settings Section
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-    marginBottom: 8,
-  },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -896,7 +1035,6 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -28,17 +28,35 @@ interface ThemeState {
   getActiveTheme: () => ThemeDefinition;
 }
 
-// Early synchronous load for Web to avoid theme flashing
+// ── Instant Synchronous Theme Initialization ──
+// Reads saved theme from localStorage on initial script execution to eliminate any flash of Classic theme
+let initialThemeId = 'classic';
+let initialCustomAccent: string | null = null;
+let initialNameColor = '#EC4899';
+let initialAutoNight: AutoNightMode = 'off';
+let initialFontFamily: AppFontFamily = 'Default';
+
 if (typeof window !== 'undefined' && window.localStorage) {
   try {
     const raw = window.localStorage.getItem('fitpulse-theme-storage');
     if (raw) {
       const parsed = JSON.parse(raw);
-      const savedThemeId = parsed?.state?.activeThemeId;
-      const customAccent = parsed?.state?.customAccentColor;
-      if (savedThemeId && THEMES[savedThemeId]) {
-        applyThemeToColors(savedThemeId, customAccent);
+      if (parsed?.state?.activeThemeId && THEMES[parsed.state.activeThemeId]) {
+        initialThemeId = parsed.state.activeThemeId;
       }
+      if (parsed?.state?.customAccentColor) {
+        initialCustomAccent = parsed.state.customAccentColor;
+      }
+      if (parsed?.state?.nameColor) {
+        initialNameColor = parsed.state.nameColor;
+      }
+      if (parsed?.state?.autoNightMode) {
+        initialAutoNight = parsed.state.autoNightMode;
+      }
+      if (parsed?.state?.fontFamily) {
+        initialFontFamily = parsed.state.fontFamily;
+      }
+      applyThemeToColors(initialThemeId, initialCustomAccent);
     }
   } catch {}
 }
@@ -46,12 +64,12 @@ if (typeof window !== 'undefined' && window.localStorage) {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      activeThemeId: 'classic',
-      customAccentColor: null,
+      activeThemeId: initialThemeId,
+      customAccentColor: initialCustomAccent,
       useSystemAccent: false,
-      nameColor: '#EC4899', // Telegram-style default pinkish name color
-      autoNightMode: 'off',
-      fontFamily: 'Default',
+      nameColor: initialNameColor,
+      autoNightMode: initialAutoNight,
+      fontFamily: initialFontFamily,
       unlockedThemeIds: ['classic', 'day', 'tinted', 'night', 'azure', 'cyber_gold'],
       themeVersion: 1,
 
