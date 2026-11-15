@@ -43,9 +43,9 @@ export default function HomeScreen() {
         overScrollMode="always"
       >
         <Header />
+        <StoriesRow />
         {currentDomain === 'Fitness' ? (
           <>
-            <StoriesRow />
             <HeroBanner />
             <QuickActions />
             <DiscoverSection />
