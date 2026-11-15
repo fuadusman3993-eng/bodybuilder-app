@@ -3,16 +3,27 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import storage from './storage';
 import { THEMES, getTheme, applyThemeToColors, ThemeDefinition, ThemeColors } from '../constants/themes';
 import { useUserStore, UserTier } from './userStore';
-import { supabase } from '../lib/supabase';
+
+export type AutoNightMode = 'off' | 'scheduled' | 'system';
+export type AppFontFamily = 'Default' | 'Modern' | 'Monospace' | 'Rounded';
 
 interface ThemeState {
   activeThemeId: string;
+  customAccentColor: string | null;
+  useSystemAccent: boolean;
+  nameColor: string;
+  autoNightMode: AutoNightMode;
+  fontFamily: AppFontFamily;
   unlockedThemeIds: string[];
-  themeVersion: number; // Incremented on change to trigger immediate re-render
+  themeVersion: number;
 
   // Actions
   setTheme: (themeId: string) => boolean;
-  unlockTheme: (themeId: string) => Promise<{ success: boolean; error?: string }>;
+  setCustomAccentColor: (color: string | null) => void;
+  setUseSystemAccent: (val: boolean) => void;
+  setNameColor: (color: string) => void;
+  setAutoNightMode: (mode: AutoNightMode) => void;
+  setFontFamily: (font: AppFontFamily) => void;
   isThemeUnlocked: (themeId: string) => boolean;
   getActiveTheme: () => ThemeDefinition;
 }
@@ -24,8 +35,9 @@ if (typeof window !== 'undefined' && window.localStorage) {
     if (raw) {
       const parsed = JSON.parse(raw);
       const savedThemeId = parsed?.state?.activeThemeId;
+      const customAccent = parsed?.state?.customAccentColor;
       if (savedThemeId && THEMES[savedThemeId]) {
-        applyThemeToColors(savedThemeId);
+        applyThemeToColors(savedThemeId, customAccent);
       }
     }
   } catch {}
@@ -35,7 +47,12 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
       activeThemeId: 'classic',
-      unlockedThemeIds: ['classic', 'azure', 'cyber_gold'],
+      customAccentColor: null,
+      useSystemAccent: false,
+      nameColor: '#EC4899', // Telegram-style default pinkish name color
+      autoNightMode: 'off',
+      fontFamily: 'Default',
+      unlockedThemeIds: ['classic', 'day', 'tinted', 'night', 'azure', 'cyber_gold'],
       themeVersion: 1,
 
       isThemeUnlocked: (themeId: string) => {
@@ -57,7 +74,7 @@ export const useThemeStore = create<ThemeState>()(
           return false;
         }
 
-        applyThemeToColors(theme.id);
+        applyThemeToColors(theme.id, get().customAccentColor);
         set((state) => ({
           activeThemeId: theme.id,
           themeVersion: state.themeVersion + 1,
@@ -65,58 +82,40 @@ export const useThemeStore = create<ThemeState>()(
         return true;
       },
 
-      unlockTheme: async (themeId: string) => {
-        const theme = getTheme(themeId);
-        if (get().isThemeUnlocked(themeId)) {
-          get().setTheme(themeId);
-          return { success: true };
-        }
-
-        const cost = theme.unlockCostCoins || 250;
-        const { user, updateCoins } = useUserStore.getState();
-        const currentCoins = user.coinsBalance ?? 0;
-
-        if (currentCoins < cost) {
-          return {
-            success: false,
-            error: `Insufficient coins. You have 🪙 ${currentCoins}, but this theme requires 🪙 ${cost}.`,
-          };
-        }
-
-        // Deduct coins locally
-        const newBalance = currentCoins - cost;
-        updateCoins(newBalance);
-
-        // Deduct from Supabase wallet in background
-        if (user.uid) {
-          supabase
-            .from('wallets')
-            .update({ balance_coins: newBalance })
-            .eq('user_id', user.uid)
-            .then();
-
-          supabase
-            .from('coin_transactions')
-            .insert({
-              user_id: user.uid,
-              type: 'spend_subscription',
-              amount_coins: cost,
-              amount_etb: cost,
-              status: 'completed',
-              description: `Unlocked Pro Theme: ${theme.name}`,
-            })
-            .then();
-        }
-
-        // Add to unlocked list and activate immediately
-        applyThemeToColors(theme.id);
+      setCustomAccentColor: (color: string | null) => {
+        applyThemeToColors(get().activeThemeId, color);
         set((state) => ({
-          unlockedThemeIds: Array.from(new Set([...state.unlockedThemeIds, themeId])),
-          activeThemeId: theme.id,
+          customAccentColor: color,
           themeVersion: state.themeVersion + 1,
         }));
+      },
 
-        return { success: true };
+      setUseSystemAccent: (val: boolean) => {
+        set((state) => ({
+          useSystemAccent: val,
+          themeVersion: state.themeVersion + 1,
+        }));
+      },
+
+      setNameColor: (color: string) => {
+        set((state) => ({
+          nameColor: color,
+          themeVersion: state.themeVersion + 1,
+        }));
+      },
+
+      setAutoNightMode: (mode: AutoNightMode) => {
+        set((state) => ({
+          autoNightMode: mode,
+          themeVersion: state.themeVersion + 1,
+        }));
+      },
+
+      setFontFamily: (font: AppFontFamily) => {
+        set((state) => ({
+          fontFamily: font,
+          themeVersion: state.themeVersion + 1,
+        }));
       },
     }),
     {
@@ -124,7 +123,7 @@ export const useThemeStore = create<ThemeState>()(
       storage: createJSONStorage(() => storage),
       onRehydrateStorage: () => (state) => {
         if (state?.activeThemeId) {
-          applyThemeToColors(state.activeThemeId);
+          applyThemeToColors(state.activeThemeId, state.customAccentColor);
         }
       },
     }
@@ -137,7 +136,15 @@ export const useThemeStore = create<ThemeState>()(
  */
 export function useTheme() {
   const activeThemeId = useThemeStore((s) => s.activeThemeId);
+  const customAccentColor = useThemeStore((s) => s.customAccentColor);
   const themeVersion = useThemeStore((s) => s.themeVersion);
+  const nameColor = useThemeStore((s) => s.nameColor);
   const theme = getTheme(activeThemeId);
-  return { theme, colors: theme.colors, themeId: activeThemeId, themeVersion };
+
+  const colors = {
+    ...theme.colors,
+    ...(customAccentColor ? { primary: customAccentColor, storyBorder: customAccentColor } : {}),
+  };
+
+  return { theme, colors, themeId: activeThemeId, themeVersion, nameColor };
 }
