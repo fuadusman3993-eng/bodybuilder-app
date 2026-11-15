@@ -1025,7 +1025,7 @@ export default function ChatRoom() {
                 styles.bubble,
                 isMe
                   ? [styles.bubbleMe, { backgroundColor: theme.preview.bubbleColor || colors.surface, borderColor: colors.primary }]
-                  : [styles.bubbleThem, { backgroundColor: colors.surface }]
+                  : [styles.bubbleThem, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]
               ]}
             >
               {isSharedPost ? (
@@ -1038,7 +1038,7 @@ export default function ChatRoom() {
                     <View style={[styles.sharedPostBadge, { backgroundColor: colors.primary }]}>
                       <Ionicons name="paper-plane" size={11} color="#000" />
                     </View>
-                    <Text style={styles.sharedPostAuthor} numberOfLines={1}>
+                    <Text style={[styles.sharedPostAuthor, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1}>
                       {item.text.split(':')[0]?.replace('📷 ', '') || 'Shared Post'}
                     </Text>
                   </View>
@@ -1052,11 +1052,11 @@ export default function ChatRoom() {
                   ) : null}
 
                   <View style={styles.sharedPostFooter}>
-                    <Text style={styles.sharedPostCaption} numberOfLines={2}>
+                    <Text style={[styles.sharedPostCaption, { color: colors.textSecondary, fontWeight: '500' }]} numberOfLines={2}>
                       {item.text.includes(':') ? item.text.split(':').slice(1).join(':').replace(/["']/g, '').trim() : ''}
                     </Text>
                     <View style={styles.sharedPostLinkRow}>
-                      <Text style={[styles.sharedPostLinkText, { color: colors.primary }]}>View in Community</Text>
+                      <Text style={[styles.sharedPostLinkText, { color: colors.primary, fontWeight: '700' }]}>View in Community</Text>
                       <Ionicons name="arrow-forward-circle" size={16} color={colors.primary} />
                     </View>
                   </View>
@@ -1083,7 +1083,7 @@ export default function ChatRoom() {
                       style={{ alignItems: 'center' }}
                     >
                       <Ionicons name="play-circle" size={52} color={colors.primary} />
-                      <Text style={{ color: '#A0A0A0', fontSize: 12, marginTop: 4 }}>Play Video</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4, fontWeight: '600' }}>Play Video</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1098,17 +1098,29 @@ export default function ChatRoom() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.callTitle, isMissed && styles.callTitleMissed]}>
+                      <Text style={[styles.callTitle, { color: colors.textPrimary, fontWeight: '700' }, isMissed && styles.callTitleMissed]}>
                         {isMissed ? 'Missed Call' : item.text?.replace(/[📞]/g, '').trim()}
                       </Text>
-                      <Text style={styles.callSubtitle}>
+                      <Text style={[styles.callSubtitle, { color: colors.textMuted, fontWeight: '500' }]}>
                         {isMissed ? (isMe ? 'Outgoing missed call' : 'Incoming missed call') : 'Call finished'}
                       </Text>
                     </View>
                   </View>
                 </View>
               ) : (
-                <Text style={styles.bubbleText}>
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    {
+                      color: isMe
+                        ? (theme.id === 'day' ? '#0F172A' : '#FFFFFF')
+                        : colors.textPrimary,
+                      fontWeight: '600',
+                      fontSize: 15.5,
+                      lineHeight: 22,
+                    },
+                  ]}
+                >
                   {item.text}
                 </Text>
               )}
@@ -1118,12 +1130,12 @@ export default function ChatRoom() {
           {/* External metadata row only for text, call and shared posts */}
           {!isAudio && !isImage && (
             <View style={styles.metaRow}>
-              <Text style={styles.timeLabel}>{timeStr(item.created_at)}</Text>
+              <Text style={[styles.timeLabel, { color: colors.textMuted, fontWeight: '600' }]}>{timeStr(item.created_at)}</Text>
               {isMe && (
                 item.isUploading ? (
                   <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 4 }} />
                 ) : (
-                  <Text style={[styles.seenTick, item.is_read ? [styles.seenRead, { color: colors.primary }] : styles.seenSent]}>
+                  <Text style={[styles.seenTick, item.is_read ? [styles.seenRead, { color: colors.primary }] : [styles.seenSent, { color: colors.textMuted }], { fontWeight: '700' }]}>
                     {item.is_read ? '✓✓' : '✓'}
                   </Text>
                 )
@@ -1140,7 +1152,7 @@ export default function ChatRoom() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => safeBack('/(tabs)/chat')} style={styles.headerBackBtn}>
-          <Ionicons name="chevron-back" size={26} color="#FFF" />
+          <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -1155,7 +1167,7 @@ export default function ChatRoom() {
           </View>
           <View style={styles.headerNameCol}>
             <View style={styles.headerNameRow}>
-              <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">
+              <Text style={[styles.headerName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
                 {otherUser.name}
               </Text>
               {otherUser.isCoach && (
@@ -1164,7 +1176,7 @@ export default function ChatRoom() {
             </View>
             <View style={styles.statusRow}>
               <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.primary : '#666' }]} />
-              <Text style={[styles.onlineText, { color: isOnline ? colors.primary : colors.textMuted }]}>
+              <Text style={[styles.onlineText, { color: isOnline ? colors.primary : colors.textMuted, fontWeight: '600' }]}>
                 {isOnline ? 'Online' : 'Offline'}
               </Text>
             </View>
@@ -1184,7 +1196,7 @@ export default function ChatRoom() {
               }
             })}
           >
-            <Ionicons name="call" size={19} color="#FFF" />
+            <Ionicons name="call" size={19} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerActionBtn}
@@ -1199,10 +1211,10 @@ export default function ChatRoom() {
               }
             })}
           >
-            <Ionicons name="videocam" size={21} color="#FFF" />
+            <Ionicons name="videocam" size={21} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
-            <Ionicons name="ellipsis-vertical" size={19} color="#FFF" />
+            <Ionicons name="ellipsis-vertical" size={19} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1317,13 +1329,14 @@ export default function ChatRoom() {
                 />
               </TouchableOpacity>
               
-              <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: 'rgba(255,255,255,0.08)' }]}>
+              <View style={[styles.inputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border, borderWidth: 1 }]}>
                 <TextInput
                   ref={textInputRef}
                   style={[
                     styles.input,
                     {
                       color: colors.textPrimary,
+                      fontWeight: '500',
                       outlineStyle: 'none',
                       outlineWidth: 0,
                       outline: 'none',
@@ -1516,10 +1529,10 @@ const styles = StyleSheet.create({
   headerInitial: { color: '#000', fontWeight: '800', fontSize: 16 },
   headerNameCol: { justifyContent: 'center', flex: 1, minWidth: 0 },
   headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
-  headerName: { color: '#FFF', fontSize: 15.5, fontWeight: '700', flexShrink: 1 },
+  headerName: { fontSize: 15.5, fontWeight: '700', flexShrink: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
   onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00E676' },
-  onlineText: { color: '#00E676', fontSize: 11.5, fontWeight: '500' },
+  onlineText: { color: '#00E676', fontSize: 11.5, fontWeight: '600' },
 
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 1, flexShrink: 0 },
   headerActionBtn: { padding: 7, justifyContent: 'center', alignItems: 'center' },
@@ -1533,7 +1546,7 @@ const styles = StyleSheet.create({
   bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
   bubbleMe: { backgroundColor: '#0a1f12', borderWidth: 1, borderColor: '#00E676', borderBottomRightRadius: 4 },
   bubbleThem: { backgroundColor: '#1C1C1E', borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 15, lineHeight: 21, color: '#FFF' },
+  bubbleText: { fontSize: 15.5, lineHeight: 22, fontWeight: '600' },
 
   audioRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 180, marginBottom: 8 },
   playIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },

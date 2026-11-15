@@ -238,19 +238,19 @@ export default function ChatScreen() {
       
       <View style={styles.convInfo}>
         <View style={styles.convTop}>
-          <Text style={[styles.convName, { color: colors.textPrimary }]}>{item.otherName}</Text>
-          <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted }]}>{timeAgo(item.lastAt)}</Text>
+          <Text style={[styles.convName, { color: colors.textPrimary, fontWeight: '700' }]}>{item.otherName}</Text>
+          <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted, fontWeight: '600' }]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
             {/* Instagram-style media icons & clean text (No broken glyphs) */}
             {item.lastMessage?.toLowerCase().includes('photo') ? (
               <>
-                <Ionicons name="camera-outline" size={15} color="#00E676" />
+                <Ionicons name="camera-outline" size={15} color={colors.primary} />
                 <Text
                   style={[
                     styles.convLast,
-                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                    { color: item.unreadCount ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount ? '700' : '500' },
                   ]}
                   numberOfLines={1}
                 >
@@ -259,11 +259,11 @@ export default function ChatScreen() {
               </>
             ) : item.lastMessage?.toLowerCase().includes('voice message') ? (
               <>
-                <Ionicons name="mic-outline" size={15} color="#00E676" />
+                <Ionicons name="mic-outline" size={15} color={colors.primary} />
                 <Text
                   style={[
                     styles.convLast,
-                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                    { color: item.unreadCount ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount ? '700' : '500' },
                   ]}
                   numberOfLines={1}
                 >
@@ -272,11 +272,11 @@ export default function ChatScreen() {
               </>
             ) : item.lastMessage?.toLowerCase().includes('video') ? (
               <>
-                <Ionicons name="videocam-outline" size={15} color="#00E676" />
+                <Ionicons name="videocam-outline" size={15} color={colors.primary} />
                 <Text
                   style={[
                     styles.convLast,
-                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                    { color: item.unreadCount ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount ? '700' : '500' },
                   ]}
                   numberOfLines={1}
                 >
@@ -289,7 +289,7 @@ export default function ChatScreen() {
                 <Text
                   style={[
                     styles.convLast,
-                    { color: '#EF4444', fontWeight: '500' },
+                    { color: '#EF4444', fontWeight: '600' },
                   ]}
                   numberOfLines={1}
                 >
@@ -298,11 +298,11 @@ export default function ChatScreen() {
               </>
             ) : item.lastMessage?.includes('Voice/Video call') ? (
               <>
-                <Ionicons name="call-outline" size={14} color="#00E676" />
+                <Ionicons name="call-outline" size={14} color={colors.primary} />
                 <Text
                   style={[
                     styles.convLast,
-                    { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                    { color: item.unreadCount ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount ? '700' : '500' },
                   ]}
                   numberOfLines={1}
                 >
@@ -313,7 +313,7 @@ export default function ChatScreen() {
               <Text
                 style={[
                   styles.convLast,
-                  { color: item.unreadCount ? colors.textPrimary : colors.textMuted },
+                  { color: item.unreadCount ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount ? '700' : '500' },
                 ]}
                 numberOfLines={1}
               >
@@ -439,14 +439,18 @@ export default function ChatScreen() {
                   key={filter} 
                   style={[
                     styles.filterChip,
-                    { backgroundColor: activeFilter === filter ? colors.primary : colors.surface },
+                    {
+                      backgroundColor: activeFilter === filter ? colors.primary : colors.surface,
+                      borderColor: activeFilter === filter ? colors.primary : colors.border,
+                      borderWidth: 1,
+                    },
                   ]}
                   onPress={() => setActiveFilter(filter as any)}
                 >
                   <Text
                     style={[
                       styles.filterText,
-                      { color: activeFilter === filter ? '#000000' : colors.textPrimary },
+                      { color: activeFilter === filter ? '#000000' : colors.textPrimary, fontWeight: activeFilter === filter ? '800' : '600' },
                     ]}
                   >
                     {filter}

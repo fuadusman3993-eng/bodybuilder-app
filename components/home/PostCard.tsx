@@ -250,12 +250,12 @@ export default function PostCard({
           />
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={styles.userName}>{post.username || 'User'}</Text>
+              <Text style={[styles.userName, { color: colors.textPrimary, fontWeight: '700' }]}>{post.username || 'User'}</Text>
               {post.isCoach && (
                 <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
               )}
             </View>
-            <Text style={styles.postMeta} numberOfLines={1}>{subtitle}</Text>
+            <Text style={[styles.postMeta, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
           </View>
         </TouchableOpacity>
 
@@ -263,11 +263,15 @@ export default function PostCard({
         <View style={styles.headerRight}>
           {!post.isSelf && (
             <TouchableOpacity
-              style={[styles.followBtn, post.isFollowing && styles.followingBtn]}
+              style={[
+                styles.followBtn,
+                { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+                post.isFollowing && styles.followingBtn
+              ]}
               activeOpacity={0.8}
               onPress={() => onFollowToggle?.(post.uid, !!post.isFollowing)}
             >
-              <Text style={[styles.followBtnText, post.isFollowing && styles.followingBtnText]}>
+              <Text style={[styles.followBtnText, { color: colors.textPrimary }, post.isFollowing && { color: colors.textMuted }]}>
                 {post.isFollowing ? 'Following' : 'Follow'}
               </Text>
             </TouchableOpacity>
@@ -282,7 +286,7 @@ export default function PostCard({
               }
             }}
           >
-            <Ionicons name="ellipsis-horizontal" size={18} color={Colors.textSecondary} />
+            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -321,9 +325,9 @@ export default function PostCard({
             <Ionicons
               name={post.isLiked ? 'heart' : 'heart-outline'}
               size={26}
-              color={post.isLiked ? '#EF4444' : Colors.textPrimary}
+              color={post.isLiked ? '#EF4444' : colors.textPrimary}
             />
-            <Text style={[styles.actionText, post.isLiked && { color: '#EF4444' }]}>
+            <Text style={[styles.actionText, { color: colors.textSecondary }, post.isLiked && { color: '#EF4444' }]}>
               {post.likes_count || 0}
             </Text>
           </TouchableOpacity>
@@ -340,8 +344,8 @@ export default function PostCard({
               setShowComments(true);
             }}
           >
-            <Ionicons name="chatbubble-outline" size={24} color={Colors.textPrimary} />
-            <Text style={styles.actionText}>{commentsCount}</Text>
+            <Ionicons name="chatbubble-outline" size={24} color={colors.textPrimary} />
+            <Text style={[styles.actionText, { color: colors.textSecondary }]}>{commentsCount}</Text>
           </TouchableOpacity>
 
           {/* Repost */}
@@ -353,10 +357,10 @@ export default function PostCard({
             <Ionicons
               name="repeat-outline"
               size={24}
-              color={post.isReposted ? colors.primary : Colors.textPrimary}
+              color={post.isReposted ? colors.primary : colors.textPrimary}
             />
             {(post.reposts_count || 0) > 0 && (
-              <Text style={[styles.actionText, post.isReposted && { color: colors.primary }]}>
+              <Text style={[styles.actionText, { color: colors.textSecondary }, post.isReposted && { color: colors.primary }]}>
                 {post.reposts_count}
               </Text>
             )}
@@ -377,7 +381,7 @@ export default function PostCard({
             <Ionicons
               name="paper-plane-outline"
               size={24}
-              color={Colors.textPrimary}
+              color={colors.textPrimary}
             />
           </TouchableOpacity>
         </View>
@@ -391,7 +395,7 @@ export default function PostCard({
           <Ionicons
             name={post.isBookmarked ? 'bookmark' : 'bookmark-outline'}
             size={24}
-            color={post.isBookmarked ? colors.primary : Colors.textPrimary}
+            color={post.isBookmarked ? colors.primary : colors.textPrimary}
           />
         </TouchableOpacity>
       </View>
@@ -415,9 +419,9 @@ export default function PostCard({
               style={styles.likedAvatar2 as any}
             />
           </View>
-          <Text style={styles.likedByText}>
+          <Text style={[styles.likedByText, { color: colors.textPrimary }]}>
             Liked by{' '}
-            <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>
+            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
               {post.recentLikerName}
             </Text>
             {(post.likes_count || 0) > 1 ? ' and others' : ''}
@@ -429,9 +433,9 @@ export default function PostCard({
       {/* ── 5. CAPTION ── */}
       {!!post.caption && (
         <View style={styles.captionWrap}>
-          <Text style={styles.captionText} numberOfLines={3}>
+          <Text style={[styles.captionText, { color: colors.textPrimary }]} numberOfLines={3}>
             <Text
-              style={styles.captionUsername}
+              style={[styles.captionUsername, { color: colors.textPrimary, fontWeight: '700' }]}
               onPress={() => onPressUser?.(post.uid)}
             >
               {post.username}{' '}
@@ -448,7 +452,7 @@ export default function PostCard({
           onPress={() => setShowComments(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.viewCommentsText}>
+          <Text style={[styles.viewCommentsText, { color: colors.textMuted, fontWeight: '500' }]}>
             View all {commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}
           </Text>
         </TouchableOpacity>
@@ -487,25 +491,25 @@ export default function PostCard({
             activeOpacity={1}
             onPress={() => setShowComments(false)}
           />
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Comments ({commentsCount})</Text>
+            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sheetTitle, { color: colors.textPrimary, fontWeight: '700' }]}>Comments ({commentsCount})</Text>
               <TouchableOpacity onPress={() => setShowComments(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
             {loadingComments ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.loadingText}>Loading comments...</Text>
+                <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading comments...</Text>
               </View>
             ) : comments.length === 0 ? (
               <View style={styles.emptyComments}>
-                <Ionicons name="chatbubbles-outline" size={44} color={Colors.textMuted} />
-                <Text style={styles.emptyCommentsTitle}>No comments yet</Text>
-                <Text style={styles.emptyCommentsSubtitle}>
+                <Ionicons name="chatbubbles-outline" size={44} color={colors.textMuted} />
+                <Text style={[styles.emptyCommentsTitle, { color: colors.textPrimary, fontWeight: '700' }]}>No comments yet</Text>
+                <Text style={[styles.emptyCommentsSubtitle, { color: colors.textMuted }]}>
                   Be the first to share your thoughts!
                 </Text>
               </View>
@@ -528,20 +532,20 @@ export default function PostCard({
                     </TouchableOpacity>
                     <View style={styles.commentContent}>
                       <View style={styles.commentAuthorRow}>
-                        <Text style={styles.commentAuthor}>{item.username || 'User'}</Text>
+                        <Text style={[styles.commentAuthor, { color: colors.textPrimary, fontWeight: '700' }]}>{item.username || 'User'}</Text>
                         {item.isCoach && (
                           <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
                         )}
-                        <Text style={styles.commentTime}>{timeAgo(item.created_at)}</Text>
+                        <Text style={[styles.commentTime, { color: colors.textMuted }]}>{timeAgo(item.created_at)}</Text>
                       </View>
-                      <Text style={styles.commentText}>{item.text}</Text>
+                      <Text style={[styles.commentText, { color: colors.textPrimary }]}>{item.text}</Text>
                     </View>
                   </View>
                 )}
               />
             )}
 
-            <View style={styles.inputBar}>
+            <View style={[styles.inputBar, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
               <UserAvatar
                 uid={currentUser?.uid}
                 name={currentUser?.name}
@@ -552,9 +556,9 @@ export default function PostCard({
                 style={styles.inputAvatar as any}
               />
               <TextInput
-                style={styles.commentInput}
+                style={[styles.commentInput, { backgroundColor: colors.surfaceLight, borderColor: colors.border, borderWidth: 1, color: colors.textPrimary }]}
                 placeholder={`Comment as ${currentUser?.name || 'User'}...`}
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={commentText}
                 onChangeText={setCommentText}
                 maxLength={300}

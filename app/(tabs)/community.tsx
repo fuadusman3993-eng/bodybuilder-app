@@ -578,7 +578,13 @@ export default function CommunityScreen() {
             onPress={() => setActiveTab('Following')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tiktokTabText, activeTab === 'Following' && styles.tiktokTabTextActive]}>
+            <Text
+              style={[
+                styles.tiktokTabText,
+                { color: activeTab === 'Following' ? colors.textPrimary : colors.textMuted },
+                activeTab === 'Following' && styles.tiktokTabTextActive,
+              ]}
+            >
               Following
             </Text>
             {activeTab === 'Following' && <View style={[styles.activeTabIndicator, { backgroundColor: colors.primary }]} />}
@@ -589,7 +595,13 @@ export default function CommunityScreen() {
             onPress={() => setActiveTab('For You')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tiktokTabText, activeTab === 'For You' && styles.tiktokTabTextActive]}>
+            <Text
+              style={[
+                styles.tiktokTabText,
+                { color: activeTab === 'For You' ? colors.textPrimary : colors.textMuted },
+                activeTab === 'For You' && styles.tiktokTabTextActive,
+              ]}
+            >
               For You
             </Text>
             {activeTab === 'For You' && <View style={[styles.activeTabIndicator, { backgroundColor: colors.primary }]} />}
@@ -609,7 +621,7 @@ export default function CommunityScreen() {
             <Ionicons
               name={showSearch ? 'close' : 'search'}
               size={22}
-              color={Colors.textPrimary}
+              color={colors.textPrimary}
             />
           </TouchableOpacity>
         </View>
@@ -617,19 +629,19 @@ export default function CommunityScreen() {
 
       {/* Collapsible Search Input */}
       {showSearch && (
-        <View style={styles.searchBarWrap}>
-          <Ionicons name="search" size={17} color={Colors.textMuted} />
+        <View style={[styles.searchBarWrap, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+          <Ionicons name="search" size={17} color={colors.textMuted} />
           <TextInput
-            style={styles.searchBarInput}
+            style={[styles.searchBarInput, { color: colors.textPrimary }]}
             placeholder="Search athletes, coaches or posts..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus
           />
           {!!searchQuery && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -657,17 +669,17 @@ export default function CommunityScreen() {
         </View>
       ) : displayedPosts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="images-outline" size={54} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>
+          <Ionicons name="images-outline" size={54} color={colors.textMuted} />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary, fontWeight: '700' }]}>
             {activeTab === 'Following' ? 'No posts from people you follow' : 'No posts yet'}
           </Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted, fontWeight: '500' }]}>
             {activeTab === 'Following'
               ? 'Follow coaches or athletes to see their updates here.'
               : 'Be the first to share your workout and inspire the community!'}
           </Text>
           <TouchableOpacity
-            style={styles.emptyActionBtn}
+            style={[styles.emptyActionBtn, { backgroundColor: colors.primary }]}
             onPress={() => {
               if (!user?.uid || user.tier === UserTier.GUEST) {
                 triggerAuthModal('Share a Workout Post', 'Log in or sign up to share workouts with the community.');

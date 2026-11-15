@@ -527,9 +527,9 @@ export default function ProfileScreen() {
         {activeTab === 'Posts' && (
           posts.length === 0 ? (
             <TouchableOpacity style={styles.emptyPosts} onPress={() => router.push('/create-post')}>
-              <Ionicons name="add-circle-outline" size={48} color={Colors.primary} />
-              <Text style={styles.emptyTitle}>Share your first post</Text>
-              <Text style={styles.emptySubtitle}>Tap to upload a photo</Text>
+              <Ionicons name="add-circle-outline" size={48} color={colors.primary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary, fontWeight: '700' }]}>Share your first post</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontWeight: '500' }]}>Tap to upload a photo</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.grid}>
@@ -550,13 +550,13 @@ export default function ProfileScreen() {
         {activeTab === 'Reposts' && (
           loadingReposts ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={Colors.primary} />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : repostedPosts.length === 0 ? (
             <View style={styles.emptyPosts}>
-              <Ionicons name="repeat-outline" size={44} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No reposts yet</Text>
-              <Text style={styles.emptySubtitle}>Posts you repost from the community will appear here.</Text>
+              <Ionicons name="repeat-outline" size={44} color={colors.textMuted} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary, fontWeight: '700' }]}>No reposts yet</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontWeight: '500' }]}>Posts you repost from the community will appear here.</Text>
             </View>
           ) : (
             <View style={styles.grid}>
@@ -569,8 +569,8 @@ export default function ProfileScreen() {
                 >
                   <Image source={{ uri: post.image_url }} style={styles.gridImg} />
                   <View style={styles.gridOverlay}>
-                    <Ionicons name="repeat" size={12} color={Colors.primary} />
-                    <Text style={[styles.gridLikesText, { color: Colors.primary }]}>Repost</Text>
+                    <Ionicons name="repeat" size={12} color={colors.primary} />
+                    <Text style={[styles.gridLikesText, { color: colors.primary }]}>Repost</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -582,13 +582,13 @@ export default function ProfileScreen() {
         {activeTab === 'Saved' && (
           loadingSaved ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={Colors.primary} />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : savedPosts.length === 0 ? (
             <View style={styles.emptyPosts}>
-              <Ionicons name="bookmark-outline" size={44} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No saved posts</Text>
-              <Text style={styles.emptySubtitle}>Posts you bookmark in Community will appear here.</Text>
+              <Ionicons name="bookmark-outline" size={44} color={colors.textMuted} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary, fontWeight: '700' }]}>No saved posts</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontWeight: '500' }]}>Posts you bookmark in Community will appear here.</Text>
             </View>
           ) : (
             <View style={styles.grid}>
