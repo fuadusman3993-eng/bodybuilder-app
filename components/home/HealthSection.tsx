@@ -4,11 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
@@ -66,11 +64,11 @@ export default function HealthSection() {
   const getSugarStatus = (val: number, type: 'Fasting' | 'Post-Meal') => {
     if (type === 'Fasting') {
       if (val < 70) return { label: 'Low (Hypoglycemia)', color: '#EF4444' };
-      if (val <= 99) return { label: 'Normal Fasting', color: '#00E676' };
+      if (val <= 99) return { label: 'Normal Fasting', color: colors.primary };
       if (val <= 125) return { label: 'Prediabetes Risk', color: '#F59E0B' };
       return { label: 'High (Diabetes Range)', color: '#EF4444' };
     } else {
-      if (val < 140) return { label: 'Normal Post-Meal', color: '#00E676' };
+      if (val < 140) return { label: 'Normal Post-Meal', color: colors.primary };
       if (val <= 199) return { label: 'Elevated Post-Meal', color: '#F59E0B' };
       return { label: 'High Glucose', color: '#EF4444' };
     }
@@ -78,7 +76,7 @@ export default function HealthSection() {
 
   // Diagnostic helper for Blood Pressure
   const getBpStatus = (sys: number, dia: number) => {
-    if (sys < 120 && dia < 80) return { label: 'Optimal / Normal', color: '#00E676' };
+    if (sys < 120 && dia < 80) return { label: 'Optimal / Normal', color: colors.primary };
     if (sys <= 129 && dia < 80) return { label: 'Elevated BP', color: '#F59E0B' };
     if (sys <= 139 || dia <= 89) return { label: 'Stage 1 Hypertension', color: '#F97316' };
     return { label: 'Stage 2 Hypertension', color: '#EF4444' };
@@ -90,32 +88,32 @@ export default function HealthSection() {
   return (
     <View style={styles.container}>
       {/* ── 1. Hero Banner: Diabetes & Blood Pressure Care ── */}
-      <View style={[styles.heroBanner, { backgroundColor: '#0B1E28', borderColor: '#16384C' }]}>
+      <View style={[styles.heroBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.bannerTagRow}>
-          <View style={styles.bannerPill}>
-            <Text style={styles.bannerPillText}>🩺 CLINICAL WELLNESS</Text>
+          <View style={[styles.bannerPill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}>
+            <Text style={[styles.bannerPillText, { color: colors.primary }]}>🩺 CLINICAL WELLNESS</Text>
           </View>
         </View>
-        <Text style={styles.bannerTitle}>Diabetes & Blood Pressure Care</Text>
-        <Text style={styles.bannerSub}>
+        <Text style={[styles.bannerTitle, { color: colors.textPrimary }]}>Diabetes & Blood Pressure Care</Text>
+        <Text style={[styles.bannerSub, { color: colors.textMuted }]}>
           የስኳር እና የደም ግፊት ቁጥጥር — Track glucose, hypertension risk & consult certified doctors.
         </Text>
         <View style={styles.bannerBtnRow}>
           <TouchableOpacity
-            style={[styles.bannerPrimaryBtn, { backgroundColor: '#00E676' }]}
+            style={[styles.bannerPrimaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => setShowSugarModal(true)}
             activeOpacity={0.8}
           >
             <Ionicons name="add-circle-outline" size={18} color="#000" />
-            <Text style={styles.bannerPrimaryBtnText}>Log Blood Sugar</Text>
+            <Text style={[styles.bannerPrimaryBtnText, { color: '#000' }]}>Log Blood Sugar</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.bannerSecondaryBtn}
+            style={[styles.bannerSecondaryBtn, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
             onPress={() => setShowBpModal(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="pulse-outline" size={18} color="#FFF" />
-            <Text style={styles.bannerSecondaryBtnText}>Log Blood Pressure</Text>
+            <Ionicons name="pulse-outline" size={18} color={colors.textPrimary} />
+            <Text style={[styles.bannerSecondaryBtnText, { color: colors.textPrimary }]}>Log Blood Pressure</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -123,13 +121,13 @@ export default function HealthSection() {
       {/* ── 2. Quick Hub: 4 Health Pillars (Mektaterya) ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Health Hub (መቆጣጠሪያ)</Text>
-        <Text style={styles.sectionBadge}>4 Care Pillars</Text>
+        <Text style={[styles.sectionBadge, { color: colors.primary }]}>4 Care Pillars</Text>
       </View>
 
       <View style={styles.grid}>
         {/* Card 1: Blood Sugar */}
         <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
+          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => setShowSugarModal(true)}
           activeOpacity={0.75}
         >
@@ -148,12 +146,12 @@ export default function HealthSection() {
             <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{bloodSugar}</Text>
             <Text style={[styles.cardUnit, { color: colors.textMuted }]}>mg/dL</Text>
           </View>
-          <Text style={styles.cardHint}>Tap to log new reading →</Text>
+          <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading →</Text>
         </TouchableOpacity>
 
         {/* Card 2: Blood Pressure */}
         <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
+          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => setShowBpModal(true)}
           activeOpacity={0.75}
         >
@@ -172,32 +170,32 @@ export default function HealthSection() {
             <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{systolic}/{diastolic}</Text>
             <Text style={[styles.cardUnit, { color: colors.textMuted }]}>mmHg</Text>
           </View>
-          <Text style={styles.cardHint}>Tap to log new reading →</Text>
+          <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading →</Text>
         </TouchableOpacity>
 
         {/* Card 3: Diabetic & BP Nutrition */}
         <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
-          onPress={() => router.push('/(tabs)/marketplace')}
+          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => router.push('/marketplace')}
           activeOpacity={0.75}
         >
           <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-              <Ionicons name="nutrition" size={20} color="#00E676" />
+            <View style={[styles.cardIconWrap, { backgroundColor: colors.primary + '18' }]}>
+              <Ionicons name="nutrition" size={20} color={colors.primary} />
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-              <Text style={[styles.statusBadgeText, { color: '#00E676' }]}>Low GI & Sodium</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.primary + '18' }]}>
+              <Text style={[styles.statusBadgeText, { color: colors.primary }]}>Low GI & Sodium</Text>
             </View>
           </View>
           <Text style={[styles.cardLabel, { color: colors.textMuted }]}>Diet & Meals (የምግብ እቅድ)</Text>
           <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
             ጤፍ፣ ምስር፣ ሰላጣ እና የደም ግፊትን የሚቆጣጠሩ ምግቦች
           </Text>
-          <Text style={[styles.cardHint, { color: '#00E676' }]}>View Healthy Foods →</Text>
+          <Text style={[styles.cardHint, { color: colors.primary }]}>View Healthy Foods →</Text>
         </TouchableOpacity>
 
         {/* Card 4: Medication Routine */}
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
               <Ionicons name="medkit" size={20} color="#A855F7" />
@@ -217,7 +215,7 @@ export default function HealthSection() {
               <Ionicons
                 name={medsTaken[medKey] ? 'checkbox' : 'square-outline'}
                 size={18}
-                color={medsTaken[medKey] ? '#00E676' : colors.textMuted}
+                color={medsTaken[medKey] ? colors.primary : colors.textMuted}
               />
               <Text style={[styles.medText, { color: medsTaken[medKey] ? colors.textMuted : colors.textPrimary }]}>
                 {medKey}
@@ -228,43 +226,53 @@ export default function HealthSection() {
       </View>
 
       {/* ── 3. Doctor & Health Coach Consultation Card ── */}
-      <View style={[styles.consultCard, { backgroundColor: '#09212B', borderColor: '#154153' }]}>
+      <View style={[styles.consultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.consultLeft}>
-          <View style={styles.doctorAvatarWrap}>
-            <Ionicons name="person" size={24} color="#00E676" />
+          <View style={[styles.doctorAvatarWrap, { backgroundColor: colors.primary + '18' }]}>
+            <Ionicons name="person" size={24} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.consultTitle}>Consult Health Specialist</Text>
-            <Text style={styles.consultSub}>
+            <Text style={[styles.consultTitle, { color: colors.textPrimary }]}>Consult Health Specialist</Text>
+            <Text style={[styles.consultSub, { color: colors.textMuted }]}>
               ከስኳር እና የደም ግፊት ሀኪሞች ጋር በቀጥታ ይወያዩ (Direct Chat & Video Call).
             </Text>
           </View>
         </View>
         <TouchableOpacity
-          style={styles.consultBtn}
+          style={[styles.consultBtn, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/(tabs)/chat')}
           activeOpacity={0.8}
         >
           <Ionicons name="chatbubbles" size={16} color="#000" />
-          <Text style={styles.consultBtnText}>Chat with Doctor</Text>
+          <Text style={[styles.consultBtnText, { color: '#000' }]}>Chat with Doctor</Text>
         </TouchableOpacity>
       </View>
 
       {/* Modal: Log Blood Sugar */}
       <Modal visible={showSugarModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: '#111827', borderColor: '#374151' }]}>
-            <Text style={styles.modalTitle}>🩸 Log Blood Sugar (ስኳር)</Text>
-            <Text style={styles.modalSub}>Enter your glucose reading in mg/dL</Text>
+          <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>🩸 Log Blood Sugar (ስኳር)</Text>
+            <Text style={[styles.modalSub, { color: colors.textMuted }]}>Enter your glucose reading in mg/dL</Text>
 
             <View style={styles.typeSelector}>
               {(['Fasting', 'Post-Meal'] as const).map(t => (
                 <TouchableOpacity
                   key={t}
-                  style={[styles.typeBtn, bloodSugarType === t && styles.typeBtnActive]}
+                  style={[
+                    styles.typeBtn,
+                    { backgroundColor: colors.surfaceLight },
+                    bloodSugarType === t && { backgroundColor: colors.primary },
+                  ]}
                   onPress={() => setBloodSugarType(t)}
                 >
-                  <Text style={[styles.typeBtnText, bloodSugarType === t && styles.typeBtnTextActive]}>
+                  <Text
+                    style={[
+                      styles.typeBtnText,
+                      { color: colors.textMuted },
+                      bloodSugarType === t && { color: '#000', fontWeight: '800' },
+                    ]}
+                  >
                     {t === 'Fasting' ? 'Fasting (የጾም)' : 'Post-Meal (ከምግብ በኋላ)'}
                   </Text>
                 </TouchableOpacity>
@@ -272,9 +280,16 @@ export default function HealthSection() {
             </View>
 
             <TextInput
-              style={[styles.modalInput, { borderColor: '#374151', color: '#FFF' }]}
+              style={[
+                styles.modalInput,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="e.g. 95"
-              placeholderTextColor="#6B7280"
+              placeholderTextColor={colors.textMuted}
               keyboardType="numeric"
               value={inputSugar}
               onChangeText={setInputSugar}
@@ -283,10 +298,13 @@ export default function HealthSection() {
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowSugarModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveSugar}>
-                <Text style={styles.modalSaveText}>Save Reading</Text>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveSugar}
+              >
+                <Text style={[styles.modalSaveText, { color: '#000' }]}>Save Reading</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -296,28 +314,42 @@ export default function HealthSection() {
       {/* Modal: Log Blood Pressure */}
       <Modal visible={showBpModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: '#111827', borderColor: '#374151' }]}>
-            <Text style={styles.modalTitle}>🩺 Log Blood Pressure (ደም ግፊት)</Text>
-            <Text style={styles.modalSub}>Enter Systolic & Diastolic readings (mmHg)</Text>
+          <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>🩺 Log Blood Pressure (ደም ግፊት)</Text>
+            <Text style={[styles.modalSub, { color: colors.textMuted }]}>Enter Systolic & Diastolic readings (mmHg)</Text>
 
             <View style={{ flexDirection: 'row', gap: 10, marginVertical: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputMiniLabel}>Systolic (ላይኛው)</Text>
+                <Text style={[styles.inputMiniLabel, { color: colors.textMuted }]}>Systolic (ላይኛው)</Text>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: '#374151', color: '#FFF' }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="e.g. 120"
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={inputSys}
                   onChangeText={setInputSys}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputMiniLabel}>Diastolic (ታችኛው)</Text>
+                <Text style={[styles.inputMiniLabel, { color: colors.textMuted }]}>Diastolic (ታችኛው)</Text>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: '#374151', color: '#FFF' }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="e.g. 80"
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={inputDia}
                   onChangeText={setInputDia}
@@ -327,10 +359,13 @@ export default function HealthSection() {
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowBpModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveBp}>
-                <Text style={styles.modalSaveText}>Save Reading</Text>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveBp}
+              >
+                <Text style={[styles.modalSaveText, { color: '#000' }]}>Save Reading</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -356,25 +391,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   bannerPill: {
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    borderWidth: 1,
   },
   bannerPillText: {
-    color: '#00E676',
     fontSize: 11,
     fontWeight: '800',
   },
   bannerTitle: {
-    color: '#FFFFFF',
     fontSize: 22,
     fontWeight: '800',
     marginBottom: 6,
     letterSpacing: -0.3,
   },
   bannerSub: {
-    color: '#A0AEC0',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 16,
@@ -392,8 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bannerPrimaryBtnText: {
-    color: '#000',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 13,
   },
   bannerSecondaryBtn: {
@@ -403,10 +434,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
   },
   bannerSecondaryBtnText: {
-    color: '#FFF',
     fontWeight: '600',
     fontSize: 13,
   },
@@ -421,7 +451,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sectionBadge: {
-    color: '#00E676',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -489,7 +518,6 @@ const styles = StyleSheet.create({
   },
   cardHint: {
     fontSize: 11,
-    color: '#00E676',
     fontWeight: '600',
     marginTop: 4,
   },
@@ -520,17 +548,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   consultTitle: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
   },
   consultSub: {
-    color: '#94A3B8',
     fontSize: 12,
     marginTop: 2,
   },
@@ -539,12 +564,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#00E676',
     paddingVertical: 10,
     borderRadius: 12,
   },
   consultBtnText: {
-    color: '#000',
     fontWeight: '800',
     fontSize: 13,
   },
@@ -563,13 +586,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalTitle: {
-    color: '#FFF',
     fontSize: 18,
     fontWeight: '800',
     marginBottom: 4,
   },
   modalSub: {
-    color: '#9CA3AF',
     fontSize: 12,
     marginBottom: 14,
   },
@@ -582,19 +603,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#1F2937',
     alignItems: 'center',
   },
-  typeBtnActive: {
-    backgroundColor: '#00E676',
-  },
   typeBtnText: {
-    color: '#9CA3AF',
     fontSize: 11,
     fontWeight: '700',
-  },
-  typeBtnTextActive: {
-    color: '#000',
   },
   modalInput: {
     borderWidth: 1,
@@ -602,10 +615,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#1F2937',
   },
   inputMiniLabel: {
-    color: '#9CA3AF',
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 4,
@@ -621,17 +632,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   modalCancelText: {
-    color: '#9CA3AF',
     fontWeight: '600',
   },
   modalSaveBtn: {
-    backgroundColor: '#00E676',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
   modalSaveText: {
-    color: '#000',
     fontWeight: '700',
   },
 });

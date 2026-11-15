@@ -24,6 +24,32 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
 
+        {/* Instant Theme Sync Script: runs before first paint to eliminate any theme flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var raw = localStorage.getItem('fitpulse-theme-storage');
+                if (raw) {
+                  var parsed = JSON.parse(raw);
+                  var themeId = parsed && parsed.state && parsed.state.activeThemeId;
+                  var bg = '#0A0A0A';
+                  var text = '#FFFFFF';
+                  if (themeId === 'day') { bg = '#F1F5F9'; text = '#0F172A'; }
+                  else if (themeId === 'tinted') { bg = '#0F172A'; text = '#F8FAFC'; }
+                  else if (themeId === 'night') { bg = '#000000'; text = '#FFFFFF'; }
+                  else if (themeId === 'azure') { bg = '#001C30'; text = '#FFFFFF'; }
+                  document.documentElement.style.backgroundColor = bg;
+                  var ss = document.createElement('style');
+                  ss.id = 'fp-instant-theme-style';
+                  ss.textContent = 'html, body, #root, .fp-initial-loader { background-color: ' + bg + ' !important; color: ' + text + ' !important; }';
+                  document.head.appendChild(ss);
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+
         {/* Client-side killer script: instantly purges any stale service worker & CacheStorage */}
         <script
           dangerouslySetInnerHTML={{

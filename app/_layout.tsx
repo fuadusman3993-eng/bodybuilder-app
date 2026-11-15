@@ -24,8 +24,11 @@ import { applyThemeToColors } from '../constants/themes';
 
 if (Platform.OS === 'web') {
   if (typeof document !== 'undefined') {
-    document.body.style.backgroundColor = '#050B0E';
-    document.documentElement.style.backgroundColor = '#050B0E';
+    try {
+      const activeThemeOnLoad = useThemeStore.getState().getActiveTheme();
+      const customAccentOnLoad = useThemeStore.getState().customAccentColor;
+      applyThemeToColors(activeThemeOnLoad.id, customAccentOnLoad);
+    } catch (_) {}
     if (!document.getElementById('fitpulse-global-kill-outline')) {
       const style = document.createElement('style');
       style.id = 'fitpulse-global-kill-outline';

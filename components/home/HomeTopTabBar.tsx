@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useDomainStore, AppDomain } from '../../store/domainStore';
 import { useTheme } from '../../store/themeStore';
 
@@ -27,13 +27,14 @@ export default function HomeTopTabBar() {
             <Text
               style={[
                 styles.tabText,
-                isActive ? styles.activeTabText : styles.inactiveTabText,
+                { color: isActive ? colors.textPrimary : colors.textMuted },
+                isActive && styles.activeTabText,
               ]}
             >
               {d.label}
             </Text>
             {isActive && (
-              <View style={[styles.activeIndicator, { backgroundColor: '#00E676' }]} />
+              <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
             )}
           </TouchableOpacity>
         );
@@ -60,15 +61,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 15,
     letterSpacing: -0.2,
+    fontWeight: '600',
   },
   activeTabText: {
-    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 16,
-  },
-  inactiveTabText: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontWeight: '600',
   },
   activeIndicator: {
     position: 'absolute',

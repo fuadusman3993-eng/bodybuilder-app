@@ -18,7 +18,7 @@ export default function FootballTrainingScreen() {
       {/* ── 1. Top Header with Back Button and TikTok-Style Tabs ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.leftBtnWrap}>
-          <BackButton fallbackRoute="/(tabs)" />
+          <BackButton fallbackRoute="/(tabs)" color={colors.textPrimary} />
         </View>
 
         {/* TikTok-Style Tabs (English Only: Gym | Field) */}
@@ -31,13 +31,14 @@ export default function FootballTrainingScreen() {
             <Text
               style={[
                 styles.tabText,
-                activeTab === 'Gym' ? styles.activeTabText : styles.inactiveTabText,
+                { color: activeTab === 'Gym' ? colors.textPrimary : colors.textMuted },
+                activeTab === 'Gym' && styles.activeTabText,
               ]}
             >
               Gym
             </Text>
             {activeTab === 'Gym' && (
-              <View style={[styles.activeIndicator, { backgroundColor: '#00E676' }]} />
+              <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
             )}
           </TouchableOpacity>
 
@@ -49,13 +50,14 @@ export default function FootballTrainingScreen() {
             <Text
               style={[
                 styles.tabText,
-                activeTab === 'Field' ? styles.activeTabText : styles.inactiveTabText,
+                { color: activeTab === 'Field' ? colors.textPrimary : colors.textMuted },
+                activeTab === 'Field' && styles.activeTabText,
               ]}
             >
               Field
             </Text>
             {activeTab === 'Field' && (
-              <View style={[styles.activeIndicator, { backgroundColor: '#00E676' }]} />
+              <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
             )}
           </TouchableOpacity>
         </View>
@@ -102,15 +104,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 17,
     letterSpacing: -0.2,
+    fontWeight: '600',
   },
   activeTabText: {
-    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 18,
-  },
-  inactiveTabText: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontWeight: '600',
   },
   activeIndicator: {
     position: 'absolute',

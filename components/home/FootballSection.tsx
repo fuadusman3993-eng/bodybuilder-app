@@ -37,7 +37,7 @@ export default function FootballSection() {
       title: 'Market Place',
       subtitle: 'Boots & Pro Gear',
       icon: 'cart-outline' as const,
-      color: '#00E676',
+      color: colors.primary,
       badge: 'SHOP',
       onPress: () => router.push('/marketplace'),
     },
@@ -78,7 +78,7 @@ export default function FootballSection() {
         {/* Top: Tag Badge */}
         <View style={styles.topRow}>
           <View style={styles.tagBadge}>
-            <View style={[styles.tagDot, { backgroundColor: '#00E676' }]} />
+            <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
             <Text style={styles.tagText}>SOCCER PRO</Text>
           </View>
         </View>
@@ -86,11 +86,11 @@ export default function FootballSection() {
         {/* Top Right Motivational Quote */}
         <View style={styles.quoteWrap}>
           <View style={styles.quoteSignature}>
-            <Text style={[styles.quoteTextGreen, { color: '#00E676' }]}>Relentless</Text>
+            <Text style={[styles.quoteTextGreen, { color: colors.primary }]}>Relentless</Text>
             <Text style={styles.quoteTextWhite}>Match</Text>
             <View>
               <Text style={styles.quoteTextWhite}>Pace</Text>
-              <View style={[styles.quoteUnderline, { backgroundColor: '#00E676' }]} />
+              <View style={[styles.quoteUnderline, { backgroundColor: colors.primary }]} />
             </View>
           </View>
         </View>
@@ -99,17 +99,17 @@ export default function FootballSection() {
         <View style={styles.bottomContent}>
           <Text style={styles.title}>
             Football{'\n'}
-            <Text style={[styles.titleAccent, { color: '#00E676' }]}>Tactics & Training</Text>
+            <Text style={[styles.titleAccent, { color: colors.primary }]}>Tactics & Training</Text>
           </Text>
           <Text style={styles.subtitle}>
             Master pitch drills, explosive leg power & 90-minute stamina.
           </Text>
           <TouchableOpacity
-            style={[styles.joinBtn, { backgroundColor: '#00E676' }]}
+            style={[styles.joinBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}
             onPress={() => router.push('/football-training')}
           >
-            <Text style={styles.joinBtnText}>Join Now  →</Text>
+            <Text style={[styles.joinBtnText, { color: '#000000' }]}>Join Now  →</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -118,8 +118,16 @@ export default function FootballSection() {
       <View style={styles.sectionHeader}>
         <View style={styles.titleRow}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Football Hub</Text>
-          <View style={[styles.activePill, { backgroundColor: 'rgba(0, 230, 118, 0.15)', borderColor: 'rgba(0, 230, 118, 0.35)' }]}>
-            <Text style={[styles.activePillText, { color: '#00E676' }]}>4 Pillars</Text>
+          <View
+            style={[
+              styles.activePill,
+              {
+                backgroundColor: colors.primary + '18',
+                borderColor: colors.primary + '40',
+              },
+            ]}
+          >
+            <Text style={[styles.activePillText, { color: colors.primary }]}>4 Pillars</Text>
           </View>
         </View>
       </View>
@@ -169,7 +177,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  // Hero Banner matching Fitness structure
   bannerContainer: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -272,12 +279,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   joinBtnText: {
-    color: '#000000',
     fontWeight: '800',
     fontSize: 13,
   },
-
-  // Section Header matching QuickActions
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -305,8 +309,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-
-  // 2x2 Grid
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
