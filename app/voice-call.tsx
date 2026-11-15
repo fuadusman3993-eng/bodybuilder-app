@@ -567,11 +567,11 @@ export default function VoiceCallScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Background: Remote Video (if on) or Dark Gradient */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Background: Remote Video (if on) or Theme-colored background */}
       <View style={styles.bgOverlay}>
         {remoteStreamObj ? renderVideoNode(remoteStreamObj, false) : (
-          <View style={styles.darkBg} />
+          <View style={[styles.darkBg, { backgroundColor: colors.background }]} />
         )}
       </View>
 
@@ -580,11 +580,11 @@ export default function VoiceCallScreen() {
         <View style={styles.header}>
           <BrandLogo size="small" showText={false} />
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.8}>
-              <Ionicons name="settings" size={20} color="#FFF" />
+            <TouchableOpacity style={[styles.headerIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.8}>
+              <Ionicons name="settings" size={20} color={colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.8}>
-              <Ionicons name="expand-outline" size={20} color="#FFF" />
+            <TouchableOpacity style={[styles.headerIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.8}>
+              <Ionicons name="expand-outline" size={20} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -608,10 +608,10 @@ export default function VoiceCallScreen() {
             </View>
           </View>
 
-          <Text style={styles.name}>{otherUser.name}</Text>
+          <Text style={[styles.name, { color: colors.textPrimary }]}>{otherUser.name}</Text>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, callState === 'connected' ? { backgroundColor: colors.primary } : { backgroundColor: '#FBBF24' }]} />
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: colors.textMuted }]}>
               {callState === 'calling'
                 ? (incoming ? 'Connecting...' : 'Calling...')
                 : callState === 'connected'
@@ -627,39 +627,42 @@ export default function VoiceCallScreen() {
           <TouchableOpacity
             style={[
               styles.roundBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
               videoOn && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
             ]}
             onPress={toggleVideo}
             activeOpacity={0.8}
           >
-            <Ionicons name={videoOn ? "videocam" : "videocam-off"} size={24} color="#FFF" />
+            <Ionicons name={videoOn ? "videocam" : "videocam-off"} size={24} color={videoOn ? colors.primary : colors.textPrimary} />
           </TouchableOpacity>
           
           {/* 2. Mic Toggle (mic / mic-off) */}
           <TouchableOpacity
             style={[
               styles.roundBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
               !micMuted && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
             ]}
             onPress={toggleMic}
             activeOpacity={0.8}
           >
-            <Ionicons name={micMuted ? "mic-off" : "mic"} size={24} color="#FFF" />
+            <Ionicons name={micMuted ? "mic-off" : "mic"} size={24} color={!micMuted ? colors.primary : colors.textPrimary} />
           </TouchableOpacity>
           
           {/* 3. Speaker Toggle (volume-high / volume-mute) */}
           <TouchableOpacity
             style={[
               styles.roundBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
               speakerOn && [styles.roundBtnActive, { borderColor: colors.primary, backgroundColor: colors.primary + '26' }]
             ]}
             onPress={toggleSpeaker}
             activeOpacity={0.8}
           >
-            <Ionicons name={speakerOn ? "volume-high" : "volume-mute"} size={24} color="#FFF" />
+            <Ionicons name={speakerOn ? "volume-high" : "volume-mute"} size={24} color={speakerOn ? colors.primary : colors.textPrimary} />
           </TouchableOpacity>
           
-          {/* 4. End Call Button (Image 3) */}
+          {/* 4. End Call Button — always red */}
           <TouchableOpacity style={styles.endCallBtn} onPress={() => endCall(false)} activeOpacity={0.85}>
             <Ionicons name="call" size={28} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
           </TouchableOpacity>
@@ -670,14 +673,14 @@ export default function VoiceCallScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#030508' }, // Deep dark background
+  container: { flex: 1, backgroundColor: 'transparent' }, // theme-driven by parent View
   bgOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
   },
   darkBg: {
     flex: 1,
-    backgroundColor: '#030508',
+    backgroundColor: 'transparent', // theme-driven
   },
   safeArea: { flex: 1, justifyContent: 'space-between', zIndex: 1 },
 
@@ -693,9 +696,9 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', gap: 12 },
   headerIconBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
+    borderWidth: 1,
+    // Colors applied dynamically via inline style in JSX
   },
 
   // Center
@@ -718,10 +721,10 @@ const styles = StyleSheet.create({
   avatar: { width: '100%', height: '100%' },
   localVideoWrap: { width: '100%', height: '100%', backgroundColor: '#000' },
 
-  name: { fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 8 },
+  name: { fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 8 }, // overridden inline with colors.textPrimary
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 16, color: '#A0A0A0' },
+  statusText: { fontSize: 16, color: '#A0A0A0' }, // overridden inline with colors.textMuted
 
   // Bottom Controls (Image 2 & 3 Replica)
   controlsRow: { 
@@ -730,9 +733,9 @@ const styles = StyleSheet.create({
   },
   roundBtn: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#2A2D32',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)'
+    borderWidth: 1,
+    // backgroundColor and borderColor applied inline with colors.surface / colors.border
   },
   roundBtnActive: {
     borderWidth: 1.5,

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Animated, ViewStyle } from 'react-native';
+import { useTheme } from '../../store/themeStore';
 
 interface Props {
   width: number | string;
@@ -13,6 +14,8 @@ const sharedAnim = new Animated.Value(0.3);
 let isAnimating = false;
 
 export default function Skeleton({ width, height, borderRadius = 4, style }: Props) {
+  const { colors } = useTheme();
+
   useEffect(() => {
     if (!isAnimating) {
       isAnimating = true;
@@ -27,7 +30,7 @@ export default function Skeleton({ width, height, borderRadius = 4, style }: Pro
 
   return (
     <Animated.View 
-      style={[{ width: width as any, height: height as any, borderRadius, backgroundColor: '#2A3241', opacity: sharedAnim }, style]} 
+      style={[{ width: width as any, height: height as any, borderRadius, backgroundColor: colors.surfaceLight, opacity: sharedAnim }, style]} 
     />
   );
 }

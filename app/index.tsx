@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import BrandLogo from '../components/ui/BrandLogo';
 import { auth } from '../lib/firebase';
 import { useUserStore, UserTier } from '../store/userStore';
+import { Colors } from '../constants/colors';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -35,7 +36,9 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    const MIN_SPLASH_MS = Platform.OS === 'web' ? 400 : 800;
+    // On Web: 0ms — the +html.tsx inline script already painted the right theme background,
+    // so there is no visual flash; skip the artificial delay entirely.
+    const MIN_SPLASH_MS = Platform.OS === 'web' ? 0 : 800;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
@@ -62,8 +65,9 @@ export default function SplashScreen() {
       }
     });
 
-    // Fallback safety timer — longer on web so Firebase has time to initialise
-    const FALLBACK_MS = Platform.OS === 'web' ? 3000 : 2000;
+    // On Web: Firebase resolution is slow (up to 3s). But with 0ms MIN_SPLASH we can
+    // also cut the fallback down — if localStorage has a user, navigate immediately.
+    const FALLBACK_MS = Platform.OS === 'web' ? 1500 : 2000;
     const fallbackTimer = setTimeout(() => {
       const storedUser = userRef.current;
       if (auth.currentUser || (storedUser?.uid && storedUser.tier !== UserTier.GUEST)) {
@@ -102,7 +106,8 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    // Uses the pre-hydrated Colors.background so the splash matches the active theme
+    backgroundColor: Colors.background,
   },
   centerContainer: {
     flex: 1,
