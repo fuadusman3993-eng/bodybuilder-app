@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform,
   Image,
   Modal,
   useWindowDimensions,
@@ -15,102 +14,136 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
 import { useRouter } from 'expo-router';
 
-type Formation = '4-3-3' | '4-2-3-1' | '3-5-2' | '4-4-2';
+// ── Football Specific Training Drills (Self-Contained) ──
+interface FootballDrill {
+  id: string;
+  title: string;
+  amharicTitle: string;
+  focus: string;
+  sets: string;
+  badge: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}
 
-const FORMATIONS: { [key in Formation]: { name: string; style: string; players: { x: number; y: number; num: number; pos: string }[] } } = {
-  '4-3-3': {
-    name: '4-3-3 Attacking',
-    style: 'High Press & Wide Wingers (ፈጣን የማጥቃት ታክቲክ)',
-    players: [
-      { x: 50, y: 88, num: 1, pos: 'GK' },
-      { x: 18, y: 70, num: 2, pos: 'LB' },
-      { x: 38, y: 72, num: 4, pos: 'CB' },
-      { x: 62, y: 72, num: 5, pos: 'CB' },
-      { x: 82, y: 70, num: 3, pos: 'RB' },
-      { x: 50, y: 54, num: 6, pos: 'DM' },
-      { x: 32, y: 44, num: 8, pos: 'CM' },
-      { x: 68, y: 44, num: 10, pos: 'AM' },
-      { x: 20, y: 24, num: 11, pos: 'LW' },
-      { x: 50, y: 18, num: 9, pos: 'ST' },
-      { x: 80, y: 24, num: 7, pos: 'RW' },
-    ],
+const GYM_DRILLS: FootballDrill[] = [
+  {
+    id: 'gym-1',
+    title: 'Explosive Box Jumps',
+    amharicTitle: 'የእግር ፈንጂነት ዝላይ',
+    focus: 'Fast-twitch calf & quad explosive power for headers & sprints.',
+    sets: '4 Sets × 8 Reps',
+    badge: 'POWER',
+    icon: 'flash-outline',
   },
-  '4-2-3-1': {
-    name: '4-2-3-1 Balanced',
-    style: 'Double Pivot Control (የተመጣጠነ የኳስ ቁጥጥር)',
-    players: [
-      { x: 50, y: 88, num: 1, pos: 'GK' },
-      { x: 18, y: 70, num: 2, pos: 'LB' },
-      { x: 38, y: 72, num: 4, pos: 'CB' },
-      { x: 62, y: 72, num: 5, pos: 'CB' },
-      { x: 82, y: 70, num: 3, pos: 'RB' },
-      { x: 36, y: 56, num: 6, pos: 'DM' },
-      { x: 64, y: 56, num: 8, pos: 'DM' },
-      { x: 22, y: 36, num: 11, pos: 'LM' },
-      { x: 50, y: 34, num: 10, pos: 'CAM' },
-      { x: 78, y: 36, num: 7, pos: 'RM' },
-      { x: 50, y: 18, num: 9, pos: 'ST' },
-    ],
+  {
+    id: 'gym-2',
+    title: 'Nordic Hamstring Curls',
+    amharicTitle: 'የሃምስትሪንግ ጉዳት መከላከያ',
+    focus: 'Eccentric hamstring control to shield against tears & ACL strains.',
+    sets: '3 Sets × 6 Reps',
+    badge: 'INJURY CARE',
+    icon: 'shield-checkmark-outline',
   },
-  '3-5-2': {
-    name: '3-5-2 Dominance',
-    style: 'Wingbacks & Midfield Superiority (የመሃል ሜዳ ብልጫ)',
-    players: [
-      { x: 50, y: 88, num: 1, pos: 'GK' },
-      { x: 28, y: 72, num: 4, pos: 'CB' },
-      { x: 50, y: 74, num: 5, pos: 'CB' },
-      { x: 72, y: 72, num: 3, pos: 'CB' },
-      { x: 14, y: 48, num: 2, pos: 'LWB' },
-      { x: 38, y: 50, num: 6, pos: 'CM' },
-      { x: 62, y: 50, num: 8, pos: 'CM' },
-      { x: 86, y: 48, num: 7, pos: 'RWB' },
-      { x: 50, y: 36, num: 10, pos: 'AM' },
-      { x: 36, y: 20, num: 9, pos: 'ST' },
-      { x: 64, y: 20, num: 11, pos: 'ST' },
-    ],
+  {
+    id: 'gym-3',
+    title: 'Bulgarian Split Squats',
+    amharicTitle: 'ነጠላ እግር ሚዛንና ጥንካሬ',
+    focus: 'Unilateral leg strength, shooting stability and hip mobility.',
+    sets: '4 Sets × 10 Reps',
+    badge: 'STRENGTH',
+    icon: 'barbell-outline',
   },
-  '4-4-2': {
-    name: '4-4-2 Compact',
-    style: 'Classic Twin Strikers & Direct Play (ቀጥተኛ አጥቂዎች)',
-    players: [
-      { x: 50, y: 88, num: 1, pos: 'GK' },
-      { x: 18, y: 70, num: 2, pos: 'LB' },
-      { x: 38, y: 72, num: 4, pos: 'CB' },
-      { x: 62, y: 72, num: 5, pos: 'CB' },
-      { x: 82, y: 70, num: 3, pos: 'RB' },
-      { x: 18, y: 46, num: 11, pos: 'LM' },
-      { x: 40, y: 48, num: 6, pos: 'CM' },
-      { x: 60, y: 48, num: 8, pos: 'CM' },
-      { x: 82, y: 46, num: 7, pos: 'RM' },
-      { x: 38, y: 20, num: 9, pos: 'ST' },
-      { x: 62, y: 20, num: 10, pos: 'ST' },
-    ],
+  {
+    id: 'gym-4',
+    title: 'Core Anti-Rotation Holds',
+    amharicTitle: 'የሰውነት መረጋጋትና ሚዛን',
+    focus: 'Upper body shielding strength when battling defenders for the ball.',
+    sets: '3 Sets × 45 Sec',
+    badge: 'STABILITY',
+    icon: 'body-outline',
   },
-};
+];
+
+const PITCH_DRILLS: FootballDrill[] = [
+  {
+    id: 'pitch-1',
+    title: 'Slalom Cone Dribbling',
+    amharicTitle: 'የኮን ድሪብሊንግ ቅልጥፍና',
+    focus: 'Inside-outside foot touch, rapid deceleration and tight control.',
+    sets: '5 Rounds × 60 Sec',
+    badge: 'AGILITY',
+    icon: 'football-outline',
+  },
+  {
+    id: 'pitch-2',
+    title: '1-Touch Wall Rebound Passes',
+    amharicTitle: 'የአንድ ንክኪ ፈጣን ቅብብል',
+    focus: 'Vision, weight of pass and instant first-touch control.',
+    sets: '4 Sets × 25 Passes',
+    badge: 'PASSING',
+    icon: 'git-compare-outline',
+  },
+  {
+    id: 'pitch-3',
+    title: 'Box-to-Box Shuttle Sprints',
+    amharicTitle: 'የ90-ደቂቃ የሳንባ ጥንካሬ',
+    focus: 'High-intensity interval stamina to out-run opponents in late minutes.',
+    sets: '6 Reps × 100m Sprint',
+    badge: 'STAMINA',
+    icon: 'speedometer-outline',
+  },
+  {
+    id: 'pitch-4',
+    title: 'Curled Corner & Box Finishing',
+    amharicTitle: 'የግብ አጨራረስና ቮሊ',
+    focus: 'Composure in the 18-yard box, striking low corners with power.',
+    sets: '4 Sets × 10 Shots',
+    badge: 'FINISHING',
+    icon: 'trophy-outline',
+  },
+];
 
 export default function FootballSection() {
   const { colors } = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const [selectedFormation, setSelectedFormation] = useState<Formation>('4-3-3');
-  const [showTrainingModal, setShowTrainingModal] = useState(false);
 
-  // 2x2 grid calculation identical to Fitness QuickActions
+  // Modals & State
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingTrack, setTrainingTrack] = useState<'gym' | 'pitch'>('gym');
+  const [completedDrills, setCompletedDrills] = useState<{ [key: string]: boolean }>({
+    'gym-1': true,
+    'pitch-1': true,
+  });
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showTacticsModal, setShowTacticsModal] = useState(false);
+
+  // 2x2 Grid calculations
   const cardW = Math.floor((width - 32 - 10) / 2);
   const bannerHeight = Math.max(Math.round((width - 32) * 0.62), 220);
 
-  const formationData = FORMATIONS[selectedFormation];
+  const toggleDrill = (id: string) => {
+    setCompletedDrills((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
-  // 4 Pillars for Football Quick Hub
+  const totalCompleted = Object.values(completedDrills).filter(Boolean).length;
+
+  // 4 Pillars of Football Quick Hub
   const FOOTBALL_ACTIONS = [
     {
       id: 'workout',
       title: 'My Workout',
-      subtitle: 'Soccer Conditioning',
-      icon: 'barbell-outline' as const,
+      subtitle: 'Gym & Pitch Drills',
+      icon: 'football-outline' as const,
       color: '#3B82F6',
       badge: 'TRAIN',
-      onPress: () => setShowTrainingModal(true),
+      onPress: () => {
+        setTrainingTrack('gym');
+        setShowTrainingModal(true);
+      },
     },
     {
       id: 'marketplace',
@@ -124,11 +157,11 @@ export default function FootballSection() {
     {
       id: 'report',
       title: 'Report',
-      subtitle: 'Stamina & Analytics',
+      subtitle: 'Stamina & Stats',
       icon: 'speedometer-outline' as const,
       color: '#F59E0B',
       badge: 'STATS',
-      onPress: () => router.push('/report'),
+      onPress: () => setShowReportModal(true),
     },
     {
       id: 'tactics',
@@ -137,7 +170,7 @@ export default function FootballSection() {
       icon: 'people-outline' as const,
       color: '#A855F7',
       badge: 'COACH',
-      onPress: () => router.push('/(tabs)/chat'),
+      onPress: () => setShowTacticsModal(true),
     },
   ];
 
@@ -145,15 +178,13 @@ export default function FootballSection() {
     <View style={styles.container}>
       {/* ── 1. Football Hero Banner with "Join Now →" ── */}
       <View style={[styles.bannerContainer, { height: bannerHeight }]}>
-        {/* Background Photo */}
         <Image
           source={{ uri: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1000&q=80' }}
           style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
         />
-        {/* Dark LinearGradient overlay */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.88)']}
           style={StyleSheet.absoluteFill}
         />
 
@@ -165,7 +196,7 @@ export default function FootballSection() {
           </View>
         </View>
 
-        {/* Motivational Quote Top-Right */}
+        {/* Top Right Motivational Quote */}
         <View style={styles.quoteWrap}>
           <View style={styles.quoteSignature}>
             <Text style={[styles.quoteTextGreen, { color: '#00E676' }]}>Relentless</Text>
@@ -184,7 +215,7 @@ export default function FootballSection() {
             <Text style={[styles.titleAccent, { color: '#00E676' }]}>Tactics & Training</Text>
           </Text>
           <Text style={styles.subtitle}>
-            Master pitch formations, ball drills & 90-minute stamina.
+            Master pitch drills, explosive leg power & 90-minute stamina.
           </Text>
           <TouchableOpacity
             style={[styles.joinBtn, { backgroundColor: '#00E676' }]}
@@ -196,7 +227,7 @@ export default function FootballSection() {
         </View>
       </View>
 
-      {/* ── 2. Football Quick Hub (4 Pillars: My Workout, Marketplace, Report, Tactics Coach) ── */}
+      {/* ── 2. Football Quick Hub (4 Pillars) ── */}
       <View style={styles.sectionHeader}>
         <View style={styles.titleRow}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Football Hub</Text>
@@ -206,9 +237,9 @@ export default function FootballSection() {
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => router.push('/(tabs)/community')}
+          onPress={() => setShowReportModal(true)}
         >
-          <Text style={[styles.seeAll, { color: '#00E676' }]}>See all →</Text>
+          <Text style={[styles.seeAll, { color: '#00E676' }]}>View Stats →</Text>
         </TouchableOpacity>
       </View>
 
@@ -228,7 +259,6 @@ export default function FootballSection() {
             activeOpacity={0.78}
             onPress={item.onPress}
           >
-            {/* Top Action Pill Badge */}
             <View style={styles.cardHeader}>
               <View style={[styles.iconWrap, { backgroundColor: item.color + '15' }]}>
                 <Ionicons name={item.icon} size={22} color={item.color} />
@@ -238,7 +268,6 @@ export default function FootballSection() {
               </View>
             </View>
 
-            {/* Title & Subtitle */}
             <View style={styles.cardBody}>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                 {item.title}
@@ -251,92 +280,66 @@ export default function FootballSection() {
         ))}
       </View>
 
-      {/* ── 3. Interactive Tactical Pitch (የታክቲክ ቦርድ) ── */}
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tactical Pitch (የታክቲክ ቦርድ)</Text>
-        <Text style={styles.sectionBadge}>Interactive Formations</Text>
-      </View>
-
-      {/* Formation Selector Pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formationSelector}>
-        {(['4-3-3', '4-2-3-1', '3-5-2', '4-4-2'] as Formation[]).map((f) => {
-          const isActive = selectedFormation === f;
-          return (
-            <TouchableOpacity
-              key={f}
-              style={[styles.formBtn, isActive && styles.formBtnActive]}
-              onPress={() => setSelectedFormation(f)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.formBtnText, isActive && styles.formBtnTextActive]}>
-                {f}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Visual Green Pitch */}
-      <View style={styles.pitchCard}>
-        <View style={styles.pitchHeader}>
-          <Text style={styles.pitchTitle}>{formationData.name}</Text>
-          <Text style={styles.pitchSub}>{formationData.style}</Text>
+      {/* ── 3. Quick Daily Drill Preview Card ── */}
+      <View style={[styles.dailyDrillCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.drillCardHeader}>
+          <View style={styles.drillCardTitleWrap}>
+            <Ionicons name="flame" size={20} color="#FF6D00" />
+            <Text style={[styles.drillCardTitle, { color: colors.textPrimary }]}>Today's Soccer Drills</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowTrainingModal(true)}>
+            <Text style={{ color: '#00E676', fontSize: 12, fontWeight: '700' }}>Open All ({totalCompleted}/8 Done) →</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.pitchField}>
-          {/* Pitch Markings */}
-          <View style={styles.pitchCenterCircle} />
-          <View style={styles.pitchHalfLine} />
-          <View style={styles.pitchPenaltyBoxTop} />
-          <View style={styles.pitchPenaltyBoxBottom} />
-
-          {/* Interactive Player Dots */}
-          {formationData.players.map((p, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.playerDot,
-                {
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  transform: [{ translateX: -14 }, { translateY: -14 }],
-                },
-              ]}
-            >
-              <Text style={styles.playerNum}>{p.num}</Text>
-              <Text style={styles.playerPos}>{p.pos}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* ── 4. Football Training Masterclass Banner ── */}
-      <View style={[styles.masterclassCard, { backgroundColor: '#13281E', borderColor: '#22543D' }]}>
-        <View style={styles.masterclassHeader}>
-          <Ionicons name="trophy" size={24} color="#00E676" />
-          <Text style={styles.masterclassTitle}>Pro Football IQ & Analysis</Text>
-        </View>
-        <Text style={styles.masterclassDesc}>
-          ዘመናዊ የእግር ኳስ ጽንሰ-ሀሳቦች፦ High-pressing፣ Half-spaces፣ Transition play እና የጨዋታ አነባበብ ትንተና።
-        </Text>
+        {/* Mini item 1 */}
         <TouchableOpacity
-          style={styles.masterclassBtn}
-          onPress={() => router.push('/(tabs)/community')}
-          activeOpacity={0.8}
+          style={styles.drillRow}
+          onPress={() => toggleDrill('pitch-1')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.masterclassBtnText}>Explore Pro Football Hub →</Text>
+          <Ionicons
+            name={completedDrills['pitch-1'] ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={completedDrills['pitch-1'] ? '#00E676' : colors.textMuted}
+          />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.drillName, { color: colors.textPrimary, textDecorationLine: completedDrills['pitch-1'] ? 'line-through' : 'none' }]}>
+              Slalom Cone Dribbling (የኮን ድሪብሊንግ)
+            </Text>
+            <Text style={[styles.drillSub, { color: colors.textMuted }]}>5 Rounds × 60s • Field Agility</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Mini item 2 */}
+        <TouchableOpacity
+          style={[styles.drillRow, { borderBottomWidth: 0 }]}
+          onPress={() => toggleDrill('gym-1')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={completedDrills['gym-1'] ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={completedDrills['gym-1'] ? '#00E676' : colors.textMuted}
+          />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.drillName, { color: colors.textPrimary, textDecorationLine: completedDrills['gym-1'] ? 'line-through' : 'none' }]}>
+              Explosive Box Jumps (የእግር ፈንጂነት)
+            </Text>
+            <Text style={[styles.drillSub, { color: colors.textMuted }]}>4 Sets × 8 Reps • Leg Power</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* ── 5. "Join Now" Training Selector Modal (Gym vs Pitch) ── */}
-      <Modal visible={showTrainingModal} transparent animationType="fade">
+      {/* ── MODAL 1: Football Training Hub (Gym vs Pitch) ── */}
+      <Modal visible={showTrainingModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: '#0B1E28', borderColor: '#164E28' }]}>
+          <View style={[styles.fullModalBox, { backgroundColor: '#0A1822', borderColor: '#16384C' }]}>
             {/* Modal Header */}
             <View style={styles.modalHeaderRow}>
               <View>
-                <Text style={styles.modalHeaderTitle}>⚽ Select Training Mode</Text>
-                <Text style={styles.modalHeaderSub}>የት ልምምድ መስራት ይፈልጋሉ? (Choose your training track)</Text>
+                <Text style={styles.modalHeaderTitle}>⚽ Football Training Hub</Text>
+                <Text style={styles.modalHeaderSub}>የእግር ኳስ ስልጠና — Select Gym or Field Drills</Text>
               </View>
               <TouchableOpacity
                 style={styles.modalCloseBtn}
@@ -347,60 +350,207 @@ export default function FootballSection() {
               </TouchableOpacity>
             </View>
 
-            {/* Option 1: Gym Training */}
-            <TouchableOpacity
-              style={styles.modalChoiceCard}
-              activeOpacity={0.8}
-              onPress={() => {
-                setShowTrainingModal(false);
-                router.push('/challenge');
-              }}
-            >
-              <View style={[styles.modalChoiceIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-                <Ionicons name="barbell" size={28} color="#38BDF8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.choiceTitleRow}>
-                  <Text style={styles.choiceTitle}>Gym Training (የጂም ልምምድ)</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#38BDF8" />
-                </View>
-                <Text style={styles.choiceDesc}>
-                  Strength, Leg Power, Explosive Plyometrics & Injury Prevention (የእግር ጉልበትና ጉዳት መከላከያ).
+            {/* Segmented Track Switcher */}
+            <View style={styles.trackSwitcher}>
+              <TouchableOpacity
+                style={[styles.trackBtn, trainingTrack === 'gym' && styles.trackBtnActive]}
+                onPress={() => setTrainingTrack('gym')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="barbell-outline"
+                  size={18}
+                  color={trainingTrack === 'gym' ? '#000' : '#38BDF8'}
+                />
+                <Text style={[styles.trackBtnText, trainingTrack === 'gym' && styles.trackBtnTextActive]}>
+                  🏋️ Gym Track (የጂም)
                 </Text>
-                <View style={styles.choicePillRow}>
-                  <Text style={styles.choicePill}>Squats</Text>
-                  <Text style={styles.choicePill}>Core Stability</Text>
-                  <Text style={styles.choicePill}>Hamstring Care</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            {/* Option 2: Pitch / Field Training */}
-            <TouchableOpacity
-              style={styles.modalChoiceCard}
-              activeOpacity={0.8}
-              onPress={() => {
-                setShowTrainingModal(false);
-                router.push('/workout');
-              }}
-            >
-              <View style={[styles.modalChoiceIconWrap, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-                <Ionicons name="football" size={28} color="#00E676" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.choiceTitleRow}>
-                  <Text style={styles.choiceTitle}>Pitch Training (የሜዳ ላይ ልምምድ)</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#00E676" />
-                </View>
-                <Text style={styles.choiceDesc}>
-                  Ball Control, Dribble Cones, Sprint Agility & 90-Min Stamina (የኳስ ቅልጥፍና እና የሳንባ አቅም).
+              <TouchableOpacity
+                style={[styles.trackBtn, trainingTrack === 'pitch' && styles.trackBtnActivePitch]}
+                onPress={() => setTrainingTrack('pitch')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="football-outline"
+                  size={18}
+                  color={trainingTrack === 'pitch' ? '#000' : '#00E676'}
+                />
+                <Text style={[styles.trackBtnText, trainingTrack === 'pitch' && styles.trackBtnTextActivePitch]}>
+                  ⚽ Field Track (የሜዳ)
                 </Text>
-                <View style={styles.choicePillRow}>
-                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Cone Dribbling</Text>
-                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Shuttle Runs</Text>
-                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Finishing</Text>
-                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Scrollable Drills List */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+              {(trainingTrack === 'gym' ? GYM_DRILLS : PITCH_DRILLS).map((drill) => {
+                const isDone = !!completedDrills[drill.id];
+                return (
+                  <TouchableOpacity
+                    key={drill.id}
+                    style={[styles.drillItemCard, isDone && styles.drillItemCardDone]}
+                    activeOpacity={0.75}
+                    onPress={() => toggleDrill(drill.id)}
+                  >
+                    <View style={styles.drillItemTop}>
+                      <View style={[styles.drillIconCircle, { backgroundColor: isDone ? '#00E676' : 'rgba(255,255,255,0.08)' }]}>
+                        <Ionicons
+                          name={drill.icon}
+                          size={20}
+                          color={isDone ? '#000' : '#FFF'}
+                        />
+                      </View>
+                      <View style={{ flex: 1, marginHorizontal: 10 }}>
+                        <Text style={[styles.drillItemTitle, isDone && { color: '#00E676' }]}>
+                          {drill.title}
+                        </Text>
+                        <Text style={styles.drillItemAmharic}>{drill.amharicTitle}</Text>
+                      </View>
+                      <View style={[styles.drillBadge, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                        <Text style={styles.drillBadgeText}>{drill.badge}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.drillItemFocus}>{drill.focus}</Text>
+
+                    <View style={styles.drillItemFooter}>
+                      <View style={styles.setsPill}>
+                        <Ionicons name="time-outline" size={14} color="#38BDF8" />
+                        <Text style={styles.setsText}>{drill.sets}</Text>
+                      </View>
+
+                      <View style={styles.checkWrap}>
+                        <Ionicons
+                          name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={20}
+                          color={isDone ? '#00E676' : '#64748B'}
+                        />
+                        <Text style={[styles.checkText, { color: isDone ? '#00E676' : '#94A3B8' }]}>
+                          {isDone ? 'Completed' : 'Mark Done'}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 2: Football Performance Report (Dedicated) ── */}
+      <Modal visible={showReportModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.reportModalBox, { backgroundColor: '#0B1E28', borderColor: '#1F4760' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalHeaderTitle}>📊 Football Match & Stamina Report</Text>
+                <Text style={styles.modalHeaderSub}>የእግር ኳስ የተጫዋች ብቃት ሪፖርት</Text>
               </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowReportModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Stamina & Match Readiness Metric */}
+            <View style={styles.reportScoreBanner}>
+              <View>
+                <Text style={styles.reportScoreLabel}>90-MIN MATCH STAMINA</Text>
+                <Text style={styles.reportScoreVal}>88%</Text>
+                <Text style={styles.reportScoreSub}>Match Ready (ከፍተኛ የሳንባ ጥንካሬ)</Text>
+              </View>
+              <View style={styles.reportBadgeGreen}>
+                <Ionicons name="shield-checkmark" size={24} color="#00E676" />
+                <Text style={styles.reportBadgeGreenText}>PRO FIT</Text>
+              </View>
+            </View>
+
+            {/* 3 Metric Grid */}
+            <View style={styles.reportGrid}>
+              <View style={styles.reportCol}>
+                <Ionicons name="flash" size={18} color="#38BDF8" />
+                <Text style={styles.reportColVal}>29.4</Text>
+                <Text style={styles.reportColUnit}>km/h Top Sprint</Text>
+              </View>
+              <View style={styles.reportCol}>
+                <Ionicons name="football" size={18} color="#00E676" />
+                <Text style={styles.reportColVal}>{totalCompleted}/8</Text>
+                <Text style={styles.reportColUnit}>Drills Finished</Text>
+              </View>
+              <View style={styles.reportCol}>
+                <Ionicons name="flame" size={18} color="#F59E0B" />
+                <Text style={styles.reportColVal}>5 Days</Text>
+                <Text style={styles.reportColUnit}>Active Streak</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.reportDoneBtn}
+              onPress={() => setShowReportModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.reportDoneBtnText}>Close Report</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 3: Tactics Coach Consultation ── */}
+      <Modal visible={showTacticsModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.reportModalBox, { backgroundColor: '#0B1E28', borderColor: '#4C1D95' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalHeaderTitle}>🧠 Football Tactics & Strategy</Text>
+                <Text style={styles.modalHeaderSub}>የእግር ኳስ ታክቲክ እና ስትራቴጂ ምክክር</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowTacticsModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Tactical Insights */}
+            <View style={styles.tacticsTipCard}>
+              <Ionicons name="bulb-outline" size={20} color="#A855F7" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.tacticsTipTitle}>High Press Trigger (ቦታ መዝጋት)</Text>
+                <Text style={styles.tacticsTipDesc}>
+                  ተጋጣሚው ደካማ እግሩን ሲጠቀም ወይም ወደ ኋላ ሲያይ በቡድን ፕሬስ በማድረግ ኳስ ማስጣል ይቻላል።
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.tacticsTipCard}>
+              <Ionicons name="compass-outline" size={20} color="#38BDF8" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.tacticsTipTitle}>Half-Space Exploitation (መካከል ሰብሮ መግባት)</Text>
+                <Text style={styles.tacticsTipDesc}>
+                  በክንፍ እና በመሃል ተከላካዮች መሀል ባለው ሰፊ ክፍተት ውስጥ ኳስ ተቀብሎ ፈጣን ዕድል መፍጠር።
+                </Text>
+              </View>
+            </View>
+
+            {/* Direct Consult Button */}
+            <TouchableOpacity
+              style={[styles.reportDoneBtn, { backgroundColor: '#A855F7' }]}
+              onPress={() => {
+                setShowTacticsModal(false);
+                router.push('/(tabs)/chat');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubbles" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={[styles.reportDoneBtnText, { color: '#FFF' }]}>Chat with Tactics Coach →</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -414,7 +564,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  // Hero Banner matching Fitness banner structure
+  // Hero Banner matching Fitness structure
   bannerContainer: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -554,18 +704,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  sectionBadge: {
-    color: '#00E676',
-    fontSize: 12,
-    fontWeight: '700',
-  },
 
-  // 2x2 Grid matching QuickActions
+  // 2x2 Grid
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   card: {
     borderRadius: 16,
@@ -611,184 +756,63 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Tactical Pitch Styles
-  formationSelector: {
-    gap: 8,
-    paddingBottom: 14,
-  },
-  formBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  formBtnActive: {
-    backgroundColor: '#00E676',
-    borderColor: '#00E676',
-  },
-  formBtnText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  formBtnTextActive: {
-    color: '#000',
-    fontWeight: '800',
-  },
-  pitchCard: {
-    borderRadius: 20,
-    backgroundColor: '#0F2E1B',
-    borderWidth: 2,
-    borderColor: '#1D5C35',
-    overflow: 'hidden',
-    padding: 14,
-    marginBottom: 20,
-  },
-  pitchHeader: {
-    marginBottom: 12,
-  },
-  pitchTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  pitchSub: {
-    color: '#86EFAC',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  pitchField: {
-    height: 320,
-    borderRadius: 14,
-    backgroundColor: '#15803D',
-    borderWidth: 2,
-    borderColor: '#DCFCE7',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  pitchHalfLine: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#DCFCE7',
-    opacity: 0.6,
-  },
-  pitchCenterCircle: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: '#DCFCE7',
-    opacity: 0.6,
-    transform: [{ translateX: -40 }, { translateY: -40 }],
-  },
-  pitchPenaltyBoxTop: {
-    position: 'absolute',
-    top: 0,
-    left: '25%',
-    right: '25%',
-    height: 50,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: '#DCFCE7',
-    opacity: 0.6,
-  },
-  pitchPenaltyBoxBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: '25%',
-    right: '25%',
-    height: 50,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: '#DCFCE7',
-    opacity: 0.6,
-  },
-  playerDot: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#000000',
-    borderWidth: 2,
-    borderColor: '#00E676',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  playerNum: {
-    color: '#00E676',
-    fontSize: 9.5,
-    fontWeight: '900',
-    lineHeight: 11,
-  },
-  playerPos: {
-    color: '#FFFFFF',
-    fontSize: 7.5,
-    fontWeight: '700',
-    lineHeight: 9,
-  },
-
-  // Masterclass card
-  masterclassCard: {
+  // Daily Drill Preview Card
+  dailyDrillCard: {
     borderRadius: 18,
-    padding: 18,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    padding: 14,
     marginBottom: 24,
   },
-  masterclassHeader: {
+  drillCardHeader: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  masterclassTitle: {
-    color: '#FFF',
-    fontSize: 16,
+  drillCardTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  drillCardTitle: {
+    fontSize: 15,
     fontWeight: '800',
   },
-  masterclassDesc: {
-    color: '#86EFAC',
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 14,
-  },
-  masterclassBtn: {
-    backgroundColor: '#00E676',
+  drillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
-  masterclassBtnText: {
-    color: '#000',
-    fontWeight: '800',
+  drillName: {
     fontSize: 13,
+    fontWeight: '700',
+  },
+  drillSub: {
+    fontSize: 11,
+    marginTop: 2,
   },
 
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.78)',
+    backgroundColor: 'rgba(0,0,0,0.82)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 18,
+    padding: 16,
   },
-  modalBox: {
+  fullModalBox: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 480,
+    maxHeight: '85%',
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1.5,
+  },
+  reportModalBox: {
+    width: '100%',
+    maxWidth: 420,
     borderRadius: 22,
     padding: 20,
     borderWidth: 1.5,
@@ -800,70 +824,239 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalHeaderTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#FFF',
+    fontSize: 17,
     fontWeight: '800',
   },
   modalHeaderSub: {
-    color: '#9CA3AF',
-    fontSize: 11.5,
-    marginTop: 3,
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 2,
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    padding: 6,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  modalChoiceCard: {
+
+  // Track Switcher (Gym vs Field)
+  trackSwitcher: {
     flexDirection: 'row',
-    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 6,
+  },
+  trackBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  trackBtnActive: {
+    backgroundColor: '#38BDF8',
+  },
+  trackBtnActivePitch: {
+    backgroundColor: '#00E676',
+  },
+  trackBtnText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  trackBtnTextActive: {
+    color: '#000',
+    fontWeight: '800',
+  },
+  trackBtnTextActivePitch: {
+    color: '#000',
+    fontWeight: '800',
+  },
+
+  // Drill item cards
+  drillItemCard: {
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 12,
   },
-  modalChoiceIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  drillItemCardDone: {
+    borderColor: 'rgba(0, 230, 118, 0.4)',
+    backgroundColor: 'rgba(0, 230, 118, 0.05)',
+  },
+  drillItemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  drillIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  choiceTitleRow: {
+  drillItemTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  drillItemAmharic: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  drillBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  drillBadgeText: {
+    color: '#FFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  drillItemFocus: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    lineHeight: 16,
+    marginVertical: 10,
+  },
+  drillItemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  setsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  setsText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  checkWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  checkText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Report Modal
+  reportScoreBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    marginBottom: 16,
+  },
+  reportScoreLabel: {
+    color: '#86EFAC',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  reportScoreVal: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '900',
+    marginVertical: 2,
+  },
+  reportScoreSub: {
+    color: '#94A3B8',
+    fontSize: 11,
+  },
+  reportBadgeGreen: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#00E676',
+  },
+  reportBadgeGreenText: {
+    color: '#00E676',
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  reportGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  reportCol: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  reportColVal: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  reportColUnit: {
+    color: '#94A3B8',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  reportDoneBtn: {
+    backgroundColor: '#00E676',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  reportDoneBtnText: {
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Tactics
+  tacticsTipCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  tacticsTipTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
     marginBottom: 4,
   },
-  choiceTitle: {
-    color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '700',
-  },
-  choiceDesc: {
-    color: '#9CA3AF',
+  tacticsTipDesc: {
+    color: '#CBD5E1',
     fontSize: 11,
-    lineHeight: 15,
-    marginBottom: 8,
-  },
-  choicePillRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  choicePill: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#38BDF8',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    lineHeight: 16,
   },
 });
