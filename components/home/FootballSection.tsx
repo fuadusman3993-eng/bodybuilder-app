@@ -6,7 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Image,
+  Modal,
+  useWindowDimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
 import { useRouter } from 'expo-router';
@@ -87,45 +91,167 @@ const FORMATIONS: { [key in Formation]: { name: string; style: string; players: 
 export default function FootballSection() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [selectedFormation, setSelectedFormation] = useState<Formation>('4-3-3');
-  const [activeDrillCategory, setActiveDrillCategory] = useState<'All' | 'Passing' | 'Shooting' | 'Stamina'>('All');
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+
+  // 2x2 grid calculation identical to Fitness QuickActions
+  const cardW = Math.floor((width - 32 - 10) / 2);
+  const bannerHeight = Math.max(Math.round((width - 32) * 0.62), 220);
 
   const formationData = FORMATIONS[selectedFormation];
 
+  // 4 Pillars for Football Quick Hub
+  const FOOTBALL_ACTIONS = [
+    {
+      id: 'workout',
+      title: 'My Workout',
+      subtitle: 'Soccer Conditioning',
+      icon: 'barbell-outline' as const,
+      color: '#3B82F6',
+      badge: 'TRAIN',
+      onPress: () => setShowTrainingModal(true),
+    },
+    {
+      id: 'marketplace',
+      title: 'Market Place',
+      subtitle: 'Boots & Pro Gear',
+      icon: 'cart-outline' as const,
+      color: '#00E676',
+      badge: 'SHOP',
+      onPress: () => router.push('/marketplace'),
+    },
+    {
+      id: 'report',
+      title: 'Report',
+      subtitle: 'Stamina & Analytics',
+      icon: 'speedometer-outline' as const,
+      color: '#F59E0B',
+      badge: 'STATS',
+      onPress: () => router.push('/report'),
+    },
+    {
+      id: 'tactics',
+      title: 'Tactics Coach',
+      subtitle: 'Consult Strategist',
+      icon: 'people-outline' as const,
+      color: '#A855F7',
+      badge: 'COACH',
+      onPress: () => router.push('/(tabs)/chat'),
+    },
+  ];
+
   return (
     <View style={styles.container}>
-      {/* ── 1. Hero Banner: Football Tactics & Conditioning ── */}
-      <View style={[styles.heroBanner, { backgroundColor: '#0A2312', borderColor: '#164E28' }]}>
-        <View style={styles.bannerTagRow}>
-          <View style={styles.bannerPill}>
-            <Text style={styles.bannerPillText}>⚽ TACTICS & SKILLS</Text>
+      {/* ── 1. Football Hero Banner with "Join Now →" ── */}
+      <View style={[styles.bannerContainer, { height: bannerHeight }]}>
+        {/* Background Photo */}
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1000&q=80' }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+        {/* Dark LinearGradient overlay */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* Top: Tag Badge */}
+        <View style={styles.topRow}>
+          <View style={styles.tagBadge}>
+            <View style={[styles.tagDot, { backgroundColor: '#00E676' }]} />
+            <Text style={styles.tagText}>SOCCER PRO</Text>
           </View>
         </View>
-        <Text style={styles.bannerTitle}>Football Tactics & Training</Text>
-        <Text style={styles.bannerSub}>
-          የእግር ኳስ ታክቲክ እና ትሬኒንግ — Master tactical pitch formations, ball drills & 90-minute stamina.
-        </Text>
-        <View style={styles.bannerBtnRow}>
+
+        {/* Motivational Quote Top-Right */}
+        <View style={styles.quoteWrap}>
+          <View style={styles.quoteSignature}>
+            <Text style={[styles.quoteTextGreen, { color: '#00E676' }]}>Relentless</Text>
+            <Text style={styles.quoteTextWhite}>Match</Text>
+            <View>
+              <Text style={styles.quoteTextWhite}>Pace</Text>
+              <View style={[styles.quoteUnderline, { backgroundColor: '#00E676' }]} />
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom Content with "Join Now →" */}
+        <View style={styles.bottomContent}>
+          <Text style={styles.title}>
+            Football{'\n'}
+            <Text style={[styles.titleAccent, { color: '#00E676' }]}>Tactics & Training</Text>
+          </Text>
+          <Text style={styles.subtitle}>
+            Master pitch formations, ball drills & 90-minute stamina.
+          </Text>
           <TouchableOpacity
-            style={[styles.bannerPrimaryBtn, { backgroundColor: '#00E676' }]}
-            onPress={() => setSelectedFormation('4-3-3')}
-            activeOpacity={0.8}
+            style={[styles.joinBtn, { backgroundColor: '#00E676' }]}
+            activeOpacity={0.85}
+            onPress={() => setShowTrainingModal(true)}
           >
-            <Ionicons name="clipboard-outline" size={18} color="#000" />
-            <Text style={styles.bannerPrimaryBtnText}>Tactical Board</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.bannerSecondaryBtn}
-            onPress={() => router.push('/(tabs)/community')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="football-outline" size={18} color="#FFF" />
-            <Text style={styles.bannerSecondaryBtnText}>Drills Hub</Text>
+            <Text style={styles.joinBtnText}>Join Now  →</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* ── 2. Interactive Tactical Pitch (የታክቲክ ቦርድ) ── */}
+      {/* ── 2. Football Quick Hub (4 Pillars: My Workout, Marketplace, Report, Tactics Coach) ── */}
+      <View style={styles.sectionHeader}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Football Hub</Text>
+          <View style={[styles.activePill, { backgroundColor: 'rgba(0, 230, 118, 0.15)', borderColor: 'rgba(0, 230, 118, 0.35)' }]}>
+            <Text style={[styles.activePillText, { color: '#00E676' }]}>4 Pillars</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(tabs)/community')}
+        >
+          <Text style={[styles.seeAll, { color: '#00E676' }]}>See all →</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 2x2 Grid Layout */}
+      <View style={styles.grid}>
+        {FOOTBALL_ACTIONS.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[
+              styles.card,
+              {
+                width: cardW,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.78}
+            onPress={item.onPress}
+          >
+            {/* Top Action Pill Badge */}
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconWrap, { backgroundColor: item.color + '15' }]}>
+                <Ionicons name={item.icon} size={22} color={item.color} />
+              </View>
+              <View style={[styles.badge, { backgroundColor: item.color + '20', borderColor: item.color + '40' }]}>
+                <Text style={[styles.badgeText, { color: item.color }]}>{item.badge}</Text>
+              </View>
+            </View>
+
+            {/* Title & Subtitle */}
+            <View style={styles.cardBody}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+                {item.subtitle}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── 3. Interactive Tactical Pitch (የታክቲክ ቦርድ) ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tactical Pitch (የታክቲክ ቦርድ)</Text>
         <Text style={styles.sectionBadge}>Interactive Formations</Text>
@@ -184,98 +310,6 @@ export default function FootballSection() {
         </View>
       </View>
 
-      {/* ── 3. Quick Hub: 4 Football Training Pillars (Mektaterya) ── */}
-      <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Football Hub (መቆጣጠሪያ)</Text>
-        <Text style={styles.sectionBadge}>4 Pillars</Text>
-      </View>
-
-      <View style={styles.grid}>
-        {/* Card 1: Ball Drills */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
-          onPress={() => router.push('/(tabs)/community')}
-          activeOpacity={0.75}
-        >
-          <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-              <Ionicons name="football" size={20} color="#00E676" />
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
-              <Text style={[styles.statusBadgeText, { color: '#00E676' }]}>Dribbling</Text>
-            </View>
-          </View>
-          <Text style={[styles.cardLabel, { color: colors.textMuted }]}>Ball Control & Dribble</Text>
-          <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
-            የኳስ ቁጥጥር፣ የመጀመሪያ ንክኪ (First Touch) እና ኮን ድሪብሊንግ
-          </Text>
-          <Text style={styles.cardHint}>Start Drills →</Text>
-        </TouchableOpacity>
-
-        {/* Card 2: Match Stamina */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
-          onPress={() => router.push('/challenge')}
-          activeOpacity={0.75}
-        >
-          <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-              <Ionicons name="flash" size={20} color="#38BDF8" />
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-              <Text style={[styles.statusBadgeText, { color: '#38BDF8' }]}>90 Min Stamina</Text>
-            </View>
-          </View>
-          <Text style={[styles.cardLabel, { color: colors.textMuted }]}>Match Conditioning</Text>
-          <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
-            ለ90 ደቂቃ ጨዋታ የሚያበቃ የሳንባ አቅም፣ የፍጥነት እና የቅልጥፍና ልምምድ
-          </Text>
-          <Text style={[styles.cardHint, { color: '#38BDF8' }]}>View Workouts →</Text>
-        </TouchableOpacity>
-
-        {/* Card 3: Shooting & Finishing */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
-          onPress={() => router.push('/(tabs)/community')}
-          activeOpacity={0.75}
-        >
-          <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-              <Ionicons name="locate" size={20} color="#F59E0B" />
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-              <Text style={[styles.statusBadgeText, { color: '#F59E0B' }]}>Finishing</Text>
-            </View>
-          </View>
-          <Text style={[styles.cardLabel, { color: colors.textMuted }]}>Shooting & Free-kicks</Text>
-          <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
-            የግብ አገባብ ትክክለኛነት፣ የቅጣት ምት እና የፔናሊቲ ልምምዶች
-          </Text>
-          <Text style={[styles.cardHint, { color: '#F59E0B' }]}>Watch Guides →</Text>
-        </TouchableOpacity>
-
-        {/* Card 4: Defensive Tactics */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: '#1F2937' }]}
-          onPress={() => router.push('/(tabs)/community')}
-          activeOpacity={0.75}
-        >
-          <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-              <Ionicons name="shield-checkmark" size={20} color="#A855F7" />
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-              <Text style={[styles.statusBadgeText, { color: '#A855F7' }]}>Defending</Text>
-            </View>
-          </View>
-          <Text style={[styles.cardLabel, { color: colors.textMuted }]}>Tactics & Positioning</Text>
-          <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
-            1v1 መከላከል፣ የኦፍሳይድ ወጥመድ እና የመስመር አጠባበቅ ታክቲኮች
-          </Text>
-          <Text style={[styles.cardHint, { color: '#A855F7' }]}>Study Tactics →</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* ── 4. Football Training Masterclass Banner ── */}
       <View style={[styles.masterclassCard, { backgroundColor: '#13281E', borderColor: '#22543D' }]}>
         <View style={styles.masterclassHeader}>
@@ -293,6 +327,84 @@ export default function FootballSection() {
           <Text style={styles.masterclassBtnText}>Explore Pro Football Hub →</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── 5. "Join Now" Training Selector Modal (Gym vs Pitch) ── */}
+      <Modal visible={showTrainingModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: '#0B1E28', borderColor: '#164E28' }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalHeaderTitle}>⚽ Select Training Mode</Text>
+                <Text style={styles.modalHeaderSub}>የት ልምምድ መስራት ይፈልጋሉ? (Choose your training track)</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowTrainingModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Option 1: Gym Training */}
+            <TouchableOpacity
+              style={styles.modalChoiceCard}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowTrainingModal(false);
+                router.push('/challenge');
+              }}
+            >
+              <View style={[styles.modalChoiceIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+                <Ionicons name="barbell" size={28} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.choiceTitleRow}>
+                  <Text style={styles.choiceTitle}>Gym Training (የጂም ልምምድ)</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#38BDF8" />
+                </View>
+                <Text style={styles.choiceDesc}>
+                  Strength, Leg Power, Explosive Plyometrics & Injury Prevention (የእግር ጉልበትና ጉዳት መከላከያ).
+                </Text>
+                <View style={styles.choicePillRow}>
+                  <Text style={styles.choicePill}>Squats</Text>
+                  <Text style={styles.choicePill}>Core Stability</Text>
+                  <Text style={styles.choicePill}>Hamstring Care</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Option 2: Pitch / Field Training */}
+            <TouchableOpacity
+              style={styles.modalChoiceCard}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowTrainingModal(false);
+                router.push('/workout');
+              }}
+            >
+              <View style={[styles.modalChoiceIconWrap, { backgroundColor: 'rgba(0, 230, 118, 0.15)' }]}>
+                <Ionicons name="football" size={28} color="#00E676" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.choiceTitleRow}>
+                  <Text style={styles.choiceTitle}>Pitch Training (የሜዳ ላይ ልምምድ)</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#00E676" />
+                </View>
+                <Text style={styles.choiceDesc}>
+                  Ball Control, Dribble Cones, Sprint Agility & 90-Min Stamina (የኳስ ቅልጥፍና እና የሳንባ አቅም).
+                </Text>
+                <View style={styles.choicePillRow}>
+                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Cone Dribbling</Text>
+                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Shuttle Runs</Text>
+                  <Text style={[styles.choicePill, { color: '#00E676' }]}>Finishing</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -302,86 +414,204 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  heroBanner: {
+  // Hero Banner matching Fitness banner structure
+  bannerContainer: {
     borderRadius: 20,
-    padding: 20,
-    borderWidth: 1.5,
+    overflow: 'hidden',
     marginBottom: 20,
+    position: 'relative',
   },
-  bannerTagRow: {
+  topRow: {
+    padding: 14,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 2,
+  },
+  tagBadge: {
     flexDirection: 'row',
-    marginBottom: 8,
-  },
-  bannerPill: {
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  bannerPillText: {
-    color: '#00E676',
-    fontSize: 11,
+  tagDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  bannerTitle: {
+  quoteWrap: {
+    position: 'absolute',
+    top: 14,
+    right: 16,
+    alignItems: 'flex-end',
+    zIndex: 2,
+  },
+  quoteSignature: {
+    alignItems: 'flex-end',
+  },
+  quoteTextGreen: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+  },
+  quoteTextWhite: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+  },
+  quoteUnderline: {
+    height: 2.5,
+    borderRadius: 1.5,
+    marginTop: 2,
+    width: '100%',
+  },
+  bottomContent: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    zIndex: 2,
+  },
+  title: {
     color: '#FFFFFF',
     fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 26,
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  titleAccent: {
+    fontWeight: '900',
+  },
+  subtitle: {
+    color: '#D1D5DB',
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+    marginBottom: 12,
+    maxWidth: '85%',
+  },
+  joinBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  joinBtnText: {
+    color: '#000000',
     fontWeight: '800',
-    marginBottom: 6,
-    letterSpacing: -0.3,
-  },
-  bannerSub: {
-    color: '#A0AEC0',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  bannerBtnRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  bannerPrimaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  bannerPrimaryBtnText: {
-    color: '#000',
-    fontWeight: '700',
     fontSize: 13,
   },
-  bannerSecondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  bannerSecondaryBtnText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 13,
-  },
+
+  // Section Header matching QuickActions
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    marginTop: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  activePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  activePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  seeAll: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   sectionBadge: {
     color: '#00E676',
     fontSize: 12,
     fontWeight: '700',
   },
+
+  // 2x2 Grid matching QuickActions
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    minHeight: 105,
+    justifyContent: 'space-between',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  cardBody: {
+    marginTop: 10,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Tactical Pitch Styles
   formationSelector: {
     gap: 8,
     paddingBottom: 14,
@@ -511,58 +741,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 9,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  card: {
-    width: '48%',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    justifyContent: 'space-between',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-  },
-  cardLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  cardHint: {
-    fontSize: 11,
-    color: '#00E676',
-    fontWeight: '600',
-    marginTop: 4,
-  },
+
+  // Masterclass card
   masterclassCard: {
     borderRadius: 18,
     padding: 18,
@@ -596,5 +776,94 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '800',
     fontSize: 13,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 18,
+  },
+  modalBox: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1.5,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  modalHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalHeaderSub: {
+    color: '#9CA3AF',
+    fontSize: 11.5,
+    marginTop: 3,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalChoiceCard: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  modalChoiceIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  choiceTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  choiceTitle: {
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+  choiceDesc: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 8,
+  },
+  choicePillRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  choicePill: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#38BDF8',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
 });
