@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors } from '../../constants/colors';
 import { useTheme } from '../../store/themeStore';
 import { supabase } from '../../lib/supabase';
 import { useUserStore, UserTier } from '../../store/userStore';
@@ -330,11 +329,16 @@ export default function StoriesRow() {
         <View
           style={[
             styles.storyRing,
-            { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2, borderColor: '#00E676' },
-            !item.hasStory && styles.storyRingEmpty,
-            isViewed && styles.storyRingViewed,
-            item.isOwn && !item.hasStory && styles.storyRingOwn,
-            isAiCoach && { borderColor: '#00E676', shadowColor: '#00E676', shadowOpacity: 0.4, shadowRadius: 6 },
+            {
+              width: avatarOuter,
+              height: avatarOuter,
+              borderRadius: avatarOuter / 2,
+              borderColor: colors.primary,
+            },
+            !item.hasStory && { borderColor: colors.border },
+            isViewed && { borderColor: colors.textMuted },
+            item.isOwn && !item.hasStory && { borderColor: colors.borderLight },
+            isAiCoach && { borderColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 6 },
           ]}
         >
           <StoryAvatar
@@ -345,17 +349,24 @@ export default function StoriesRow() {
             avatarIcon={item.avatarIcon}
           />
           {item.isOwn && (
-            <View style={[styles.addBadge, { backgroundColor: '#00E676', borderColor: colors.background }]}>
+            <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
               <Ionicons name="add" size={12} color="#000" />
             </View>
           )}
           {isAiCoach && (
-            <View style={[styles.addBadge, { backgroundColor: '#00E676' }]}>
+            <View style={[styles.addBadge, { backgroundColor: colors.primary }]}>
               <Ionicons name="flash" size={10} color="#000" />
             </View>
           )}
         </View>
-        <Text style={[styles.storyName, isAiCoach && { color: colors.primary, fontWeight: '700' }]} numberOfLines={1}>
+        <Text
+          style={[
+            styles.storyName,
+            { color: colors.textPrimary, fontWeight: '600' },
+            isAiCoach && { color: colors.primary, fontWeight: '700' },
+          ]}
+          numberOfLines={1}
+        >
           {item.isOwn ? 'Your story' : item.username}
         </Text>
       </TouchableOpacity>
@@ -378,9 +389,12 @@ export default function StoriesRow() {
             <View style={styles.storyItem}>
               <View style={[
                 styles.storyRing,
-                { width: avatarOuter, height: avatarOuter, borderRadius: avatarOuter / 2 },
-                styles.storyRingEmpty,
-                styles.storyRingOwn,
+                {
+                  width: avatarOuter,
+                  height: avatarOuter,
+                  borderRadius: avatarOuter / 2,
+                  borderColor: colors.borderLight,
+                },
               ]}>
                 <UserAvatar
                   uid={activeUid}
@@ -390,11 +404,11 @@ export default function StoriesRow() {
                   avatarIcon={user.avatarIcon as AvatarIconStyle}
                   size={avatarInner}
                 />
-                <View style={[styles.addBadge, { backgroundColor: '#00E676', borderColor: colors.background }]}>
+                <View style={[styles.addBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
                   <Ionicons name="add" size={12} color="#000" />
                 </View>
               </View>
-              <Text style={styles.storyName} numberOfLines={1}>Your story</Text>
+              <Text style={[styles.storyName, { color: colors.textPrimary, fontWeight: '600' }]} numberOfLines={1}>Your story</Text>
             </View>
 
             {/* 4 skeleton placeholders — same size/spacing as real story items */}
@@ -434,14 +448,10 @@ const styles = StyleSheet.create({
   storyItem: { alignItems: 'center', gap: 5, maxWidth: 70 },
   storyRing: {
     borderWidth: 2,
-    borderColor: '#00E676',
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  storyRingEmpty: { borderColor: Colors.border },
-  storyRingViewed: { borderColor: Colors.textMuted },
-  storyRingOwn: { borderColor: Colors.borderLight },
   addBadge: {
     position: 'absolute',
     bottom: -1,
@@ -449,15 +459,13 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: Colors.background,
   },
   storyName: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    fontWeight: '600',
     textAlign: 'center',
     width: '100%',
   },

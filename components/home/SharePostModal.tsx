@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { RealPost } from './PostCard';
 import { useUserStore } from '../../store/userStore';
 import { supabase } from '../../lib/supabase';
@@ -33,6 +33,7 @@ export default function SharePostModal({
   onToggleRepost,
 }: SharePostModalProps) {
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sendingMap, setSendingMap] = useState<Record<string, boolean>>({});
@@ -220,23 +221,23 @@ export default function SharePostModal({
         onPress={onClose}
       >
         <TouchableOpacity
-          style={styles.sheet}
+          style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}
           activeOpacity={1}
           onPress={e => e.stopPropagation()}
         >
           {/* Sheet Handle */}
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: colors.borderLight }]} />
 
           {/* Title Header */}
           <View style={styles.headerRow}>
-            <Text style={styles.sheetTitle}>Share to</Text>
+            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Share to</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textMuted} />
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
           {/* Post preview thumbnail row */}
-          <View style={styles.postPreviewRow}>
+          <View style={[styles.postPreviewRow, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
             {post.image_url ? (
               <Image
                 source={post.image_url}
@@ -245,10 +246,10 @@ export default function SharePostModal({
               />
             ) : null}
             <View style={styles.previewInfo}>
-              <Text style={styles.previewUser} numberOfLines={1}>
+              <Text style={[styles.previewUser, { color: colors.textPrimary }]} numberOfLines={1}>
                 @{post.username || 'User'}
               </Text>
-              <Text style={styles.previewCaption} numberOfLines={1}>
+              <Text style={[styles.previewCaption, { color: colors.textSecondary }]} numberOfLines={1}>
                 {post.caption || 'FitPulse Community Post'}
               </Text>
             </View>
@@ -256,16 +257,16 @@ export default function SharePostModal({
 
           {/* ── 1. SEND TO FRIENDS (Chat List) ── */}
           <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>Send in Chat</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Send in Chat</Text>
 
             {loadingContacts ? (
               <View style={styles.loadingWrap}>
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : contacts.length === 0 ? (
               <View style={styles.emptyContacts}>
-                <Ionicons name="chatbubbles-outline" size={24} color={Colors.textMuted} />
-                <Text style={styles.emptyText}>No recent chats found</Text>
+                <Ionicons name="chatbubbles-outline" size={24} color={colors.textMuted} />
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No recent chats found</Text>
               </View>
             ) : (
               <ScrollView
@@ -289,23 +290,23 @@ export default function SharePostModal({
                       <View style={styles.friendAvatarWrap}>
                         <Image
                           source={avatarUri}
-                          style={styles.friendAvatar}
+                          style={[styles.friendAvatar, { backgroundColor: colors.surfaceLight }]}
                           contentFit="cover"
                         />
                         {isSent ? (
-                          <View style={styles.sentCheckBadge}>
+                          <View style={[styles.sentCheckBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
                             <Ionicons name="checkmark" size={12} color="#000" />
                           </View>
                         ) : null}
                       </View>
-                      <Text style={styles.friendName} numberOfLines={1}>
+                      <Text style={[styles.friendName, { color: colors.textPrimary }]} numberOfLines={1}>
                         {contact.name.split(' ')[0]}
                       </Text>
-                      <View style={[styles.sendPill, isSent && styles.sendPillSent]}>
+                      <View style={[styles.sendPill, { backgroundColor: isSent ? colors.primary : colors.surfaceLight }]}>
                         {isSending ? (
                           <ActivityIndicator size={10} color="#000" />
                         ) : (
-                          <Text style={[styles.sendPillText, isSent && styles.sendPillTextSent]}>
+                          <Text style={[styles.sendPillText, { color: isSent ? '#000' : colors.textPrimary }]}>
                             {isSent ? 'Sent' : 'Send'}
                           </Text>
                         )}
@@ -318,7 +319,7 @@ export default function SharePostModal({
           </View>
 
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* ── 2. QUICK ACTIONS (Copy link, Repost, Share via...) ── */}
           <View style={styles.actionsGrid}>
@@ -328,14 +329,20 @@ export default function SharePostModal({
               onPress={handleRepostAction}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconWrap, post.isReposted && styles.actionIconWrapActive]}>
+              <View
+                style={[
+                  styles.actionIconWrap,
+                  { backgroundColor: colors.surfaceLight },
+                  post.isReposted && { backgroundColor: colors.primary + '20', borderWidth: 1, borderColor: colors.primary },
+                ]}
+              >
                 <Ionicons
                   name="repeat-outline"
                   size={24}
-                  color={post.isReposted ? Colors.primary : Colors.textPrimary}
+                  color={post.isReposted ? colors.primary : colors.textPrimary}
                 />
               </View>
-              <Text style={styles.actionBtnLabel}>
+              <Text style={[styles.actionBtnLabel, { color: colors.textSecondary }]}>
                 {post.isReposted ? 'Reposted' : 'Repost'}
               </Text>
             </TouchableOpacity>
@@ -346,14 +353,20 @@ export default function SharePostModal({
               onPress={handleCopyLink}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconWrap, copied && styles.actionIconWrapActive]}>
+              <View
+                style={[
+                  styles.actionIconWrap,
+                  { backgroundColor: colors.surfaceLight },
+                  copied && { backgroundColor: colors.primary + '20', borderWidth: 1, borderColor: colors.primary },
+                ]}
+              >
                 <Ionicons
                   name={copied ? 'checkmark' : 'link-outline'}
                   size={24}
-                  color={copied ? Colors.primary : Colors.textPrimary}
+                  color={copied ? colors.primary : colors.textPrimary}
                 />
               </View>
-              <Text style={styles.actionBtnLabel}>
+              <Text style={[styles.actionBtnLabel, { color: colors.textSecondary }]}>
                 {copied ? 'Copied!' : 'Copy Link'}
               </Text>
             </TouchableOpacity>
@@ -364,10 +377,10 @@ export default function SharePostModal({
               onPress={handleExternalShare}
               activeOpacity={0.7}
             >
-              <View style={styles.actionIconWrap}>
-                <Ionicons name="share-social-outline" size={24} color={Colors.textPrimary} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.surfaceLight }]}>
+                <Ionicons name="share-social-outline" size={24} color={colors.textPrimary} />
               </View>
-              <Text style={styles.actionBtnLabel}>Share to...</Text>
+              <Text style={[styles.actionBtnLabel, { color: colors.textSecondary }]}>Share to...</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -383,19 +396,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignSelf: 'center',
     marginBottom: 12,
   },
@@ -409,7 +419,6 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textPrimary,
   },
   closeBtn: {
     padding: 4,
@@ -417,13 +426,11 @@ const styles = StyleSheet.create({
   postPreviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     marginHorizontal: 16,
     borderRadius: 12,
     padding: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   previewImage: {
     width: 36,
@@ -437,11 +444,9 @@ const styles = StyleSheet.create({
   previewUser: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.textPrimary,
   },
   previewCaption: {
     fontSize: 12,
-    color: Colors.textMuted,
     marginTop: 2,
   },
   sectionWrap: {
@@ -449,8 +454,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: 20,
@@ -468,7 +472,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   emptyText: {
-    color: Colors.textMuted,
     fontSize: 13,
   },
   friendsScroll: {
@@ -487,7 +490,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.surfaceLight,
   },
   sentCheckBadge: {
     position: 'absolute',
@@ -496,41 +498,29 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: Colors.surface,
   },
   friendName: {
     fontSize: 11,
-    color: Colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 6,
   },
   sendPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 10,
     minWidth: 44,
     alignItems: 'center',
   },
-  sendPillSent: {
-    backgroundColor: Colors.primary,
-  },
   sendPillText: {
     fontSize: 10,
     fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  sendPillTextSent: {
-    color: '#000',
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginHorizontal: 16,
     marginBottom: 16,
   },
@@ -547,18 +537,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionIconWrapActive: {
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
   actionBtnLabel: {
     fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

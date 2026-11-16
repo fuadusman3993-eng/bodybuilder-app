@@ -27,7 +27,7 @@ export default function HomeTopTabBar() {
             <Text
               style={[
                 styles.tabText,
-                { color: isActive ? colors.textPrimary : colors.textMuted },
+                { color: isActive ? colors.textPrimary : colors.textSecondary, fontWeight: isActive ? '800' : '700' },
                 isActive && styles.activeTabText,
               ]}
             >

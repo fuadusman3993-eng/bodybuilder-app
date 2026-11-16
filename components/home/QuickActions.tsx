@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors } from '../../constants/colors';
 import { useTheme } from '../../store/themeStore';
 import { trackInteraction } from '../../lib/interactionTelemetry';
 
@@ -111,7 +110,7 @@ export default function QuickActions() {
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={[styles.cardSub, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.cardSub, { color: colors.textSecondary, fontWeight: '600' }]} numberOfLines={1}>
                 {item.subtitle}
               </Text>
             </View>
@@ -135,7 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.2 },
   activePill: {
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -147,18 +146,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.4,
   },
-  seeAll: { fontSize: 12.5, color: Colors.primary, fontWeight: '700' },
+  seeAll: { fontSize: 12.5, fontWeight: '700' },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
   card: {
-    backgroundColor: Colors.surface,
     borderRadius: 18,
     padding: 13,
     borderWidth: 1,
-    borderColor: Colors.border,
     justifyContent: 'space-between',
     minHeight: 114,
   },
