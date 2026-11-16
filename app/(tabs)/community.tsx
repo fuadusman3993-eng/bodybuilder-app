@@ -765,11 +765,9 @@ const styles = StyleSheet.create({
   tiktokTabText: {
     fontSize: 16.5,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.55)',
     letterSpacing: 0.2,
   },
   tiktokTabTextActive: {
-    color: '#FFFFFF',
     fontWeight: '800',
   },
   activeTabIndicator: {

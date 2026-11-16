@@ -468,17 +468,19 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-      {/* ── TOP HEADER — slim bar: chevron back + currency pill only ──── */}
+      {/* ── TOP HEADER — slim bar: chevron back + screen title + currency pill ──── */}
       <View style={styles.header}>
         <View style={styles.headerInner}>
-          {/* Simple chevron back (image-2 style) */}
+          {/* Simple chevron back */}
           <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
+
+          <Text style={[styles.headerTitle, { color: colors.textPrimary, fontSize: 18, fontWeight: '800' }]}>Wallet</Text>
 
           {/* Currency Rate Pill Badge */}
           <TouchableOpacity
-            style={[styles.currencyPill, { backgroundColor: colors.surfaceLight, borderColor: colors.primary }]}
+            style={[styles.currencyPill, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={0.8}
             onPress={() => setShowCurrencyModal(true)}
           >
@@ -503,33 +505,8 @@ export default function WalletScreen() {
           }
         >
           <View style={styles.pageInner}>
-            {/* ── HERO BALANCE CARD ─────────────────────────────────────── */}
-          <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
-            {/* Background Athlete — full card width, cinematic */}
-            <Image
-              source={require('../assets/images/wallet-hero-athlete.png')}
-              style={styles.heroBgAthlete}
-              contentFit="cover"
-            />
-
-            {/* Left-to-right dark gradient so balance text is always readable */}
-            <LinearGradient
-              colors={['rgba(10,19,24,0.97)', 'rgba(10,19,24,0.72)', 'rgba(10,19,24,0.10)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {/* Bottom fade to blend into page background */}
-            <LinearGradient
-              colors={['transparent', 'rgba(10,19,24,0.60)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-
-            {/* Screen Title — subtle uppercase inside banner */}
-            <Text style={styles.heroScreenTitle}>WALLET</Text>
-
+            {/* ── BYBIT-STYLE HERO BALANCE CARD ─────────────────────────────────────── */}
+          <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {/* Top Left Coin Badge & Balance */}
             <View style={styles.heroTopRow}>
               {/* 3D Gold FitPulse Coin Badge (Refined 40px) */}
@@ -537,7 +514,7 @@ export default function WalletScreen() {
 
               <View style={styles.heroBalanceTextWrap}>
                 <View style={styles.heroCoinLabelRow}>
-                  <Text style={styles.heroCoinLabel}>FitPulse Coins</Text>
+                  <Text style={[styles.heroCoinLabel, { color: colors.textMuted }]}>Total Assets (FitPulse Coins)</Text>
                   <TouchableOpacity
                     onPress={() => setIsBalanceHidden((prev) => !prev)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -547,15 +524,15 @@ export default function WalletScreen() {
                     <Ionicons
                       name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'}
                       size={16}
-                      color="rgba(255, 255, 255, 0.65)"
+                      color={colors.textMuted}
                     />
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.heroBalanceNumber}>
+                <Text style={[styles.heroBalanceNumber, { color: colors.textPrimary }]}>
                   {isBalanceHidden ? '••••••' : balance.toLocaleString()}
                 </Text>
-                <Text style={styles.heroEquivalentText}>
+                <Text style={[styles.heroEquivalentText, { color: colors.textSecondary }]}>
                   {isBalanceHidden
                     ? '≈ ••••'
                     : `≈ ${formatCurrency(coinsToFiat(balance, currency), currency)}`}
@@ -571,7 +548,7 @@ export default function WalletScreen() {
               </View>
             </View>
 
-            {/* Bottom Dual Action Buttons */}
+            {/* Bottom Dual Action Buttons (Bybit Style) */}
             <View style={styles.heroActionRow}>
               {/* Top Up Coins */}
               <TouchableOpacity
@@ -585,12 +562,19 @@ export default function WalletScreen() {
 
               {/* Withdraw */}
               <TouchableOpacity
-                style={[styles.withdrawBtn, { backgroundColor: colors.surfaceLight, borderColor: colors.primary }]}
+                style={[
+                  styles.withdrawBtn,
+                  {
+                    backgroundColor: colors.surfaceLight,
+                    borderColor: colors.border,
+                    borderWidth: 1.5,
+                  }
+                ]}
                 activeOpacity={0.88}
                 onPress={() => setShowPayout(true)}
               >
-                <Ionicons name="arrow-up" size={18} color={colors.primary} />
-                <Text style={[styles.withdrawBtnTitle, { color: colors.primary }]}>Withdraw</Text>
+                <Ionicons name="arrow-up" size={18} color={colors.textPrimary} />
+                <Text style={[styles.withdrawBtnTitle, { color: colors.textPrimary }]}>Withdraw</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1027,42 +1011,22 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // ── Hero Balance Card ───────────────────────────────────────────────────────
+  // ── Hero Balance Card (Bybit Style) ─────────────────────────────────────────
   heroCard: {
-    marginHorizontal: 0,
-    marginTop: 0,
+    marginHorizontal: 16,
+    marginTop: 6,
     marginBottom: 14,
-    borderRadius: 0,
-    backgroundColor: '#0A1318',
-    borderWidth: 0,
+    borderRadius: 20,
+    borderWidth: 1,
     overflow: 'hidden',
-    position: 'relative',
-    paddingTop: 26,
+    paddingTop: 20,
     paddingHorizontal: 18,
-    paddingBottom: 24,
-  },
-  heroBgAthlete: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 0.75,
-  },
-  heroShadowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 19, 24, 0.25)',
-  },
-  heroScreenTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.40)',
-    letterSpacing: 4,
-    textAlign: 'center',
-    marginBottom: 20,
-    zIndex: 2,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -1071,11 +1035,12 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   coin3dBadge: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     marginTop: 2,
   },
   heroBalanceTextWrap: {
+    flex: 1,
     zIndex: 2,
   },
   heroCoinLabelRow: {
@@ -1087,22 +1052,19 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   heroCoinLabel: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#A0B0C0',
   },
   heroBalanceNumber: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-    marginTop: 1,
-    lineHeight: 34,
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginTop: 2,
+    lineHeight: 38,
   },
   heroEquivalentText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 13,
+    fontWeight: '600',
     marginTop: 2,
     letterSpacing: 0.2,
   },
@@ -1183,12 +1145,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#091319',
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#00E676',
   },
   withdrawIconCircle: {
     width: 28,

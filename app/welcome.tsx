@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
         {/* Center: Brand Logo + Manifesto Tagline */}
         <View style={styles.brandContainer}>
           <View style={styles.logoWrapper}>
-            <BrandLogo size="xlarge" showText={true} layout="column" />
+            <BrandLogo size="xlarge" showText={true} layout="column" textColor="#FFF" />
           </View>
 
           <View style={styles.taglineContainer}>

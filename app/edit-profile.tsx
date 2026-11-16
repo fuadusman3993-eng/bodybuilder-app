@@ -20,12 +20,14 @@ import { supabase } from '../lib/supabase';
 import { getProfile, syncUserProfile } from '../lib/profileService';
 import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
+import { useTheme } from '../store/themeStore';
 import UserAvatar, { AvatarIconStyle, getAvatarColor } from '../components/ui/UserAvatar';
 import AvatarCustomizerModal from '../components/profile/AvatarCustomizerModal';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, setUser } = useUserStore();
+  const { colors } = useTheme();
 
   const [name, setName] = useState(user.name || '');
   const [bio, setBio] = useState('');
@@ -218,15 +220,15 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="close" size={28} color="#FFF" />
+          <Ionicons name="close" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Edit Profile</Text>
         <TouchableOpacity onPress={handleSave} disabled={isLoading || isUploading}>
-          {isLoading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.saveText}>Save</Text>}
+          {isLoading ? <ActivityIndicator color={colors.primary} /> : <Text style={[styles.saveText, { color: colors.primary }]}>Save</Text>}
         </TouchableOpacity>
       </View>
 
@@ -289,23 +291,23 @@ export default function EditProfileScreen() {
 
         {/* Form Fields */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Name</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
             value={name}
             onChangeText={setName}
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             placeholder="Your name"
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Bio</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Bio</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
             value={bio}
             onChangeText={setBio}
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             placeholder="Tell us about yourself..."
             multiline
             numberOfLines={3}
@@ -314,24 +316,24 @@ export default function EditProfileScreen() {
 
         {user.role === 'coach' ? (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Years of Experience</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Years of Experience</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={experience}
               onChangeText={setExperience}
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               placeholder="e.g. 5"
               keyboardType="number-pad"
             />
           </View>
         ) : (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Current Weight (kg)</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Current Weight (kg)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
               value={weight}
               onChangeText={setWeight}
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               placeholder="e.g. 75"
               keyboardType="numeric"
             />

@@ -9,11 +9,13 @@ interface BrandLogoProps {
   customScale?: number;
   showText?: boolean;
   layout?: 'row' | 'column';
+  textColor?: string;
 }
 
-export default function BrandLogo({ size = 'medium', customScale, showText = true, layout = 'row' }: BrandLogoProps) {
+export default function BrandLogo({ size = 'medium', customScale, showText = true, layout = 'row', textColor }: BrandLogoProps) {
   const { colors } = useTheme();
   const primaryColor = colors.primary || Colors.primary;
+  const fitTextColor = textColor || colors.textPrimary || '#FFF';
 
   let scale = 1;
   if (customScale) {
@@ -55,6 +57,7 @@ export default function BrandLogo({ size = 'medium', customScale, showText = tru
               fontSize: 24 * scale,
               marginLeft: layout === 'row' ? 8 * scale : 0,
               marginTop: layout === 'column' ? 12 * scale : 0,
+              color: fitTextColor,
             }
           ]}
         >
