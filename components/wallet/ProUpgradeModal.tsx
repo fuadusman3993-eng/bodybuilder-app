@@ -74,7 +74,7 @@ export default function ProUpgradeModal({
 
           {/* Close button */}
           <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={22} color={colors.textMuted} />
+            <Ionicons name="close" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.content}>
@@ -88,11 +88,11 @@ export default function ProUpgradeModal({
 
             {/* Perks List */}
             <View style={[s.perksCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
-              <PerkRow icon="ribbon" text="Golden Pro Badge across your profile & feed" />
-              <PerkRow icon="barbell" text="Full access to master workout programs & meal plans" />
-              <PerkRow icon="sparkles" text="Unlimited AI workout & form video analysis" />
-              <PerkRow icon="chatbubble-ellipses" text="Priority direct messaging with Certified Coaches" />
-              <PerkRow icon="gift" text="10% bonus coins on all future wallet top-ups" />
+              <PerkRow icon="ribbon" text="Golden Pro Badge across your profile & feed" textColor={colors.textPrimary} />
+              <PerkRow icon="barbell" text="Full access to master workout programs & meal plans" textColor={colors.textPrimary} />
+              <PerkRow icon="sparkles" text="Unlimited AI workout & form video analysis" textColor={colors.textPrimary} />
+              <PerkRow icon="chatbubble-ellipses" text="Priority direct messaging with Certified Coaches" textColor={colors.textPrimary} />
+              <PerkRow icon="gift" text="10% bonus coins on all future wallet top-ups" textColor={colors.textPrimary} />
             </View>
 
             {/* Plan Selector */}
@@ -163,13 +163,13 @@ export default function ProUpgradeModal({
   );
 }
 
-function PerkRow({ icon, text }: { icon: any; text: string }) {
+function PerkRow({ icon, text, textColor }: { icon: any; text: string; textColor?: string }) {
   return (
     <View style={s.perkRow}>
       <View style={s.perkIconWrap}>
         <Ionicons name={icon} size={15} color="#EAB308" />
       </View>
-      <Text style={s.perkText}>{text}</Text>
+      <Text style={[s.perkText, textColor ? { color: textColor } : null]}>{text}</Text>
     </View>
   );
 }
@@ -209,7 +209,7 @@ const s = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#8A95A5', textAlign: 'center', marginTop: 4, marginBottom: 18 },
   perksCard: {
     backgroundColor: '#15212B',
@@ -256,7 +256,7 @@ const s = StyleSheet.create({
     borderRadius: 6,
   },
   discountText: { color: '#000', fontSize: 9, fontWeight: '800' },
-  planDuration: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  planDuration: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   planCoins: { fontSize: 20, fontWeight: '800', color: '#EAB308' },
   planSub: { fontSize: 11, color: '#8A95A5', marginTop: 2 },
   balanceRow: {

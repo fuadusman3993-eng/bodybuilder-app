@@ -47,8 +47,8 @@ export default function PaymentSuccessModal({
           <View style={[styles.topGlow, { backgroundColor: colors.primary }]} />
 
           {/* Close button top-right */}
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color={colors.textMuted} />
+          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: colors.surfaceLight }]} onPress={onClose} activeOpacity={0.7}>
+            <Ionicons name="close" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
 
           {/* 3D FitPulse Coin Icon Badge */}
@@ -73,7 +73,7 @@ export default function PaymentSuccessModal({
             <Text style={[styles.coinsAddedNumber, { color: colors.primary }, isPro && { color: '#EAB308', fontSize: 24 }]}>
               {isPro ? '⭐ PRO ACTIVATED' : `+${coinsAdded.toLocaleString()}`}
             </Text>
-            <Text style={styles.coinsAddedLabel}>
+            <Text style={[styles.coinsAddedLabel, { color: colors.textPrimary }]}>
               {isPro ? 'VIP Perks & Golden Badge Active' : 'FitPulse Coins Credited'}
             </Text>
           </View>
@@ -185,7 +185,6 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 21,
     fontWeight: '800',
-    color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: -0.3,
   },
@@ -254,7 +253,6 @@ const styles = StyleSheet.create({
   detailValueBold: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   detailValueText: {
     fontSize: 12.5,

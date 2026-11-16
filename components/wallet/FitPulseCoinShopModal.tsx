@@ -142,14 +142,14 @@ export default function FitPulseCoinShopModal({
                   onClose();
                   onViewHistory();
                 }}
-                style={s.historyLink}
+                style={[s.historyLink, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
               >
-                <Text style={s.historyLinkText}>History</Text>
-                <Ionicons name="time-outline" size={14} color="#8A95A5" />
+                <Text style={[s.historyLinkText, { color: colors.textSecondary }]}>History</Text>
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                <Ionicons name="close" size={22} color="#8A95A5" />
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -231,7 +231,7 @@ export default function FitPulseCoinShopModal({
                     )}
                     <View style={s.bundleCoinRow}>
                       <FitPulseCoinSvg size={18} />
-                      <Text style={s.bundleCoinNum}>{bundle.coins}</Text>
+                      <Text style={[s.bundleCoinNum, { color: colors.textPrimary }]}>{bundle.coins}</Text>
                     </View>
                     <Text style={[s.bundlePrice, { color: colors.primary }]}>{priceFormatted}</Text>
                   </TouchableOpacity>
@@ -253,11 +253,11 @@ export default function FitPulseCoinShopModal({
               }}
             >
               <View style={s.customCardHeader}>
-                <Text style={s.customCardLabel}>Custom Coin Amount</Text>
-                <Text style={s.customMinHint}>Min: 30 coins</Text>
+                <Text style={[s.customCardLabel, { color: colors.textPrimary }]}>Custom Coin Amount</Text>
+                <Text style={[s.customMinHint, { color: colors.textMuted }]}>Min: 30 coins</Text>
               </View>
 
-              <View style={s.customInputRow}>
+              <View style={[s.customInputRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={s.customInputLeft}>
                   <FitPulseCoinSvg size={20} />
                   <TextInput
@@ -291,8 +291,8 @@ export default function FitPulseCoinShopModal({
                 <Text style={s.cashbackBadgeText}>5%</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.cashbackTitle}>Top-up to unlock 5% bonus coins</Text>
-                <Text style={s.cashbackSub}>Bonus coins will be credited automatically to your wallet</Text>
+                <Text style={[s.cashbackTitle, { color: colors.textPrimary }]}>Top-up to unlock 5% bonus coins</Text>
+                <Text style={[s.cashbackSub, { color: colors.textMuted }]}>Bonus coins will be credited automatically to your wallet</Text>
               </View>
               <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
             </View>
@@ -318,9 +318,9 @@ export default function FitPulseCoinShopModal({
                     </View>
                     <Text style={[s.methodName, { color: colors.textPrimary }]}>Credit Or Debit Card</Text>
                     <View style={s.cardIconsRow}>
-                      <Text style={s.cardBrandPill}>VISA</Text>
-                      <Text style={s.cardBrandPill}>MC</Text>
-                      <Text style={s.cardBrandPill}>AMEX</Text>
+                      <Text style={[s.cardBrandPill, { backgroundColor: colors.surface, color: colors.textSecondary, borderColor: colors.border, borderWidth: 1 }]}>VISA</Text>
+                      <Text style={[s.cardBrandPill, { backgroundColor: colors.surface, color: colors.textSecondary, borderColor: colors.border, borderWidth: 1 }]}>MC</Text>
+                      <Text style={[s.cardBrandPill, { backgroundColor: colors.surface, color: colors.textSecondary, borderColor: colors.border, borderWidth: 1 }]}>AMEX</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -357,7 +357,7 @@ export default function FitPulseCoinShopModal({
                       {paymentMethod === 'telebirr' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
                     <Text style={[s.methodName, { color: colors.textPrimary }]}>Telebirr Mobile Money</Text>
-                    <Text style={s.localPill}>📱 Telebirr</Text>
+                    <Text style={[s.localPill, { color: colors.textMuted }]}>📱 Telebirr</Text>
                   </TouchableOpacity>
 
                   {/* CBE Birr */}
@@ -374,7 +374,7 @@ export default function FitPulseCoinShopModal({
                       {paymentMethod === 'cbe_birr' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
                     <Text style={[s.methodName, { color: colors.textPrimary }]}>CBE Birr / CBE Bank</Text>
-                    <Text style={s.localPill}>🏦 CBE</Text>
+                    <Text style={[s.localPill, { color: colors.textMuted }]}>🏦 CBE</Text>
                   </TouchableOpacity>
 
                   {/* Chapa */}
@@ -391,7 +391,7 @@ export default function FitPulseCoinShopModal({
                       {paymentMethod === 'chapa' && <View style={[s.radioInner, { backgroundColor: colors.primary }]} />}
                     </View>
                     <Text style={[s.methodName, { color: colors.textPrimary }]}>Chapa (Cards & Mobile)</Text>
-                    <Text style={s.localPill}>💳 Chapa</Text>
+                    <Text style={[s.localPill, { color: colors.textMuted }]}>💳 Chapa</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -407,8 +407,8 @@ export default function FitPulseCoinShopModal({
               <Text style={[s.summaryAmount, { color: colors.primary }]}>{formatCurrency(currentPrice, currency)}</Text>
             </View>
 
-            <Text style={s.disclaimerText}>
-              By tapping Top Up, you agree to our <Text style={{ color: colors.textMuted }}>Virtual Items Policy</Text>. Coins are delivered instantly to your balance.
+            <Text style={[s.disclaimerText, { color: colors.textMuted }]}>
+              By tapping Top Up, you agree to our <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Virtual Items Policy</Text>. Coins are delivered instantly to your balance.
             </Text>
 
             {/* Pay / Top Up Button */}
@@ -471,7 +471,6 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#FFFFFF',
     letterSpacing: -0.3,
   },
   headerSub: {
@@ -533,7 +532,6 @@ const s = StyleSheet.create({
   accountUsername: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   accountBalancePill: {
     flexDirection: 'row',
@@ -657,7 +655,6 @@ const s = StyleSheet.create({
   bundleCoinNum: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   bundlePrice: {
@@ -690,7 +687,6 @@ const s = StyleSheet.create({
   customCardLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   customMinHint: {
     fontSize: 11.5,
@@ -717,7 +713,6 @@ const s = StyleSheet.create({
   customInputField: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
     flex: 1,
     padding: 0,
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
@@ -757,7 +752,6 @@ const s = StyleSheet.create({
   cashbackTitle: {
     fontSize: 12.5,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   cashbackSub: {
     fontSize: 11,
@@ -803,7 +797,6 @@ const s = StyleSheet.create({
   methodName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
     flex: 1,
   },
   cardIconsRow: {
@@ -843,7 +836,6 @@ const s = StyleSheet.create({
   summaryLabel: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
   },
   summaryAmount: {
     fontSize: 22,

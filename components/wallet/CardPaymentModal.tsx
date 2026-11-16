@@ -85,7 +85,7 @@ export default function CardPaymentModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity style={[s.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-          <View style={s.handle} />
+          <View style={[s.handle, { backgroundColor: colors.border }]} />
 
           {/* Header */}
           <View style={s.headerRow}>
@@ -96,7 +96,7 @@ export default function CardPaymentModal({
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color={colors.textMuted} />
+              <Ionicons name="close" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -139,7 +139,7 @@ export default function CardPaymentModal({
                   size={20}
                   color={brand === 'visa' ? '#60A5FA' : brand === 'mastercard' ? '#F87171' : colors.primary}
                 />
-                <Text style={s.brandText}>{brand.toUpperCase()}</Text>
+                <Text style={[s.brandText, { color: colors.textPrimary }]}>{brand.toUpperCase()}</Text>
               </View>
             </View>
 
@@ -194,7 +194,7 @@ export default function CardPaymentModal({
             {/* Security Footer */}
             <View style={s.securityRow}>
               <Ionicons name="shield-checkmark" size={14} color="#34D399" />
-              <Text style={s.securityText}>256-bit SSL Encrypted • Powered by Stripe</Text>
+              <Text style={[s.securityText, { color: colors.textMuted }]}>256-bit SSL Encrypted • Powered by Stripe</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -228,7 +228,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  title: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  title: { fontSize: 20, fontWeight: '800' },
   subtitle: { fontSize: 13, color: '#8A95A5', marginTop: 2 },
   closeBtn: { padding: 4 },
   errorBanner: {
@@ -251,7 +251,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#223242',
   },

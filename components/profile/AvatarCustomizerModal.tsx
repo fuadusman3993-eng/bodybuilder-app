@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import UserAvatar, {
   FITNESS_AVATAR_COLORS,
   FITNESS_AVATAR_ICON_NAMES,
@@ -60,6 +61,7 @@ export default function AvatarCustomizerModal({
   currentIcon = 'initials',
   onSave,
 }: Props) {
+  const { colors } = useTheme();
   const [selectedColor, setSelectedColor] = useState<string>(
     currentColor || FITNESS_AVATAR_COLORS[0]
   );
@@ -87,12 +89,12 @@ export default function AvatarCustomizerModal({
       {/* Backdrop */}
       <Pressable style={styles.backdrop} onPress={onClose} />
 
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, { backgroundColor: colors.surface, borderTopColor: colors.border, borderWidth: 1 }]}>
         {/* Handle bar */}
-        <View style={styles.handle} />
+        <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
         {/* Title */}
-        <Text style={styles.title}>Customize Avatar</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Customize Avatar</Text>
 
         {/* Live preview */}
         <View style={styles.previewWrap}>
@@ -107,7 +109,7 @@ export default function AvatarCustomizerModal({
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Color palette */}
-          <Text style={styles.sectionLabel}>Choose Colour</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Choose Colour</Text>
           <View style={styles.colorGrid}>
             {FITNESS_AVATAR_COLORS.map((c) => (
               <TouchableOpacity
@@ -115,7 +117,7 @@ export default function AvatarCustomizerModal({
                 style={[
                   styles.colorSwatch,
                   { backgroundColor: c },
-                  selectedColor === c && styles.colorSwatchSelected,
+                  selectedColor === c && [styles.colorSwatchSelected, { borderColor: colors.textPrimary }],
                 ]}
                 onPress={() => setSelectedColor(c)}
                 activeOpacity={0.8}
@@ -128,14 +130,15 @@ export default function AvatarCustomizerModal({
           </View>
 
           {/* Icon styles */}
-          <Text style={styles.sectionLabel}>Choose Style</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Choose Style</Text>
           <View style={styles.iconRow}>
             {ICONS.map((icon) => (
               <TouchableOpacity
                 key={icon}
                 style={[
                   styles.iconOption,
-                  selectedIcon === icon && styles.iconOptionSelected,
+                  { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                  selectedIcon === icon && [styles.iconOptionSelected, { borderColor: colors.primary }],
                 ]}
                 onPress={() => setSelectedIcon(icon)}
                 activeOpacity={0.8}
@@ -151,7 +154,8 @@ export default function AvatarCustomizerModal({
                 <Text
                   style={[
                     styles.iconLabel,
-                    selectedIcon === icon && { color: Colors.primary },
+                    { color: colors.textMuted },
+                    selectedIcon === icon && { color: colors.primary, fontWeight: '700' },
                   ]}
                 >
                   {ICON_LABEL[icon]}
@@ -163,7 +167,7 @@ export default function AvatarCustomizerModal({
 
         {/* Save button */}
         <TouchableOpacity
-          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+          style={[styles.saveBtn, { backgroundColor: colors.primary }, saving && { opacity: 0.7 }]}
           onPress={handleSave}
           disabled={saving}
           activeOpacity={0.85}
@@ -202,7 +206,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    color: '#FFF',
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',

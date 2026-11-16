@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../store/themeStore';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/userStore';
 import StoriesRow from './StoriesRow';
@@ -14,6 +15,7 @@ import BrandLogo from '../ui/BrandLogo';
 export default function CoachHome() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ trainees: 0, requests: 0, plans: 0, rating: '5.0' });
   const [requests, setRequests] = useState<any[]>([]);
@@ -66,21 +68,21 @@ export default function CoachHome() {
 
   return (
     <ScrollView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: colors.background }]} 
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       {/* Custom Coach Header */}
       <View style={styles.header}>
         <BrandLogo size="small" showText={false} />
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.bellBtn} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={24} color="#FFF" />
+            <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
             {stats.requests > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{stats.requests}</Text></View>}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-            <Image source={`https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`} cachePolicy="memory-disk" contentFit="cover" style={styles.avatar} />
-            <View style={styles.onlineDot} />
+            <Image source={`https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${user.uid}.jpg`} cachePolicy="memory-disk" contentFit="cover" style={[styles.avatar, { borderColor: colors.border }]} />
+            <View style={[styles.onlineDot, { backgroundColor: colors.primary, borderColor: colors.background }]} />
           </TouchableOpacity>
         </View>
       </View>
@@ -97,10 +99,10 @@ export default function CoachHome() {
             resizeMode="cover"
           />
           <LinearGradient colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={styles.bannerGradient}>
-            <View style={styles.bannerTag}><Text style={styles.bannerTagText}>MAKE AN IMPACT</Text></View>
+            <View style={styles.bannerTag}><Text style={[styles.bannerTagText, { color: colors.primary }]}>MAKE AN IMPACT</Text></View>
             <Text style={styles.bannerTitle}>Stronger People{'\n'}Build a Healthier World</Text>
-            <Text style={styles.bannerSub}>Train  •  Guide  •  Transform</Text>
-            <TouchableOpacity style={styles.bannerBtn} onPress={() => router.push('/coach-dashboard')}>
+            <Text style={[styles.bannerSub, { color: colors.textMuted }]}>Train  •  Guide  •  Transform</Text>
+            <TouchableOpacity style={[styles.bannerBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/coach-dashboard')}>
               <Text style={styles.bannerBtnText}>View My Trainees</Text>
               <Ionicons name="arrow-forward" size={16} color="#000" />
             </TouchableOpacity>
@@ -110,70 +112,70 @@ export default function CoachHome() {
 
       {/* Stats Row */}
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Ionicons name="people" size={20} color={Colors.primary} style={styles.statIcon} />
-          <Text style={styles.statValue}>{stats.trainees}</Text>
-          <Text style={styles.statLabel}>Total Trainees</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+          <Ionicons name="people" size={20} color={colors.primary} style={styles.statIcon} />
+          <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.trainees}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Total Trainees</Text>
         </View>
-        <View style={styles.statCard}>
-          <Ionicons name="chatbubbles" size={20} color={Colors.primary} style={styles.statIcon} />
-          <Text style={styles.statValue}>{stats.requests}</Text>
-          <Text style={styles.statLabel}>Pending Requests</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+          <Ionicons name="chatbubbles" size={20} color={colors.primary} style={styles.statIcon} />
+          <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.requests}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Pending Requests</Text>
         </View>
-        <View style={styles.statCard}>
-          <Ionicons name="barbell" size={20} color={Colors.primary} style={styles.statIcon} />
-          <Text style={styles.statValue}>{stats.plans}</Text>
-          <Text style={styles.statLabel}>Active Plans</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+          <Ionicons name="barbell" size={20} color={colors.primary} style={styles.statIcon} />
+          <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.plans}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Active Plans</Text>
         </View>
-        <View style={styles.statCard}>
-          <Ionicons name="star" size={20} color={Colors.primary} style={styles.statIcon} />
-          <Text style={styles.statValue}>{stats.rating}</Text>
-          <Text style={styles.statLabel}>Avg. Rating</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+          <Ionicons name="star" size={20} color={colors.primary} style={styles.statIcon} />
+          <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.rating}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Avg. Rating</Text>
         </View>
       </View>
 
       {/* Quick Actions */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <TouchableOpacity><Text style={styles.seeAllText}>See all <Ionicons name="arrow-forward" size={12}/></Text></TouchableOpacity>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
+        <TouchableOpacity><Text style={[styles.seeAllText, { color: colors.primary }]}>See all <Ionicons name="arrow-forward" size={12} color={colors.primary} /></Text></TouchableOpacity>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.qaScroll}>
-        <TouchableOpacity style={styles.qaCard} onPress={() => router.push('/coach-dashboard')}>
-          <Ionicons name="people" size={28} color={Colors.primary} />
-          <Text style={styles.qaTitle}>My Trainees</Text>
-          <Text style={styles.qaDesc}>View & manage your trainees</Text>
+        <TouchableOpacity style={[styles.qaCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/coach-dashboard')}>
+          <Ionicons name="people" size={28} color={colors.primary} />
+          <Text style={[styles.qaTitle, { color: colors.textPrimary }]}>My Trainees</Text>
+          <Text style={[styles.qaDesc, { color: colors.textMuted }]}>View & manage your trainees</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.qaCard} onPress={() => router.push('/create-plan')}>
+        <TouchableOpacity style={[styles.qaCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/create-plan')}>
           <Ionicons name="clipboard" size={28} color="#A855F7" />
-          <Text style={styles.qaTitle}>Create Plan</Text>
-          <Text style={styles.qaDesc}>Build workout plans for trainees</Text>
+          <Text style={[styles.qaTitle, { color: colors.textPrimary }]}>Create Plan</Text>
+          <Text style={[styles.qaDesc, { color: colors.textMuted }]}>Build workout plans for trainees</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.qaCard} onPress={() => router.push('/(tabs)/chat')}>
+        <TouchableOpacity style={[styles.qaCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/chat')}>
           <Ionicons name="chatbubble-ellipses" size={28} color="#3B82F6" />
-          <Text style={styles.qaTitle}>Messages</Text>
-          <Text style={styles.qaDesc}>Chat with your trainees</Text>
+          <Text style={[styles.qaTitle, { color: colors.textPrimary }]}>Messages</Text>
+          <Text style={[styles.qaDesc, { color: colors.textMuted }]}>Chat with your trainees</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.qaCard} onPress={() => router.push('/(tabs)/create')}>
+        <TouchableOpacity style={[styles.qaCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/create')}>
           <Ionicons name="play-circle" size={28} color="#F59E0B" />
-          <Text style={styles.qaTitle}>Add Lesson</Text>
-          <Text style={styles.qaDesc}>Share videos, text or images</Text>
+          <Text style={[styles.qaTitle, { color: colors.textPrimary }]}>Add Lesson</Text>
+          <Text style={[styles.qaDesc, { color: colors.textMuted }]}>Share videos, text or images</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {/* Recent Requests */}
       <View style={styles.sectionHeader}>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-          <Ionicons name="notifications" size={20} color={Colors.primary} />
-          <Text style={styles.sectionTitle}>Recent Requests</Text>
+          <Ionicons name="notifications" size={20} color={colors.primary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Requests</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/coach-dashboard')}><Text style={styles.seeAllText}>See all <Ionicons name="arrow-forward" size={12}/></Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/coach-dashboard')}><Text style={[styles.seeAllText, { color: colors.primary }]}>See all <Ionicons name="arrow-forward" size={12} color={colors.primary} /></Text></TouchableOpacity>
       </View>
       <View style={styles.requestsContainer}>
         {requests.length === 0 ? (
-          <Text style={styles.noReqText}>No pending requests right now.</Text>
+          <Text style={[styles.noReqText, { color: colors.textMuted }]}>No pending requests right now.</Text>
         ) : (
           requests.map(req => (
-            <View key={req.id} style={styles.reqCard}>
+            <View key={req.id} style={[styles.reqCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <UserAvatar
                 uid={req.trainee_uid || req.id}
                 name={req.trainee_name}
@@ -182,13 +184,13 @@ export default function CoachHome() {
                 style={styles.reqAvatar as any}
               />
               <View style={styles.reqInfo}>
-                <Text style={styles.reqName}>{req.trainee_name}</Text>
-                <Text style={styles.reqMeta}>New Trainee • Request</Text>
+                <Text style={[styles.reqName, { color: colors.textPrimary }]}>{req.trainee_name}</Text>
+                <Text style={[styles.reqMeta, { color: colors.textMuted }]}>New Trainee • Request</Text>
               </View>
               <View style={styles.reqActions}>
-                <TouchableOpacity style={styles.acceptBtn} onPress={() => handleRequest(req.id, 'accepted')}>
-                  <Ionicons name="checkmark" size={16} color={Colors.primary} />
-                  <Text style={styles.acceptText}>Accept</Text>
+                <TouchableOpacity style={[styles.acceptBtn, { borderColor: colors.primary }]} onPress={() => handleRequest(req.id, 'accepted')}>
+                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                  <Text style={[styles.acceptText, { color: colors.primary }]}>Accept</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rejectBtn} onPress={() => handleRequest(req.id, 'rejected')}>
                   <Ionicons name="close" size={16} color="#EF4444" />
@@ -245,16 +247,16 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 24 },
   statCard: { flex: 1, backgroundColor: 'rgba(34,197,94,0.05)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)', borderRadius: 14, padding: 12 },
   statIcon: { alignSelf: 'flex-end', marginBottom: 4 },
-  statValue: { fontSize: 20, fontWeight: '900', color: '#FFF' },
+  statValue: { fontSize: 20, fontWeight: '900' },
   statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
 
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12, marginTop: 10 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  sectionTitle: { fontSize: 18, fontWeight: '800' },
   seeAllText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
 
   qaScroll: { paddingHorizontal: 16, gap: 12, paddingBottom: 10 },
   qaCard: { width: 140, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, padding: 16 },
-  qaTitle: { fontSize: 15, fontWeight: '700', color: '#FFF', marginTop: 12, marginBottom: 4 },
+  qaTitle: { fontSize: 15, fontWeight: '700', marginTop: 12, marginBottom: 4 },
   qaDesc: { fontSize: 12, color: Colors.textMuted, lineHeight: 16 },
 
   requestsContainer: { paddingHorizontal: 16, gap: 12, marginBottom: 24 },
@@ -262,7 +264,7 @@ const styles = StyleSheet.create({
   reqCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: Colors.border },
   reqAvatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
   reqInfo: { flex: 1 },
-  reqName: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  reqName: { fontSize: 15, fontWeight: '700' },
   reqMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   reqActions: { flexDirection: 'row', gap: 8 },
   acceptBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(34,197,94,0.1)' },

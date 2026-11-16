@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../store/themeStore';
 
 export interface FitPulseConfirmModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export default function FitPulseConfirmModal({
   onConfirm,
   onCancel,
 }: FitPulseConfirmModalProps) {
+  const { colors } = useTheme();
   if (!visible) return null;
 
   const isDanger = type === 'danger';
@@ -72,25 +74,25 @@ export default function FitPulseConfirmModal({
           onPress={onCancel}
         />
 
-        <View style={s.card}>
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {/* Icon Badge */}
           <View style={[s.iconBadge, { backgroundColor: iconBg }]}>
             <Ionicons name={resolvedIcon} size={28} color={iconColor} />
           </View>
 
           {/* Title & Message */}
-          <Text style={s.title}>{title}</Text>
-          <Text style={s.message}>{message}</Text>
+          <Text style={[s.title, { color: colors.textPrimary }]}>{title}</Text>
+          <Text style={[s.message, { color: colors.textSecondary }]}>{message}</Text>
 
           {/* Actions Row */}
           <View style={s.btnRow}>
             <TouchableOpacity
-              style={s.cancelBtn}
+              style={[s.cancelBtn, { backgroundColor: colors.surfaceLight, borderColor: colors.border, borderWidth: 1 }]}
               activeOpacity={0.8}
               onPress={onCancel}
               disabled={loading}
             >
-              <Text style={s.cancelBtnText}>{cancelText}</Text>
+              <Text style={[s.cancelBtnText, { color: colors.textPrimary }]}>{cancelText}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -154,7 +156,6 @@ const s = StyleSheet.create({
   title: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: -0.3,

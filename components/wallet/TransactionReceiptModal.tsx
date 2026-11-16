@@ -106,8 +106,8 @@ export default function TransactionReceiptModal({
           <View style={[styles.topGlow, { backgroundColor: isCredit ? colors.primary : '#F59E0B' }]} />
 
           {/* Close button top-right */}
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color={colors.textMuted} />
+          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: colors.surfaceLight }]} onPress={onClose} activeOpacity={0.7}>
+            <Ionicons name="close" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
 
           {/* Icon Badge */}
@@ -152,7 +152,7 @@ export default function TransactionReceiptModal({
               >
                 {isCredit ? '+' : '-'}{absCoins.toLocaleString()}
               </Text>
-              <Text style={styles.amountCoinsLabel}>Coins</Text>
+              <Text style={[styles.amountCoinsLabel, { color: colors.textMuted }]}>Coins</Text>
             </View>
             <Text style={[styles.amountFiatSubtext, { color: colors.textMuted }]}>
               ≈ {formatCurrency(coinsToFiat(absCoins, currency), currency)}
@@ -181,11 +181,11 @@ export default function TransactionReceiptModal({
             <View style={[styles.detailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
               <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Reference ID</Text>
               <TouchableOpacity
-                style={styles.copyBtn}
+                style={[styles.copyBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
                 onPress={handleCopyRef}
                 activeOpacity={0.7}
               >
-                <Text style={styles.refIdText} numberOfLines={1}>
+                <Text style={[styles.refIdText, { color: colors.textSecondary }]} numberOfLines={1}>
                   {refId.length > 20 ? `${refId.slice(0, 10)}...${refId.slice(-8)}` : refId}
                 </Text>
                 <Ionicons
@@ -276,7 +276,6 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -357,7 +356,6 @@ const styles = StyleSheet.create({
   },
   detailValueText: {
     fontSize: 13,
-    color: '#FFFFFF',
     fontWeight: '600',
   },
   copyBtn: {

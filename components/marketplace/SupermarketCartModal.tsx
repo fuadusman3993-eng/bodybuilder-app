@@ -225,7 +225,7 @@ export default function SupermarketCartModal({
                         <Ionicons
                           name={quantity === 1 ? 'trash-outline' : 'remove'}
                           size={15}
-                          color={quantity === 1 ? '#EF4444' : '#FFFFFF'}
+                          color={quantity === 1 ? '#EF4444' : colors.textPrimary}
                         />
                       </TouchableOpacity>
 
@@ -445,7 +445,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sheetTitle: {
-    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
@@ -524,7 +523,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    color: '#FFFFFF',
     fontSize: 13.5,
     fontWeight: '700',
   },
@@ -549,7 +547,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   itemPriceText: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -578,7 +575,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#00E676',
   },
   stepperQtyText: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
     minWidth: 16,
@@ -615,7 +611,6 @@ const styles = StyleSheet.create({
   },
   addressInput: {
     backgroundColor: '#0A0F14',
-    color: '#FFFFFF',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -628,7 +623,6 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   paymentSectionTitle: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
@@ -661,7 +655,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   paymentOptionTitleActive: {
-    color: '#FFFFFF',
+    fontWeight: '800',
   },
   paymentOptionSub: {
     color: '#64748B',
@@ -687,7 +681,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
   },
   billValue: {
-    color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '600',
   },
@@ -698,7 +691,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   grandTotalLabel: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -743,7 +735,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   emptyTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
   },
