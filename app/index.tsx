@@ -6,7 +6,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 import BrandLogo from '../components/ui/BrandLogo';
 import { auth } from '../lib/firebase';
 import { useUserStore, UserTier } from '../store/userStore';
-import { Colors } from '../constants/colors';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -18,6 +17,19 @@ export default function SplashScreen() {
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Smoothly fade out and remove the HTML preloader once React mounts
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const preloader = document.getElementById('fp-preloader');
+      if (preloader) {
+        preloader.style.opacity = '0';
+        setTimeout(() => {
+          try {
+            preloader.remove();
+          } catch (_) {}
+        }, 250);
+      }
+    }
+
     // Smooth entrance: Scale from 0.85 -> 1.0 & Fade in
     Animated.parallel([
       Animated.timing(scaleAnim, {
@@ -36,9 +48,8 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    // Splash screen entrance duration: 800ms minimum on all platforms
-    // so every user (new or returning) sees the branded intro animation
-    const MIN_SPLASH_MS = 800;
+    // Splash screen entrance duration: 650ms (matches smooth logo animation)
+    const MIN_SPLASH_MS = 650;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
@@ -50,32 +61,28 @@ export default function SplashScreen() {
       }, remainingDelay);
     };
 
-    // Listen for Firebase auth state resolution to directly route authenticated users
+    // Instant synchronous auth check from Zustand / localStorage:
+    // Eliminates the 1.5 - 3s Firebase network roundtrip lag!
+    const storedUser = userRef.current;
+    if (storedUser?.uid && storedUser.tier !== UserTier.GUEST) {
+      // Returning logged-in user -> Immediately navigate to app tabs
+      navigateTo('/(tabs)');
+      return;
+    }
+
+    // For new/guest users, listen for Firebase auth or proceed to /welcome in 650ms
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      const storedUser = userRef.current;
       if (firebaseUser) {
-        // Authenticated user -> Go to app tabs
-        navigateTo('/(tabs)');
-      } else if (storedUser?.uid && storedUser.tier !== UserTier.GUEST) {
-        // Persistent non-guest user in store -> Go to app tabs
         navigateTo('/(tabs)');
       } else {
-        // No session -> Go to welcome
         navigateTo('/welcome');
       }
     });
 
-    // On Web: Firebase resolution is slow (up to 3s). But with 0ms MIN_SPLASH we can
-    // also cut the fallback down — if localStorage has a user, navigate immediately.
-    const FALLBACK_MS = Platform.OS === 'web' ? 1500 : 2000;
+    // Fallback safety timer — max 650ms so new users are never blocked
     const fallbackTimer = setTimeout(() => {
-      const storedUser = userRef.current;
-      if (auth.currentUser || (storedUser?.uid && storedUser.tier !== UserTier.GUEST)) {
-        navigateTo('/(tabs)');
-      } else {
-        navigateTo('/welcome');
-      }
-    }, FALLBACK_MS);
+      navigateTo('/welcome');
+    }, MIN_SPLASH_MS);
 
     return () => {
       unsubscribe();
