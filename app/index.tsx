@@ -17,19 +17,6 @@ export default function SplashScreen() {
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Smoothly fade out and remove the HTML preloader once React mounts
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const preloader = document.getElementById('fp-preloader');
-      if (preloader) {
-        preloader.style.opacity = '0';
-        setTimeout(() => {
-          try {
-            preloader.remove();
-          } catch (_) {}
-        }, 250);
-      }
-    }
-
     // Smooth entrance: Scale from 0.85 -> 1.0 & Fade in
     Animated.parallel([
       Animated.timing(scaleAnim, {
@@ -48,8 +35,8 @@ export default function SplashScreen() {
 
     let hasNavigated = false;
     const startTime = Date.now();
-    // Splash screen entrance duration: 650ms (matches smooth logo animation)
-    const MIN_SPLASH_MS = 650;
+    // Splash screen entrance duration: 800ms so every user sees the branded intro animation
+    const MIN_SPLASH_MS = 800;
 
     const navigateTo = (route: string) => {
       if (hasNavigated) return;
