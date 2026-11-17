@@ -68,6 +68,7 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setShowMoreModal(false);
       if (user.tier !== UserTier.GUEST) loadAll();
     }, [user.uid])
   );

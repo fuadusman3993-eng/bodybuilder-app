@@ -11,6 +11,11 @@ import { Platform } from 'react-native';
 export function safeBack(fallbackRoute: string = '/(tabs)') {
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      // If returning from external payment gateways (Chapa/Telebirr/CBE), avoid rewinding through redirect loops
+      if (window.location.search && (window.location.search.includes('chapa') || window.location.search.includes('tx_ref') || window.location.search.includes('status'))) {
+        router.replace(fallbackRoute as any);
+        return;
+      }
       // In web, if there is history in this browser session, go back
       if (window.history.length > 1) {
         window.history.back();

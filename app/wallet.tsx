@@ -136,7 +136,13 @@ export default function WalletScreen() {
   };
 
   const handleBack = () => {
-    safeBack('/(tabs)/profile');
+    if (Platform.OS === 'web') {
+      router.replace('/(tabs)/profile');
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/profile');
+    }
   };
 
   const fetchAll = useCallback(async () => {
