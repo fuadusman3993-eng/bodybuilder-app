@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import Svg, { Path } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { useTheme } from '../store/themeStore';
@@ -513,60 +514,76 @@ export default function WalletScreen() {
           <View style={styles.pageInner}>
             {/* ── BYBIT-STYLE HERO BALANCE CARD ─────────────────────────────────────── */}
           <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {/* Top Left Coin Badge & Balance */}
-            <View style={styles.heroTopRow}>
-              {/* 3D Gold FitPulse Coin Badge (Refined 40px) */}
-              <FitPulseCoinSvg size={40} />
-
-              <View style={styles.heroBalanceTextWrap}>
-                <View style={styles.heroCoinLabelRow}>
-                  <Text style={[styles.heroCoinLabel, { color: colors.textMuted }]}>Total Assets (FitPulse Coins)</Text>
-                  <TouchableOpacity
-                    onPress={() => setIsBalanceHidden((prev) => !prev)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.7}
-                    style={styles.eyeToggleBtn}
-                  >
-                    <Ionicons
-                      name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'}
-                      size={16}
-                      color={colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.heroBalanceNumber, { color: colors.textPrimary }]}>
-                  {isBalanceHidden ? '••••••' : balance.toLocaleString()}
+            {/* 1. Bybit Assets Header Row */}
+            <View style={styles.bybitHeaderRow}>
+              <View style={styles.bybitTitleWrap}>
+                <Text style={[styles.bybitAssetsLabel, { color: colors.textMuted }]}>
+                  Total Assets (FitPulse Coins)
                 </Text>
-                <Text style={[styles.heroEquivalentText, { color: colors.textSecondary }]}>
-                  {isBalanceHidden
-                    ? '≈ ••••'
-                    : `≈ ${formatCurrency(coinsToFiat(balance, currency), currency)}`}
-                </Text>
+                <TouchableOpacity
+                  onPress={() => setIsBalanceHidden((prev) => !prev)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  activeOpacity={0.7}
+                  style={styles.eyeToggleBtn}
+                >
+                  <Ionicons
+                    name={isBalanceHidden ? 'eye-off-outline' : 'eye-outline'}
+                    size={17}
+                    color={colors.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
 
-                {/* 7-Day Trend Pill */}
-                <View style={[styles.trendPill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
-                  <Ionicons name="arrow-up" size={11} color={colors.primary} />
-                  <Text style={[styles.trendPercent, { color: colors.primary }]}>0.00%</Text>
-                  <Text style={[styles.trendArrow, { color: colors.primary }]}>→</Text>
-                  <Text style={[styles.trendLabel, { color: colors.textMuted }]}>vs last 7 days</Text>
-                </View>
+              {/* Currency rate badge */}
+              <View style={[styles.bybitCurrencyBadge, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Text style={[styles.bybitCurrencyBadgeText, { color: colors.primary }]}>{currency}</Text>
               </View>
             </View>
 
-            {/* Bottom Dual Action Buttons (Bybit Style) */}
+            {/* 2. Bybit Central Balance Row: Big bold 450 + 3D FitPulse Coin */}
+            <View style={styles.bybitBalanceRow}>
+              <Text style={[styles.bybitBalanceNumber, { color: colors.textPrimary }]}>
+                {isBalanceHidden ? '••••••' : balance.toLocaleString()}
+              </Text>
+              <View style={styles.bybitCoinWrap}>
+                <FitPulseCoinSvg size={34} idPrefix="heroCoin" />
+              </View>
+            </View>
+
+            {/* 3. Bybit Sub-balance & Trend: Fiat equivalent + 7d trend pill */}
+            <View style={styles.bybitSubRow}>
+              <Text style={[styles.bybitEquivalentText, { color: colors.textSecondary }]}>
+                {isBalanceHidden
+                  ? '≈ ••••'
+                  : `≈ ${formatCurrency(coinsToFiat(balance, currency), currency)}`}
+              </Text>
+
+              {/* 7-Day Trend Pill */}
+              <View style={[styles.trendPill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
+                <Ionicons name="arrow-up" size={11} color={colors.primary} />
+                <Text style={[styles.trendPercent, { color: colors.primary }]}>0.00%</Text>
+                <Text style={[styles.trendArrow, { color: colors.primary }]}>→</Text>
+                <Text style={[styles.trendLabel, { color: colors.textMuted }]}>vs last 7 days</Text>
+              </View>
+            </View>
+
+            {/* 4. Bottom Dual Action Buttons: Bybit Pill with Bold '+' & Bold '^' Icons */}
             <View style={styles.heroActionRow}>
-              {/* Top Up Coins */}
+              {/* Top Up Coins (ወፍራሙ '+') */}
               <TouchableOpacity
                 style={[styles.topUpBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                 activeOpacity={0.88}
                 onPress={() => setShowTopup(true)}
               >
-                <Ionicons name="add" size={20} color="#000" />
+                <View style={styles.topUpIconCircle}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 4v16m8-8H4" stroke="#000000" strokeWidth="3.4" strokeLinecap="round" />
+                  </Svg>
+                </View>
                 <Text style={styles.topUpBtnTitle}>Top Up</Text>
               </TouchableOpacity>
 
-              {/* Withdraw */}
+              {/* Withdraw (ወፍራሙ '^' / '↑') */}
               <TouchableOpacity
                 style={[
                   styles.withdrawBtn,
@@ -579,7 +596,11 @@ export default function WalletScreen() {
                 activeOpacity={0.88}
                 onPress={() => setShowPayout(true)}
               >
-                <Ionicons name="arrow-up" size={18} color={colors.textPrimary} />
+                <View style={[styles.withdrawIconCircle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 19V5m-6 6l6-6 6 6" stroke={colors.textPrimary} strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                </View>
                 <Text style={[styles.withdrawBtnTitle, { color: colors.textPrimary }]}>Withdraw</Text>
               </TouchableOpacity>
             </View>
@@ -1022,10 +1043,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 6,
     marginBottom: 14,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
     overflow: 'hidden',
-    paddingTop: 20,
+    paddingTop: 18,
     paddingHorizontal: 18,
     paddingBottom: 20,
     shadowColor: '#000',
@@ -1033,6 +1054,64 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
+  },
+  bybitHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    zIndex: 2,
+  },
+  bybitTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bybitAssetsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  bybitCurrencyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  bybitCurrencyBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  bybitBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 2,
+    zIndex: 2,
+  },
+  bybitBalanceNumber: {
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    lineHeight: 44,
+  },
+  bybitCoinWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bybitSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+    flexWrap: 'wrap',
+    zIndex: 2,
+  },
+  bybitEquivalentText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -1083,7 +1162,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 12,
     alignSelf: 'flex-start',
-    marginTop: 6,
     borderWidth: 1,
     borderColor: 'rgba(0, 230, 118, 0.20)',
   },
@@ -1115,7 +1193,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#00E676',
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 14,
     borderRadius: 14,
     shadowColor: '#00E676',
@@ -1124,10 +1202,10 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   topUpIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0, 0, 0, 0.16)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1151,22 +1229,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 14,
     borderRadius: 14,
   },
   withdrawIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
   },
   withdrawBtnTitle: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: '#FFFFFF',
   },
   withdrawBtnSub: {
     fontSize: 10.5,
