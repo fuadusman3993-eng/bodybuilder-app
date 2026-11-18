@@ -207,6 +207,42 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
               <View style={styles.sectionWrap}>
                 <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Tools</Text>
 
+                {/* Become a Coach (For Trainees / Athletes) */}
+                {!isCoach && (
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      {
+                        backgroundColor: colors.surfaceLight,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        marginVertical: 4,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleNavigate('/coach-onboarding')}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <Ionicons
+                        name="ribbon-outline"
+                        size={22}
+                        color="#F59E0B"
+                      />
+                      <View>
+                        <Text style={[styles.menuItemText, { color: colors.textPrimary, fontWeight: '700' }]}>
+                          Become a Coach
+                        </Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                          Train athletes & earn coins
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ backgroundColor: '#F59E0B20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                      <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '700' }}>PRO</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
                 {/* Coach Dashboard / My Coach */}
                 <TouchableOpacity
                   style={styles.menuItem}

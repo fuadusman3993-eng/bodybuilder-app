@@ -502,6 +502,34 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* ── Become a Coach Prompt (For Trainees) ── */}
+          {!isCoach && (
+            <TouchableOpacity
+              style={[
+                styles.becomeCoachBanner,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => router.push('/coach-onboarding')}
+            >
+              <View style={[styles.becomeCoachIconWrap, { backgroundColor: colors.primary + '20' }]}>
+                <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.becomeCoachTitle, { color: colors.textPrimary }]}>
+                  Become a FitPulse Coach
+                </Text>
+                <Text style={[styles.becomeCoachSub, { color: colors.textMuted }]}>
+                  Train athletes in Fitness, Football, or Health & earn coins
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={17} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+
           {/* ── Minimal TikTok-Style Icon Tabs (Zero Text) ── */}
           <View style={styles.tabsWrap}>
             {PROFILE_TABS.map((tab) => {
@@ -921,5 +949,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.2,
+  },
+
+  becomeCoachBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  becomeCoachIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  becomeCoachTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  becomeCoachSub: {
+    fontSize: 11,
+    marginTop: 2,
   },
 });

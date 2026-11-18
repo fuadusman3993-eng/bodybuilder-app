@@ -22,6 +22,10 @@ interface CoachProfile {
   name: string;
   avatar_url: string;
   bio: string;
+  domain?: 'Fitness' | 'Football' | 'Health';
+  phone?: string;
+  telegram?: string;
+  certifications?: string[];
   specialty: string[];
   experience_years: number;
   price_per_month: number;
@@ -405,6 +409,27 @@ export default function CoachProfilePage() {
             {coach.is_verified && (
               <Ionicons name="checkmark-circle" size={20} color={Colors.info} />
             )}
+            {coach.domain && (
+              <View style={[
+                styles.domainTag,
+                coach.domain === 'Football' && { backgroundColor: 'rgba(59,130,246,0.18)' },
+                coach.domain === 'Health' && { backgroundColor: 'rgba(245,158,11,0.18)' },
+              ]}>
+                <Ionicons
+                  name={coach.domain === 'Football' ? 'football-outline' : coach.domain === 'Health' ? 'fitness-outline' : 'barbell-outline'}
+                  size={12}
+                  color={coach.domain === 'Football' ? '#3B82F6' : coach.domain === 'Health' ? '#F59E0B' : Colors.primary}
+                  style={{ marginRight: 3 }}
+                />
+                <Text style={[
+                  styles.domainTagText,
+                  coach.domain === 'Football' && { color: '#3B82F6' },
+                  coach.domain === 'Health' && { color: '#F59E0B' },
+                ]}>
+                  {coach.domain}
+                </Text>
+              </View>
+            )}
           </View>
           <Text style={styles.specialty}>{coach.specialty?.join(' · ')}</Text>
 
@@ -443,6 +468,55 @@ export default function CoachProfilePage() {
                   <Text style={styles.tagText}>{s}</Text>
                 </View>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* Certifications & Licenses */}
+        {coach.certifications && coach.certifications.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Certifications & Credentials</Text>
+            <View style={styles.tagRow}>
+              {coach.certifications.map((cert, i) => (
+                <View key={i} style={[styles.tag, { backgroundColor: 'rgba(245,158,11,0.15)', borderWidth: 1, borderColor: '#F59E0B' }]}>
+                  <Ionicons name="ribbon-outline" size={13} color="#F59E0B" style={{ marginRight: 4 }} />
+                  <Text style={[styles.tagText, { color: '#F59E0B' }]}>{cert}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Direct Contact (Telegram & Phone) */}
+        {(coach.telegram || coach.phone) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Direct Contact</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {coach.telegram && (
+                <TouchableOpacity
+                  style={[styles.contactPill, { borderColor: '#38BDF8' }]}
+                  onPress={() => {
+                    const handle = coach.telegram!.replace('@', '').trim();
+                    Linking.openURL(`https://t.me/${handle}`);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="paper-plane-outline" size={16} color="#38BDF8" />
+                  <Text style={[styles.contactPillText, { color: '#38BDF8' }]}>
+                    {coach.telegram.startsWith('@') ? coach.telegram : `@${coach.telegram}`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {coach.phone && (
+                <TouchableOpacity
+                  style={[styles.contactPill, { borderColor: Colors.primary }]}
+                  onPress={() => Linking.openURL(`tel:${coach.phone}`)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="call-outline" size={16} color={Colors.primary} />
+                  <Text style={[styles.contactPillText, { color: Colors.primary }]}>Call Coach</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -586,6 +660,19 @@ const styles = StyleSheet.create({
   avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: Colors.primary, backgroundColor: Colors.surfaceLight },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
   coachName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
+  domainTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34,197,94,0.18)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  domainTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   specialty: { color: Colors.primary, fontSize: 14, marginTop: 4 },
   statsRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -603,6 +690,20 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { backgroundColor: 'rgba(34,197,94,0.12)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   tagText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
+  contactPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+    backgroundColor: Colors.surface,
+  },
+  contactPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   priceCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.surface, padding: 16, borderRadius: 14,

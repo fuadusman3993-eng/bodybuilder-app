@@ -1,139 +1,260 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform,
-  TextInput, KeyboardAvoidingView, Modal, FlatList, ActivityIndicator, Alert
+  TextInput, KeyboardAvoidingView, ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { auth } from '../lib/firebase';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import Logo from '../components/auth/Logo';
-import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
+import { syncUserProfile } from '../lib/profileService';
+import { supabase } from '../lib/supabase';
 
-// ── Dropdown Data ─────────────────────────────────────────────────────────────
-const SPECIALIZATIONS = [
-  'Personal Training', 'Strength & Conditioning', 'Weight Loss',
-  'Bodybuilding', 'CrossFit', 'Yoga & Flexibility', 'Sports Performance',
-  'Nutrition Coaching', 'Rehabilitation', 'HIIT & Cardio',
-];
+// ── Domain & Specialty Configurations ─────────────────────────────────────────
+export type CoachDomain = 'Fitness' | 'Football' | 'Health';
 
-const EXPERIENCE_LEVELS = [
-  'Beginner (0–1 years)', 'Intermediate (2–4 years)',
-  'Experienced (5–9 years)', 'Expert (10+ years)',
-];
-
-const YEARS_OPTIONS = [
-  '1 year', '2 years', '3 years', '4 years', '5 years',
-  '6 years', '7 years', '8 years', '9 years', '10+ years',
-];
-
-// ── Dropdown Modal ────────────────────────────────────────────────────────────
-function DropdownModal({ visible, title, options, onSelect, onClose }: {
-  visible: boolean; title: string; options: string[];
-  onSelect: (v: string) => void; onClose: () => void;
-}) {
-  const { colors } = useTheme();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={dd.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={[dd.sheet, { backgroundColor: colors.surface, borderTopColor: colors.border, borderWidth: 1 }]}>
-        <View style={[dd.handle, { backgroundColor: colors.border }]} />
-        <Text style={[dd.title, { color: colors.textPrimary }]}>{title}</Text>
-        <FlatList
-          data={options}
-          keyExtractor={(_, i) => String(i)}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={[dd.item, { borderBottomColor: colors.border }]} onPress={() => { onSelect(item); onClose(); }} activeOpacity={0.7}>
-              <Text style={[dd.itemText, { color: colors.textPrimary }]}>{item}</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-    </Modal>
-  );
+interface DomainOption {
+  key: CoachDomain;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  accent: string;
 }
 
-// ── Field Row ─────────────────────────────────────────────────────────────────
-function FieldRow({ icon, label, required, children }: any) {
-  const { colors } = useTheme();
-  return (
-    <View style={f.row}>
-      <View style={f.iconCol}>
-        <Ionicons name={icon} size={22} color={colors.primary} />
-      </View>
-      <View style={f.col}>
-        <Text style={[f.label, { color: colors.textSecondary }]}>{label}{required && <Text style={{ color: '#EF4444' }}> *</Text>}</Text>
-        {children}
-      </View>
-    </View>
-  );
-}
+const DOMAINS: DomainOption[] = [
+  {
+    key: 'Fitness',
+    title: 'Fitness & Bodybuilding',
+    subtitle: 'Gym, Muscle, Weight Loss & Conditioning',
+    icon: 'barbell-outline',
+    accent: '#10B981',
+  },
+  {
+    key: 'Football',
+    title: 'Football / Soccer',
+    subtitle: 'Tactical, Agility, Striker & Youth Academy',
+    icon: 'football-outline',
+    accent: '#3B82F6',
+  },
+  {
+    key: 'Health',
+    title: 'Health & Wellness',
+    subtitle: 'Nutrition, Diet, Rehab & Mobility',
+    icon: 'fitness-outline',
+    accent: '#F59E0B',
+  },
+];
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+const DOMAIN_SPECIALTIES: Record<CoachDomain, string[]> = {
+  Fitness: [
+    'Bodybuilding & Hypertrophy',
+    'Weight Loss & Fat Burn',
+    'Strength & Powerlifting',
+    'CrossFit & Conditioning',
+    'Calisthenics & Bodyweight',
+    'HIIT & Cardio',
+  ],
+  Football: [
+    'Tactical & Match IQ',
+    'Striker & Finishing Specialist',
+    'Goalkeeper Specific Training',
+    'Football Speed & Agility (SAQ)',
+    'Youth & Academy Development',
+    'Football Physical Conditioning',
+  ],
+  Health: [
+    'Sports Nutrition & Diet Plan',
+    'Physiotherapy & Injury Rehab',
+    'Posture & Mobility Correction',
+    'Weight Management & Metabolism',
+    'Holistic Lifestyle & Recovery',
+  ],
+};
+
+const EXPERIENCE_YEARS = ['1-2 years', '3-5 years', '5-10 years', '10+ years'];
+const PRICE_PRESETS = [0, 250, 500, 1000];
+
 export default function CoachOnboardingScreen() {
   const router = useRouter();
-  const { setUser, user } = useUserStore();
+  const { user, setUser } = useUserStore();
   const { colors } = useTheme();
 
-  const [fullName, setFullName]         = useState('');
-  const [phone, setPhone]               = useState('');
-  const [specialization, setSpec]       = useState('');
-  const [experienceLevel, setExpLevel]  = useState('');
-  const [yearsExp, setYears]            = useState('');
-  const [about, setAbout]               = useState('');
-  const [isSaving, setIsSaving]         = useState(false);
+  // Form states
+  const [fullName, setFullName] = useState(user.name || '');
+  const [phone, setPhone] = useState('');
+  const [telegram, setTelegram] = useState('');
+  const [domain, setDomain] = useState<CoachDomain>('Fitness');
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([
+    DOMAIN_SPECIALTIES.Fitness[0],
+  ]);
+  const [experience, setExperience] = useState('3-5 years');
+  const [pricePerMonth, setPricePerMonth] = useState<number>(500);
+  const [customPriceText, setCustomPriceText] = useState('500');
+  const [certifications, setCertifications] = useState('');
+  const [about, setAbout] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [dropdown, setDropdown] = useState<'spec' | 'level' | 'years' | null>(null);
+  // Pre-fill existing user info if logged in
+  useEffect(() => {
+    const currentUid = auth.currentUser?.uid || user.uid;
+    if (!currentUid) return;
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+    // Check if user already has partial profile
+    getDoc(doc(db, 'users', currentUid)).then((snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.fullName || d.displayName || d.name) {
+          setFullName(d.fullName || d.displayName || d.name);
+        }
+        if (d.phone) setPhone(d.phone);
+        if (d.telegram) setTelegram(d.telegram);
+        if (d.about || d.bio) setAbout(d.about || d.bio);
+      }
+    }).catch(() => {});
+  }, [user.uid]);
+
+  // When domain switches, select appropriate default specialty
+  const handleDomainChange = (newDomain: CoachDomain) => {
+    setDomain(newDomain);
+    setSelectedSpecialties([DOMAIN_SPECIALTIES[newDomain][0]]);
+  };
+
+  const toggleSpecialty = (item: string) => {
+    if (selectedSpecialties.includes(item)) {
+      if (selectedSpecialties.length > 1) {
+        setSelectedSpecialties(selectedSpecialties.filter((s) => s !== item));
+      }
+    } else {
+      setSelectedSpecialties([...selectedSpecialties, item]);
+    }
+  };
+
+  const handlePriceSelect = (val: number) => {
+    setPricePerMonth(val);
+    setCustomPriceText(String(val));
+  };
+
+  const handleCustomPriceChange = (text: string) => {
+    const num = parseInt(text.replace(/\D/g, ''), 10) || 0;
+    setCustomPriceText(text.replace(/\D/g, ''));
+    setPricePerMonth(num);
+  };
+
   const handleContinue = async () => {
-    if (!fullName.trim() || !phone.trim() || !specialization || !experienceLevel || !yearsExp || !about.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields before continuing.');
+    if (!fullName.trim()) {
+      Alert.alert('Required', 'Please enter your full name.');
+      return;
+    }
+    if (!phone.trim()) {
+      Alert.alert('Required', 'Please enter your phone number so clients can reach you.');
+      return;
+    }
+    if (selectedSpecialties.length === 0) {
+      Alert.alert('Required', 'Please select at least one specialty.');
+      return;
+    }
+    if (!about.trim()) {
+      Alert.alert('Required', 'Please write a brief bio about your coaching philosophy.');
       return;
     }
 
     setIsSaving(true);
     try {
-      const uid = auth.currentUser?.uid;
-      if (uid) {
-        // Save to Firebase
-        await updateDoc(doc(db, 'users', uid), {
-          fullName: fullName.trim(),
-          phone: phone.trim(),
-          specialization,
-          experienceLevel,
-          yearsExperience: yearsExp,
-          about: about.trim(),
-          onboardingComplete: true,
-          updatedAt: serverTimestamp(),
-        });
-
-        // Save to Supabase coach_profiles
-        const { supabase } = await import('../lib/supabase');
-        await supabase.from('coach_profiles').upsert({
-          uid: uid,
-          name: fullName.trim(),
-          avatar_url: `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`,
-          bio: about.trim(),
-          specialty: [specialization],
-          experience_years: parseInt(yearsExp.replace(/\D/g, '')) || 0,
-          price_per_month: 0,
-          rating: 5.0,
-          total_trainees: 0,
-          is_verified: true,
-        });
+      const uid = auth.currentUser?.uid || user.uid;
+      if (!uid) {
+        Alert.alert('Authentication Error', 'User ID not found. Please log in first.');
+        return;
       }
-      setUser({ ...user!, role: 'coach', name: fullName.trim() });
-      router.replace('/(tabs)');
+
+      const yearsNum = parseInt(experience.replace(/\D/g, ''), 10) || 3;
+      const certsList = certifications
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      const avatarUrl = user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
+
+      // 1. Upsert into Supabase coach_profiles (with graceful fallback if extra columns aren't migrated yet)
+      const coachData: any = {
+        uid,
+        name: fullName.trim(),
+        avatar_url: avatarUrl,
+        bio: about.trim(),
+        specialty: selectedSpecialties,
+        experience_years: yearsNum,
+        price_per_month: pricePerMonth,
+        rating: 5.0,
+        total_trainees: 0,
+        is_verified: true,
+      };
+
+      // Try with extended fields (domain, phone, telegram, certifications)
+      const { error: upsertErr } = await supabase.from('coach_profiles').upsert({
+        ...coachData,
+        domain,
+        phone: phone.trim(),
+        telegram: telegram.trim() || null,
+        certifications: certsList,
+      });
+
+      // If schema doesn't have the new columns yet, fall back to core columns gracefully
+      if (upsertErr) {
+        console.warn('Extended columns fallback:', upsertErr.message);
+        await supabase.from('coach_profiles').upsert(coachData);
+      }
+
+      // 2. Update Supabase Unified Profiles (SSOT)
+      await syncUserProfile({
+        uid,
+        name: fullName.trim(),
+        role: 'coach',
+        bio: about.trim(),
+      }).catch(() => {});
+
+      // 3. Keep Firestore in sync for backwards-compatibility
+      await updateDoc(doc(db, 'users', uid), {
+        fullName: fullName.trim(),
+        name: fullName.trim(),
+        displayName: fullName.trim(),
+        role: 'coach',
+        domain,
+        specialization: selectedSpecialties[0],
+        specialties: selectedSpecialties,
+        phone: phone.trim(),
+        telegram: telegram.trim() || null,
+        yearsExperience: experience,
+        price_per_month: pricePerMonth,
+        about: about.trim(),
+        bio: about.trim(),
+        onboardingComplete: true,
+        updatedAt: serverTimestamp(),
+      }).catch(() => {});
+
+      // 4. Update local Zustand state
+      setUser({
+        ...user,
+        role: 'coach',
+        name: fullName.trim(),
+      });
+
+      // 5. Navigate to Coach experience
+      Alert.alert(
+        '🎉 Welcome, Coach!',
+        'Your professional coach profile is now live! Clients can find and hire you directly in FitPulse.',
+        [
+          {
+            text: 'Go to Coach Studio',
+            onPress: () => router.replace('/coach-dashboard'),
+          },
+        ]
+      );
     } catch (err: any) {
-      Alert.alert('Error', 'Could not save your profile. Please try again.');
-      console.error(err);
+      console.error('Coach onboarding error:', err);
+      Alert.alert('Error', err.message || 'Could not save coach profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -142,258 +263,459 @@ export default function CoachOnboardingScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
           <Logo size="small" />
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-          {/* Progress */}
-          <View style={styles.progress}>
-            <Step num={1} label="Account Type" done />
-            <Line done />
-            <Step num={2} label="Professional Info" active />
-            <Line />
-            <Step num={3} label="Complete Profile" />
-          </View>
-
-          {/* Title */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header Banner */}
           <View style={styles.titleRow}>
             <View style={[styles.titleIcon, { backgroundColor: colors.primary }]}>
-              <Ionicons name="person" size={32} color="#000" />
+              <Ionicons name="shield-checkmark" size={30} color="#000" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>Coach <Text style={{ color: colors.primary }}>Information</Text></Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Tell us about your coaching background and experience. This helps us verify your profile and connect you with the right clients.</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>
+                Coach <Text style={{ color: colors.primary }}>Onboarding</Text>
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Set up your professional credentials to start coaching athletes in FitPulse.
+              </Text>
             </View>
           </View>
 
-          {/* Form */}
+          {/* ── 1. DOMAIN SELECTION (Interactive Cards) ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
+            1. Select Your Coaching Domain
+          </Text>
+          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
+            Choose where your primary coaching expertise lies.
+          </Text>
+
+          <View style={styles.domainGrid}>
+            {DOMAINS.map((d) => {
+              const isSelected = domain === d.key;
+              return (
+                <TouchableOpacity
+                  key={d.key}
+                  style={[
+                    styles.domainCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: isSelected ? d.accent : colors.border,
+                      borderWidth: isSelected ? 2 : 1,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => handleDomainChange(d.key)}
+                >
+                  <View
+                    style={[
+                      styles.domainIconCircle,
+                      { backgroundColor: isSelected ? d.accent : colors.surfaceLight },
+                    ]}
+                  >
+                    <Ionicons
+                      name={d.icon}
+                      size={22}
+                      color={isSelected ? '#fff' : colors.textPrimary}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.domainTitle,
+                        { color: colors.textPrimary, fontWeight: isSelected ? '700' : '600' },
+                      ]}
+                    >
+                      {d.title}
+                    </Text>
+                    <Text style={[styles.domainSubtitle, { color: colors.textMuted }]}>
+                      {d.subtitle}
+                    </Text>
+                  </View>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={22} color={d.accent} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* ── 2. SPECIALTIES (Dynamic Multi-Select Chips) ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 24 }]}>
+            2. Specialties & Programs
+          </Text>
+          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
+            Tap all areas you offer training in:
+          </Text>
+
+          <View style={styles.chipsContainer}>
+            {DOMAIN_SPECIALTIES[domain].map((item) => {
+              const active = selectedSpecialties.includes(item);
+              return (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.surface,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => toggleSpecialty(item)}
+                >
+                  {active && <Ionicons name="checkmark" size={15} color="#000" style={{ marginRight: 4 }} />}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      {
+                        color: active ? '#000' : colors.textPrimary,
+                        fontWeight: active ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* ── 3. PRICING & EXPERIENCE CARD ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
+            3. Coaching Fee & Experience
+          </Text>
+          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
+            Set your monthly client fee (1 Coin = 1 ETB):
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Price Presets */}
+            <View style={styles.priceRow}>
+              {PRICE_PRESETS.map((p) => {
+                const selected = pricePerMonth === p && customPriceText === String(p);
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    style={[
+                      styles.pricePresetBtn,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surfaceLight,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => handlePriceSelect(p)}
+                  >
+                    <Text
+                      style={[
+                        styles.pricePresetText,
+                        { color: selected ? '#000' : colors.textPrimary, fontWeight: selected ? '700' : '600' },
+                      ]}
+                    >
+                      {p === 0 ? 'Free' : `${p} ETB`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Custom Price Input */}
+            <View style={styles.inputField}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Monthly Fee (ETB / Coins)
+              </Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="cash-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="e.g. 500"
+                  placeholderTextColor={colors.textMuted}
+                  value={customPriceText}
+                  onChangeText={handleCustomPriceChange}
+                  keyboardType="numeric"
+                />
+                <Text style={{ color: colors.textMuted, fontSize: 13 }}>ETB / month</Text>
+              </View>
+            </View>
+
+            {/* Experience Selector */}
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Experience
+              </Text>
+              <View style={styles.expRow}>
+                {EXPERIENCE_YEARS.map((ey) => {
+                  const sel = experience === ey;
+                  return (
+                    <TouchableOpacity
+                      key={ey}
+                      style={[
+                        styles.expBtn,
+                        {
+                          backgroundColor: sel ? colors.primary : colors.surfaceLight,
+                          borderColor: sel ? colors.primary : colors.border,
+                        },
+                      ]}
+                      onPress={() => setExperience(ey)}
+                    >
+                      <Text
+                        style={[
+                          styles.expBtnText,
+                          { color: sel ? '#000' : colors.textPrimary, fontWeight: sel ? '700' : '500' },
+                        ]}
+                      >
+                        {ey}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+
+          {/* ── 4. PERSONAL & CONTACT DETAILS ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
+            4. Contact & Credentials
+          </Text>
+          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
+            How trainees will communicate with you:
+          </Text>
+
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {/* Full Name */}
-            <FieldRow icon="person-outline" label="Full Name" required>
-              <TextInput
-                style={[f.input, { color: colors.textPrimary }]}
-                placeholder="Enter your full name"
-                placeholderTextColor={colors.textMuted}
-                value={fullName}
-                onChangeText={setFullName}
-              />
-            </FieldRow>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.inputField}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name *</Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="person-outline" size={19} color={colors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="Your full name"
+                  placeholderTextColor={colors.textMuted}
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
+              </View>
+            </View>
 
             {/* Phone */}
-            <FieldRow icon="call-outline" label="Phone Number" required>
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Phone Number *</Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="call-outline" size={19} color={colors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="+251 9XX XXX XXX"
+                  placeholderTextColor={colors.textMuted}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            {/* Telegram */}
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Telegram Handle (Optional)</Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="paper-plane-outline" size={19} color="#38BDF8" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="@your_telegram_username"
+                  placeholderTextColor={colors.textMuted}
+                  value={telegram}
+                  onChangeText={setTelegram}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            {/* Certifications */}
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Certifications / Licenses</Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="ribbon-outline" size={19} color="#F59E0B" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="e.g. CAF License, ISSA CPT, BSc Sports Science"
+                  placeholderTextColor={colors.textMuted}
+                  value={certifications}
+                  onChangeText={setCertifications}
+                />
+              </View>
+            </View>
+
+            {/* Bio */}
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Coaching Bio & Philosophy *</Text>
               <TextInput
-                style={[f.input, { color: colors.textPrimary }]}
-                placeholder="+251 9XX XXX XXX"
-                placeholderTextColor={colors.textMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </FieldRow>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* Specialization */}
-            <TouchableOpacity onPress={() => setDropdown('spec')} activeOpacity={0.7}>
-              <FieldRow icon="barbell-outline" label="Specialization" required>
-                <View style={f.dropdownRow}>
-                  <Text style={[f.input, { color: colors.textPrimary }, !specialization && { color: colors.textMuted }]}>{specialization || 'Select your main specialization'}</Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                </View>
-              </FieldRow>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* Experience Level */}
-            <TouchableOpacity onPress={() => setDropdown('level')} activeOpacity={0.7}>
-              <FieldRow icon="ribbon-outline" label="Experience Level" required>
-                <View style={f.dropdownRow}>
-                  <Text style={[f.input, { color: colors.textPrimary }, !experienceLevel && { color: colors.textMuted }]}>{experienceLevel || 'Select your experience level'}</Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                </View>
-              </FieldRow>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* Years of Experience */}
-            <TouchableOpacity onPress={() => setDropdown('years')} activeOpacity={0.7}>
-              <FieldRow icon="calendar-outline" label="Years of Experience" required>
-                <View style={f.dropdownRow}>
-                  <Text style={[f.input, { color: colors.textPrimary }, !yearsExp && { color: colors.textMuted }]}>{yearsExp || 'e.g. 3 years'}</Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                </View>
-              </FieldRow>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* About You */}
-            <FieldRow icon="document-text-outline" label="About You" required>
-              <TextInput
-                style={[f.input, f.textArea, { color: colors.textPrimary }]}
-                placeholder="Tell us about your training style, certifications, and what makes you unique..."
+                style={[
+                  styles.textAreaInput,
+                  { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary },
+                ]}
+                placeholder="Share your coaching philosophy, who you work best with, and how you help clients achieve results..."
                 placeholderTextColor={colors.textMuted}
                 value={about}
                 onChangeText={setAbout}
                 multiline
+                numberOfLines={4}
                 maxLength={500}
                 textAlignVertical="top"
               />
-              <Text style={[f.charCount, { color: colors.textMuted }]}>{about.length}/500</Text>
-            </FieldRow>
+              <Text style={[styles.charCount, { color: colors.textMuted }]}>{about.length}/500</Text>
+            </View>
           </View>
 
-          {/* Upload Section */}
-          <View style={styles.uploadSection}>
-            <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Upload Your Credentials</Text>
-            <Text style={[styles.uploadDesc, { color: colors.textSecondary }]}>Add your certifications, licenses or proof of experience{'\n'}(optional but recommended).</Text>
-            <TouchableOpacity style={[styles.uploadCard, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.8}>
-              <View style={[styles.uploadIcon, { backgroundColor: colors.surfaceLight }]}>
-                <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.uploadCardTitle, { color: colors.textPrimary }]}>Upload Files</Text>
-                <Text style={[styles.uploadCardDesc, { color: colors.textMuted }]}>PDF, JPG, PNG • Max 10MB</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Actions */}
+          {/* ── SUBMIT BUTTON ── */}
           <TouchableOpacity
-            style={[styles.continueBtn, { backgroundColor: colors.primary }, isSaving && { opacity: 0.7 }]}
+            style={[
+              styles.submitBtn,
+              { backgroundColor: colors.primary },
+              isSaving && { opacity: 0.7 },
+            ]}
             onPress={handleContinue}
             disabled={isSaving}
             activeOpacity={0.85}
           >
-            {isSaving
-              ? <ActivityIndicator color="#000" />
-              : <Text style={styles.continueBtnText}>Continue</Text>}
+            {isSaving ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <View style={styles.submitBtnInner}>
+                <Text style={styles.submitBtnText}>Publish Coach Profile</Text>
+                <Ionicons name="arrow-forward" size={19} color="#000" />
+              </View>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.backLinkBtn} onPress={() => router.back()}>
-            <Text style={[styles.backLinkText, { color: colors.textMuted }]}>Back</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+            <Text style={[styles.cancelBtnText, { color: colors.textMuted }]}>Cancel & Return</Text>
           </TouchableOpacity>
-
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Dropdowns */}
-      <DropdownModal
-        visible={dropdown === 'spec'}
-        title="Select Specialization"
-        options={SPECIALIZATIONS}
-        onSelect={setSpec}
-        onClose={() => setDropdown(null)}
-      />
-      <DropdownModal
-        visible={dropdown === 'level'}
-        title="Select Experience Level"
-        options={EXPERIENCE_LEVELS}
-        onSelect={setExpLevel}
-        onClose={() => setDropdown(null)}
-      />
-      <DropdownModal
-        visible={dropdown === 'years'}
-        title="Years of Experience"
-        options={YEARS_OPTIONS}
-        onSelect={setYears}
-        onClose={() => setDropdown(null)}
-      />
-
     </SafeAreaView>
   );
 }
 
-// ── Progress Step Components ──────────────────────────────────────────────────
-function Step({ num, label, done, active }: { num: number; label: string; done?: boolean; active?: boolean }) {
-  const { colors } = useTheme();
-  return (
-    <View style={{ alignItems: 'center', flex: 1 }}>
-      <View style={[p.circle, { backgroundColor: colors.surface, borderColor: colors.border }, (done || active) && [p.circleActive, { backgroundColor: colors.primary, borderColor: colors.primary }]]}>
-        {done
-          ? <Ionicons name="checkmark" size={16} color="#000" />
-          : <Text style={[p.num, { color: colors.textMuted }, (done || active) && p.numActive]}>{num}</Text>}
-      </View>
-      <Text style={[p.label, { color: colors.textMuted }, active && [p.labelActive, { color: colors.textPrimary }]]}>{label}</Text>
-    </View>
-  );
-}
-function Line({ done }: { done?: boolean }) {
-  const { colors } = useTheme();
-  return <View style={[p.line, { backgroundColor: colors.border }, done && [p.lineDone, { backgroundColor: colors.primary }]]} />;
-}
-
-// ── StyleSheets ───────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  scroll: { paddingHorizontal: 20, paddingBottom: 48, maxWidth: 520, alignSelf: 'center', width: '100%' },
+  scroll: {
+    paddingHorizontal: 18,
+    paddingBottom: 50,
+    maxWidth: 560,
+    alignSelf: 'center',
+    width: '100%',
+  },
 
-  progress: { flexDirection: 'row', alignItems: 'center', marginBottom: 36 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 22, marginTop: 4 },
+  titleIcon: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '800' },
+  subtitle: { fontSize: 13, lineHeight: 18, marginTop: 4 },
 
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, marginBottom: 28 },
-  titleIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 26, fontWeight: '800', marginBottom: 6 },
-  subtitle: { color: '#888', fontSize: 13, lineHeight: 20 },
+  sectionHeading: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  sectionSub: { fontSize: 12.5, marginBottom: 12 },
 
-  card: { backgroundColor: '#0D0D0D', borderRadius: 16, borderWidth: 1, borderColor: '#1F1F1F', marginBottom: 32, overflow: 'hidden' },
-  divider: { height: 1, backgroundColor: '#1A1A1A', marginLeft: 56 },
+  // Domain Cards
+  domainGrid: { gap: 10 },
+  domainCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    gap: 12,
+  },
+  domainIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  domainTitle: { fontSize: 15 },
+  domainSubtitle: { fontSize: 12, marginTop: 2 },
 
-  uploadSection: { marginBottom: 32 },
-  uploadTitle: { fontSize: 18, fontWeight: '700', marginBottom: 6 },
-  uploadDesc: { color: '#888', fontSize: 13, lineHeight: 20, marginBottom: 16 },
-  uploadCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0D0D0D', borderRadius: 14, borderWidth: 1, borderColor: '#1F1F1F', padding: 16, gap: 14 },
-  uploadIcon: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' },
-  uploadCardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  uploadCardDesc: { color: '#777', fontSize: 12 },
+  // Specialty Chips
+  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  chipText: { fontSize: 13 },
 
-  continueBtn: { backgroundColor: Colors.primary, borderRadius: 100, height: 56, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  continueBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },
-  backLinkBtn: { alignItems: 'center', paddingVertical: 8 },
-  backLinkText: { color: '#777', fontSize: 15 },
-});
+  // Cards
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
 
-const p = StyleSheet.create({
-  circle: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: '#333', justifyContent: 'center', alignItems: 'center', marginBottom: 6, backgroundColor: '#000' },
-  circleActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  num: { color: '#555', fontSize: 13, fontWeight: '700' },
-  numActive: { color: '#000' },
-  label: { color: '#555', fontSize: 10, textAlign: 'center' },
-  labelActive: { fontWeight: '600' },
-  line: { flex: 1.5, height: 1.5, backgroundColor: '#2A2A2A', marginBottom: 22 },
-  lineDone: { backgroundColor: Colors.primary },
-});
+  // Price presets
+  priceRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  pricePresetBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  pricePresetText: { fontSize: 13 },
 
-const f = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 14 },
-  iconCol: { width: 40, paddingTop: 20 },
-  col: { flex: 1 },
-  label: { color: '#777', fontSize: 11, marginBottom: 4 },
-  input: { fontSize: 15, paddingVertical: 0 },
-  dropdownRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  textArea: { minHeight: 80 },
-  charCount: { color: '#444', fontSize: 11, textAlign: 'right', marginTop: 4 },
-});
+  // Inputs
+  inputField: { width: '100%' },
+  inputLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  textInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  textInput: { flex: 1, fontSize: 14.5, paddingVertical: 0 },
+  textAreaInput: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    minHeight: 90,
+    fontSize: 14,
+  },
+  charCount: { fontSize: 11, textAlign: 'right', marginTop: 4 },
 
-const dd = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
-  sheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '65%' },
-  handle: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 17, fontWeight: '700', marginBottom: 16 },
-  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
-  itemText: { color: '#DDD', fontSize: 15 },
+  // Experience
+  expRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  expBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  expBtnText: { fontSize: 12.5 },
+
+  // Submit
+  submitBtn: {
+    borderRadius: 12,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 28,
+  },
+  submitBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  submitBtnText: { color: '#000', fontSize: 16, fontWeight: '700' },
+  cancelBtn: { alignItems: 'center', paddingVertical: 14 },
+  cancelBtnText: { fontSize: 14 },
 });
