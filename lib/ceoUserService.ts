@@ -462,12 +462,36 @@ export async function fetchPendingCoachApplications(): Promise<PendingCoachAppli
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      // Fallback query if created_at column is missing
+      const { data: fbData } = await supabase.from('coach_profiles').select('*');
+      return (fbData || []).filter(
+        (c: any) => c.verification_status === 'pending_review' || (!c.is_verified && c.verification_status !== 'rejected')
+      );
+    }
     return (data || []).filter(
       (c: any) => c.verification_status === 'pending_review' || (!c.is_verified && c.verification_status !== 'rejected')
     );
   } catch (e) {
     console.warn('Error fetching pending coaches:', e);
+    return [];
+  }
+}
+
+export async function fetchAllCoachApplications(): Promise<PendingCoachApplication[]> {
+  try {
+    const { data, error } = await supabase
+      .from('coach_profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      const { data: fbData } = await supabase.from('coach_profiles').select('*');
+      return fbData || [];
+    }
+    return data || [];
+  } catch (e) {
+    console.warn('Error fetching all coaches:', e);
     return [];
   }
 }
@@ -478,6 +502,9 @@ export async function reviewCoachApplication(
   reason?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    const isApprove = action === 'approve';
+
+    // 1. Try atomic Supabase RPC first
     const { data, error: rpcErr } = await supabase.rpc('ceo_review_coach_application', {
       p_coach_uid: coachUid,
       p_action: action,
@@ -485,13 +512,26 @@ export async function reviewCoachApplication(
     });
 
     if (!rpcErr && data?.success) {
+      // Also sync Firestore for seamless cross-platform state
+      try {
+        const { db } = await import('./firebase');
+        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'users', coachUid), {
+          role: isApprove ? 'coach' : 'user',
+          is_verified: isApprove,
+          verification_status: isApprove ? 'approved' : 'rejected',
+          isCoachVerified: isApprove,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (_) {}
+
       return {
         success: true,
-        message: action === 'approve' ? 'Coach approved & verified successfully!' : 'Coach application updated.',
+        message: isApprove ? 'Coach approved & verified successfully!' : 'Coach application updated.',
       };
     }
 
-    const isApprove = action === 'approve';
+    // 2. Direct table fallback if RPC is not deployed yet
     await supabase.from('coach_profiles').update({
       verification_status: isApprove ? 'approved' : 'rejected',
       is_verified: isApprove,
@@ -502,6 +542,19 @@ export async function reviewCoachApplication(
     if (isApprove) {
       await supabase.from('profiles').update({ role: 'coach' }).eq('uid', coachUid);
     }
+
+    // 3. Sync Firestore
+    try {
+      const { db } = await import('./firebase');
+      const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'users', coachUid), {
+        role: isApprove ? 'coach' : 'user',
+        is_verified: isApprove,
+        verification_status: isApprove ? 'approved' : 'rejected',
+        isCoachVerified: isApprove,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (_) {}
 
     return {
       success: true,

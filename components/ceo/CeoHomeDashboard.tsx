@@ -27,6 +27,7 @@ interface CeoHomeDashboardProps {
   totalRevenueEtb: number;
   unresolvedErrorsCount: number;
   transactionsCount: number;
+  pendingCoachesCount?: number;
   healthList: ServiceHealthItem[];
   recentErrors: SystemErrorItem[];
   chatThreads: CeoChatThread[];
@@ -40,6 +41,7 @@ export default function CeoHomeDashboard({
   totalRevenueEtb,
   unresolvedErrorsCount,
   transactionsCount,
+  pendingCoachesCount = 0,
   healthList,
   recentErrors,
   chatThreads,
@@ -184,6 +186,38 @@ export default function CeoHomeDashboard({
           <Ionicons name="chevron-down" size={14} color="#94A3B8" />
         </View>
       </View>
+
+      {/* ── ATHLETE SAFETY: PENDING COACH VERIFICATIONS ALERT ── */}
+      {pendingCoachesCount > 0 && (
+        <TouchableOpacity
+          style={styles.safetyAlertBanner}
+          activeOpacity={0.85}
+          onPress={() => onNavigateTab('coaches')}
+        >
+          <View style={styles.safetyAlertLeft}>
+            <View style={styles.safetyAlertIconBox}>
+              <Ionicons name="shield-checkmark" size={24} color="#F59E0B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text style={styles.safetyAlertTitle}>
+                  🛡️ {pendingCoachesCount} Coach {pendingCoachesCount === 1 ? 'Application' : 'Applications'} Awaiting Verification
+                </Text>
+                <View style={styles.safetyAlertBadge}>
+                  <Text style={styles.safetyAlertBadgeText}>Action Required</Text>
+                </View>
+              </View>
+              <Text style={styles.safetyAlertSubtitle}>
+                New coaching diplomas, licenses, and national IDs submitted for review to protect athlete safety.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.safetyAlertAction}>
+            <Text style={styles.safetyAlertActionText}>Review Queue</Text>
+            <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* ── 2. FOUR METRIC CARDS (REAL DATA) ──                       */}
@@ -1202,5 +1236,77 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     marginTop: 2,
+  },
+  safetyAlertBanner: {
+    backgroundColor: '#1E1B18',
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  safetyAlertLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  safetyAlertIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  safetyAlertTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  safetyAlertBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  safetyAlertBadgeText: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  safetyAlertSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12.5,
+    marginTop: 3,
+  },
+  safetyAlertAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  safetyAlertActionText: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

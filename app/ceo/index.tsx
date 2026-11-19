@@ -15,7 +15,7 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -26,6 +26,7 @@ import CeoAiConfigModal from '../../components/ceo/CeoAiConfigModal';
 import CeoDesktopSidebar from '../../components/ceo/CeoDesktopSidebar';
 import CeoTopStatusBar from '../../components/ceo/CeoTopStatusBar';
 import CeoHomeDashboard from '../../components/ceo/CeoHomeDashboard';
+import CeoCoachesDashboard from '../../components/ceo/CeoCoachesDashboard';
 import { buildCeoChatThreads, CeoChatThread } from '../../lib/ceoThreadsService';
 import { isCeoAuthenticated, logoutCeo } from '../../lib/ceoAuthService';
 import {
@@ -51,6 +52,7 @@ import {
   fetchAllUsersWithMetrics,
   grantCompensationCoins,
   fetchPendingCoachApplications,
+  fetchAllCoachApplications,
   reviewCoachApplication,
   CeoUserItem,
   PendingCoachApplication,
@@ -63,16 +65,19 @@ import {
   FinancialKPIs,
 } from '../../lib/ceoFinanceService';
 
-type CeoTab = 'home' | 'chat' | 'errors' | 'users' | 'finance' | 'controls';
+type CeoTab = 'home' | 'chat' | 'errors' | 'coaches' | 'users' | 'finance' | 'controls';
 
 export default function CeoDashboardScreen() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams<{ tab?: string }>();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Tab & View Mode States
-  const [activeTab, setActiveTab] = useState<CeoTab>('home');
+  const [activeTab, setActiveTab] = useState<CeoTab>(
+    (searchParams.tab as CeoTab) || 'home'
+  );
   const [activeThread, setActiveThread] = useState<CeoChatThread | null>(null);
   const [aiConfigModalVisible, setAiConfigModalVisible] = useState(false);
   const [chatCategoryFilter, setChatCategoryFilter] = useState<'all' | 'error' | 'user' | 'payment' | 'health'>('all');
@@ -87,6 +92,7 @@ export default function CeoDashboardScreen() {
   const [errorsList, setErrorsList] = useState<SystemErrorItem[]>([]);
   const [usersList, setUsersList] = useState<CeoUserItem[]>([]);
   const [pendingCoachesList, setPendingCoachesList] = useState<PendingCoachApplication[]>([]);
+  const [allCoachesList, setAllCoachesList] = useState<PendingCoachApplication[]>([]);
   const [selectedCoachDocPreview, setSelectedCoachDocPreview] = useState<{ url: string; title: string } | null>(null);
   const [reviewingCoachUid, setReviewingCoachUid] = useState<string | null>(null);
   const [transactionsList, setTransactionsList] = useState<CeoTransactionItem[]>([]);
@@ -100,6 +106,13 @@ export default function CeoDashboardScreen() {
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string>('');
   const [updatingConfig, setUpdatingConfig] = useState(false);
   const [dashboardLang, setDashboardLang] = useState<'en' | 'am'>('en');
+
+  // React to tab param in URL
+  useEffect(() => {
+    if (searchParams.tab && ['home', 'chat', 'errors', 'coaches', 'users', 'finance', 'controls'].includes(searchParams.tab)) {
+      setActiveTab(searchParams.tab as CeoTab);
+    }
+  }, [searchParams.tab]);
 
   // Load persisted language
   useEffect(() => {
@@ -155,18 +168,20 @@ export default function CeoDashboardScreen() {
       // Autonomous probe: dynamically tests real services and automatically detects issues
       runAutonomousSystemProbes().catch(() => {});
 
-      const [errors, users, txs, health, config, pendingCoaches] = await Promise.all([
+      const [errors, users, txs, health, config, pendingCoaches, allCoaches] = await Promise.all([
         fetchRecentErrors(100),
         fetchAllUsersWithMetrics(),
         fetchRealPaymentLedger(60),
         checkAllServicesHealth(),
         fetchSystemConfig(),
         fetchPendingCoachApplications(),
+        fetchAllCoachApplications(),
       ]);
 
       setErrorsList(errors);
       setUsersList(users);
       setPendingCoachesList(pendingCoaches);
+      setAllCoachesList(allCoaches);
       setTransactionsList(txs);
       setHealthList(health);
       setRemoteConfig(config);
@@ -505,6 +520,7 @@ export default function CeoDashboardScreen() {
               }
             }}
             unresolvedErrorsCount={unresolvedErrorsCount}
+            pendingCoachesCount={pendingCoachesList.length}
             onLogout={handleLogout}
           />
         )}
@@ -578,6 +594,7 @@ export default function CeoDashboardScreen() {
                 totalRevenueEtb={financialKPIs.totalRevenueEtb}
                 unresolvedErrorsCount={unresolvedErrorsCount}
                 transactionsCount={transactionsList.length}
+                pendingCoachesCount={pendingCoachesList.length}
                 healthList={healthList}
                 recentErrors={errorsList}
                 chatThreads={chatThreads}
@@ -981,6 +998,35 @@ export default function CeoDashboardScreen() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── TAB: COACH VERIFICATION & ATHLETE SAFETY BOARD ──        */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'coaches' && (
+          <ScrollView
+            style={styles.tabContent}
+            contentContainerStyle={{ paddingBottom: 60 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <CeoCoachesDashboard
+              coaches={allCoachesList.length > 0 ? allCoachesList : pendingCoachesList}
+              reviewingCoachUid={reviewingCoachUid}
+              refreshing={refreshing}
+              onRefresh={loadDashboardData}
+              onInspectDocument={(url, title) => setSelectedCoachDocPreview({ url, title })}
+              onReviewCoach={async (coachUid, action, reason) => {
+                setReviewingCoachUid(coachUid);
+                try {
+                  const res = await reviewCoachApplication(coachUid, action, reason);
+                  Alert.alert(res.success ? 'Success' : 'Notice', res.message);
+                  await loadDashboardData();
+                } finally {
+                  setReviewingCoachUid(null);
+                }
+              }}
+            />
+          </ScrollView>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════ */}
         {/* ── TAB 2: REGISTERED USERS & BOT DETECTOR ──                */}
         {/* ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'users' && (
@@ -1017,110 +1063,32 @@ export default function CeoDashboardScreen() {
               </View>
             </View>
 
-            {/* ── ATHLETE SAFETY: COACH VERIFICATION QUEUE ── */}
+            {/* ── ATHLETE SAFETY: COACH VERIFICATION LINK BANNER ── */}
             {pendingCoachesList.length > 0 && (
-              <View style={styles.coachQueueCard}>
+              <TouchableOpacity
+                style={styles.coachQueueCard}
+                activeOpacity={0.85}
+                onPress={() => setActiveTab('coaches')}
+              >
                 <View style={styles.coachQueueHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                     <View style={styles.coachQueueIconCircle}>
                       <Ionicons name="shield-checkmark" size={20} color="#F59E0B" />
                     </View>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={styles.coachQueueTitle}>
-                        🛡️ Coach Verification Queue ({pendingCoachesList.length} Pending)
+                        🛡️ {pendingCoachesList.length} Coach {pendingCoachesList.length === 1 ? 'Application' : 'Applications'} Awaiting Verification
                       </Text>
                       <Text style={styles.coachQueueSubtitle}>
-                        Inspect licenses and IDs before activating coaches to prevent athlete injuries
+                        Tap to open the dedicated Coach Verification & Athlete Safety Board
                       </Text>
                     </View>
                   </View>
-                </View>
-
-                {pendingCoachesList.map((coach) => (
-                  <View key={coach.uid} style={styles.coachPendingRow}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                      <Image
-                        source={{ uri: coach.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(coach.name)}&background=10B981&color=fff&size=100` }}
-                        style={styles.coachPendingAvatar}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Text style={styles.coachPendingName}>{coach.name}</Text>
-                          <View style={[styles.coachDomainPill, { backgroundColor: coach.domain === 'Football' ? '#3B82F620' : coach.domain === 'Health' ? '#F59E0B20' : '#10B98120' }]}>
-                            <Text style={[styles.coachDomainPillText, { color: coach.domain === 'Football' ? '#3B82F6' : coach.domain === 'Health' ? '#F59E0B' : '#10B981' }]}>
-                              {coach.domain}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text style={styles.coachPendingAffiliation}>
-                          🏢 {coach.institution_name || 'Independent'} • 📞 {coach.phone}
-                        </Text>
-                        <Text style={styles.coachPendingSpecs} numberOfLines={1}>
-                          {coach.specialty?.join(', ')}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Document View Buttons */}
-                    <View style={styles.coachDocBtnsRow}>
-                      {coach.certificate_url && (
-                        <TouchableOpacity
-                          style={styles.viewDocPill}
-                          onPress={() => setSelectedCoachDocPreview({ url: coach.certificate_url!, title: `${coach.name} - Certificate` })}
-                        >
-                          <Ionicons name="document-text" size={14} color="#10B981" />
-                          <Text style={styles.viewDocPillText}>License</Text>
-                        </TouchableOpacity>
-                      )}
-                      {coach.id_card_url && (
-                        <TouchableOpacity
-                          style={styles.viewDocPill}
-                          onPress={() => setSelectedCoachDocPreview({ url: coach.id_card_url!, title: `${coach.name} - National ID` })}
-                        >
-                          <Ionicons name="card" size={14} color="#38BDF8" />
-                          <Text style={styles.viewDocPillText}>ID</Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Approval Actions */}
-                      <TouchableOpacity
-                        style={styles.approveCoachBtn}
-                        disabled={reviewingCoachUid === coach.uid}
-                        onPress={async () => {
-                          setReviewingCoachUid(coach.uid);
-                          const res = await reviewCoachApplication(coach.uid, 'approve');
-                          Alert.alert(res.success ? 'Success' : 'Error', res.message);
-                          loadDashboardData();
-                          setReviewingCoachUid(null);
-                        }}
-                      >
-                        {reviewingCoachUid === coach.uid ? (
-                          <ActivityIndicator size="small" color="#000" />
-                        ) : (
-                          <>
-                            <Ionicons name="checkmark" size={15} color="#000" />
-                            <Text style={styles.approveCoachBtnText}>Approve</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.rejectCoachBtn}
-                        disabled={reviewingCoachUid === coach.uid}
-                        onPress={async () => {
-                          setReviewingCoachUid(coach.uid);
-                          const res = await reviewCoachApplication(coach.uid, 'reject', 'Certifications require further review.');
-                          Alert.alert('Status Updated', res.message);
-                          loadDashboardData();
-                          setReviewingCoachUid(null);
-                        }}
-                      >
-                        <Ionicons name="close" size={15} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
+                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700' }}>Review Queue →</Text>
                   </View>
-                ))}
-              </View>
+                </View>
+              </TouchableOpacity>
             )}
 
             {/* User Search & Filter */}
@@ -1671,6 +1639,7 @@ export default function CeoDashboardScreen() {
             { key: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
             { key: 'chat', label: 'Chat', icon: 'chatbubbles', iconOutline: 'chatbubbles-outline', badge: unresolvedErrorsCount },
             { key: 'errors', label: 'Errors', icon: 'bug', iconOutline: 'bug-outline', badge: unresolvedErrorsCount, badgeColor: '#EF4444' },
+            { key: 'coaches', label: 'Coaches', icon: 'shield-checkmark', iconOutline: 'shield-checkmark-outline', badge: pendingCoachesList.length, badgeColor: '#F59E0B' },
             { key: 'users', label: 'Users', icon: 'people', iconOutline: 'people-outline', badge: flaggedUsersCount, badgeColor: '#EAB308' },
             { key: 'finance', label: 'Finance', icon: 'wallet', iconOutline: 'wallet-outline' },
             { key: 'controls', label: 'Controls', icon: 'construct', iconOutline: 'construct-outline' },

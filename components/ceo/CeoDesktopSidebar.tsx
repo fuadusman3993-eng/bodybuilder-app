@@ -10,12 +10,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import BrandLogo from '../ui/BrandLogo';
 
-export type CeoNavTab = 'home' | 'chat' | 'errors' | 'users' | 'finance' | 'controls';
+export type CeoNavTab = 'home' | 'chat' | 'errors' | 'coaches' | 'users' | 'finance' | 'controls';
 
 interface CeoDesktopSidebarProps {
   activeTab: CeoNavTab;
   onSelectTab: (tab: CeoNavTab) => void;
   unresolvedErrorsCount: number;
+  pendingCoachesCount?: number;
   onLogout: () => void;
 }
 
@@ -32,6 +33,7 @@ export default function CeoDesktopSidebar({
   activeTab,
   onSelectTab,
   unresolvedErrorsCount,
+  pendingCoachesCount = 0,
   onLogout,
 }: CeoDesktopSidebarProps) {
   const navItems: NavItemDef[] = [
@@ -54,6 +56,14 @@ export default function CeoDesktopSidebar({
       icon: 'warning',
       badge: unresolvedErrorsCount > 0 ? unresolvedErrorsCount : undefined,
       badgeColor: '#EF4444',
+    },
+    {
+      key: 'coaches',
+      title: 'Coaches',
+      subtitle: 'Verification & Safety',
+      icon: 'shield-checkmark',
+      badge: pendingCoachesCount > 0 ? pendingCoachesCount : undefined,
+      badgeColor: '#F59E0B',
     },
     {
       key: 'users',
