@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform,
-  TextInput, KeyboardAvoidingView, ActivityIndicator, Alert
+  TextInput, KeyboardAvoidingView, ActivityIndicator, Alert, Switch
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import Logo from '../components/auth/Logo';
@@ -29,21 +31,21 @@ const DOMAINS: DomainOption[] = [
   {
     key: 'Fitness',
     title: 'Fitness & Bodybuilding',
-    subtitle: 'Gym, Muscle, Weight Loss & Conditioning',
+    subtitle: 'Gym, Muscle Hypertrophy, Weight Loss & Conditioning',
     icon: 'barbell-outline',
     accent: '#10B981',
   },
   {
     key: 'Football',
     title: 'Football / Soccer',
-    subtitle: 'Tactical, Agility, Striker & Youth Academy',
+    subtitle: 'Tactical, Agility, Striker & Youth Academy Coaching',
     icon: 'football-outline',
     accent: '#3B82F6',
   },
   {
     key: 'Health',
-    title: 'Health & Wellness',
-    subtitle: 'Nutrition, Diet, Rehab & Mobility',
+    title: 'Health, Diet & Rehabilitation',
+    subtitle: 'Clinical Nutrition, Sports Physio, Injury Rehab & Posture',
     icon: 'fitness-outline',
     accent: '#F59E0B',
   },
@@ -83,6 +85,11 @@ export default function CoachOnboardingScreen() {
   const { user, setUser } = useUserStore();
   const { colors } = useTheme();
 
+  // Verification & Existing Profile State
+  const [checkingExisting, setCheckingExisting] = useState(true);
+  const [existingApplication, setExistingApplication] = useState<any | null>(null);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
+
   // Form states
   const [fullName, setFullName] = useState(user.name || '');
   const [phone, setPhone] = useState('');
@@ -91,33 +98,72 @@ export default function CoachOnboardingScreen() {
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([
     DOMAIN_SPECIALTIES.Fitness[0],
   ]);
+  const [institutionName, setInstitutionName] = useState('');
+  const [licenseTitle, setLicenseTitle] = useState('');
   const [experience, setExperience] = useState('3-5 years');
   const [pricePerMonth, setPricePerMonth] = useState<number>(500);
   const [customPriceText, setCustomPriceText] = useState('500');
-  const [certifications, setCertifications] = useState('');
+  const [hasFirstAid, setHasFirstAid] = useState<'yes' | 'in_progress' | 'no'>('yes');
+  const [safetyAgreementAccepted, setSafetyAgreementAccepted] = useState(false);
   const [about, setAbout] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Pre-fill existing user info if logged in
+  // Document Uploads
+  const [certUri, setCertUri] = useState<string | null>(null);
+  const [idCardUri, setIdCardUri] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Check if coach already applied and is in review
   useEffect(() => {
     const currentUid = auth.currentUser?.uid || user.uid;
-    if (!currentUid) return;
+    if (!currentUid) {
+      setCheckingExisting(false);
+      return;
+    }
 
-    // Check if user already has partial profile
-    getDoc(doc(db, 'users', currentUid)).then((snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        if (d.fullName || d.displayName || d.name) {
-          setFullName(d.fullName || d.displayName || d.name);
+    async function loadCoachData() {
+      try {
+        const { data: coachData } = await supabase
+          .from('coach_profiles')
+          .select('*')
+          .eq('uid', currentUid)
+          .maybeSingle();
+
+        if (coachData) {
+          setExistingApplication(coachData);
+          if (coachData.name) setFullName(coachData.name);
+          if (coachData.phone) setPhone(coachData.phone);
+          if (coachData.telegram) setTelegram(coachData.telegram);
+          if (coachData.domain) setDomain(coachData.domain);
+          if (coachData.specialty) setSelectedSpecialties(coachData.specialty);
+          if (coachData.institution_name) setInstitutionName(coachData.institution_name);
+          if (coachData.license_number) setLicenseTitle(coachData.license_number);
+          if (coachData.price_per_month !== undefined) {
+            setPricePerMonth(coachData.price_per_month);
+            setCustomPriceText(String(coachData.price_per_month));
+          }
+          if (coachData.bio) setAbout(coachData.bio);
+          if (coachData.certificate_url) setCertUri(coachData.certificate_url);
+          if (coachData.id_card_url) setIdCardUri(coachData.id_card_url);
+          if (coachData.safety_agreement_accepted) setSafetyAgreementAccepted(true);
+        } else if (currentUid) {
+          // Check Firestore fallback
+          const snap = await getDoc(doc(db, 'users', currentUid));
+          if (snap.exists()) {
+            const d = snap.data();
+            if (d.fullName || d.name) setFullName(d.fullName || d.name);
+            if (d.phone) setPhone(d.phone);
+          }
         }
-        if (d.phone) setPhone(d.phone);
-        if (d.telegram) setTelegram(d.telegram);
-        if (d.about || d.bio) setAbout(d.about || d.bio);
+      } catch (e) {
+        console.warn('Error checking existing coach status:', e);
+      } finally {
+        setCheckingExisting(false);
       }
-    }).catch(() => {});
+    }
+
+    loadCoachData();
   }, [user.uid]);
 
-  // When domain switches, select appropriate default specialty
   const handleDomainChange = (newDomain: CoachDomain) => {
     setDomain(newDomain);
     setSelectedSpecialties([DOMAIN_SPECIALTIES[newDomain][0]]);
@@ -144,70 +190,168 @@ export default function CoachOnboardingScreen() {
     setPricePerMonth(num);
   };
 
-  const handleContinue = async () => {
+  // Document Pickers
+  const pickCertificate = async () => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (!res.canceled && res.assets[0]?.uri) {
+        setCertUri(res.assets[0].uri);
+      }
+    } catch (e) {
+      Alert.alert('Permission Error', 'Could not open photo library.');
+    }
+  };
+
+  const pickIdCard = async () => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (!res.canceled && res.assets[0]?.uri) {
+        setIdCardUri(res.assets[0].uri);
+      }
+    } catch (e) {
+      Alert.alert('Permission Error', 'Could not open photo library.');
+    }
+  };
+
+  // Upload image helper
+  const uploadDocImage = async (uri: string, prefix: string): Promise<string> => {
+    // If it's already an external public URL, return it
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return uri;
+    }
+    const uid = auth.currentUser?.uid || user.uid;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const mimeType = blob.type || 'image/jpeg';
+    const ext = mimeType.split('/')[1]?.split('+')[0] || 'jpg';
+    const fileName = `coach_docs/${uid}_${prefix}_${Date.now()}.${ext}`;
+
+    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(new Error('Failed to read image data.'));
+      reader.readAsArrayBuffer(blob);
+    });
+
+    const { error: uploadError } = await supabase.storage
+      .from('posts')
+      .upload(fileName, arrayBuffer, { contentType: mimeType, upsert: true });
+
+    if (uploadError) throw uploadError;
+    const { data: urlData } = supabase.storage.from('posts').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  };
+
+  const handleSubmitApplication = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Required', 'Please enter your full name.');
+      Alert.alert('Required', 'Please enter your legal full name.');
       return;
     }
     if (!phone.trim()) {
-      Alert.alert('Required', 'Please enter your phone number so clients can reach you.');
+      Alert.alert('Required', 'Please enter your phone number.');
       return;
     }
-    if (selectedSpecialties.length === 0) {
-      Alert.alert('Required', 'Please select at least one specialty.');
+    if (!certUri) {
+      Alert.alert(
+        'Certificate Required 📜',
+        'To protect athlete safety and prevent injuries, please upload a clear photo of your coaching license, diploma, or certification.'
+      );
+      return;
+    }
+    if (!idCardUri) {
+      Alert.alert(
+        'Identity Document Required 🪪',
+        'Please upload your Kebele ID, National ID, or Passport to verify your identity.'
+      );
+      return;
+    }
+    if (!safetyAgreementAccepted) {
+      Alert.alert(
+        'Safety Agreement Required 🛡️',
+        'You must review and agree to the FitPulse Athlete Safety Code and Legal Liability Agreement.'
+      );
       return;
     }
     if (!about.trim()) {
-      Alert.alert('Required', 'Please write a brief bio about your coaching philosophy.');
+      Alert.alert('Required', 'Please write a brief summary of your coaching philosophy.');
       return;
     }
 
-    setIsSaving(true);
+    setIsUploading(true);
     try {
       const uid = auth.currentUser?.uid || user.uid;
       if (!uid) {
-        Alert.alert('Authentication Error', 'User ID not found. Please log in first.');
+        Alert.alert('Authentication Error', 'Please log in first.');
         return;
       }
 
-      const yearsNum = parseInt(experience.replace(/\D/g, ''), 10) || 3;
-      const certsList = certifications
-        .split(',')
-        .map((c) => c.trim())
-        .filter(Boolean);
+      // 1. Upload Certificate and ID images to Supabase storage
+      let uploadedCertUrl = certUri;
+      let uploadedIdUrl = idCardUri;
 
+      if (!certUri.startsWith('http')) {
+        uploadedCertUrl = await uploadDocImage(certUri, 'cert');
+      }
+      if (!idCardUri.startsWith('http')) {
+        uploadedIdUrl = await uploadDocImage(idCardUri, 'id');
+      }
+
+      const yearsNum = parseInt(experience.replace(/\D/g, ''), 10) || 3;
       const avatarUrl = user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
 
-      // 1. Upsert into Supabase coach_profiles (with graceful fallback if extra columns aren't migrated yet)
+      // 2. Upsert into Supabase coach_profiles with STRICT 'pending_review' status!
       const coachData: any = {
         uid,
         name: fullName.trim(),
         avatar_url: avatarUrl,
         bio: about.trim(),
+        domain,
         specialty: selectedSpecialties,
         experience_years: yearsNum,
         price_per_month: pricePerMonth,
+        phone: phone.trim(),
+        telegram: telegram.trim() || null,
+        institution_name: institutionName.trim() || 'Private Trainer',
+        license_number: licenseTitle.trim() || 'Certified Coach',
+        certificate_url: uploadedCertUrl,
+        id_card_url: uploadedIdUrl,
+        has_first_aid: hasFirstAid === 'yes',
+        safety_agreement_accepted: true,
+        verification_status: 'pending_review',
+        is_verified: false, // Must be reviewed and approved by safety board!
         rating: 5.0,
         total_trainees: 0,
-        is_verified: true,
+        created_at: new Date().toISOString(),
       };
 
-      // Try with extended fields (domain, phone, telegram, certifications)
-      const { error: upsertErr } = await supabase.from('coach_profiles').upsert({
-        ...coachData,
+      const { error: upsertErr } = await supabase.from('coach_profiles').upsert(coachData);
+      if (upsertErr) {
+        console.warn('Upsert fallback warning:', upsertErr.message);
+      }
+
+      // 3. Keep Firestore & Profiles in sync
+      await updateDoc(doc(db, 'users', uid), {
+        fullName: fullName.trim(),
+        name: fullName.trim(),
+        role: 'coach',
         domain,
         phone: phone.trim(),
         telegram: telegram.trim() || null,
-        certifications: certsList,
-      });
+        institution_name: institutionName.trim(),
+        verification_status: 'pending_review',
+        is_verified: false,
+        onboardingComplete: true,
+        updatedAt: serverTimestamp(),
+      }).catch(() => {});
 
-      // If schema doesn't have the new columns yet, fall back to core columns gracefully
-      if (upsertErr) {
-        console.warn('Extended columns fallback:', upsertErr.message);
-        await supabase.from('coach_profiles').upsert(coachData);
-      }
-
-      // 2. Update Supabase Unified Profiles (SSOT)
       await syncUserProfile({
         uid,
         name: fullName.trim(),
@@ -215,51 +359,176 @@ export default function CoachOnboardingScreen() {
         bio: about.trim(),
       }).catch(() => {});
 
-      // 3. Keep Firestore in sync for backwards-compatibility
-      await updateDoc(doc(db, 'users', uid), {
-        fullName: fullName.trim(),
-        name: fullName.trim(),
-        displayName: fullName.trim(),
-        role: 'coach',
-        domain,
-        specialization: selectedSpecialties[0],
-        specialties: selectedSpecialties,
-        phone: phone.trim(),
-        telegram: telegram.trim() || null,
-        yearsExperience: experience,
-        price_per_month: pricePerMonth,
-        about: about.trim(),
-        bio: about.trim(),
-        onboardingComplete: true,
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
-
-      // 4. Update local Zustand state
+      // 4. Update Zustand state
       setUser({
         ...user,
         role: 'coach',
         name: fullName.trim(),
+        isCoachVerified: false,
       });
 
-      // 5. Navigate to Coach experience
+      setExistingApplication(coachData);
+      setIsEditingExisting(false);
+
       Alert.alert(
-        '🎉 Welcome, Coach!',
-        'Your professional coach profile is now live! Clients can find and hire you directly in FitPulse.',
-        [
-          {
-            text: 'Go to Coach Studio',
-            onPress: () => router.replace('/coach-dashboard'),
-          },
-        ]
+        '🛡️ Application Submitted!',
+        'Your credentials have been securely received. To protect athlete safety, our board reviews all certificates within 24–48 hours before activating your public profile.'
       );
     } catch (err: any) {
-      console.error('Coach onboarding error:', err);
-      Alert.alert('Error', err.message || 'Could not save coach profile. Please try again.');
+      console.error('Error submitting coach application:', err);
+      Alert.alert('Upload Error', err.message || 'Failed to submit application. Please check your connection and try again.');
     } finally {
-      setIsSaving(false);
+      setIsUploading(false);
     }
   };
 
+  if (checkingExisting) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textMuted, marginTop: 14 }}>Loading coaching credentials...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ── EXECUTIVE "APPLICATION UNDER REVIEW" PORTAL VIEW ────────────────────────
+  if (existingApplication?.verification_status === 'pending_review' && !isEditingExisting) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Logo size="small" />
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Status Header */}
+          <View style={[styles.statusHeroCard, { backgroundColor: colors.surface, borderColor: '#F59E0B' }]}>
+            <View style={styles.statusBadgeWrap}>
+              <View style={[styles.statusIconCircle, { backgroundColor: 'rgba(245,158,11,0.18)' }]}>
+                <Ionicons name="shield-checkmark" size={32} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.statusHeroTitle, { color: colors.textPrimary }]}>
+                  Verification In Progress
+                </Text>
+                <Text style={[styles.statusHeroSub, { color: '#F59E0B', fontWeight: '700' }]}>
+                  በግምገማ ላይ (Under Review)
+                </Text>
+              </View>
+            </View>
+
+            {/* Stepper */}
+            <View style={styles.stepperContainer}>
+              <View style={styles.stepItem}>
+                <View style={[styles.stepDot, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="checkmark" size={12} color="#000" />
+                </View>
+                <Text style={[styles.stepText, { color: colors.textPrimary }]}>Submitted</Text>
+              </View>
+              <View style={[styles.stepLine, { backgroundColor: '#F59E0B' }]} />
+              <View style={styles.stepItem}>
+                <View style={[styles.stepDot, { backgroundColor: '#F59E0B' }]}>
+                  <ActivityIndicator size="small" color="#000" />
+                </View>
+                <Text style={[styles.stepText, { color: '#F59E0B', fontWeight: '700' }]}>Board Review</Text>
+              </View>
+              <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
+              <View style={styles.stepItem}>
+                <View style={[styles.stepDot, { backgroundColor: colors.surfaceLight, borderColor: colors.border, borderWidth: 1 }]}>
+                  <Ionicons name="ribbon-outline" size={12} color={colors.textMuted} />
+                </View>
+                <Text style={[styles.stepText, { color: colors.textMuted }]}>Verified Badge</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Safety Notice */}
+          <View style={[styles.noticeCard, { backgroundColor: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.3)' }]}>
+            <Ionicons name="information-circle-outline" size={24} color="#3B82F6" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.noticeTitle, { color: '#3B82F6' }]}>Athlete Safety & Quality Standards</Text>
+              <Text style={[styles.noticeDesc, { color: colors.textSecondary }]}>
+                To protect athletes from injuries and improper coaching, FitPulse Sports Board manually verifies all submitted coaching licenses, diplomas, and identity documents within 24–48 hours.
+              </Text>
+            </View>
+          </View>
+
+          {/* Submitted Documents Summary */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 24 }]}>
+            Submitted Credentials
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Coach Name:</Text>
+              <Text style={[styles.summaryVal, { color: colors.textPrimary }]}>{existingApplication?.name}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Domain:</Text>
+              <Text style={[styles.summaryVal, { color: colors.primary, fontWeight: '700' }]}>{existingApplication?.domain}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Affiliation:</Text>
+              <Text style={[styles.summaryVal, { color: colors.textPrimary }]}>{existingApplication?.institution_name || 'Independent'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Phone:</Text>
+              <Text style={[styles.summaryVal, { color: colors.textPrimary }]}>{existingApplication?.phone}</Text>
+            </View>
+
+            {/* Document Previews */}
+            <View style={{ marginTop: 14 }}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Attached Proof Documents:</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                {existingApplication?.certificate_url && (
+                  <View style={styles.previewBox}>
+                    <Image
+                      source={existingApplication.certificate_url}
+                      style={styles.previewThumbnail}
+                      contentFit="cover"
+                    />
+                    <Text style={[styles.previewLabel, { color: colors.textMuted }]}>License / Cert</Text>
+                  </View>
+                )}
+                {existingApplication?.id_card_url && (
+                  <View style={styles.previewBox}>
+                    <Image
+                      source={existingApplication.id_card_url}
+                      style={styles.previewThumbnail}
+                      contentFit="cover"
+                    />
+                    <Text style={[styles.previewLabel, { color: colors.textMuted }]}>National ID</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Actions */}
+          <TouchableOpacity
+            style={[styles.submitBtn, { backgroundColor: colors.primary, marginTop: 28 }]}
+            onPress={() => router.replace('/(tabs)')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.submitBtnText}>Return to Home</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.cancelBtn, { marginTop: 4 }]}
+            onPress={() => setIsEditingExisting(true)}
+          >
+            <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Update or Replace Documents</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── 5-STAGE RIGOROUS VERIFICATION APPLICATION FORM ──────────────────────────
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -284,20 +553,20 @@ export default function CoachOnboardingScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
-                Coach <Text style={{ color: colors.primary }}>Onboarding</Text>
+                Coach <Text style={{ color: colors.primary }}>Verification</Text>
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Set up your professional credentials to start coaching athletes in FitPulse.
+                Submit your official qualifications to become a certified FitPulse coach.
               </Text>
             </View>
           </View>
 
-          {/* ── 1. DOMAIN SELECTION (Interactive Cards) ── */}
+          {/* ── 1. DOMAIN SELECTION ── */}
           <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
-            1. Select Your Coaching Domain
+            1. Coaching Domain & Expertise
           </Text>
           <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
-            Choose where your primary coaching expertise lies.
+            Select your professional coaching field:
           </Text>
 
           <View style={styles.domainGrid}>
@@ -350,14 +619,10 @@ export default function CoachOnboardingScreen() {
             })}
           </View>
 
-          {/* ── 2. SPECIALTIES (Dynamic Multi-Select Chips) ── */}
-          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 24 }]}>
-            2. Specialties & Programs
+          {/* Specialties Chips */}
+          <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 14 }]}>
+            Select Specific Programs Offered:
           </Text>
-          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
-            Tap all areas you offer training in:
-          </Text>
-
           <View style={styles.chipsContainer}>
             {DOMAIN_SPECIALTIES[domain].map((item) => {
               const active = selectedSpecialties.includes(item);
@@ -374,7 +639,7 @@ export default function CoachOnboardingScreen() {
                   activeOpacity={0.7}
                   onPress={() => toggleSpecialty(item)}
                 >
-                  {active && <Ionicons name="checkmark" size={15} color="#000" style={{ marginRight: 4 }} />}
+                  {active && <Ionicons name="checkmark" size={14} color="#000" style={{ marginRight: 4 }} />}
                   <Text
                     style={[
                       styles.chipText,
@@ -391,67 +656,142 @@ export default function CoachOnboardingScreen() {
             })}
           </View>
 
-          {/* ── 3. PRICING & EXPERIENCE CARD ── */}
+          {/* ── 2. OFFICIAL CREDENTIAL & ID UPLOADS (MANDATORY) ── */}
           <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
-            3. Coaching Fee & Experience
+            2. Official License & ID Documents
           </Text>
           <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
-            Set your monthly client fee (1 Coin = 1 ETB):
+            Mandatory proof to safeguard athlete safety & prevent physical injuries:
           </Text>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {/* Price Presets */}
-            <View style={styles.priceRow}>
-              {PRICE_PRESETS.map((p) => {
-                const selected = pricePerMonth === p && customPriceText === String(p);
-                return (
-                  <TouchableOpacity
-                    key={p}
-                    style={[
-                      styles.pricePresetBtn,
-                      {
-                        backgroundColor: selected ? colors.primary : colors.surfaceLight,
-                        borderColor: selected ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => handlePriceSelect(p)}
-                  >
-                    <Text
-                      style={[
-                        styles.pricePresetText,
-                        { color: selected ? '#000' : colors.textPrimary, fontWeight: selected ? '700' : '600' },
-                      ]}
-                    >
-                      {p === 0 ? 'Free' : `${p} ETB`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Custom Price Input */}
+            {/* Certificate Upload Card */}
             <View style={styles.inputField}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                Monthly Fee (ETB / Coins)
+                Coaching License or Diploma Photo *
               </Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
+                Upload CAF License, ISSA/ACE, University Degree, or Sports Diploma:
+              </Text>
+
+              {certUri ? (
+                <View style={styles.docUploadedBox}>
+                  <Image source={certUri} style={styles.docThumbnail} contentFit="cover" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                      <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
+                        Certificate Attached
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>Ready for board verification</Text>
+                  </View>
+                  <TouchableOpacity onPress={pickCertificate} style={styles.replaceBtn}>
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.uploadBox, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
+                  onPress={pickCertificate}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="document-attach-outline" size={28} color={colors.primary} />
+                  <Text style={[styles.uploadBoxTitle, { color: colors.textPrimary }]}>
+                    Upload Coaching Certificate / License
+                  </Text>
+                  <Text style={[styles.uploadBoxSub, { color: colors.textMuted }]}>
+                    JPG, PNG, or Document Photo
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* National ID / Passport Upload Card */}
+            <View style={[styles.inputField, { marginTop: 18 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Kebele ID / National ID / Passport *
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
+                Used solely to confirm your identity matches your certificate:
+              </Text>
+
+              {idCardUri ? (
+                <View style={styles.docUploadedBox}>
+                  <Image source={idCardUri} style={styles.docThumbnail} contentFit="cover" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                      <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
+                        Government ID Attached
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>Identity verified</Text>
+                  </View>
+                  <TouchableOpacity onPress={pickIdCard} style={styles.replaceBtn}>
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.uploadBox, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
+                  onPress={pickIdCard}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="card-outline" size={28} color="#38BDF8" />
+                  <Text style={[styles.uploadBoxTitle, { color: colors.textPrimary }]}>
+                    Upload Kebele ID or Passport
+                  </Text>
+                  <Text style={[styles.uploadBoxSub, { color: colors.textMuted }]}>
+                    Clear photo of front side
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* License Title */}
+            <View style={[styles.inputField, { marginTop: 18 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>License Title & Issuing Authority</Text>
               <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
-                <Ionicons name="cash-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Ionicons name="ribbon-outline" size={19} color="#F59E0B" style={{ marginRight: 8 }} />
                 <TextInput
                   style={[styles.textInput, { color: colors.textPrimary }]}
-                  placeholder="e.g. 500"
+                  placeholder="e.g. CAF License B, ISSA CPT #9821, AAU Sports Science"
                   placeholderTextColor={colors.textMuted}
-                  value={customPriceText}
-                  onChangeText={handleCustomPriceChange}
-                  keyboardType="numeric"
+                  value={licenseTitle}
+                  onChangeText={setLicenseTitle}
                 />
-                <Text style={{ color: colors.textMuted, fontSize: 13 }}>ETB / month</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── 3. AFFILIATION & EXPERIENCE ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
+            3. Working Background & Experience
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Institution / Gym / Club */}
+            <View style={styles.inputField}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Current or Past Gym, Football Club or Studio Affiliation *
+              </Text>
+              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                <Ionicons name="business-outline" size={19} color={colors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                  placeholder="e.g. BodyTech Gym, St. George FC Academy, Tikur Anbessa Hospital"
+                  placeholderTextColor={colors.textMuted}
+                  value={institutionName}
+                  onChangeText={setInstitutionName}
+                />
               </View>
             </View>
 
-            {/* Experience Selector */}
+            {/* Years of Experience */}
             <View style={[styles.inputField, { marginTop: 16 }]}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                Experience
+                Years of Active Coaching Experience
               </Text>
               <View style={styles.expRow}>
                 {EXPERIENCE_YEARS.map((ey) => {
@@ -481,25 +821,15 @@ export default function CoachOnboardingScreen() {
                 })}
               </View>
             </View>
-          </View>
 
-          {/* ── 4. PERSONAL & CONTACT DETAILS ── */}
-          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
-            4. Contact & Credentials
-          </Text>
-          <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
-            How trainees will communicate with you:
-          </Text>
-
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {/* Full Name */}
-            <View style={styles.inputField}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name *</Text>
+            {/* Full Legal Name */}
+            <View style={[styles.inputField, { marginTop: 16 }]}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Legal Name *</Text>
               <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
                 <Ionicons name="person-outline" size={19} color={colors.primary} style={{ marginRight: 8 }} />
                 <TextInput
                   style={[styles.textInput, { color: colors.textPrimary }]}
-                  placeholder="Your full name"
+                  placeholder="Your legal name as it appears on your ID"
                   placeholderTextColor={colors.textMuted}
                   value={fullName}
                   onChangeText={setFullName}
@@ -538,31 +868,127 @@ export default function CoachOnboardingScreen() {
                 />
               </View>
             </View>
+          </View>
 
-            {/* Certifications */}
-            <View style={[styles.inputField, { marginTop: 16 }]}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Certifications / Licenses</Text>
-              <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
-                <Ionicons name="ribbon-outline" size={19} color="#F59E0B" style={{ marginRight: 8 }} />
-                <TextInput
-                  style={[styles.textInput, { color: colors.textPrimary }]}
-                  placeholder="e.g. CAF License, ISSA CPT, BSc Sports Science"
-                  placeholderTextColor={colors.textMuted}
-                  value={certifications}
-                  onChangeText={setCertifications}
-                />
+          {/* ── 4. FIRST AID & ATHLETE SAFETY PLEDGE ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
+            4. Athlete Safety, CPR & Legal Liability
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* First Aid Training */}
+            <View style={styles.inputField}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Do you hold valid CPR / First Aid Certification?
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                {[
+                  { key: 'yes', label: 'Yes, Certified' },
+                  { key: 'in_progress', label: 'In Progress' },
+                  { key: 'no', label: 'None' },
+                ].map((fa) => {
+                  const active = hasFirstAid === fa.key;
+                  return (
+                    <TouchableOpacity
+                      key={fa.key}
+                      style={[
+                        styles.expBtn,
+                        {
+                          backgroundColor: active ? colors.primary : colors.surfaceLight,
+                          borderColor: active ? colors.primary : colors.border,
+                          flex: 1,
+                          alignItems: 'center',
+                        },
+                      ]}
+                      onPress={() => setHasFirstAid(fa.key as any)}
+                    >
+                      <Text style={[styles.expBtnText, { color: active ? '#000' : colors.textPrimary, fontWeight: active ? '700' : '500' }]}>
+                        {fa.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+            </View>
+
+            {/* Legal Liability & Safety Code Switch */}
+            <View style={[styles.safetyAgreementWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+                  FitPulse Athlete Safety & Legal Liability Agreement *
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11, lineHeight: 16, marginTop: 4 }}>
+                  I solemnly certify that all uploaded credentials and identity documents are authentic. I agree to conduct physical readiness screenings for all clients before intense exercises, to prevent injuries, and understand that negligence or fraud results in immediate termination and legal prosecution.
+                </Text>
+              </View>
+              <Switch
+                value={safetyAgreementAccepted}
+                onValueChange={setSafetyAgreementAccepted}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+          </View>
+
+          {/* ── 5. MONTHLY FEE & PHILOSOPHY ── */}
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 28 }]}>
+            5. Coaching Fee & Philosophy
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Price Presets */}
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Monthly Client Fee (ETB / Coins)</Text>
+            <View style={styles.priceRow}>
+              {PRICE_PRESETS.map((p) => {
+                const selected = pricePerMonth === p && customPriceText === String(p);
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    style={[
+                      styles.pricePresetBtn,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surfaceLight,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => handlePriceSelect(p)}
+                  >
+                    <Text
+                      style={[
+                        styles.pricePresetText,
+                        { color: selected ? '#000' : colors.textPrimary, fontWeight: selected ? '700' : '600' },
+                      ]}
+                    >
+                      {p === 0 ? 'Free' : `${p} ETB`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Custom Price */}
+            <View style={[styles.textInputWrap, { backgroundColor: colors.surfaceLight, borderColor: colors.border, marginTop: 4 }]}>
+              <Ionicons name="cash-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[styles.textInput, { color: colors.textPrimary }]}
+                placeholder="e.g. 500"
+                placeholderTextColor={colors.textMuted}
+                value={customPriceText}
+                onChangeText={handleCustomPriceChange}
+                keyboardType="numeric"
+              />
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>ETB / month</Text>
             </View>
 
             {/* Bio */}
             <View style={[styles.inputField, { marginTop: 16 }]}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Coaching Bio & Philosophy *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Coaching Bio & Methodology *</Text>
               <TextInput
                 style={[
                   styles.textAreaInput,
                   { backgroundColor: colors.surfaceLight, borderColor: colors.border, color: colors.textPrimary },
                 ]}
-                placeholder="Share your coaching philosophy, who you work best with, and how you help clients achieve results..."
+                placeholder="Explain your training philosophy, injury prevention principles, and who you work best with..."
                 placeholderTextColor={colors.textMuted}
                 value={about}
                 onChangeText={setAbout}
@@ -579,19 +1005,19 @@ export default function CoachOnboardingScreen() {
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              { backgroundColor: colors.primary },
-              isSaving && { opacity: 0.7 },
+              { backgroundColor: colors.primary, marginTop: 32 },
+              isUploading && { opacity: 0.7 },
             ]}
-            onPress={handleContinue}
-            disabled={isSaving}
+            onPress={handleSubmitApplication}
+            disabled={isUploading}
             activeOpacity={0.85}
           >
-            {isSaving ? (
+            {isUploading ? (
               <ActivityIndicator color="#000" />
             ) : (
               <View style={styles.submitBtnInner}>
-                <Text style={styles.submitBtnText}>Publish Coach Profile</Text>
-                <Ionicons name="arrow-forward" size={19} color="#000" />
+                <Ionicons name="shield-checkmark" size={20} color="#000" />
+                <Text style={styles.submitBtnText}>Submit for Board Verification</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -618,8 +1044,8 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   scroll: {
     paddingHorizontal: 18,
-    paddingBottom: 50,
-    maxWidth: 560,
+    paddingBottom: 60,
+    maxWidth: 580,
     alignSelf: 'center',
     width: '100%',
   },
@@ -646,7 +1072,7 @@ const styles = StyleSheet.create({
   domainSubtitle: { fontSize: 12, marginTop: 2 },
 
   // Specialty Chips
-  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -662,10 +1088,49 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+    marginBottom: 8,
+  },
+
+  // Document Upload Elements
+  uploadBox: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    padding: 20,
+    alignItems: 'center',
+    gap: 6,
+  },
+  uploadBoxTitle: { fontSize: 14, fontWeight: '700', marginTop: 4 },
+  uploadBoxSub: { fontSize: 11.5 },
+  docUploadedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+  },
+  docThumbnail: { width: 56, height: 56, borderRadius: 8 },
+  replaceBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+  },
+
+  // Safety Agreement
+  safetyAgreementWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 14,
   },
 
   // Price presets
-  priceRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  priceRow: { flexDirection: 'row', gap: 8, marginBottom: 12, marginTop: 6 },
   pricePresetBtn: {
     flex: 1,
     paddingVertical: 10,
@@ -677,7 +1142,7 @@ const styles = StyleSheet.create({
 
   // Inputs
   inputField: { width: '100%' },
-  inputLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  inputLabel: { fontSize: 12.5, fontWeight: '600', marginBottom: 6 },
   textInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -712,10 +1177,51 @@ const styles = StyleSheet.create({
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 28,
   },
   submitBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   submitBtnText: { color: '#000', fontSize: 16, fontWeight: '700' },
   cancelBtn: { alignItems: 'center', paddingVertical: 14 },
   cancelBtnText: { fontSize: 14 },
+
+  // Status View Styles
+  statusHeroCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 20,
+    marginBottom: 16,
+  },
+  statusBadgeWrap: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
+  statusIconCircle: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
+  statusHeroTitle: { fontSize: 20, fontWeight: '800' },
+  statusHeroSub: { fontSize: 13, marginTop: 2 },
+  stepperContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  stepItem: { alignItems: 'center', gap: 4 },
+  stepDot: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  stepText: { fontSize: 11 },
+  stepLine: { flex: 1, height: 2, marginHorizontal: 8, marginBottom: 14 },
+
+  noticeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  noticeTitle: { fontSize: 13, fontWeight: '700' },
+  noticeDesc: { fontSize: 12, lineHeight: 17, marginTop: 3 },
+
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  summaryLabel: { fontSize: 13 },
+  summaryVal: { fontSize: 13, fontWeight: '600' },
+  previewBox: { alignItems: 'center', gap: 4 },
+  previewThumbnail: { width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: '#333' },
+  previewLabel: { fontSize: 11 },
 });

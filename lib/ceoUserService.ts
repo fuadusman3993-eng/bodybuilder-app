@@ -432,3 +432,82 @@ export async function grantCompensationCoins(
     return { success: false, message: e.message || 'Failed to grant compensation coins.' };
   }
 }
+
+// ── Coach Verification & Safety Review ────────────────────────────────────────
+
+export interface PendingCoachApplication {
+  uid: string;
+  name: string;
+  avatar_url?: string;
+  domain: string;
+  specialty: string[];
+  experience_years: number;
+  price_per_month: number;
+  phone?: string;
+  telegram?: string;
+  institution_name?: string;
+  certificate_url?: string;
+  id_card_url?: string;
+  has_first_aid?: boolean;
+  license_number?: string;
+  bio?: string;
+  created_at?: string;
+  verification_status: 'pending_review' | 'approved' | 'rejected';
+}
+
+export async function fetchPendingCoachApplications(): Promise<PendingCoachApplication[]> {
+  try {
+    const { data, error } = await supabase
+      .from('coach_profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).filter(
+      (c: any) => c.verification_status === 'pending_review' || (!c.is_verified && c.verification_status !== 'rejected')
+    );
+  } catch (e) {
+    console.warn('Error fetching pending coaches:', e);
+    return [];
+  }
+}
+
+export async function reviewCoachApplication(
+  coachUid: string,
+  action: 'approve' | 'reject',
+  reason?: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const { data, error: rpcErr } = await supabase.rpc('ceo_review_coach_application', {
+      p_coach_uid: coachUid,
+      p_action: action,
+      p_reason: reason || null,
+    });
+
+    if (!rpcErr && data?.success) {
+      return {
+        success: true,
+        message: action === 'approve' ? 'Coach approved & verified successfully!' : 'Coach application updated.',
+      };
+    }
+
+    const isApprove = action === 'approve';
+    await supabase.from('coach_profiles').update({
+      verification_status: isApprove ? 'approved' : 'rejected',
+      is_verified: isApprove,
+      rejection_reason: reason || null,
+      reviewed_at: new Date().toISOString(),
+    }).eq('uid', coachUid);
+
+    if (isApprove) {
+      await supabase.from('profiles').update({ role: 'coach' }).eq('uid', coachUid);
+    }
+
+    return {
+      success: true,
+      message: isApprove ? 'Coach approved & verified successfully!' : 'Coach application rejected.',
+    };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Failed to review coach application.' };
+  }
+}

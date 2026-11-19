@@ -50,7 +50,10 @@ import {
 import {
   fetchAllUsersWithMetrics,
   grantCompensationCoins,
+  fetchPendingCoachApplications,
+  reviewCoachApplication,
   CeoUserItem,
+  PendingCoachApplication,
 } from '../../lib/ceoUserService';
 import {
   fetchRealPaymentLedger,
@@ -83,6 +86,9 @@ export default function CeoDashboardScreen() {
   // Data States
   const [errorsList, setErrorsList] = useState<SystemErrorItem[]>([]);
   const [usersList, setUsersList] = useState<CeoUserItem[]>([]);
+  const [pendingCoachesList, setPendingCoachesList] = useState<PendingCoachApplication[]>([]);
+  const [selectedCoachDocPreview, setSelectedCoachDocPreview] = useState<{ url: string; title: string } | null>(null);
+  const [reviewingCoachUid, setReviewingCoachUid] = useState<string | null>(null);
   const [transactionsList, setTransactionsList] = useState<CeoTransactionItem[]>([]);
   const [healthList, setHealthList] = useState<ServiceHealthItem[]>([]);
   const [remoteConfig, setRemoteConfig] = useState<SystemRemoteConfig>({
@@ -149,16 +155,18 @@ export default function CeoDashboardScreen() {
       // Autonomous probe: dynamically tests real services and automatically detects issues
       runAutonomousSystemProbes().catch(() => {});
 
-      const [errors, users, txs, health, config] = await Promise.all([
+      const [errors, users, txs, health, config, pendingCoaches] = await Promise.all([
         fetchRecentErrors(100),
         fetchAllUsersWithMetrics(),
         fetchRealPaymentLedger(60),
         checkAllServicesHealth(),
         fetchSystemConfig(),
+        fetchPendingCoachApplications(),
       ]);
 
       setErrorsList(errors);
       setUsersList(users);
+      setPendingCoachesList(pendingCoaches);
       setTransactionsList(txs);
       setHealthList(health);
       setRemoteConfig(config);
@@ -1008,6 +1016,112 @@ export default function CeoDashboardScreen() {
                 <Text style={styles.userSummaryLabel}>With Crashes</Text>
               </View>
             </View>
+
+            {/* ── ATHLETE SAFETY: COACH VERIFICATION QUEUE ── */}
+            {pendingCoachesList.length > 0 && (
+              <View style={styles.coachQueueCard}>
+                <View style={styles.coachQueueHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.coachQueueIconCircle}>
+                      <Ionicons name="shield-checkmark" size={20} color="#F59E0B" />
+                    </View>
+                    <View>
+                      <Text style={styles.coachQueueTitle}>
+                        🛡️ Coach Verification Queue ({pendingCoachesList.length} Pending)
+                      </Text>
+                      <Text style={styles.coachQueueSubtitle}>
+                        Inspect licenses and IDs before activating coaches to prevent athlete injuries
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {pendingCoachesList.map((coach) => (
+                  <View key={coach.uid} style={styles.coachPendingRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                      <Image
+                        source={{ uri: coach.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(coach.name)}&background=10B981&color=fff&size=100` }}
+                        style={styles.coachPendingAvatar}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text style={styles.coachPendingName}>{coach.name}</Text>
+                          <View style={[styles.coachDomainPill, { backgroundColor: coach.domain === 'Football' ? '#3B82F620' : coach.domain === 'Health' ? '#F59E0B20' : '#10B98120' }]}>
+                            <Text style={[styles.coachDomainPillText, { color: coach.domain === 'Football' ? '#3B82F6' : coach.domain === 'Health' ? '#F59E0B' : '#10B981' }]}>
+                              {coach.domain}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.coachPendingAffiliation}>
+                          🏢 {coach.institution_name || 'Independent'} • 📞 {coach.phone}
+                        </Text>
+                        <Text style={styles.coachPendingSpecs} numberOfLines={1}>
+                          {coach.specialty?.join(', ')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Document View Buttons */}
+                    <View style={styles.coachDocBtnsRow}>
+                      {coach.certificate_url && (
+                        <TouchableOpacity
+                          style={styles.viewDocPill}
+                          onPress={() => setSelectedCoachDocPreview({ url: coach.certificate_url!, title: `${coach.name} - Certificate` })}
+                        >
+                          <Ionicons name="document-text" size={14} color="#10B981" />
+                          <Text style={styles.viewDocPillText}>License</Text>
+                        </TouchableOpacity>
+                      )}
+                      {coach.id_card_url && (
+                        <TouchableOpacity
+                          style={styles.viewDocPill}
+                          onPress={() => setSelectedCoachDocPreview({ url: coach.id_card_url!, title: `${coach.name} - National ID` })}
+                        >
+                          <Ionicons name="card" size={14} color="#38BDF8" />
+                          <Text style={styles.viewDocPillText}>ID</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Approval Actions */}
+                      <TouchableOpacity
+                        style={styles.approveCoachBtn}
+                        disabled={reviewingCoachUid === coach.uid}
+                        onPress={async () => {
+                          setReviewingCoachUid(coach.uid);
+                          const res = await reviewCoachApplication(coach.uid, 'approve');
+                          Alert.alert(res.success ? 'Success' : 'Error', res.message);
+                          loadDashboardData();
+                          setReviewingCoachUid(null);
+                        }}
+                      >
+                        {reviewingCoachUid === coach.uid ? (
+                          <ActivityIndicator size="small" color="#000" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark" size={15} color="#000" />
+                            <Text style={styles.approveCoachBtnText}>Approve</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.rejectCoachBtn}
+                        disabled={reviewingCoachUid === coach.uid}
+                        onPress={async () => {
+                          setReviewingCoachUid(coach.uid);
+                          const res = await reviewCoachApplication(coach.uid, 'reject', 'Certifications require further review.');
+                          Alert.alert('Status Updated', res.message);
+                          loadDashboardData();
+                          setReviewingCoachUid(null);
+                        }}
+                      >
+                        <Ionicons name="close" size={15} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* User Search & Filter */}
             <View style={styles.filterBarRow}>
@@ -1980,6 +2094,47 @@ export default function CeoDashboardScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 4: COACH DOCUMENT PREVIEW MODAL ── */}
+      <Modal
+        visible={!!selectedCoachDocPreview}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedCoachDocPreview(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 650, maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="document-attach" size={22} color="#10B981" />
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  {selectedCoachDocPreview?.title}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedCoachDocPreview(null)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedCoachDocPreview?.url && (
+              <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 14 }}>
+                <Image
+                  source={{ uri: selectedCoachDocPreview.url }}
+                  style={{ width: '100%', height: 420, borderRadius: 10 }}
+                  resizeMode="contain"
+                />
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={[styles.verifySubmitBtn, { backgroundColor: '#10B981', marginTop: 12 }]}
+              onPress={() => setSelectedCoachDocPreview(null)}
+            >
+              <Text style={[styles.verifySubmitBtnText, { color: '#000', fontWeight: '800' }]}>Close Preview</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -3731,5 +3886,130 @@ const styles = StyleSheet.create({
   bottomNavLabelActive: {
     color: '#00E676',
     fontWeight: '700',
+  },
+
+  // Coach Verification Queue Styles
+  coachQueueCard: {
+    backgroundColor: '#0D1527',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    padding: 16,
+    marginBottom: 20,
+  },
+  coachQueueHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  coachQueueIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coachQueueTitle: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  coachQueueSubtitle: {
+    color: '#8A95A5',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  coachPendingRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+    gap: 12,
+  },
+  coachPendingAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1F2937',
+  },
+  coachPendingName: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  coachDomainPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  coachDomainPillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  coachPendingAffiliation: {
+    color: '#9CA3AF',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  coachPendingSpecs: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  coachDocBtnsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  viewDocPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  viewDocPillText: {
+    color: '#D1D5DB',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  approveCoachBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#00E676',
+  },
+  approveCoachBtnText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  rejectCoachBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

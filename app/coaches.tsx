@@ -25,6 +25,7 @@ export interface Coach {
   rating?: number;
   total_trainees?: number;
   is_verified?: boolean;
+  verification_status?: 'pending_review' | 'approved' | 'rejected';
 }
 
 type FilterDomain = 'All' | 'Fitness' | 'Football' | 'Health';
@@ -80,19 +81,28 @@ export default function CoachesPage() {
 
       if (error) throw error;
 
-      const rawList: Coach[] = (data || []).map((c: any) => ({
-        id: c.id,
-        uid: c.uid,
-        name: c.name || 'FitPulse Coach',
-        avatar_url: c.avatar_url || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${c.uid}.jpg`,
-        domain: inferDomain(c),
-        specialty: Array.isArray(c.specialty) ? c.specialty : [c.specialty || 'General Coach'],
-        experience_years: c.experience_years || 2,
-        price_per_month: c.price_per_month ?? 0,
-        rating: c.rating || 5.0,
-        total_trainees: c.total_trainees || 0,
-        is_verified: c.is_verified ?? true,
-      }));
+      // STRICT ATHLETE SAFETY GATE: Only verified & approved coaches are listed publicly
+      const rawList: Coach[] = (data || [])
+        .filter((c: any) => {
+          if (c.verification_status === 'pending_review' || c.verification_status === 'rejected') {
+            return false;
+          }
+          return c.is_verified === true || c.verification_status === 'approved';
+        })
+        .map((c: any) => ({
+          id: c.id,
+          uid: c.uid,
+          name: c.name || 'FitPulse Coach',
+          avatar_url: c.avatar_url || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${c.uid}.jpg`,
+          domain: inferDomain(c),
+          specialty: Array.isArray(c.specialty) ? c.specialty : [c.specialty || 'General Coach'],
+          experience_years: c.experience_years || 2,
+          price_per_month: c.price_per_month ?? 0,
+          rating: c.rating || 5.0,
+          total_trainees: c.total_trainees || 0,
+          is_verified: true,
+          verification_status: c.verification_status || 'approved',
+        }));
 
       // 2. Fetch enriched profile names/avatars from unified profiles in single batched query
       const uids = rawList.map((c) => c.uid).filter(Boolean);

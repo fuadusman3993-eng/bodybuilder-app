@@ -37,6 +37,7 @@ export default function CoachDashboard() {
   const { user } = useUserStore();
   const [requests, setRequests] = useState<Request[]>([]);
   const [trainees, setTrainees] = useState<any[]>([]);
+  const [verificationStatus, setVerificationStatus] = useState<string>('approved');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'trainees' | 'requests'>('trainees');
@@ -44,6 +45,17 @@ export default function CoachDashboard() {
   const fetchData = useCallback(async () => {
     if (!user.uid) return;
     try {
+      // Check coach verification status
+      const { data: prof } = await supabase
+        .from('coach_profiles')
+        .select('verification_status')
+        .eq('uid', user.uid)
+        .maybeSingle();
+
+      if (prof?.verification_status) {
+        setVerificationStatus(prof.verification_status);
+      }
+
       // Fetch pending requests
       const { data: reqs } = await supabase
         .from('coach_requests')
@@ -162,6 +174,26 @@ export default function CoachDashboard() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Verification In Progress Banner */}
+      {verificationStatus === 'pending_review' && (
+        <TouchableOpacity
+          style={styles.pendingVerificationBanner}
+          activeOpacity={0.85}
+          onPress={() => router.push('/coach-onboarding')}
+        >
+          <View style={styles.pendingBannerIcon}>
+            <Ionicons name="shield-checkmark" size={20} color="#F59E0B" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pendingBannerTitle}>Verification In Progress (በግምገማ ላይ)</Text>
+            <Text style={styles.pendingBannerSub}>
+              Credentials under review by FitPulse Safety Board. Tap to view status.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
+        </TouchableOpacity>
+      )}
 
       {/* Summary Cards */}
       <View style={styles.summaryRow}>
@@ -292,6 +324,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  pendingVerificationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 2,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.4)',
+    gap: 10,
+  },
+  pendingBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(245,158,11,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  pendingBannerSub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
   summaryRow: { flexDirection: 'row', gap: 12, padding: 16 },
   summaryCard: {
     flex: 1, backgroundColor: Colors.surface, borderRadius: 14,
