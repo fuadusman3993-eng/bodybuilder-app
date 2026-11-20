@@ -51,6 +51,7 @@ interface ConvItem {
 }
 import { useCachedState } from '../../lib/useCachedState';
 import { useChatStore } from '../../store/chatStore';
+import { ensureCoachUnderReviewMessage } from '../../lib/officialChatService';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -92,6 +93,21 @@ export default function ChatScreen() {
   const fetchConversations = async () => {
     if (!user.uid || user.tier === UserTier.GUEST) return;
     try {
+      // Auto-heal / Ensure official under-review message for pending coaches
+      try {
+        const { data: coachProfile } = await supabase
+          .from('coach_profiles')
+          .select('verification_status')
+          .eq('uid', user.uid)
+          .maybeSingle();
+
+        if (coachProfile && coachProfile.verification_status === 'pending_review') {
+          await ensureCoachUnderReviewMessage(user.uid, user.name);
+        }
+      } catch (coachErr) {
+        console.warn('Pending coach check error in chat:', coachErr);
+      }
+
       const { data } = await supabase
         .from('conversations')
         .select('*')

@@ -110,3 +110,53 @@ export async function sendOfficialFitPulseMessage(
     return { success: false };
   }
 }
+
+/**
+ * Idempotently ensures that an applicant in 'pending_review' has the official welcome
+ * message in their Chat conversation with FitPulse Safety Board 🛡️.
+ */
+export async function ensureCoachUnderReviewMessage(
+  recipientUid: string,
+  coachName?: string
+): Promise<void> {
+  if (!recipientUid || recipientUid === FITPULSE_OFFICIAL_UID) return;
+
+  const u1 = FITPULSE_OFFICIAL_UID < recipientUid ? FITPULSE_OFFICIAL_UID : recipientUid;
+  const u2 = FITPULSE_OFFICIAL_UID < recipientUid ? recipientUid : FITPULSE_OFFICIAL_UID;
+
+  try {
+    // Check if conversation already exists
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('user1_uid', u1)
+      .eq('user2_uid', u2)
+      .maybeSingle();
+
+    if (conv?.id) {
+      // Check if message from fitpulse_official already exists in this conversation
+      const { data: msg } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conv.id)
+        .eq('sender_uid', FITPULSE_OFFICIAL_UID)
+        .limit(1)
+        .maybeSingle();
+
+      if (msg?.id) {
+        // Message already delivered, no duplicate needed
+        return;
+      }
+    }
+
+    // Message does not exist yet: send it now!
+    const nameStr = coachName ? ` ${coachName.trim()}` : '';
+    await sendOfficialFitPulseMessage(
+      recipientUid,
+      `🛡️ ሰላም${nameStr}! የአሰልጣኝነት ማመልከቻዎ እና ያያያዟቸው ሰነዶች ለ FitPulse ቦርድ ደርሰዋል።\n\nበ 24–48 ሰዓት ውስጥ ሰነዶችዎ ተመርምረው ምላሽ ይሰጥዎታል። ማመልከቻዎ በይፋ እስኪጸድቅ ድረስ መለያዎ በግምገማ ላይ (Under Review) ይቆያል።\n\nማንኛውም የሰነድ ችግር ካለ ወይም ተጨማሪ ማረጋገጫ ሲያስፈልግ በዚህ ይፋዊ የ FitPulse Safety Board የውይይት መስመር መልዕክት ይደርስዎታል።\n\n— FitPulse Executive Safety Board`,
+      '🛡️ ማመልከቻዎ በግምገማ ላይ ነው (24-48 Hours)'
+    );
+  } catch (err) {
+    console.warn('Error ensuring coach under review message:', err);
+  }
+}

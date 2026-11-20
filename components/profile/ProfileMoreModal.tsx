@@ -21,8 +21,11 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
   const router = useRouter();
   const { user, setUser, updateCoins } = useUserStore();
   const { theme, colors } = useTheme();
-  const isCoach = user.role === 'coach';
   const coinsBalance = user.coinsBalance ?? 0;
+  const [coachVerificationStatus, setCoachVerificationStatus] = useState<string | null>(null);
+
+  const isPendingCoach = coachVerificationStatus === 'pending_review';
+  const isVerifiedCoach = (user.role === 'coach' && user.isCoachVerified) || coachVerificationStatus === 'approved';
 
   // Active theme & Theme Selector Modal State
   const activeTheme = useThemeStore((s) => s.getActiveTheme());
@@ -38,13 +41,27 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Load coins when modal opens
+  // Load coins & coach verification status when modal opens
   useEffect(() => {
     if (visible && user.uid) {
       import('../../lib/walletService').then(({ getWallet }) => {
         getWallet(user.uid!).then((w) => {
           if (w) updateCoins(w.balance_coins);
         });
+      });
+
+      // Check coach verification status
+      import('../../lib/supabase').then(({ supabase }) => {
+        supabase
+          .from('coach_profiles')
+          .select('verification_status, is_verified')
+          .eq('uid', user.uid)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.verification_status) {
+              setCoachVerificationStatus(data.verification_status);
+            }
+          });
       });
     }
   }, [visible, user.uid]);
@@ -207,8 +224,42 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
               <View style={styles.sectionWrap}>
                 <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Tools</Text>
 
-                {/* Become a Coach (For Trainees / Athletes) */}
-                {!isCoach && (
+                {/* 1. Case A: Pending Coach Application */}
+                {isPendingCoach && (
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      {
+                        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        marginVertical: 4,
+                        borderWidth: 1,
+                        borderColor: 'rgba(245, 158, 11, 0.35)',
+                      },
+                    ]}
+                    activeOpacity={0.75}
+                    onPress={() => handleNavigate('/coach-onboarding')}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <Ionicons name="shield-checkmark" size={22} color="#F59E0B" />
+                      <View>
+                        <Text style={[styles.menuItemText, { color: colors.textPrimary, fontWeight: '700' }]}>
+                          Coach Application
+                        </Text>
+                        <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600', marginTop: 1 }}>
+                          In Review by Board (24–48h)
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ backgroundColor: '#F59E0B22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#F59E0B55' }}>
+                      <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '800' }}>⏳ Under Review</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {/* 2. Case B: Become a Coach (For Trainees who have not applied) */}
+                {!isVerifiedCoach && !isPendingCoach && (
                   <TouchableOpacity
                     style={[
                       styles.menuItem,
@@ -243,24 +294,49 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   </TouchableOpacity>
                 )}
 
-                {/* Coach Dashboard / My Coach */}
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  activeOpacity={0.7}
-                  onPress={() => handleNavigate(isCoach ? '/coach-dashboard' : '/my-coach')}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <Ionicons
-                      name={isCoach ? 'analytics-outline' : 'person-circle-outline'}
-                      size={22}
-                      color={colors.primary}
-                    />
-                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
-                      {isCoach ? 'Coach Studio & Clients' : 'My Coach & Program'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
+                {/* 3. Case C: Coach Studio & Clients (ONLY for Verified Coaches) */}
+                {isVerifiedCoach && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    activeOpacity={0.7}
+                    onPress={() => handleNavigate('/coach-dashboard')}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <Ionicons
+                        name="analytics-outline"
+                        size={22}
+                        color={colors.primary}
+                      />
+                      <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
+                        Coach Studio & Clients
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: 'rgba(0, 230, 118, 0.15)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ color: '#00E676', fontSize: 11, fontWeight: '700' }}>Verified 🏅</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {/* 4. My Coach & Program (For regular trainees / pending applicants) */}
+                {!isVerifiedCoach && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    activeOpacity={0.7}
+                    onPress={() => handleNavigate('/my-coach')}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={22}
+                        color={colors.primary}
+                      />
+                      <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
+                        My Coach & Program
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
 
                 {/* Workout Plans / Find Coaches */}
                 <TouchableOpacity

@@ -123,6 +123,14 @@ export default function ChatRoom() {
   useEffect(() => {
     if (!otherUserUid) return;
     async function loadOtherUser() {
+      if (otherUserUid === 'fitpulse_official') {
+        setOtherUser({
+          name: 'FitPulse Safety Board 🛡️',
+          avatar: 'https://ui-avatars.com/api/?name=FitPulse+Board&background=00E676&color=000&size=150&bold=true',
+          isCoach: false,
+        });
+        return;
+      }
       const profile = await getProfile(otherUserUid);
       const name = profile?.name || profile?.username || 'Athlete';
       const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
@@ -1157,8 +1165,12 @@ export default function ChatRoom() {
         
         <TouchableOpacity
           style={styles.headerUser}
-          onPress={() => router.push({ pathname: '/user-profile', params: { uid: otherUserUid } })}
-          activeOpacity={0.8}
+          onPress={() => {
+            if (otherUserUid !== 'fitpulse_official') {
+              router.push({ pathname: '/user-profile', params: { uid: otherUserUid } });
+            }
+          }}
+          activeOpacity={otherUserUid === 'fitpulse_official' ? 1 : 0.8}
         >
           <View style={styles.headerAvatarWrap}>
             {otherUser.avatar
@@ -1170,49 +1182,64 @@ export default function ChatRoom() {
               <Text style={[styles.headerName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
                 {otherUser.name}
               </Text>
-              {otherUser.isCoach && (
+              {otherUserUid === 'fitpulse_official' && (
+                <Ionicons name="shield-checkmark" size={14} color="#00E676" style={{ flexShrink: 0 }} />
+              )}
+              {otherUser.isCoach && otherUserUid !== 'fitpulse_official' && (
                 <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={{ flexShrink: 0 }} />
               )}
             </View>
             <View style={styles.statusRow}>
-              <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.primary : '#666' }]} />
-              <Text style={[styles.onlineText, { color: isOnline ? colors.primary : colors.textMuted, fontWeight: '600' }]}>
-                {isOnline ? 'Online' : 'Offline'}
-              </Text>
+              {otherUserUid === 'fitpulse_official' ? (
+                <Text style={[styles.onlineText, { color: '#00E676', fontWeight: '700', fontSize: 11 }]}>
+                  Verified Board • Official
+                </Text>
+              ) : (
+                <>
+                  <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.primary : '#666' }]} />
+                  <Text style={[styles.onlineText, { color: isOnline ? colors.primary : colors.textMuted, fontWeight: '600' }]}>
+                    {isOnline ? 'Online' : 'Offline'}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerActionBtn}
-            onPress={() => router.push({
-              pathname: '/voice-call',
-              params: {
-                channelId: conversationId,
-                otherUserUid,
-                otherUserName: otherUser.name,
-                otherUserAvatar: otherUser.avatar,
-              }
-            })}
-          >
-            <Ionicons name="call" size={19} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerActionBtn}
-            onPress={() => router.push({
-              pathname: '/voice-call',
-              params: {
-                channelId: conversationId,
-                otherUserUid,
-                otherUserName: otherUser.name,
-                otherUserAvatar: otherUser.avatar,
-                initialVideo: 'true',
-              }
-            })}
-          >
-            <Ionicons name="videocam" size={21} color={colors.textPrimary} />
-          </TouchableOpacity>
+          {otherUserUid !== 'fitpulse_official' && (
+            <>
+              <TouchableOpacity
+                style={styles.headerActionBtn}
+                onPress={() => router.push({
+                  pathname: '/voice-call',
+                  params: {
+                    channelId: conversationId,
+                    otherUserUid,
+                    otherUserName: otherUser.name,
+                    otherUserAvatar: otherUser.avatar,
+                  }
+                })}
+              >
+                <Ionicons name="call" size={19} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerActionBtn}
+                onPress={() => router.push({
+                  pathname: '/voice-call',
+                  params: {
+                    channelId: conversationId,
+                    otherUserUid,
+                    otherUserName: otherUser.name,
+                    otherUserAvatar: otherUser.avatar,
+                    initialVideo: 'true',
+                  }
+                })}
+              >
+                <Ionicons name="videocam" size={21} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity style={styles.headerActionBtn} onPress={() => setShowSettings(true)}>
             <Ionicons name="ellipsis-vertical" size={19} color={colors.textPrimary} />
           </TouchableOpacity>
