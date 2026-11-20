@@ -28,6 +28,8 @@ import * as Location from 'expo-location';
 import ChatAttachmentSheet from '../components/chat/ChatAttachmentSheet';
 import ChatCameraModal from '../components/chat/ChatCameraModal';
 import ChatEmojiPicker from '../components/chat/ChatEmojiPicker';
+import BrandLogo from '../components/ui/BrandLogo';
+import OfficialServiceModal from '../components/chat/OfficialServiceModal';
 
 const BG = Colors.background;
 
@@ -70,6 +72,7 @@ export default function ChatRoom() {
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
+  const [showOfficialModal, setShowOfficialModal] = useState(false);
   const isOnline = usePresenceStore(s => s.onlineUsers[otherUserUid]) || false;
 
   // Voice recording state
@@ -125,8 +128,8 @@ export default function ChatRoom() {
     async function loadOtherUser() {
       if (otherUserUid === 'fitpulse_official') {
         setOtherUser({
-          name: 'FitPulse Safety Board 🛡️',
-          avatar: 'https://ui-avatars.com/api/?name=FitPulse+Board&background=00E676&color=000&size=150&bold=true',
+          name: 'FitPulse',
+          avatar: 'fitpulse_logo',
           isCoach: false,
         });
         return;
@@ -1166,16 +1169,26 @@ export default function ChatRoom() {
         <TouchableOpacity
           style={styles.headerUser}
           onPress={() => {
-            if (otherUserUid !== 'fitpulse_official') {
+            if (otherUserUid === 'fitpulse_official') {
+              setShowOfficialModal(true);
+            } else {
               router.push({ pathname: '/user-profile', params: { uid: otherUserUid } });
             }
           }}
-          activeOpacity={otherUserUid === 'fitpulse_official' ? 1 : 0.8}
+          activeOpacity={0.8}
         >
           <View style={styles.headerAvatarWrap}>
-            {otherUser.avatar
-              ? <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
-              : <View style={[styles.headerAvatarPlaceholder, { backgroundColor: colors.primary }]}><Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text></View>}
+            {otherUserUid === 'fitpulse_official' ? (
+              <View style={[styles.headerAvatar, styles.officialAvatarCircle, { backgroundColor: colors.primary }]}>
+                <BrandLogo size="small" customScale={0.46} showText={false} textColor="#000" />
+              </View>
+            ) : otherUser.avatar && otherUser.avatar !== 'fitpulse_logo' ? (
+              <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatarPlaceholder, { backgroundColor: colors.primary }]}>
+                <Text style={styles.headerInitial}>{otherUser.name[0]?.toUpperCase()}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.headerNameCol}>
             <View style={styles.headerNameRow}>
@@ -1183,7 +1196,7 @@ export default function ChatRoom() {
                 {otherUser.name}
               </Text>
               {otherUserUid === 'fitpulse_official' && (
-                <Ionicons name="shield-checkmark" size={14} color="#00E676" style={{ flexShrink: 0 }} />
+                <Ionicons name="checkmark-circle" size={15} color="#00E676" style={{ flexShrink: 0 }} />
               )}
               {otherUser.isCoach && otherUserUid !== 'fitpulse_official' && (
                 <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={{ flexShrink: 0 }} />
@@ -1191,8 +1204,8 @@ export default function ChatRoom() {
             </View>
             <View style={styles.statusRow}>
               {otherUserUid === 'fitpulse_official' ? (
-                <Text style={[styles.onlineText, { color: '#00E676', fontWeight: '700', fontSize: 11 }]}>
-                  Verified Board • Official
+                <Text style={[styles.onlineText, { color: colors.textMuted, fontWeight: '500', fontSize: 11 }]}>
+                  service notifications
                 </Text>
               ) : (
                 <>
@@ -1456,6 +1469,13 @@ export default function ChatRoom() {
         </TouchableOpacity>
       </Modal>
 
+      {/* ── TELEGRAM-STYLE OFFICIAL VERIFIED PROFILE MODAL ── */}
+      <OfficialServiceModal
+        visible={showOfficialModal}
+        onClose={() => setShowOfficialModal(false)}
+        onMessagePress={() => textInputRef.current?.focus()}
+      />
+
       {/* ── BLOCK USER CONFIRM MODAL (FITPULSE CARD) ── */}
       <FitPulseConfirmModal
         visible={showBlockModal}
@@ -1552,6 +1572,7 @@ const styles = StyleSheet.create({
   },
   headerAvatarWrap: { position: 'relative', flexShrink: 0 },
   headerAvatar: { width: 40, height: 40, borderRadius: 20 },
+  officialAvatarCircle: { justifyContent: 'center', alignItems: 'center' },
   headerAvatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00E676', justifyContent: 'center', alignItems: 'center' },
   headerInitial: { color: '#000', fontWeight: '800', fontSize: 16 },
   headerNameCol: { justifyContent: 'center', flex: 1, minWidth: 0 },

@@ -15,7 +15,7 @@ import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
 import { syncUserProfile } from '../lib/profileService';
 import { supabase } from '../lib/supabase';
-import { sendOfficialFitPulseMessage } from '../lib/officialChatService';
+import { sendOfficialFitPulseMessage, getOfficialUnderReviewText } from '../lib/officialChatService';
 
 // ── Domain & Specialty Configurations ─────────────────────────────────────────
 export type CoachDomain = 'Fitness' | 'Football' | 'Health';
@@ -373,11 +373,11 @@ export default function CoachOnboardingScreen() {
         isCoachVerified: false,
       });
 
-      // 5. Send official confirmation message from FitPulse Safety Board in Chat
+      // 5. Send official confirmation message from FitPulse Official Service
       await sendOfficialFitPulseMessage(
         uid,
-        `🛡️ ሰላም ${fullName.trim()}! የአሰልጣኝነት ማመልከቻዎ እና ያያያዟቸው ሰነዶች ለ FitPulse ቦርድ ደርሰዋል።\n\nበ 24–48 ሰዓት ውስጥ ሰነዶችዎ ተመርምረው ምላሽ ይሰጥዎታል። ማመልከቻዎ በይፋ እስኪጸድቅ ድረስ መለያዎ በግምገማ ላይ (Under Review) ይቆያል።\n\nማንኛውም የሰነድ ችግር ካለ ወይም ተጨማሪ ማረጋገጫ ሲያስፈልግ በዚህ ይፋዊ የ FitPulse Safety Board የውይይት መስመር መልዕክት ይደርስዎታል።\n\n— FitPulse Executive Safety Board`,
-        '🛡️ ማመልከቻዎ በግምገማ ላይ ነው (24-48 Hours)'
+        getOfficialUnderReviewText(fullName),
+        '🛡️ Application Received (24–48 Hours)'
       );
 
       setExistingApplication(coachData);

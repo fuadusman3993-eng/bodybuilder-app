@@ -542,20 +542,20 @@ export async function reviewCoachApplication(
       });
     } catch (_) {}
 
-    // 4. Send official direct Chat message from FitPulse Safety Board
+    // 4. Send official direct Chat message from FitPulse Official Service
     try {
       if (isApprove) {
         await sendOfficialFitPulseMessage(
           coachUid,
-          `🎉 እንኳን ደስ አለዎት! ያቀረቧቸው የብቃት ማረጋገጫዎች፣ የዲፕሎማ እና የመታወቂያ ሰነዶች በ FitPulse Sports & Health ቦርድ ሙሉ በሙሉ ተረጋግጠው ጸድቀዋል! 🏅\n\nመለያዎ አሁን Verified Coach ሆኗል፤ በ FitPulse መተግበሪያ ላይ ተጠቃሚዎችን እና አትሌቶችን ማሰልጠን መጀመር ይችላሉ።\n\nመልካም የስራ ጊዜ!\n— FitPulse Executive Safety Board`,
+          `🎉 Congratulations! Your coaching credentials, diplomas, and identity documents have been fully verified and approved by the FitPulse Safety Board! 🏅\n\nYour account has been officially upgraded to a Verified Coach. Your public coaching profile is now live, and you can begin accepting trainees and publishing workout plans across FitPulse.\n\nWelcome aboard!\n— FitPulse Executive Safety Board`,
           '🎉 Coach Application Approved! 🏅'
         );
       } else {
-        const rejectNote = reason || 'የቀረቡት ሰነዶች ግልጽ ስላልሆኑ እባክዎ በድጋሚ ይላኩ።';
+        const rejectNote = reason || 'Submitted documents are unclear or missing required verification details. Please re-upload.';
         await sendOfficialFitPulseMessage(
           coachUid,
-          `⚠️ ማሳሰቢያ ከ FitPulse Safety Board፦\n\nያቀረቡት የአሰልጣኝነት ማመልከቻ የሚከተለውን ማስተካከያ ይፈልጋል፦\n\n📌 ምክንያት፦ "${rejectNote}"\n\nእባክዎ ወደ FitPulse Coach Onboarding ገጽ በመመለስ የተስተካከለ እና ግልጽ ሰነድ በድጋሚ ይላኩ። እናመሰግናለን!\n\n— FitPulse Safety & Verification Team`,
-          '⚠️ ማመልከቻዎ ማስተካከያ ያስፈልገዋል'
+          `⚠️ Notice from FitPulse Safety Board:\n\nThank you for applying to become a FitPulse Coach. Our verification team reviewed your materials and requires the following adjustment:\n\n📌 Note: "${rejectNote}"\n\nPlease return to the Coach Onboarding portal in the app to re-upload clear and valid documentation.\n\n— FitPulse Safety & Verification Team`,
+          '⚠️ Action Required: Coach Application'
         );
       }
     } catch (msgErr) {

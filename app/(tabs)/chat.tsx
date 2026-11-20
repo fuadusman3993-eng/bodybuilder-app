@@ -126,9 +126,9 @@ export default function ChatScreen() {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
         const isOfficial = otherUid === 'fitpulse_official';
         const profile = profileMap[otherUid];
-        const name = isOfficial ? 'FitPulse Safety Board 🛡️' : (profile?.name || profile?.username || 'Athlete');
+        const name = isOfficial ? 'FitPulse' : (profile?.name || profile?.username || 'Athlete');
         const avatar = isOfficial
-          ? 'https://ui-avatars.com/api/?name=FitPulse+Board&background=00E676&color=000&size=150&bold=true'
+          ? 'fitpulse_logo'
           : (profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`);
         const isCoach = isOfficial ? false : profile?.role === 'coach';
 
@@ -161,12 +161,17 @@ export default function ChatScreen() {
           }
         } catch (_) {}
 
+        let displayLastMessage = conv.last_message || '';
+        if (isOfficial && (displayLastMessage.includes('ሰላም') || displayLastMessage.includes('በግምገማ') || displayLastMessage.includes('ማመልከቻዎ'))) {
+          displayLastMessage = '🛡️ FitPulse Notifications: Coach Application Received — In Review (24–48 Hours)...';
+        }
+
         enriched.push({
           id: conv.id,
           otherUid,
           otherName: name,
           otherAvatar: avatar,
-          lastMessage: conv.last_message || '',
+          lastMessage: displayLastMessage,
           lastAt: conv.last_message_at || conv.created_at,
           unreadCount,
           isCoach,
@@ -249,7 +254,11 @@ export default function ChatScreen() {
       activeOpacity={0.7}
     >
       <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: colors.primary, borderWidth: 2 } : {}]}>
-        {item.otherAvatar
+        {item.isOfficial ? (
+          <View style={[styles.avatar, styles.officialAvatarCircle, { backgroundColor: colors.primary }]}>
+            <BrandLogo size="small" customScale={0.52} showText={false} textColor="#000" />
+          </View>
+        ) : item.otherAvatar
           ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
           : <View style={[styles.avatarInitialWrap, { backgroundColor: colors.surface }]}>
               <Text style={[styles.avatarInitialText, { color: colors.primary }]}>{item.otherName[0]?.toUpperCase()}</Text>
@@ -261,12 +270,14 @@ export default function ChatScreen() {
         <View style={styles.convTop}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
             <Text style={[styles.convName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1}>
-              {item.otherName}
+              {item.isOfficial ? 'FitPulse' : item.otherName}
             </Text>
             {item.isOfficial && (
-              <View style={styles.officialBadge}>
-                <Ionicons name="shield-checkmark" size={11} color="#000" />
-                <Text style={styles.officialBadgeText}>Official</Text>
+              <Ionicons name="checkmark-circle" size={15} color="#00E676" />
+            )}
+            {item.isOfficial && (
+              <View style={[styles.officialBadge, { backgroundColor: 'rgba(0, 230, 118, 0.15)', borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.3)' }]}>
+                <Text style={[styles.officialBadgeText, { color: '#00E676', fontWeight: '700' }]}>service</Text>
               </View>
             )}
           </View>
@@ -690,5 +701,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.3,
+  },
+  officialAvatarCircle: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

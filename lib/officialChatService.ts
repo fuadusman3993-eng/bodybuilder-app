@@ -2,6 +2,11 @@ import { supabase } from './supabase';
 
 export const FITPULSE_OFFICIAL_UID = 'fitpulse_official';
 
+export function getOfficialUnderReviewText(coachName?: string): string {
+  const nameStr = coachName?.trim() ? ` ${coachName.trim()}` : '';
+  return `🛡️ FitPulse Notifications: Coach Application Received\n\nHello${nameStr}!\n\nYour coach application and verification credentials have been securely received by the FitPulse Safety Board.\n\nTo safeguard athlete safety and maintain high professional coaching standards, our board manually verifies all submitted certifications and identity documents within 24–48 hours.\n\nYour account will remain in "Under Review" status until verified. If additional documentation or clarification is needed, our board will reach out to you directly through this official verified channel.\n\n— FitPulse Executive Safety Board`;
+}
+
 /**
  * Sends an official direct message from the verified FitPulse Safety Board / CEO account
  * directly into the user's 1-on-1 Chat inbox.
@@ -9,7 +14,7 @@ export const FITPULSE_OFFICIAL_UID = 'fitpulse_official';
 export async function sendOfficialFitPulseMessage(
   recipientUid: string,
   messageText: string,
-  title: string = 'FitPulse Safety Board 🛡️'
+  title: string = 'FitPulse Notifications'
 ): Promise<{ success: boolean; messageId?: string }> {
   if (!recipientUid || recipientUid === FITPULSE_OFFICIAL_UID) {
     return { success: false };
@@ -21,12 +26,12 @@ export async function sendOfficialFitPulseMessage(
       await supabase.from('profiles').upsert(
         {
           uid: FITPULSE_OFFICIAL_UID,
-          name: 'FitPulse Safety Board 🛡️',
-          username: 'fitpulse_board',
-          avatar_url: 'https://ui-avatars.com/api/?name=FitPulse+Board&background=00E676&color=000&size=200&bold=true',
+          name: 'FitPulse',
+          username: 'fitpulse',
+          avatar_url: 'https://bodybuilder-app-phi.vercel.app/fitpulse-icon.png',
           role: 'admin',
           is_verified: true,
-          bio: 'Official FitPulse Sports & Athlete Safety Verification Board',
+          bio: 'Official FitPulse Service & Verification Board',
         },
         { onConflict: 'uid' }
       );
@@ -113,7 +118,8 @@ export async function sendOfficialFitPulseMessage(
 
 /**
  * Idempotently ensures that an applicant in 'pending_review' has the official welcome
- * message in their Chat conversation with FitPulse Safety Board 🛡️.
+ * message in their Chat conversation with FitPulse Official.
+ * Automatically migrates legacy Amharic messages to international English.
  */
 export async function ensureCoachUnderReviewMessage(
   recipientUid: string,
@@ -123,12 +129,13 @@ export async function ensureCoachUnderReviewMessage(
 
   const u1 = FITPULSE_OFFICIAL_UID < recipientUid ? FITPULSE_OFFICIAL_UID : recipientUid;
   const u2 = FITPULSE_OFFICIAL_UID < recipientUid ? recipientUid : FITPULSE_OFFICIAL_UID;
+  const newMsgText = getOfficialUnderReviewText(coachName);
 
   try {
     // Check if conversation already exists
     const { data: conv } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, last_message')
       .eq('user1_uid', u1)
       .eq('user2_uid', u2)
       .maybeSingle();
@@ -137,24 +144,31 @@ export async function ensureCoachUnderReviewMessage(
       // Check if message from fitpulse_official already exists in this conversation
       const { data: msg } = await supabase
         .from('messages')
-        .select('id')
+        .select('id, text')
         .eq('conversation_id', conv.id)
         .eq('sender_uid', FITPULSE_OFFICIAL_UID)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (msg?.id) {
-        // Message already delivered, no duplicate needed
+        // Auto-migrate legacy Amharic messages to international English standard
+        if (msg.text && (msg.text.includes('ሰላም') || msg.text.includes('በግምገማ') || msg.text.includes('ማመልከቻዎ'))) {
+          await supabase.from('messages').update({ text: newMsgText }).eq('id', msg.id);
+          await supabase.from('conversations').update({
+            last_message: newMsgText.length > 80 ? newMsgText.slice(0, 80) + '...' : newMsgText,
+            last_message_at: new Date().toISOString(),
+          }).eq('id', conv.id);
+        }
         return;
       }
     }
 
-    // Message does not exist yet: send it now!
-    const nameStr = coachName ? ` ${coachName.trim()}` : '';
+    // Message does not exist yet: send clean English message now!
     await sendOfficialFitPulseMessage(
       recipientUid,
-      `🛡️ ሰላም${nameStr}! የአሰልጣኝነት ማመልከቻዎ እና ያያያዟቸው ሰነዶች ለ FitPulse ቦርድ ደርሰዋል።\n\nበ 24–48 ሰዓት ውስጥ ሰነዶችዎ ተመርምረው ምላሽ ይሰጥዎታል። ማመልከቻዎ በይፋ እስኪጸድቅ ድረስ መለያዎ በግምገማ ላይ (Under Review) ይቆያል።\n\nማንኛውም የሰነድ ችግር ካለ ወይም ተጨማሪ ማረጋገጫ ሲያስፈልግ በዚህ ይፋዊ የ FitPulse Safety Board የውይይት መስመር መልዕክት ይደርስዎታል።\n\n— FitPulse Executive Safety Board`,
-      '🛡️ ማመልከቻዎ በግምገማ ላይ ነው (24-48 Hours)'
+      newMsgText,
+      '🛡️ Coach Application Received (24–48 Hours)'
     );
   } catch (err) {
     console.warn('Error ensuring coach under review message:', err);
