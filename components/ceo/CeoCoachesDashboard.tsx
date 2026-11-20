@@ -55,28 +55,32 @@ export default function CeoCoachesDashboard({
     'Incomplete profile details (pricing or coaching bio).',
   ];
 
-  // Derived Counts
-  const pendingCount = useMemo(() => {
-    return coaches.filter(
-      (c) => c.verification_status === 'pending_review' || (!c.is_verified && c.verification_status !== 'rejected')
-    ).length;
-  }, [coaches]);
-
+  // Derived Counts (strictly mutually exclusive)
   const approvedCount = useMemo(() => {
-    return coaches.filter((c) => c.verification_status === 'approved' || c.is_verified).length;
+    return coaches.filter(
+      (c) => c.verification_status === 'approved' || (c.is_verified && c.verification_status !== 'pending_review' && c.verification_status !== 'rejected')
+    ).length;
   }, [coaches]);
 
   const rejectedCount = useMemo(() => {
     return coaches.filter((c) => c.verification_status === 'rejected').length;
   }, [coaches]);
 
+  const pendingCount = useMemo(() => {
+    return coaches.filter((c) => {
+      const isApproved = c.verification_status === 'approved' || (c.is_verified && c.verification_status !== 'pending_review' && c.verification_status !== 'rejected');
+      const isRejected = c.verification_status === 'rejected';
+      return !isApproved && !isRejected;
+    }).length;
+  }, [coaches]);
+
   // Filtered List
   const filteredCoaches = useMemo(() => {
     return coaches.filter((c) => {
-      // Status filtering
-      const isPending = c.verification_status === 'pending_review' || (!c.is_verified && c.verification_status !== 'rejected');
-      const isApproved = c.verification_status === 'approved' || c.is_verified;
-      const isRejected = c.verification_status === 'rejected';
+      // Status filtering (strictly mutually exclusive)
+      const isApproved = c.verification_status === 'approved' || (c.is_verified && c.verification_status !== 'pending_review' && c.verification_status !== 'rejected');
+      const isRejected = !isApproved && c.verification_status === 'rejected';
+      const isPending = !isApproved && !isRejected;
 
       if (statusFilter === 'pending' && !isPending) return false;
       if (statusFilter === 'approved' && !isApproved) return false;
@@ -299,11 +303,13 @@ export default function CeoCoachesDashboard({
           </View>
         ) : (
           filteredCoaches.map((coach) => {
-            const isPending =
-              coach.verification_status === 'pending_review' ||
-              (!coach.is_verified && coach.verification_status !== 'rejected');
-            const isApproved = coach.verification_status === 'approved' || coach.is_verified;
-            const isRejected = coach.verification_status === 'rejected';
+            const isApproved =
+              coach.verification_status === 'approved' ||
+              (coach.is_verified &&
+                coach.verification_status !== 'pending_review' &&
+                coach.verification_status !== 'rejected');
+            const isRejected = !isApproved && coach.verification_status === 'rejected';
+            const isPending = !isApproved && !isRejected;
 
             const domainBg =
               coach.domain === 'Football'
@@ -336,7 +342,7 @@ export default function CeoCoachesDashboard({
                   <View style={styles.coachInfoWrap}>
                     <View style={styles.coachTitleRow}>
                       <Text style={styles.coachName}>{coach.name}</Text>
-                      {/* Status Badge */}
+                      {/* Strictly Mutually Exclusive Status Badge */}
                       {isPending && (
                         <View style={styles.pendingBadge}>
                           <Ionicons name="time" size={12} color="#F59E0B" />
@@ -379,7 +385,11 @@ export default function CeoCoachesDashboard({
                       <View style={styles.statMiniItem}>
                         <Text style={styles.statMiniLabel}>Experience:</Text>
                         <Text style={styles.statMiniVal}>
-                          {coach.experience_years ? `${coach.experience_years} Years` : '3+ Years'}
+                          {coach.experience_years && coach.experience_years < 60
+                            ? `${coach.experience_years} Years`
+                            : coach.experience_years === 510
+                            ? '5-10 Years'
+                            : '3+ Years'}
                         </Text>
                       </View>
                       <View style={styles.statMiniDivider} />

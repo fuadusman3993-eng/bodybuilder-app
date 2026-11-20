@@ -15,6 +15,7 @@ import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
 import { syncUserProfile } from '../lib/profileService';
 import { supabase } from '../lib/supabase';
+import { sendOfficialFitPulseMessage } from '../lib/officialChatService';
 
 // ── Domain & Specialty Configurations ─────────────────────────────────────────
 export type CoachDomain = 'Fitness' | 'Football' | 'Health';
@@ -304,7 +305,8 @@ export default function CoachOnboardingScreen() {
         uploadedIdUrl = await uploadDocImage(idCardUri, 'id');
       }
 
-      const yearsNum = parseInt(experience.replace(/\D/g, ''), 10) || 3;
+      const match = experience.match(/\d+/);
+      const yearsNum = match ? parseInt(match[0], 10) : 3;
       const avatarUrl = user.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
 
       // 2. Upsert into Supabase coach_profiles with STRICT 'pending_review' status!
@@ -326,7 +328,7 @@ export default function CoachOnboardingScreen() {
         has_first_aid: hasFirstAid === 'yes',
         safety_agreement_accepted: true,
         verification_status: 'pending_review',
-        is_verified: false, // Must be reviewed and approved by safety board!
+        is_verified: false, // Must be reviewed and approved by CEO safety board!
         rating: 5.0,
         total_trainees: 0,
         created_at: new Date().toISOString(),
@@ -338,16 +340,20 @@ export default function CoachOnboardingScreen() {
       }
 
       // 3. Keep Firestore & Profiles in sync
+      // IMPORTANT: Retain role as 'user' (trainee) until CEO explicitly approves!
+      const effectiveRole = (user.role === 'coach' && user.isCoachVerified) ? 'coach' : 'user';
       await updateDoc(doc(db, 'users', uid), {
         fullName: fullName.trim(),
         name: fullName.trim(),
-        role: 'coach',
+        role: effectiveRole,
+        coach_status: 'pending_review',
         domain,
         phone: phone.trim(),
         telegram: telegram.trim() || null,
         institution_name: institutionName.trim(),
         verification_status: 'pending_review',
         is_verified: false,
+        isCoachVerified: false,
         onboardingComplete: true,
         updatedAt: serverTimestamp(),
       }).catch(() => {});
@@ -355,17 +361,24 @@ export default function CoachOnboardingScreen() {
       await syncUserProfile({
         uid,
         name: fullName.trim(),
-        role: 'coach',
+        role: effectiveRole,
         bio: about.trim(),
       }).catch(() => {});
 
-      // 4. Update Zustand state
+      // 4. Update Zustand state (Applicant remains in trainee mode until CEO verifies)
       setUser({
         ...user,
-        role: 'coach',
+        role: effectiveRole,
         name: fullName.trim(),
         isCoachVerified: false,
       });
+
+      // 5. Send official confirmation message from FitPulse Safety Board in Chat
+      await sendOfficialFitPulseMessage(
+        uid,
+        `🛡️ ሰላም ${fullName.trim()}! የአሰልጣኝነት ማመልከቻዎ እና ያያያዟቸው ሰነዶች ለ FitPulse ቦርድ ደርሰዋል።\n\nበ 24–48 ሰዓት ውስጥ ሰነዶችዎ ተመርምረው ምላሽ ይሰጥዎታል። ማመልከቻዎ በይፋ እስኪጸድቅ ድረስ መለያዎ በግምገማ ላይ (Under Review) ይቆያል።\n\nማንኛውም የሰነድ ችግር ካለ ወይም ተጨማሪ ማረጋገጫ ሲያስፈልግ በዚህ ይፋዊ የ FitPulse Safety Board የውይይት መስመር መልዕክት ይደርስዎታል።\n\n— FitPulse Executive Safety Board`,
+        '🛡️ ማመልከቻዎ በግምገማ ላይ ነው (24-48 Hours)'
+      );
 
       setExistingApplication(coachData);
       setIsEditingExisting(false);
@@ -518,10 +531,21 @@ export default function CoachOnboardingScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.cancelBtn, { marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+            onPress={() => router.push('/(tabs)/chat')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubbles-outline" size={16} color="#00E676" />
+            <Text style={[styles.cancelBtnText, { color: '#00E676', fontWeight: '700' }]}>
+              Open FitPulse Safety Board Chat
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.cancelBtn, { marginTop: 4 }]}
             onPress={() => setIsEditingExisting(true)}
           >
-            <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Update or Replace Documents</Text>
+            <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>Update or Replace Documents</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

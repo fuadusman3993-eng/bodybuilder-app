@@ -45,6 +45,7 @@ interface ConvItem {
   unreadCount?: number;
   isGroup?: boolean;
   isCoach?: boolean;
+  isOfficial?: boolean;
   lastMessageSenderUid?: string;
   lastMessageIsRead?: boolean;
 }
@@ -107,10 +108,13 @@ export default function ChatScreen() {
       let totalUnread = 0;
       for (const conv of data) {
         const otherUid = conv.user1_uid === user.uid ? conv.user2_uid : conv.user1_uid;
+        const isOfficial = otherUid === 'fitpulse_official';
         const profile = profileMap[otherUid];
-        const name = profile?.name || profile?.username || 'Athlete';
-        const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`;
-        const isCoach = profile?.role === 'coach';
+        const name = isOfficial ? 'FitPulse Safety Board 🛡️' : (profile?.name || profile?.username || 'Athlete');
+        const avatar = isOfficial
+          ? 'https://ui-avatars.com/api/?name=FitPulse+Board&background=00E676&color=000&size=150&bold=true'
+          : (profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`);
+        const isCoach = isOfficial ? false : profile?.role === 'coach';
 
         let unreadCount = 0;
         try {
@@ -150,6 +154,7 @@ export default function ChatScreen() {
           lastAt: conv.last_message_at || conv.created_at,
           unreadCount,
           isCoach,
+          isOfficial,
           isGroup: false, // Future proofing
           lastMessageSenderUid,
           lastMessageIsRead,
@@ -238,7 +243,17 @@ export default function ChatScreen() {
       
       <View style={styles.convInfo}>
         <View style={styles.convTop}>
-          <Text style={[styles.convName, { color: colors.textPrimary, fontWeight: '700' }]}>{item.otherName}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+            <Text style={[styles.convName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1}>
+              {item.otherName}
+            </Text>
+            {item.isOfficial && (
+              <View style={styles.officialBadge}>
+                <Ionicons name="shield-checkmark" size={11} color="#000" />
+                <Text style={styles.officialBadgeText}>Official</Text>
+              </View>
+            )}
+          </View>
           <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted, fontWeight: '600' }]}>{timeAgo(item.lastAt)}</Text>
         </View>
         <View style={styles.convBottom}>
@@ -644,5 +659,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.2,
+  },
+  officialBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#00E676',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  officialBadgeText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

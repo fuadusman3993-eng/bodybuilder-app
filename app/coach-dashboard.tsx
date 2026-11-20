@@ -175,24 +175,37 @@ export default function CoachDashboard() {
         </View>
       </View>
 
-      {/* Verification In Progress Banner */}
+      {/* Verification In Progress Guard Banner */}
       {verificationStatus === 'pending_review' && (
-        <TouchableOpacity
-          style={styles.pendingVerificationBanner}
-          activeOpacity={0.85}
-          onPress={() => router.push('/coach-onboarding')}
-        >
-          <View style={styles.pendingBannerIcon}>
-            <Ionicons name="shield-checkmark" size={20} color="#F59E0B" />
+        <View style={styles.pendingBlockedContainer}>
+          <View style={styles.pendingBlockedIconCircle}>
+            <Ionicons name="shield-checkmark" size={36} color="#F59E0B" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.pendingBannerTitle}>Verification In Progress (በግምገማ ላይ)</Text>
-            <Text style={styles.pendingBannerSub}>
-              Credentials under review by FitPulse Safety Board. Tap to view status.
+            <Text style={styles.pendingBlockedTitle}>Verification Under Review</Text>
+            <Text style={styles.pendingBlockedAmharic}>በግምገማ ላይ ነው (24-48 Hours)</Text>
+            <Text style={styles.pendingBlockedSubtitle}>
+              To protect athletes and prevent injury, the FitPulse Safety Board manually verifies credentials within 24–48 hours.
             </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              <TouchableOpacity
+                style={styles.pendingStatusBtn}
+                onPress={() => router.push('/coach-onboarding')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.pendingStatusBtnText}>View Application</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pendingChatBtn}
+                onPress={() => router.push('/(tabs)/chat')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chatbubbles-outline" size={14} color="#00E676" />
+                <Text style={styles.pendingChatBtnText}>Open Board Chat</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
-        </TouchableOpacity>
+        </View>
       )}
 
       {/* Summary Cards */}
@@ -403,4 +416,67 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   emptyText: { fontSize: 14, color: Colors.textMuted },
+  pendingBlockedContainer: {
+    margin: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  pendingBlockedIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingBlockedTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  pendingBlockedAmharic: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  pendingBlockedSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  pendingStatusBtn: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  pendingStatusBtnText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  pendingChatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  pendingChatBtnText: {
+    color: '#00E676',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

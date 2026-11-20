@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { sendOfficialFitPulseMessage } from './officialChatService';
 
 export interface CeoUserTxItem {
   id: string;
@@ -511,39 +512,22 @@ export async function reviewCoachApplication(
       p_reason: reason || null,
     });
 
-    if (!rpcErr && data?.success) {
-      // Also sync Firestore for seamless cross-platform state
-      try {
-        const { db } = await import('./firebase');
-        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'users', coachUid), {
-          role: isApprove ? 'coach' : 'user',
-          is_verified: isApprove,
-          verification_status: isApprove ? 'approved' : 'rejected',
-          isCoachVerified: isApprove,
-          updatedAt: serverTimestamp(),
-        });
-      } catch (_) {}
+    if (rpcErr || !data?.success) {
+      // 2. Direct table fallback if RPC is not deployed yet
+      await supabase.from('coach_profiles').update({
+        verification_status: isApprove ? 'approved' : 'rejected',
+        is_verified: isApprove,
+        rejection_reason: reason || null,
+        reviewed_at: new Date().toISOString(),
+      }).eq('uid', coachUid);
 
-      return {
-        success: true,
-        message: isApprove ? 'Coach approved & verified successfully!' : 'Coach application updated.',
-      };
+      await supabase.from('profiles').update({
+        role: isApprove ? 'coach' : 'user',
+        is_verified: isApprove,
+      }).eq('uid', coachUid);
     }
 
-    // 2. Direct table fallback if RPC is not deployed yet
-    await supabase.from('coach_profiles').update({
-      verification_status: isApprove ? 'approved' : 'rejected',
-      is_verified: isApprove,
-      rejection_reason: reason || null,
-      reviewed_at: new Date().toISOString(),
-    }).eq('uid', coachUid);
-
-    if (isApprove) {
-      await supabase.from('profiles').update({ role: 'coach' }).eq('uid', coachUid);
-    }
-
-    // 3. Sync Firestore
+    // 3. Sync Firestore for seamless cross-platform state
     try {
       const { db } = await import('./firebase');
       const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
@@ -555,6 +539,26 @@ export async function reviewCoachApplication(
         updatedAt: serverTimestamp(),
       });
     } catch (_) {}
+
+    // 4. Send official direct Chat message from FitPulse Safety Board
+    try {
+      if (isApprove) {
+        await sendOfficialFitPulseMessage(
+          coachUid,
+          `🎉 እንኳን ደስ አለዎት! ያቀረቧቸው የብቃት ማረጋገጫዎች፣ የዲፕሎማ እና የመታወቂያ ሰነዶች በ FitPulse Sports & Health ቦርድ ሙሉ በሙሉ ተረጋግጠው ጸድቀዋል! 🏅\n\nመለያዎ አሁን Verified Coach ሆኗል፤ በ FitPulse መተግበሪያ ላይ ተጠቃሚዎችን እና አትሌቶችን ማሰልጠን መጀመር ይችላሉ።\n\nመልካም የስራ ጊዜ!\n— FitPulse Executive Safety Board`,
+          '🎉 Coach Application Approved! 🏅'
+        );
+      } else {
+        const rejectNote = reason || 'የቀረቡት ሰነዶች ግልጽ ስላልሆኑ እባክዎ በድጋሚ ይላኩ።';
+        await sendOfficialFitPulseMessage(
+          coachUid,
+          `⚠️ ማሳሰቢያ ከ FitPulse Safety Board፦\n\nያቀረቡት የአሰልጣኝነት ማመልከቻ የሚከተለውን ማስተካከያ ይፈልጋል፦\n\n📌 ምክንያት፦ "${rejectNote}"\n\nእባክዎ ወደ FitPulse Coach Onboarding ገጽ በመመለስ የተስተካከለ እና ግልጽ ሰነድ በድጋሚ ይላኩ። እናመሰግናለን!\n\n— FitPulse Safety & Verification Team`,
+          '⚠️ ማመልከቻዎ ማስተካከያ ያስፈልገዋል'
+        );
+      }
+    } catch (msgErr) {
+      console.warn('Failed to dispatch official chat notification:', msgErr);
+    }
 
     return {
       success: true,
