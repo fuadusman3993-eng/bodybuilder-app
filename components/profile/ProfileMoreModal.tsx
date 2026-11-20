@@ -26,6 +26,7 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
 
   const isPendingCoach = coachVerificationStatus === 'pending_review';
   const isVerifiedCoach = (user.role === 'coach' && user.isCoachVerified) || coachVerificationStatus === 'approved';
+  const isCoach = isVerifiedCoach;
 
   // Active theme & Theme Selector Modal State
   const activeTheme = useThemeStore((s) => s.getActiveTheme());

@@ -454,6 +454,8 @@ export interface PendingCoachApplication {
   bio?: string;
   created_at?: string;
   verification_status: 'pending_review' | 'approved' | 'rejected';
+  is_verified?: boolean;
+  rejection_reason?: string;
 }
 
 export async function fetchPendingCoachApplications(): Promise<PendingCoachApplication[]> {
