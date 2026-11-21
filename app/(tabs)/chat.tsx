@@ -255,8 +255,8 @@ export default function ChatScreen() {
     >
       <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: colors.primary, borderWidth: 2 } : {}]}>
         {item.isOfficial ? (
-          <View style={[styles.avatar, styles.officialAvatarCircle, { backgroundColor: colors.primary }]}>
-            <BrandLogo size="small" customScale={0.55} showText={false} iconColor="#000000" />
+          <View style={[styles.avatar, styles.officialAvatarCircle, { backgroundColor: '#000000', borderColor: colors.primary, borderWidth: 1.5 }]}>
+            <BrandLogo size="small" customScale={0.55} showText={false} iconColor={colors.primary} />
           </View>
         ) : item.otherAvatar
           ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />

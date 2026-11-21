@@ -79,8 +79,8 @@ export default function OfficialServiceModal({
 
           {/* Telegram-Style Centered Circular Avatar */}
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatarCircle, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-              <BrandLogo size="medium" customScale={0.9} showText={false} iconColor="#000000" />
+            <View style={[styles.avatarCircle, { backgroundColor: '#000000', borderColor: colors.primary, borderWidth: 2, shadowColor: colors.primary }]}>
+              <BrandLogo size="medium" customScale={0.9} showText={false} iconColor={colors.primary} />
             </View>
           </View>
 

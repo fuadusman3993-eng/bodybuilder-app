@@ -1179,8 +1179,8 @@ export default function ChatRoom() {
         >
           <View style={styles.headerAvatarWrap}>
             {otherUserUid === 'fitpulse_official' ? (
-              <View style={[styles.headerAvatar, styles.officialAvatarCircle, { backgroundColor: colors.primary }]}>
-                <BrandLogo size="small" customScale={0.48} showText={false} iconColor="#000000" />
+              <View style={[styles.headerAvatar, styles.officialAvatarCircle, { backgroundColor: '#000000', borderColor: colors.primary, borderWidth: 1.5 }]}>
+                <BrandLogo size="small" customScale={0.48} showText={false} iconColor={colors.primary} />
               </View>
             ) : otherUser.avatar && otherUser.avatar !== 'fitpulse_logo' ? (
               <Image source={{ uri: otherUser.avatar }} style={styles.headerAvatar} />
