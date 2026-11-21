@@ -17,8 +17,10 @@ import Logo from '../components/auth/Logo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
-import { loginWithEmail, loginWithGoogle, firebaseErrorMessage } from '../lib/authService';
+import { loginWithEmail, loginWithGoogle, signOut, firebaseErrorMessage } from '../lib/authService';
 import { saveLastAccount } from '../lib/savedAccountService';
+import { registerOrValidateDevice } from '../lib/deviceSecurityService';
+import DeviceVerificationModal from '../components/auth/DeviceVerificationModal';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -102,6 +104,10 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // Two-Device 2FA State
+  const [pending2FAUser, setPending2FAUser] = useState<{ uid: string; isComplete: boolean } | null>(null);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+
   useEffect(() => {
     // Android hardware back: prevent navigating back to tabs / keep on login
     const onBackPress = () => {
@@ -144,6 +150,18 @@ export default function LoginScreen() {
       const user = await loginWithEmail(email, password);
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
+
+      // Check multi-device security rules (Max 2 devices)
+      const devResult = await registerOrValidateDevice(user.uid);
+
+      if (devResult.status === 'LIMIT_REACHED') {
+        await signOut().catch(() => {});
+        setMainError(
+          'Authorized device limit reached (Max 2 devices allowed). Please log out from another device or terminate it in Settings to sign in on this device.'
+        );
+        return;
+      }
+
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
 
       // Save for quick One-Tap login suggestion next time
@@ -153,6 +171,12 @@ export default function LoginScreen() {
         email: user.email || email,
         authProvider: 'password',
       });
+
+      if (devResult.status === 'REQUIRES_2FA') {
+        setPending2FAUser({ uid: user.uid, isComplete });
+        setShow2FAModal(true);
+        return;
+      }
       
       if (isComplete) {
         router.replace('/(tabs)');
@@ -173,6 +197,18 @@ export default function LoginScreen() {
       const user = await loginWithGoogle();
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
+
+      // Check multi-device security rules (Max 2 devices)
+      const devResult = await registerOrValidateDevice(user.uid);
+
+      if (devResult.status === 'LIMIT_REACHED') {
+        await signOut().catch(() => {});
+        setMainError(
+          'Authorized device limit reached (Max 2 devices allowed). Please log out from another device or terminate it in Settings to sign in on this device.'
+        );
+        return;
+      }
+
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
 
       // Save for quick One-Tap login suggestion next time
@@ -183,6 +219,12 @@ export default function LoginScreen() {
         avatar: user.photoURL || undefined,
         authProvider: 'google',
       });
+
+      if (devResult.status === 'REQUIRES_2FA') {
+        setPending2FAUser({ uid: user.uid, isComplete });
+        setShow2FAModal(true);
+        return;
+      }
       
       // On the login page, Google sign-in always takes the user straight to the app
       router.replace('/(tabs)');
@@ -193,6 +235,22 @@ export default function LoginScreen() {
     } finally {
       setIsGoogleLoading(false);
     }
+  };
+
+  const handle2FASuccess = () => {
+    setShow2FAModal(false);
+    if (pending2FAUser?.isComplete) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/create-profile');
+    }
+    setPending2FAUser(null);
+  };
+
+  const handle2FACancel = async () => {
+    setShow2FAModal(false);
+    setPending2FAUser(null);
+    await signOut().catch(() => {});
   };
 
   return (
@@ -304,6 +362,15 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {pending2FAUser && (
+        <DeviceVerificationModal
+          visible={show2FAModal}
+          uid={pending2FAUser.uid}
+          onSuccess={handle2FASuccess}
+          onCancel={handle2FACancel}
+        />
+      )}
     </SafeAreaView>
   );
 }

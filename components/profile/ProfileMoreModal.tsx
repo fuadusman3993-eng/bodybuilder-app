@@ -170,11 +170,11 @@ export default function ProfileMoreModal({ visible, onClose }: ProfileMoreModalP
                   </View>
                 </TouchableOpacity>
 
-                {/* General (Account / Profile Edit) */}
+                {/* General Settings */}
                 <TouchableOpacity
                   style={styles.menuItem}
                   activeOpacity={0.7}
-                  onPress={() => handleNavigate('/edit-profile')}
+                  onPress={() => handleNavigate('/general-settings')}
                 >
                   <View style={styles.menuItemLeft}>
                     <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
