@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { safeBack } from '../lib/navigation';
 import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
 import {
@@ -213,11 +214,21 @@ export default function SecuritySessionsScreen() {
       <View style={styles.container}>
         {/* Telegram Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            activeOpacity={0.7}
+            onPress={() => safeBack('/general-settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Active sessions</Text>
-          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            activeOpacity={0.7}
+            onPress={() => safeBack('/general-settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Ionicons name="close" size={22} color="#8a99a8" />
           </TouchableOpacity>
         </View>

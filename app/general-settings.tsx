@@ -17,6 +17,7 @@ import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
 import { signOut } from '../lib/authService';
+import { safeBack } from '../lib/navigation';
 
 export default function GeneralSettingsScreen() {
   const router = useRouter();
@@ -117,8 +118,13 @@ export default function GeneralSettingsScreen() {
       <View style={styles.appCardContainer}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border || '#202020' }]}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary || '#FFFFFF'} />
+          <TouchableOpacity
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            onPress={() => safeBack('/(tabs)/profile')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary || '#FFFFFF'} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Settings & Privacy</Text>
           <View style={{ width: 36 }} />
@@ -534,7 +540,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
