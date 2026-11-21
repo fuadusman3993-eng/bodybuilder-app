@@ -23,8 +23,40 @@ export default function GeneralSettingsScreen() {
   const { user, setUser } = useUserStore();
   const { colors } = useTheme();
 
+  const [profile, setProfile] = useState<any>(null);
+  const [isVerifiedCoach, setIsVerifiedCoach] = useState(false);
+
   // Active sub-modal state (for items with interactive preferences)
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Load authoritative profile and verified coach status
+  React.useEffect(() => {
+    if (user.uid) {
+      import('../lib/profileService').then(({ getProfile }) => {
+        getProfile(user.uid!).then((p) => {
+          if (p) setProfile(p);
+        });
+      });
+      import('../lib/supabase').then(({ supabase }) => {
+        supabase
+          .from('coach_profiles')
+          .select('is_verified, verification_status')
+          .eq('uid', user.uid)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.is_verified || data?.verification_status === 'approved') {
+              setIsVerifiedCoach(true);
+            } else {
+              setIsVerifiedCoach(false);
+            }
+          });
+      });
+    }
+  }, [user.uid]);
+
+  const displayName = profile?.name || user.name || 'FitPulse Athlete';
+  const displayEmail = profile?.email || user.email || 'athlete@fitpulse.app';
+  const roleText = isVerifiedCoach ? 'Verified Coach' : 'Athlete';
 
   // Notification Preferences State
   const [notifMessages, setNotifMessages] = useState(true);
@@ -82,33 +114,34 @@ export default function GeneralSettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background || '#000000' }]} edges={['top', 'bottom']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border || '#202020' }]}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary || '#FFFFFF'} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Settings & Privacy</Text>
-        <View style={{ width: 36 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        {/* User Card */}
-        <View style={[styles.userCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#202020' }]}>
-          <View style={[styles.userAvatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.userAvatarText}>
-              {user.name ? user.name.slice(0, 2).toUpperCase() : 'FP'}
-            </Text>
-          </View>
-          <View style={styles.userCardInfo}>
-            <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name || 'FitPulse Athlete'}</Text>
-            <Text style={[styles.userEmail, { color: colors.textMuted }]}>{user.email || 'athlete@fitpulse.app'}</Text>
-          </View>
-          <View style={[styles.roleBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}>
-            <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
-              {user.role === 'coach' ? 'Coach' : 'Athlete'}
-            </Text>
-          </View>
+      <View style={styles.appCardContainer}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.border || '#202020' }]}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary || '#FFFFFF'} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Settings & Privacy</Text>
+          <View style={{ width: 36 }} />
         </View>
+
+        <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+          {/* User Card */}
+          <View style={[styles.userCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#202020' }]}>
+            <View style={[styles.userAvatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.userAvatarText}>
+                {displayName ? displayName.slice(0, 2).toUpperCase() : 'FP'}
+              </Text>
+            </View>
+            <View style={styles.userCardInfo}>
+              <Text style={[styles.userName, { color: colors.textPrimary }]}>{displayName}</Text>
+              <Text style={[styles.userEmail, { color: colors.textMuted }]}>{displayEmail}</Text>
+            </View>
+            <View style={[styles.roleBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}>
+              <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
+                {roleText}
+              </Text>
+            </View>
+          </View>
 
         {/* ── 8 MAIN SETTINGS ITEMS FROM USER IMAGE ── */}
         <View style={[styles.menuContainer, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#202020' }]}>
@@ -264,6 +297,7 @@ export default function GeneralSettingsScreen() {
           FitPulse v2.5.0 (Build 2026.11) • International Edition
         </Text>
       </ScrollView>
+      </View>
 
       {/* ── MODALS FOR DETAILED PREFERENCES ── */}
 
@@ -484,6 +518,12 @@ export default function GeneralSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  appCardContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',

@@ -15,6 +15,7 @@ export interface DeviceSession {
   deviceId: string;
   deviceName: string;
   deviceType: 'mobile' | 'desktop' | 'tablet';
+  clientApp: string; // e.g. "FitPulse Web 2.5.0 x64" or "FitPulse Android 2.5.0"
   location: string;
   ip?: string;
   lastActive: any;
@@ -23,6 +24,7 @@ export interface DeviceSession {
 }
 
 const DEVICE_ID_KEY = 'fitpulse_device_id';
+const CUSTOM_NAME_KEY = 'fitpulse_custom_device_name';
 
 /**
  * Returns or generates a persistent unique Device ID for this client.
@@ -41,12 +43,40 @@ export function getLocalDeviceId(): string {
   return 'dev_' + Platform.OS + '_' + Date.now().toString(36);
 }
 
+export function getCustomDeviceName(): string | null {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return window.localStorage.getItem(CUSTOM_NAME_KEY);
+    } catch (_) {}
+  }
+  return null;
+}
+
+export function setCustomDeviceName(name: string): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(CUSTOM_NAME_KEY, name);
+    } catch (_) {}
+  }
+}
+
 /**
- * Parses user agent to detect human-readable phone model or desktop OS.
+ * Accurately detects client hardware, operating system, and client app version.
+ * Prioritizes user's custom device name (e.g. "HP EliteBook 830 G6") if set via Rename.
  */
-export function getLocalDeviceName(): { name: string; type: 'mobile' | 'desktop' | 'tablet' } {
+export function detectClientHardware(): {
+  name: string;
+  type: 'mobile' | 'desktop' | 'tablet';
+  clientApp: string;
+} {
+  const custom = getCustomDeviceName();
+
   if (typeof window === 'undefined' || !navigator?.userAgent) {
-    return { name: Platform.OS === 'ios' ? 'Apple iPhone' : 'Mobile Device', type: 'mobile' };
+    return {
+      name: custom || (Platform.OS === 'ios' ? 'Apple iPhone' : 'Mobile Device'),
+      type: 'mobile',
+      clientApp: 'FitPulse Mobile 2.5.0',
+    };
   }
 
   const ua = navigator.userAgent;
@@ -58,36 +88,61 @@ export function getLocalDeviceName(): { name: string; type: 'mobile' | 'desktop'
     type = 'mobile';
   }
 
-  let name = 'Web Browser';
+  const is64 = /WOW64|Win64|x86_64|x64/i.test(ua);
+  const arch = is64 ? ' x64' : '';
 
-  // Specific phone brand checks
-  if (/iPhone/i.test(ua)) {
-    name = 'Apple iPhone';
-  } else if (/iPad/i.test(ua)) {
-    name = 'Apple iPad';
-  } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
-    name = 'Samsung Galaxy';
-  } else if (/Tecno/i.test(ua)) {
-    name = 'Tecno Mobile';
-  } else if (/Infinix/i.test(ua)) {
-    name = 'Infinix Phone';
-  } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
-    name = 'Xiaomi / Redmi';
-  } else if (/Pixel/i.test(ua)) {
-    name = 'Google Pixel';
-  } else if (/Huawei|HONOR/i.test(ua)) {
-    name = 'Huawei Device';
-  } else if (/Android/i.test(ua)) {
-    name = 'Android Phone';
-  } else if (/Windows NT/i.test(ua)) {
-    name = 'Windows PC';
+  let clientApp = 'FitPulse Web 2.5.0' + arch;
+  if (/Android/i.test(ua)) {
+    clientApp = 'FitPulse Android 2.5.0';
+  } else if (/iPhone|iPad/i.test(ua)) {
+    clientApp = 'FitPulse iOS 2.5.0';
   } else if (/Macintosh|Mac OS X/i.test(ua)) {
-    name = 'MacBook / macOS';
-  } else if (/Linux/i.test(ua)) {
-    name = 'Linux PC';
+    clientApp = 'FitPulse Desktop 2.5.0 (macOS)';
+  } else if (/Windows NT/i.test(ua)) {
+    clientApp = 'FitPulse Web 2.5.0' + arch;
   }
 
-  return { name, type };
+  // Detect realistic default hardware name if not renamed
+  let defaultName = 'Desktop PC';
+  if (/Windows NT 10.0/i.test(ua)) {
+    defaultName = 'Windows PC (x64)';
+  } else if (/Windows NT/i.test(ua)) {
+    defaultName = 'Windows PC';
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    defaultName = 'Apple Mac';
+  } else if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+    defaultName = 'Linux PC';
+  } else if (/iPhone/i.test(ua)) {
+    defaultName = 'Apple iPhone';
+  } else if (/iPad/i.test(ua)) {
+    defaultName = 'Apple iPad';
+  } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
+    defaultName = 'Samsung Galaxy';
+  } else if (/Tecno/i.test(ua)) {
+    defaultName = 'Tecno Mobile';
+  } else if (/Infinix/i.test(ua)) {
+    defaultName = 'Infinix Phone';
+  } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
+    defaultName = 'Xiaomi / Redmi';
+  } else if (/Pixel/i.test(ua)) {
+    defaultName = 'Google Pixel';
+  } else if (/Android/i.test(ua)) {
+    defaultName = 'Android Device';
+  }
+
+  return {
+    name: custom || defaultName,
+    type,
+    clientApp,
+  };
+}
+
+/**
+ * Fallback backward compatibility for getLocalDeviceName
+ */
+export function getLocalDeviceName(): { name: string; type: 'mobile' | 'desktop' | 'tablet' } {
+  const hw = detectClientHardware();
+  return { name: hw.name, type: hw.type };
 }
 
 /**
@@ -110,6 +165,41 @@ export function getLocalDeviceLocation(): string {
 }
 
 /**
+ * Fetches real client public IP and real city/country using client-side IP Geolocation.
+ */
+export async function fetchRealClientGeoLocation(): Promise<{ location: string; ip?: string }> {
+  if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+    try {
+      const res = await fetch('https://ipwho.is/', { cache: 'no-cache' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success !== false) {
+          const city = data.city || '';
+          const country = data.country || 'Ethiopia';
+          const loc = city ? `${city}, ${country}` : country;
+          return { location: loc, ip: data.ip };
+        }
+      }
+    } catch (_) {
+      try {
+        const res2 = await fetch('https://ipapi.co/json/');
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2 && data2.city) {
+            return {
+              location: `${data2.city}, ${data2.country_name || 'Ethiopia'}`,
+              ip: data2.ip,
+            };
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  return { location: getLocalDeviceLocation(), ip: '196.188.xxx.xxx' };
+}
+
+/**
  * Retrieves all active sessions for a given user from Firestore.
  */
 export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
@@ -123,15 +213,17 @@ export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
 
     snap.forEach((d) => {
       const data = d.data();
+      const isCurrent = d.id === currentDevId;
       sessions.push({
         deviceId: d.id,
-        deviceName: data.deviceName || 'Authorized Device',
-        deviceType: data.deviceType || 'mobile',
-        location: data.location || 'Unknown Location',
+        deviceName: isCurrent && getCustomDeviceName() ? getCustomDeviceName()! : (data.deviceName || 'Authorized Device'),
+        deviceType: data.deviceType || 'desktop',
+        clientApp: data.clientApp || (data.deviceType === 'desktop' ? 'FitPulse Web 2.5.0 x64' : 'FitPulse Android 2.5.0'),
+        location: data.location || 'Ethiopia',
         ip: data.ip || '196.188.xxx.xxx',
         lastActive: data.lastActive || data.createdAt,
         createdAt: data.createdAt,
-        isCurrent: d.id === currentDevId,
+        isCurrent,
       });
     });
 
@@ -140,6 +232,63 @@ export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
   } catch (err) {
     console.warn('Error fetching active sessions:', err);
     return [];
+  }
+}
+
+/**
+ * Ensures the current device is immediately synced and registered in Firestore.
+ */
+export async function syncCurrentDeviceSession(uid: string): Promise<DeviceSession> {
+  const currentDevId = getLocalDeviceId();
+  const hw = detectClientHardware();
+  const geo = await fetchRealClientGeoLocation();
+
+  const sessionData = {
+    deviceId: currentDevId,
+    deviceName: hw.name,
+    deviceType: hw.type,
+    clientApp: hw.clientApp,
+    location: geo.location,
+    ip: geo.ip || '196.188.xxx.xxx',
+    lastActive: serverTimestamp(),
+  };
+
+  try {
+    const ref = doc(db, 'users', uid, 'active_sessions', currentDevId);
+    await setDoc(ref, sessionData, { merge: true });
+  } catch (err) {
+    console.warn('Error syncing current session:', err);
+  }
+
+  return {
+    ...sessionData,
+    createdAt: Date.now(),
+    isCurrent: true,
+  };
+}
+
+/**
+ * Updates a device name (e.g. from the Telegram-style Rename feature).
+ */
+export async function updateDeviceName(
+  uid: string,
+  deviceId: string,
+  newName: string
+): Promise<boolean> {
+  if (!uid || !deviceId || !newName.trim()) return false;
+  const clean = newName.trim();
+  const currentDevId = getLocalDeviceId();
+
+  try {
+    if (deviceId === currentDevId) {
+      setCustomDeviceName(clean);
+    }
+    const ref = doc(db, 'users', uid, 'active_sessions', deviceId);
+    await setDoc(ref, { deviceName: clean }, { merge: true });
+    return true;
+  } catch (err) {
+    console.warn('Error updating device name:', err);
+    return false;
   }
 }
 
@@ -156,8 +305,13 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
   if (!uid) return { status: 'AUTHORIZED' };
 
   const deviceId = getLocalDeviceId();
-  const { name: deviceName, type: deviceType } = getLocalDeviceName();
-  const location = getLocalDeviceLocation();
+  const hw = detectClientHardware();
+  const geo = await fetchRealClientGeoLocation();
+  const deviceName = hw.name;
+  const deviceType = hw.type;
+  const clientApp = hw.clientApp;
+  const location = geo.location;
+  const ip = geo.ip || '196.188.xxx.xxx';
 
   try {
     const sessionDocRef = doc(db, 'users', uid, 'active_sessions', deviceId);
@@ -170,7 +324,9 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
         {
           deviceName,
           deviceType,
+          clientApp,
           location,
+          ip,
           lastActive: serverTimestamp(),
         },
         { merge: true }
@@ -196,7 +352,9 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
         deviceId,
         deviceName,
         deviceType,
+        clientApp,
         location,
+        ip,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
       });
@@ -204,7 +362,6 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
     }
 
     // Case C: Exactly 1 existing active device -> Secondary device attempting login!
-    // Generate secure 6-digit OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
@@ -214,7 +371,9 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
       deviceId,
       deviceName,
       deviceType,
+      clientApp,
       location,
+      ip,
       expiresAt,
       createdAt: serverTimestamp(),
     });
@@ -233,7 +392,6 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
     };
   } catch (err) {
     console.warn('Error in registerOrValidateDevice:', err);
-    // Graceful fallback to avoid locking users out in case of network glitch
     return { status: 'AUTHORIZED' };
   }
 }
@@ -241,7 +399,10 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
 /**
  * Validates the 6-digit verification code entered by the user on the new device.
  */
-export async function verifyDeviceCode(uid: string, enteredCode: string): Promise<{ success: boolean; error?: string }> {
+export async function verifyDeviceCode(
+  uid: string,
+  enteredCode: string
+): Promise<{ success: boolean; error?: string }> {
   if (!uid || !enteredCode) return { success: false, error: 'Code is required.' };
 
   const cleanCode = enteredCode.trim().replace(/\s+/g, '');
@@ -269,9 +430,11 @@ export async function verifyDeviceCode(uid: string, enteredCode: string): Promis
     const sessionDocRef = doc(db, 'users', uid, 'active_sessions', currentDevId);
     await setDoc(sessionDocRef, {
       deviceId: currentDevId,
-      deviceName: data.deviceName || getLocalDeviceName().name,
-      deviceType: data.deviceType || getLocalDeviceName().type,
+      deviceName: data.deviceName || detectClientHardware().name,
+      deviceType: data.deviceType || detectClientHardware().type,
+      clientApp: data.clientApp || detectClientHardware().clientApp,
       location: data.location || getLocalDeviceLocation(),
+      ip: data.ip || '196.188.xxx.xxx',
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     });

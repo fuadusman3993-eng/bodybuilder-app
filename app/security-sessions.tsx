@@ -9,18 +9,22 @@ import {
   Alert,
   Platform,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors } from '../constants/colors';
 import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
 import {
   getActiveSessions,
+  syncCurrentDeviceSession,
+  updateDeviceName,
   terminateSession,
   terminateAllOtherSessions,
   getLocalDeviceId,
+  detectClientHardware,
   DeviceSession,
 } from '../lib/deviceSecurityService';
 
@@ -34,6 +38,15 @@ export default function SecuritySessionsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  // Rename Device Modal State
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameInput, setRenameInput] = useState('');
+  const [savingRename, setSavingRename] = useState(false);
+
+  // Inactive period selector
+  const [inactivePeriod, setInactivePeriod] = useState('6 months');
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+
   const currentDeviceId = getLocalDeviceId();
 
   const loadSessions = useCallback(async () => {
@@ -42,6 +55,9 @@ export default function SecuritySessionsScreen() {
       return;
     }
     try {
+      // 1. Ensure current session is synced with real client hardware and real IP
+      await syncCurrentDeviceSession(user.uid);
+      // 2. Fetch all active sessions
       const data = await getActiveSessions(user.uid);
       setSessions(data);
     } catch (err) {
@@ -59,6 +75,32 @@ export default function SecuritySessionsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadSessions();
+  };
+
+  const handleOpenRename = () => {
+    const cur = sessions.find((s) => s.isCurrent);
+    setRenameInput(cur?.deviceName || detectClientHardware().name || 'HP EliteBook 830 G6');
+    setShowRenameModal(true);
+  };
+
+  const handleSaveRename = async () => {
+    if (!renameInput.trim() || !user.uid) return;
+    setSavingRename(true);
+    try {
+      const ok = await updateDeviceName(user.uid, currentDeviceId, renameInput.trim());
+      if (ok) {
+        setSessions((prev) =>
+          prev.map((s) => (s.isCurrent ? { ...s, deviceName: renameInput.trim() } : s))
+        );
+        setShowRenameModal(false);
+      } else {
+        Alert.alert('Error', 'Failed to update device name.');
+      }
+    } catch (_) {
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
+      setSavingRename(false);
+    }
   };
 
   const handleTerminateSession = (targetSession: DeviceSession) => {
@@ -113,7 +155,7 @@ export default function SecuritySessionsScreen() {
 
     const count = sessions.filter((s) => !s.isCurrent).length;
     if (count === 0) {
-      Alert.alert('No other sessions', 'You only have this current device logged in.');
+      Alert.alert('No other sessions', 'There are no other active sessions to terminate.');
       return;
     }
 
@@ -133,225 +175,289 @@ export default function SecuritySessionsScreen() {
     }
   };
 
-  const getDeviceIcon = (type: string): keyof typeof Ionicons.glyphMap => {
-    switch (type) {
-      case 'desktop':
-        return 'laptop-outline';
-      case 'tablet':
-        return 'tablet-portrait-outline';
-      default:
-        return 'phone-portrait-outline';
-    }
-  };
-
   const currentSession = sessions.find((s) => s.isCurrent) || {
     deviceId: currentDeviceId,
-    deviceName: 'This Device (Current Session)',
-    deviceType: 'mobile',
-    location: 'Current Location',
+    deviceName: detectClientHardware().name,
+    deviceType: detectClientHardware().type,
+    clientApp: detectClientHardware().clientApp,
+    location: 'Ethiopia',
     isCurrent: true,
+    lastActive: null,
+    createdAt: null,
   };
   const otherSessions = sessions.filter((s) => !s.isCurrent);
-  const activeCount = sessions.length > 0 ? sessions.length : 1;
+
+  const getDeviceIcon = (type: string, name: string): keyof typeof Ionicons.glyphMap => {
+    if (type === 'desktop' || /Windows|Mac|Linux|PC|Book/i.test(name)) {
+      return 'laptop-outline';
+    }
+    if (/iPhone|iPad|Apple/i.test(name)) {
+      return 'phone-portrait-outline';
+    }
+    return 'phone-portrait-outline';
+  };
+
+  const getCircleBg = (type: string, name: string): string => {
+    if (type === 'desktop' || /Windows|PC|Book/i.test(name)) {
+      return '#2AABEE'; // Telegram Blue for PC/Laptop
+    }
+    if (/iPhone|iPad|Apple/i.test(name)) {
+      return '#3b4353'; // Dark Gray for Apple
+    }
+    return '#4CAF50'; // Telegram Green for Android
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background || '#000000' }]} edges={['top', 'bottom']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border || '#202020' }]}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary || '#FFFFFF'} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Active Sessions</Text>
-        <TouchableOpacity style={styles.refreshBtn} activeOpacity={0.7} onPress={loadSessions} disabled={loading}>
-          <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollBody}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {/* Policy Summary Card */}
-        <View style={[styles.policyCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222222' }]}>
-          <View style={styles.policyHeader}>
-            <View style={[styles.policyIconBox, { backgroundColor: '#000000', borderColor: colors.primary }]}>
-              <Ionicons name="shield-checkmark" size={22} color={colors.primary} />
-            </View>
-            <View style={styles.policyTitleWrap}>
-              <Text style={[styles.policyTitle, { color: colors.textPrimary }]}>Device Security & Limits</Text>
-              <Text style={[styles.policySubtitle, { color: colors.textMuted }]}>
-                Strict 2-Device Policy: Max 2 authorized devices per account
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.policyDivider} />
-
-          <View style={styles.counterRow}>
-            <View style={styles.counterLeft}>
-              <Text style={[styles.counterLabel, { color: colors.textMuted }]}>Authorized Devices:</Text>
-              <Text style={[styles.counterValue, { color: colors.textPrimary }]}>
-                {activeCount} / 2 Connected
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.badgePill,
-                {
-                  backgroundColor: activeCount >= 2 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                  borderColor: activeCount >= 2 ? '#F59E0B' : colors.primary,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.badgePillText,
-                  { color: activeCount >= 2 ? '#F59E0B' : colors.primary },
-                ]}
-              >
-                {activeCount >= 2 ? 'Limit Reached (2/2)' : '1 Slot Available (1/2)'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.tipBox, { backgroundColor: 'rgba(255, 255, 255, 0.04)' }]}>
-            <Ionicons name="chatbubbles-outline" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-            <Text style={[styles.tipText, { color: colors.textMuted }]}>
-              When logging in on a second phone, FitPulse dispatches a 6-digit verification code directly into your{' '}
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>FitPulse Official Chat</Text>.
-            </Text>
-          </View>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
+      {/* Centered Telegram App Container */}
+      <View style={styles.container}>
+        {/* Telegram Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Active sessions</Text>
+          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7} onPress={() => router.back()}>
+            <Ionicons name="close" size={22} color="#8a99a8" />
+          </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Checking active sessions...</Text>
-          </View>
-        ) : (
-          <>
-            {/* CURRENT DEVICE SECTION */}
-            <View style={styles.sectionWrap}>
-              <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>CURRENT DEVICE</Text>
-
-              <View style={[styles.sessionCard, styles.currentCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.primary }]}>
-                <View style={styles.sessionMain}>
-                  <View style={[styles.deviceIconBox, { backgroundColor: 'rgba(0, 230, 118, 0.12)' }]}>
-                    <Ionicons name={getDeviceIcon(currentSession.deviceType)} size={26} color={colors.primary} />
-                  </View>
-                  <View style={styles.deviceInfo}>
-                    <View style={styles.deviceNameRow}>
-                      <Text style={[styles.deviceName, { color: colors.textPrimary }]}>
-                        {currentSession.deviceName}
-                      </Text>
-                      <View style={[styles.nowBadge, { backgroundColor: colors.primary }]}>
-                        <Text style={styles.nowBadgeText}>Active Now</Text>
-                      </View>
-                    </View>
-
-                    <Text style={[styles.deviceMeta, { color: colors.textMuted }]}>
-                      📍 {currentSession.location}
-                    </Text>
-                    <Text style={[styles.deviceSubMeta, { color: colors.textMuted }]}>
-                      This Phone • ID: {currentSession.deviceId.slice(0, 14)}...
-                    </Text>
-                  </View>
-                </View>
-              </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollBody}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2AABEE" />}
+        >
+          {loading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color="#2AABEE" />
+              <Text style={styles.loadingText}>Loading sessions...</Text>
             </View>
-
-            {/* OTHER AUTHORIZED SESSIONS */}
-            <View style={styles.sectionWrap}>
-              <View style={styles.headingRow}>
-                <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>OTHER AUTHORIZED DEVICES</Text>
-                {otherSessions.length > 0 && (
-                  <TouchableOpacity
-                    onPress={handleTerminateAllOthers}
-                    disabled={actionLoadingId === 'all'}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.terminateAllText, { color: '#EF4444' }]}>
-                      {actionLoadingId === 'all' ? 'Terminating...' : 'Terminate All Others'}
-                    </Text>
+          ) : (
+            <>
+              {/* ── SECTION 1: THIS DEVICE ── */}
+              <View style={styles.sectionWrap}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.telegramSectionTitle}>This device</Text>
+                  <TouchableOpacity activeOpacity={0.7} onPress={handleOpenRename}>
+                    <Text style={styles.renameLink}>Rename</Text>
                   </TouchableOpacity>
-                )}
-              </View>
+                </View>
 
-              {otherSessions.length === 0 ? (
-                <View style={[styles.emptySlotCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222222' }]}>
-                  <View style={[styles.emptyIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-                    <Ionicons name="phone-portrait-outline" size={24} color={colors.textMuted} />
+                {/* Current Device Row */}
+                <View style={styles.deviceRow}>
+                  <View
+                    style={[
+                      styles.deviceCircle,
+                      { backgroundColor: getCircleBg(currentSession.deviceType, currentSession.deviceName) },
+                    ]}
+                  >
+                    {currentSession.deviceType === 'desktop' ? (
+                      <Ionicons name="laptop-outline" size={24} color="#FFFFFF" />
+                    ) : /Android/i.test(currentSession.deviceName) ? (
+                      <Ionicons name="logo-android" size={24} color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="phone-portrait-outline" size={24} color="#FFFFFF" />
+                    )}
                   </View>
-                  <View style={styles.emptySlotInfo}>
-                    <Text style={[styles.emptySlotTitle, { color: colors.textPrimary }]}>
-                      Slot 2 Available
-                    </Text>
-                    <Text style={[styles.emptySlotSubtitle, { color: colors.textMuted }]}>
-                      No secondary phone is currently connected. You can log in on 1 additional device.
+
+                  <View style={styles.deviceTextWrap}>
+                    <Text style={styles.deviceNameText}>{currentSession.deviceName}</Text>
+                    <Text style={styles.deviceAppText}>{currentSession.clientApp || 'FitPulse Web 2.5.0 x64'}</Text>
+                    <Text style={styles.deviceLocationText}>
+                      {currentSession.location || 'Ethiopia'}
+                      {currentSession.ip ? ` • ${currentSession.ip}` : ''}
                     </Text>
                   </View>
                 </View>
-              ) : (
-                otherSessions.map((item) => (
-                  <View
-                    key={item.deviceId}
-                    style={[styles.sessionCard, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222222' }]}
-                  >
-                    <View style={styles.sessionMain}>
-                      <View style={[styles.deviceIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.06)' }]}>
-                        <Ionicons name={getDeviceIcon(item.deviceType)} size={26} color={colors.textPrimary} />
-                      </View>
-                      <View style={styles.deviceInfo}>
-                        <Text style={[styles.deviceName, { color: colors.textPrimary }]}>
-                          {item.deviceName}
-                        </Text>
-                        <Text style={[styles.deviceMeta, { color: colors.textMuted }]}>
-                          📍 {item.location}
-                        </Text>
-                        <Text style={[styles.deviceSubMeta, { color: colors.textMuted }]}>
-                          Device 2 • ID: {item.deviceId.slice(0, 14)}...
-                        </Text>
-                      </View>
+
+                {/* Terminate all other sessions button */}
+                <TouchableOpacity
+                  style={styles.terminateAllRow}
+                  activeOpacity={0.7}
+                  onPress={handleTerminateAllOthers}
+                  disabled={actionLoadingId === 'all'}
+                >
+                  <Ionicons name="hand-left-outline" size={20} color="#FF595A" style={styles.terminateIcon} />
+                  <Text style={styles.terminateAllText}>
+                    {actionLoadingId === 'all' ? 'Terminating...' : 'Terminate all other sessions'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.sectionCaption}>Logs out all devices except for this one.</Text>
+              </View>
+
+              {/* ── SECTION 2: ACTIVE DEVICES ── */}
+              <View style={styles.sectionWrap}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.telegramSectionTitle}>Active Devices</Text>
+                  <Text style={styles.deviceCounterPill}>
+                    {sessions.length} / 2 Connected
+                  </Text>
+                </View>
+
+                {otherSessions.length === 0 ? (
+                  <View style={styles.slotAvailableBox}>
+                    <View style={[styles.deviceCircle, { backgroundColor: '#232e3c' }]}>
+                      <Ionicons name="phone-portrait-outline" size={22} color="#708499" />
                     </View>
-
-                    <TouchableOpacity
-                      style={styles.terminateBtn}
-                      activeOpacity={0.7}
-                      onPress={() => handleTerminateSession(item)}
-                      disabled={actionLoadingId === item.deviceId}
-                    >
-                      {actionLoadingId === item.deviceId ? (
-                        <ActivityIndicator size="small" color="#EF4444" />
-                      ) : (
-                        <>
-                          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-                          <Text style={styles.terminateBtnText}>Terminate Session</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    <View style={styles.deviceTextWrap}>
+                      <Text style={styles.slotAvailableTitle}>Slot 2 Available (1 / 2 Devices)</Text>
+                      <Text style={styles.slotAvailableDesc}>
+                        No secondary phone is currently connected. To log in on a 2nd phone, enter your email and password; a 6-digit verification code will be sent to this device via FitPulse Official Chat.
+                      </Text>
+                    </View>
                   </View>
-                ))
-              )}
-            </View>
+                ) : (
+                  otherSessions.map((item) => (
+                    <View key={item.deviceId} style={styles.otherDeviceRow}>
+                      <View
+                        style={[
+                          styles.deviceCircle,
+                          { backgroundColor: getCircleBg(item.deviceType, item.deviceName) },
+                        ]}
+                      >
+                        {/Android|Samsung|Tecno|Infinix/i.test(item.deviceName) ? (
+                          <Ionicons name="logo-android" size={24} color="#FFFFFF" />
+                        ) : /Apple|iPhone|iPad/i.test(item.deviceName) ? (
+                          <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                        ) : (
+                          <Ionicons name="phone-portrait-outline" size={24} color="#FFFFFF" />
+                        )}
+                      </View>
 
-            {/* Security Notice */}
-            <View style={styles.noticeBox}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
-              <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-                If you see an unfamiliar device, terminate its session immediately and update your password in Manage Account.
+                      <View style={styles.deviceTextWrap}>
+                        <Text style={styles.deviceNameText}>{item.deviceName}</Text>
+                        <Text style={styles.deviceAppText}>{item.clientApp || 'FitPulse Android 2.5.0'}</Text>
+                        <Text style={styles.deviceLocationText}>
+                          {item.location} • Active
+                        </Text>
+                      </View>
+
+                      {/* Right ✕ button to terminate this session */}
+                      <TouchableOpacity
+                        style={styles.closeBtn}
+                        activeOpacity={0.7}
+                        onPress={() => handleTerminateSession(item)}
+                        disabled={actionLoadingId === item.deviceId}
+                      >
+                        {actionLoadingId === item.deviceId ? (
+                          <ActivityIndicator size="small" color="#FF595A" />
+                        ) : (
+                          <Ionicons name="close" size={20} color="#708499" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+
+                <Text style={styles.sectionCaption}>
+                  The official FitPulse app is available for Android, iPhone, iPad, Windows, macOS and Linux.
+                </Text>
+              </View>
+
+              {/* ── SECTION 3: TERMINATE OLD SESSIONS ── */}
+              <View style={styles.sectionWrap}>
+                <Text style={styles.telegramSectionTitle}>Terminate old sessions</Text>
+
+                <TouchableOpacity
+                  style={styles.inactivityRow}
+                  activeOpacity={0.7}
+                  onPress={() => setShowPeriodModal(true)}
+                >
+                  <Text style={styles.inactivityLabel}>If inactive for...</Text>
+                  <View style={styles.inactivityValueWrap}>
+                    <Text style={styles.inactivityValue}>{inactivePeriod}</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#708499" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </ScrollView>
+
+        {/* ── RENAME DEVICE MODAL ── */}
+        <Modal visible={showRenameModal} transparent animationType="fade" onRequestClose={() => setShowRenameModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Rename Device</Text>
+              <Text style={styles.modalSubTitle}>
+                Enter a custom name for this device (e.g. HP EliteBook 830 G6, Fuad's PC).
               </Text>
+
+              <TextInput
+                style={styles.renameTextInput}
+                value={renameInput}
+                onChangeText={setRenameInput}
+                placeholder="Device Name"
+                placeholderTextColor="#708499"
+                autoFocus
+                selectTextOnFocus
+              />
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  activeOpacity={0.7}
+                  onPress={() => setShowRenameModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSaveBtn}
+                  activeOpacity={0.8}
+                  onPress={handleSaveRename}
+                  disabled={savingRename}
+                >
+                  {savingRename ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalSaveText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </>
-        )}
-      </ScrollView>
+          </View>
+        </Modal>
+
+        {/* ── INACTIVITY PERIOD MODAL ── */}
+        <Modal visible={showPeriodModal} transparent animationType="fade" onRequestClose={() => setShowPeriodModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>If Inactive For...</Text>
+              {['1 week', '1 month', '3 months', '6 months'].map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={styles.periodOption}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setInactivePeriod(p);
+                    setShowPeriodModal(false);
+                  }}
+                >
+                  <Text style={[styles.periodOptionText, inactivePeriod === p && { color: '#2AABEE', fontWeight: '700' }]}>
+                    {p}
+                  </Text>
+                  {inactivePeriod === p && <Ionicons name="checkmark" size={18} color="#2AABEE" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#0e1621',
+  },
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    backgroundColor: '#0e1621',
   },
   header: {
     flexDirection: 'row',
@@ -360,95 +466,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+    borderBottomColor: '#17212b',
   },
-  backBtn: {
+  headerIconBtn: {
     padding: 6,
   },
   headerTitle: {
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
-  },
-  refreshBtn: {
-    padding: 6,
+    flex: 1,
+    marginLeft: 14,
   },
   scrollBody: {
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     paddingBottom: 40,
-  },
-  policyCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 18,
-    marginBottom: 20,
-  },
-  policyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  policyIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  policyTitleWrap: {
-    flex: 1,
-  },
-  policyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  policySubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  policyDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    marginVertical: 14,
-  },
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  counterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  counterLabel: {
-    fontSize: 13,
-  },
-  counterValue: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  badgePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  badgePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  tipBox: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 10,
-    borderRadius: 12,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
   },
   loadingWrap: {
     paddingVertical: 60,
@@ -456,135 +489,220 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
+    color: '#8a99a8',
     fontSize: 14,
   },
   sectionWrap: {
     marginBottom: 24,
   },
-  headingRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
     paddingHorizontal: 4,
   },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-    paddingHorizontal: 4,
-  },
-  terminateAllText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  sessionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-  },
-  currentCard: {
-    borderWidth: 1.5,
-  },
-  sessionMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  deviceIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deviceInfo: {
-    flex: 1,
-  },
-  deviceNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  deviceName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  nowBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  nowBadgeText: {
-    color: '#000000',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  deviceMeta: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  deviceSubMeta: {
-    fontSize: 11,
-  },
-  terminateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
-  },
-  terminateBtnText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  emptySlotCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    padding: 16,
-  },
-  emptyIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptySlotInfo: {
-    flex: 1,
-  },
-  emptySlotTitle: {
+  telegramSectionTitle: {
+    color: '#2AABEE',
     fontSize: 14,
     fontWeight: '700',
+  },
+  renameLink: {
+    color: '#2AABEE',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deviceCounterPill: {
+    color: '#708499',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#17212b',
+    padding: 14,
+    borderRadius: 12,
+    gap: 14,
+  },
+  deviceCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deviceTextWrap: {
+    flex: 1,
+  },
+  deviceNameText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  deviceAppText: {
+    color: '#8a99a8',
+    fontSize: 13,
     marginBottom: 2,
   },
-  emptySlotSubtitle: {
+  deviceLocationText: {
+    color: '#708499',
+    fontSize: 12,
+  },
+  terminateAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    marginTop: 8,
+  },
+  terminateIcon: {
+    marginRight: 10,
+  },
+  terminateAllText: {
+    color: '#FF595A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionCaption: {
+    color: '#708499',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+    paddingHorizontal: 6,
+  },
+  slotAvailableBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#17212b',
+    padding: 14,
+    borderRadius: 12,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#232e3c',
+    borderStyle: 'dashed',
+  },
+  slotAvailableTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  slotAvailableDesc: {
+    color: '#708499',
     fontSize: 12,
     lineHeight: 16,
   },
-  noticeBox: {
+  otherDeviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 8,
+    backgroundColor: '#17212b',
+    padding: 14,
+    borderRadius: 12,
+    gap: 14,
+    marginBottom: 10,
+  },
+  closeBtn: {
+    padding: 8,
+  },
+  inactivityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#17212b',
+    padding: 14,
+    borderRadius: 12,
     marginTop: 8,
   },
-  noticeText: {
+  inactivityLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  inactivityValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  inactivityValue: {
+    color: '#2AABEE',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalOverlay: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#17212b',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#232e3c',
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  modalSubTitle: {
+    color: '#8a99a8',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  renameTextInput: {
+    backgroundColor: '#0e1621',
+    borderWidth: 1,
+    borderColor: '#2AABEE',
+    borderRadius: 10,
+    color: '#FFFFFF',
+    fontSize: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  modalCancelText: {
+    color: '#8a99a8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalSaveBtn: {
+    backgroundColor: '#2AABEE',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  modalSaveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  periodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#232e3c',
+  },
+  periodOptionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
