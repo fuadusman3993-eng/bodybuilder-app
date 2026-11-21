@@ -256,7 +256,7 @@ export default function ChatScreen() {
       <View style={[styles.avatarWrap, item.unreadCount ? { borderColor: colors.primary, borderWidth: 2 } : {}]}>
         {item.isOfficial ? (
           <View style={[styles.avatar, styles.officialAvatarCircle, { backgroundColor: colors.primary }]}>
-            <BrandLogo size="small" customScale={0.52} showText={false} textColor="#000" />
+            <BrandLogo size="small" customScale={0.55} showText={false} iconColor="#000000" />
           </View>
         ) : item.otherAvatar
           ? <Image source={{ uri: item.otherAvatar }} style={styles.avatar} />
@@ -274,11 +274,6 @@ export default function ChatScreen() {
             </Text>
             {item.isOfficial && (
               <Ionicons name="checkmark-circle" size={15} color="#00E676" />
-            )}
-            {item.isOfficial && (
-              <View style={[styles.officialBadge, { backgroundColor: 'rgba(0, 230, 118, 0.15)', borderWidth: 1, borderColor: 'rgba(0, 230, 118, 0.3)' }]}>
-                <Text style={[styles.officialBadgeText, { color: '#00E676', fontWeight: '700' }]}>service</Text>
-              </View>
             )}
           </View>
           <Text style={[styles.convTime, { color: item.unreadCount ? colors.primary : colors.textMuted, fontWeight: '600' }]}>{timeAgo(item.lastAt)}</Text>

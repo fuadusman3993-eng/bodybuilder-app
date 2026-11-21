@@ -12,7 +12,7 @@ export default function NotFoundScreen() {
 
   useEffect(() => {
     // Automatically report broken route / 404 to CEO Dashboard
-    const msg = `ተጠቃሚው የሌለ ወይም የተበላሸ ገጽ ከፍቶ አልሰራም (404 Page Not Found): ${pathname || 'Unknown Route'}`;
+    const msg = `User accessed non-existent or broken route (404 Page Not Found): ${pathname || 'Unknown Route'}`;
     captureSystemError(msg, {
       component: 'AppNavigation',
       severity: 'critical',
@@ -24,9 +24,9 @@ export default function NotFoundScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text style={styles.title}>ገጹ አልተገኘም (Page Not Found)</Text>
+        <Text style={styles.title}>Page Not Found (404)</Text>
         <Text style={styles.subtitle}>
-          የጠየቁት ገጽ ({pathname}) በአሁኑ ሰዓት አይገኝም። ይህ ችግር ወዲያውኑ ለ CEO Mission Control ሪፖርት ተደርጓል።
+          The requested page ({pathname}) could not be found or has been moved. This event has been logged to Mission Control.
         </Text>
 
         <TouchableOpacity
@@ -35,7 +35,7 @@ export default function NotFoundScreen() {
           onPress={() => router.replace('/(tabs)')}
         >
           <Ionicons name="home-outline" size={18} color="#050B0E" />
-          <Text style={styles.homeBtnText}>ወደ ዋና ገጽ ተመለስ (Go to Home)</Text>
+          <Text style={styles.homeBtnText}>Return to Home</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

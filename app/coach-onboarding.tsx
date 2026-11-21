@@ -429,7 +429,7 @@ export default function CoachOnboardingScreen() {
                   Verification In Progress
                 </Text>
                 <Text style={[styles.statusHeroSub, { color: '#F59E0B', fontWeight: '700' }]}>
-                  በግምገማ ላይ (Under Review)
+                  Application Under Review (24–48h)
                 </Text>
               </View>
             </View>
