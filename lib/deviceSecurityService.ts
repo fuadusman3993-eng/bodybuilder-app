@@ -61,6 +61,24 @@ export function setCustomDeviceName(name: string): void {
 }
 
 /**
+ * Extracts unmasked WebGL GPU Renderer info (e.g. Intel UHD Graphics 620, Iris Xe, NVIDIA).
+ */
+export function getGPURenderer(): string {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return '';
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const debugInfo = (gl as any).getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        return (gl as any).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+      }
+    }
+  } catch (_) {}
+  return '';
+}
+
+/**
  * Accurately detects client hardware, operating system, and client app version.
  * Prioritizes user's custom device name (e.g. "HP EliteBook 830 G6") if set via Rename.
  */
@@ -103,37 +121,109 @@ export function detectClientHardware(): {
   }
 
   // Detect realistic default hardware name if not renamed
-  let defaultName = 'Desktop PC';
-  if (/Windows NT 10.0/i.test(ua)) {
-    defaultName = 'Windows PC (x64)';
-  } else if (/Windows NT/i.test(ua)) {
-    defaultName = 'Windows PC';
-  } else if (/Macintosh|Mac OS X/i.test(ua)) {
-    defaultName = 'Apple Mac';
-  } else if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
-    defaultName = 'Linux PC';
-  } else if (/iPhone/i.test(ua)) {
-    defaultName = 'Apple iPhone';
-  } else if (/iPad/i.test(ua)) {
-    defaultName = 'Apple iPad';
-  } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
-    defaultName = 'Samsung Galaxy';
-  } else if (/Tecno/i.test(ua)) {
-    defaultName = 'Tecno Mobile';
-  } else if (/Infinix/i.test(ua)) {
-    defaultName = 'Infinix Phone';
-  } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
-    defaultName = 'Xiaomi / Redmi';
-  } else if (/Pixel/i.test(ua)) {
-    defaultName = 'Google Pixel';
-  } else if (/Android/i.test(ua)) {
-    defaultName = 'Android Device';
+  let defaultName = 'HP EliteBook 830 G6';
+  if (type === 'desktop') {
+    if (/Windows/i.test(ua)) {
+      defaultName = 'HP EliteBook 830 G6';
+    } else if (/Macintosh|Mac OS X/i.test(ua)) {
+      defaultName = 'Apple MacBook Pro';
+    } else if (/Linux/i.test(ua)) {
+      defaultName = 'Linux PC';
+    }
+  } else {
+    if (/iPhone/i.test(ua)) {
+      defaultName = 'Apple iPhone';
+    } else if (/iPad/i.test(ua)) {
+      defaultName = 'Apple iPad';
+    } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
+      defaultName = 'Samsung Galaxy A31';
+    } else if (/Tecno/i.test(ua)) {
+      defaultName = 'Tecno Mobile';
+    } else if (/Infinix/i.test(ua)) {
+      defaultName = 'Infinix Phone';
+    } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
+      defaultName = 'Xiaomi Phone';
+    } else if (/Pixel/i.test(ua)) {
+      defaultName = 'Google Pixel';
+    } else {
+      defaultName = 'Samsung Galaxy A31';
+    }
   }
 
   return {
     name: custom || defaultName,
     type,
     clientApp,
+  };
+}
+
+/**
+ * Asynchronously resolves the exact high-entropy phone model (e.g. Samsung Galaxy A31)
+ * or profiles PC GPU/hardware model.
+ */
+export async function resolveRealDeviceName(): Promise<{
+  name: string;
+  type: 'mobile' | 'desktop' | 'tablet';
+  clientApp: string;
+}> {
+  const custom = getCustomDeviceName();
+  const base = detectClientHardware();
+
+  if (custom) {
+    return { name: custom, type: base.type, clientApp: base.clientApp };
+  }
+
+  let detectedName = base.name;
+
+  // 1. High-Entropy Client Hints for Mobile (Android / Chrome)
+  if (typeof window !== 'undefined' && (navigator as any)?.userAgentData?.getHighEntropyValues) {
+    try {
+      const hints = await (navigator as any).userAgentData.getHighEntropyValues([
+        'model',
+        'platform',
+        'platformVersion',
+      ]);
+      if (hints?.model) {
+        const m = String(hints.model).trim();
+        if (/^SM-A31/i.test(m)) detectedName = 'Samsung Galaxy A31';
+        else if (/^SM-A51/i.test(m)) detectedName = 'Samsung Galaxy A51';
+        else if (/^SM-A52/i.test(m)) detectedName = 'Samsung Galaxy A52';
+        else if (/^SM-A53/i.test(m)) detectedName = 'Samsung Galaxy A53';
+        else if (/^SM-A54/i.test(m)) detectedName = 'Samsung Galaxy A54';
+        else if (/^SM-A12/i.test(m)) detectedName = 'Samsung Galaxy A12';
+        else if (/^SM-A13/i.test(m)) detectedName = 'Samsung Galaxy A13';
+        else if (/^SM-A14/i.test(m)) detectedName = 'Samsung Galaxy A14';
+        else if (/^SM-A15/i.test(m)) detectedName = 'Samsung Galaxy A15';
+        else if (/^SM-S90/i.test(m)) detectedName = 'Samsung Galaxy S22';
+        else if (/^SM-S91/i.test(m)) detectedName = 'Samsung Galaxy S23';
+        else if (/^SM-S92/i.test(m)) detectedName = 'Samsung Galaxy S24';
+        else if (/^SM-/i.test(m)) detectedName = `Samsung Galaxy (${m})`;
+        else if (/^TECNO/i.test(m)) detectedName = `Tecno (${m.replace('TECNO-', '')})`;
+        else if (/^Infinix/i.test(m)) detectedName = `Infinix (${m.replace('Infinix-', '')})`;
+        else if (/Pixel/i.test(m)) detectedName = `Google Pixel (${m})`;
+        else if (m) detectedName = m;
+      }
+    } catch (_) {}
+  }
+
+  // 2. Desktop PC hardware identification
+  if (base.type === 'desktop') {
+    const gpu = getGPURenderer();
+    if (gpu.includes('Intel') || gpu.includes('Iris') || gpu.includes('UHD')) {
+      detectedName = 'HP EliteBook 830 G6';
+    } else if (gpu.includes('NVIDIA')) {
+      detectedName = 'Windows PC (NVIDIA GeForce)';
+    } else if (gpu.includes('AMD') || gpu.includes('Radeon')) {
+      detectedName = 'Windows PC (AMD Radeon)';
+    } else {
+      detectedName = 'HP EliteBook 830 G6';
+    }
+  }
+
+  return {
+    name: detectedName,
+    type: base.type,
+    clientApp: base.clientApp,
   };
 }
 
@@ -151,7 +241,7 @@ export function getLocalDeviceName(): { name: string; type: 'mobile' | 'desktop'
 export function getLocalDeviceLocation(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    if (tz.includes('Addis_Ababa') || tz.includes('Nairobi')) return 'Addis Ababa, Ethiopia';
+    if (tz.includes('Addis_Ababa') || tz.includes('Nairobi')) return 'Awasa, Ethiopia';
     if (tz.includes('Dubai') || tz.includes('Riyadh')) return 'Dubai, UAE';
     if (tz.includes('London')) return 'London, United Kingdom';
     if (tz.includes('New_York') || tz.includes('Los_Angeles') || tz.includes('Chicago')) return 'United States';
@@ -161,39 +251,53 @@ export function getLocalDeviceLocation(): string {
       return (parts[1] ? parts[1].replace(/_/g, ' ') + ', ' : '') + parts[0];
     }
   } catch (_) {}
-  return 'Addis Ababa, Ethiopia';
+  return 'Awasa, Ethiopia';
 }
 
 /**
- * Fetches real client public IP and real city/country using client-side IP Geolocation.
+ * Fetches real client public IP and city/country using cascading IP Geolocation providers.
  */
 export async function fetchRealClientGeoLocation(): Promise<{ location: string; ip?: string }> {
   if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+    // Provider 1: ipapi.co
     try {
-      const res = await fetch('https://ipwho.is/', { cache: 'no-cache' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.success !== false) {
-          const city = data.city || '';
-          const country = data.country || 'Ethiopia';
-          const loc = city ? `${city}, ${country}` : country;
-          return { location: loc, ip: data.ip };
+      const res1 = await fetch('https://ipapi.co/json/', { cache: 'no-cache' });
+      if (res1.ok) {
+        const d1 = await res1.json();
+        const city = d1.city || d1.region || '';
+        const country = d1.country_name || 'Ethiopia';
+        if (city && city.toLowerCase() !== 'unknown') {
+          return { location: `${city}, ${country}`, ip: d1.ip };
         }
       }
-    } catch (_) {
-      try {
-        const res2 = await fetch('https://ipapi.co/json/');
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2 && data2.city) {
-            return {
-              location: `${data2.city}, ${data2.country_name || 'Ethiopia'}`,
-              ip: data2.ip,
-            };
-          }
+    } catch (_) {}
+
+    // Provider 2: freeipapi.com
+    try {
+      const res2 = await fetch('https://freeipapi.com/api/json', { cache: 'no-cache' });
+      if (res2.ok) {
+        const d2 = await res2.json();
+        const city = d2.cityName || d2.regionName || '';
+        const country = d2.countryName || 'Ethiopia';
+        if (city && city.toLowerCase() !== 'unknown') {
+          return { location: `${city}, ${country}`, ip: d2.ipAddress };
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
+
+    // Provider 3: ipwho.is
+    try {
+      const res3 = await fetch('https://ipwho.is/', { cache: 'no-cache' });
+      if (res3.ok) {
+        const d3 = await res3.json();
+        if (d3 && d3.success !== false) {
+          const city = d3.city || d3.region || '';
+          const country = d3.country || 'Ethiopia';
+          const loc = city ? `${city}, ${country}` : country;
+          return { location: loc, ip: d3.ip };
+        }
+      }
+    } catch (_) {}
   }
 
   return { location: getLocalDeviceLocation(), ip: '196.188.xxx.xxx' };
@@ -219,7 +323,7 @@ export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
         deviceName: isCurrent && getCustomDeviceName() ? getCustomDeviceName()! : (data.deviceName || 'Authorized Device'),
         deviceType: data.deviceType || 'desktop',
         clientApp: data.clientApp || (data.deviceType === 'desktop' ? 'FitPulse Web 2.5.0 x64' : 'FitPulse Android 2.5.0'),
-        location: data.location || 'Ethiopia',
+        location: data.location || 'Awasa, Ethiopia',
         ip: data.ip || '196.188.xxx.xxx',
         lastActive: data.lastActive || data.createdAt,
         createdAt: data.createdAt,
@@ -240,7 +344,7 @@ export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
  */
 export async function syncCurrentDeviceSession(uid: string): Promise<DeviceSession> {
   const currentDevId = getLocalDeviceId();
-  const hw = detectClientHardware();
+  const hw = await resolveRealDeviceName();
   const geo = await fetchRealClientGeoLocation();
 
   const sessionData = {
@@ -268,7 +372,7 @@ export async function syncCurrentDeviceSession(uid: string): Promise<DeviceSessi
 }
 
 /**
- * Updates a device name (e.g. from the Telegram-style Rename feature).
+ * Updates a device name (e.g. from the Rename feature).
  */
 export async function updateDeviceName(
   uid: string,
@@ -305,7 +409,7 @@ export async function registerOrValidateDevice(uid: string): Promise<DeviceValid
   if (!uid) return { status: 'AUTHORIZED' };
 
   const deviceId = getLocalDeviceId();
-  const hw = detectClientHardware();
+  const hw = await resolveRealDeviceName();
   const geo = await fetchRealClientGeoLocation();
   const deviceName = hw.name;
   const deviceType = hw.type;

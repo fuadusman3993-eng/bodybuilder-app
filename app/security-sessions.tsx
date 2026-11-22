@@ -5,19 +5,20 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Platform,
   RefreshControl,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { safeBack } from '../lib/navigation';
 import { useUserStore } from '../store/userStore';
 import { useTheme } from '../store/themeStore';
+import Skeleton from '../components/ui/Skeleton';
+import { safeBack } from '../lib/navigation';
 import {
   getActiveSessions,
   syncCurrentDeviceSession,
@@ -25,6 +26,7 @@ import {
   terminateSession,
   terminateAllOtherSessions,
   getLocalDeviceId,
+  resolveRealDeviceName,
   detectClientHardware,
   DeviceSession,
 } from '../lib/deviceSecurityService';
@@ -84,14 +86,15 @@ export default function SecuritySessionsScreen() {
     setShowRenameModal(true);
   };
 
-  const handleSaveRename = async () => {
-    if (!renameInput.trim() || !user.uid) return;
+  const handleSaveRename = async (customName?: string) => {
+    const nameToSave = (customName || renameInput).trim();
+    if (!nameToSave || !user.uid) return;
     setSavingRename(true);
     try {
-      const ok = await updateDeviceName(user.uid, currentDeviceId, renameInput.trim());
+      const ok = await updateDeviceName(user.uid, currentDeviceId, nameToSave);
       if (ok) {
         setSessions((prev) =>
-          prev.map((s) => (s.isCurrent ? { ...s, deviceName: renameInput.trim() } : s))
+          prev.map((s) => (s.isCurrent ? { ...s, deviceName: nameToSave } : s))
         );
         setShowRenameModal(false);
       } else {
@@ -181,101 +184,107 @@ export default function SecuritySessionsScreen() {
     deviceName: detectClientHardware().name,
     deviceType: detectClientHardware().type,
     clientApp: detectClientHardware().clientApp,
-    location: 'Ethiopia',
+    location: 'Awasa, Ethiopia',
     isCurrent: true,
     lastActive: null,
     createdAt: null,
   };
   const otherSessions = sessions.filter((s) => !s.isCurrent);
-
-  const getDeviceIcon = (type: string, name: string): keyof typeof Ionicons.glyphMap => {
-    if (type === 'desktop' || /Windows|Mac|Linux|PC|Book/i.test(name)) {
-      return 'laptop-outline';
-    }
-    if (/iPhone|iPad|Apple/i.test(name)) {
-      return 'phone-portrait-outline';
-    }
-    return 'phone-portrait-outline';
-  };
-
-  const getCircleBg = (type: string, name: string): string => {
-    if (type === 'desktop' || /Windows|PC|Book/i.test(name)) {
-      return '#2AABEE'; // Telegram Blue for PC/Laptop
-    }
-    if (/iPhone|iPad|Apple/i.test(name)) {
-      return '#3b4353'; // Dark Gray for Apple
-    }
-    return '#4CAF50'; // Telegram Green for Android
-  };
+  const totalConnected = Math.max(1, sessions.length);
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
-      {/* Centered Telegram App Container */}
-      <View style={styles.container}>
-        {/* Telegram Header */}
-        <View style={styles.header}>
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background || '#000000' }]} edges={['top', 'bottom']}>
+      {/* Centered App Container */}
+      <View style={[styles.container, { backgroundColor: colors.background || '#000000' }]}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.border || '#1f1f1f' }]}>
           <TouchableOpacity
             style={styles.headerIconBtn}
             activeOpacity={0.7}
             onPress={() => safeBack('/general-settings')}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary || '#FFFFFF'} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Active sessions</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Active sessions</Text>
           <TouchableOpacity
             style={styles.headerIconBtn}
             activeOpacity={0.7}
             onPress={() => safeBack('/general-settings')}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="close" size={22} color="#8a99a8" />
+            <Ionicons name="close" size={22} color={colors.textMuted || '#8a99a8'} />
           </TouchableOpacity>
         </View>
 
         <ScrollView
           contentContainerStyle={styles.scrollBody}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2AABEE" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
           {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color="#2AABEE" />
-              <Text style={styles.loadingText}>Loading sessions...</Text>
+            /* FitPulse Native Shimmer Skeleton Loader */
+            <View style={styles.skeletonWrap}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Skeleton width={90} height={18} borderRadius={6} />
+                <Skeleton width={60} height={18} borderRadius={6} />
+              </View>
+              <View style={[styles.deviceRow, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222', borderWidth: 1 }]}>
+                <Skeleton width={48} height={48} borderRadius={24} />
+                <View style={{ flex: 1, gap: 8, marginLeft: 14 }}>
+                  <Skeleton width="65%" height={16} borderRadius={4} />
+                  <Skeleton width="45%" height={13} borderRadius={4} />
+                  <Skeleton width="35%" height={12} borderRadius={4} />
+                </View>
+              </View>
+              <View style={{ marginTop: 16 }}>
+                <Skeleton width="100%" height={46} borderRadius={12} />
+              </View>
+              <View style={{ marginTop: 24 }}>
+                <Skeleton width={110} height={18} borderRadius={6} style={{ marginBottom: 12 }} />
+                <Skeleton width="100%" height={76} borderRadius={14} />
+              </View>
             </View>
           ) : (
             <>
               {/* ── SECTION 1: THIS DEVICE ── */}
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.telegramSectionTitle}>This device</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.primary }]}>This device</Text>
                   <TouchableOpacity activeOpacity={0.7} onPress={handleOpenRename}>
-                    <Text style={styles.renameLink}>Rename</Text>
+                    <Text style={[styles.renameLink, { color: colors.primary }]}>Rename</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Current Device Row */}
-                <View style={styles.deviceRow}>
+                <View style={[styles.deviceRow, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222' }]}>
                   <View
                     style={[
                       styles.deviceCircle,
-                      { backgroundColor: getCircleBg(currentSession.deviceType, currentSession.deviceName) },
+                      {
+                        backgroundColor: colors.surfaceLight || '#1c1c1e',
+                        borderColor: colors.primary,
+                      },
                     ]}
                   >
                     {currentSession.deviceType === 'desktop' ? (
-                      <Ionicons name="laptop-outline" size={24} color="#FFFFFF" />
+                      <Ionicons name="laptop-outline" size={24} color={colors.primary} />
                     ) : /Android/i.test(currentSession.deviceName) ? (
-                      <Ionicons name="logo-android" size={24} color="#FFFFFF" />
+                      <Ionicons name="logo-android" size={24} color={colors.primary} />
                     ) : (
-                      <Ionicons name="phone-portrait-outline" size={24} color="#FFFFFF" />
+                      <Ionicons name="phone-portrait-outline" size={24} color={colors.primary} />
                     )}
                   </View>
 
                   <View style={styles.deviceTextWrap}>
-                    <Text style={styles.deviceNameText}>{currentSession.deviceName}</Text>
-                    <Text style={styles.deviceAppText}>{currentSession.clientApp || 'FitPulse Web 2.5.0 x64'}</Text>
-                    <Text style={styles.deviceLocationText}>
-                      {currentSession.location || 'Ethiopia'}
+                    <Text style={[styles.deviceNameText, { color: colors.textPrimary || '#FFFFFF' }]}>
+                      {currentSession.deviceName}
+                    </Text>
+                    <Text style={[styles.deviceAppText, { color: colors.textMuted || '#8a99a8' }]}>
+                      {currentSession.clientApp || 'FitPulse Web 2.5.0 x64'}
+                    </Text>
+                    <Text style={[styles.deviceLocationText, { color: colors.textMuted || '#708499' }]}>
+                      {currentSession.location || 'Awasa, Ethiopia'}
                       {currentSession.ip ? ` • ${currentSession.ip}` : ''}
                     </Text>
                   </View>
@@ -283,62 +292,76 @@ export default function SecuritySessionsScreen() {
 
                 {/* Terminate all other sessions button */}
                 <TouchableOpacity
-                  style={styles.terminateAllRow}
+                  style={[styles.terminateAllRow, { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' }]}
                   activeOpacity={0.7}
                   onPress={handleTerminateAllOthers}
                   disabled={actionLoadingId === 'all'}
                 >
-                  <Ionicons name="hand-left-outline" size={20} color="#FF595A" style={styles.terminateIcon} />
+                  <Ionicons name="hand-left-outline" size={20} color="#EF4444" style={styles.terminateIcon} />
                   <Text style={styles.terminateAllText}>
                     {actionLoadingId === 'all' ? 'Terminating...' : 'Terminate all other sessions'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={styles.sectionCaption}>Logs out all devices except for this one.</Text>
+                <Text style={[styles.sectionCaption, { color: colors.textMuted || '#708499' }]}>
+                  Logs out all devices except for this one.
+                </Text>
               </View>
 
               {/* ── SECTION 2: ACTIVE DEVICES ── */}
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.telegramSectionTitle}>Active Devices</Text>
-                  <Text style={styles.deviceCounterPill}>
-                    {sessions.length} / 2 Connected
+                  <Text style={[styles.sectionTitle, { color: colors.primary }]}>Active Devices</Text>
+                  <Text style={[styles.deviceCounterPill, { color: colors.textMuted }]}>
+                    {totalConnected} / 2 Connected
                   </Text>
                 </View>
 
                 {otherSessions.length === 0 ? (
-                  <View style={styles.slotAvailableBox}>
-                    <View style={[styles.deviceCircle, { backgroundColor: '#232e3c' }]}>
-                      <Ionicons name="phone-portrait-outline" size={22} color="#708499" />
+                  <View style={[styles.slotAvailableBox, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#262626' }]}>
+                    <View style={[styles.deviceCircle, { backgroundColor: colors.surfaceLight || '#1c1c1e', borderColor: colors.border || '#333' }]}>
+                      <Ionicons name="phone-portrait-outline" size={22} color={colors.textMuted || '#708499'} />
                     </View>
                     <View style={styles.deviceTextWrap}>
-                      <Text style={styles.slotAvailableTitle}>Slot 2 Available (1 / 2 Devices)</Text>
-                      <Text style={styles.slotAvailableDesc}>
-                        No secondary phone is currently connected. To log in on a 2nd phone, enter your email and password; a 6-digit verification code will be sent to this device via FitPulse Official Chat.
+                      <Text style={[styles.slotAvailableTitle, { color: colors.textPrimary || '#FFFFFF' }]}>
+                        Slot 2 Available (1 / 2 Devices)
+                      </Text>
+                      <Text style={[styles.slotAvailableDesc, { color: colors.textMuted || '#708499' }]}>
+                        No secondary phone is currently connected. When logging in on a 2nd phone, a 6-digit verification code will be sent to this device via FitPulse Official Chat.
                       </Text>
                     </View>
                   </View>
                 ) : (
                   otherSessions.map((item) => (
-                    <View key={item.deviceId} style={styles.otherDeviceRow}>
+                    <View
+                      key={item.deviceId}
+                      style={[styles.otherDeviceRow, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222' }]}
+                    >
                       <View
                         style={[
                           styles.deviceCircle,
-                          { backgroundColor: getCircleBg(item.deviceType, item.deviceName) },
+                          {
+                            backgroundColor: colors.surfaceLight || '#1c1c1e',
+                            borderColor: colors.primary,
+                          },
                         ]}
                       >
                         {/Android|Samsung|Tecno|Infinix/i.test(item.deviceName) ? (
-                          <Ionicons name="logo-android" size={24} color="#FFFFFF" />
+                          <Ionicons name="logo-android" size={24} color={colors.primary} />
                         ) : /Apple|iPhone|iPad/i.test(item.deviceName) ? (
-                          <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                          <Ionicons name="logo-apple" size={24} color={colors.primary} />
                         ) : (
-                          <Ionicons name="phone-portrait-outline" size={24} color="#FFFFFF" />
+                          <Ionicons name="phone-portrait-outline" size={24} color={colors.primary} />
                         )}
                       </View>
 
                       <View style={styles.deviceTextWrap}>
-                        <Text style={styles.deviceNameText}>{item.deviceName}</Text>
-                        <Text style={styles.deviceAppText}>{item.clientApp || 'FitPulse Android 2.5.0'}</Text>
-                        <Text style={styles.deviceLocationText}>
+                        <Text style={[styles.deviceNameText, { color: colors.textPrimary || '#FFFFFF' }]}>
+                          {item.deviceName}
+                        </Text>
+                        <Text style={[styles.deviceAppText, { color: colors.textMuted || '#8a99a8' }]}>
+                          {item.clientApp || 'FitPulse Android 2.5.0'}
+                        </Text>
+                        <Text style={[styles.deviceLocationText, { color: colors.textMuted || '#708499' }]}>
                           {item.location} • Active
                         </Text>
                       </View>
@@ -351,33 +374,33 @@ export default function SecuritySessionsScreen() {
                         disabled={actionLoadingId === item.deviceId}
                       >
                         {actionLoadingId === item.deviceId ? (
-                          <ActivityIndicator size="small" color="#FF595A" />
+                          <ActivityIndicator size="small" color="#EF4444" />
                         ) : (
-                          <Ionicons name="close" size={20} color="#708499" />
+                          <Ionicons name="close" size={20} color={colors.textMuted || '#708499'} />
                         )}
                       </TouchableOpacity>
                     </View>
                   ))
                 )}
 
-                <Text style={styles.sectionCaption}>
+                <Text style={[styles.sectionCaption, { color: colors.textMuted || '#708499' }]}>
                   The official FitPulse app is available for Android, iPhone, iPad, Windows, macOS and Linux.
                 </Text>
               </View>
 
               {/* ── SECTION 3: TERMINATE OLD SESSIONS ── */}
               <View style={styles.sectionWrap}>
-                <Text style={styles.telegramSectionTitle}>Terminate old sessions</Text>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>Terminate old sessions</Text>
 
                 <TouchableOpacity
-                  style={styles.inactivityRow}
+                  style={[styles.inactivityRow, { backgroundColor: colors.surface || '#121212', borderColor: colors.border || '#222' }]}
                   activeOpacity={0.7}
                   onPress={() => setShowPeriodModal(true)}
                 >
-                  <Text style={styles.inactivityLabel}>If inactive for...</Text>
+                  <Text style={[styles.inactivityLabel, { color: colors.textPrimary || '#FFFFFF' }]}>If inactive for...</Text>
                   <View style={styles.inactivityValueWrap}>
-                    <Text style={styles.inactivityValue}>{inactivePeriod}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#708499" />
+                    <Text style={[styles.inactivityValue, { color: colors.primary }]}>{inactivePeriod}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted || '#708499'} />
                   </View>
                 </TouchableOpacity>
               </View>
@@ -385,21 +408,42 @@ export default function SecuritySessionsScreen() {
           )}
         </ScrollView>
 
-        {/* ── RENAME DEVICE MODAL ── */}
+        {/* ── RENAME DEVICE MODAL (FitPulse Theme Adapted) ── */}
         <Modal visible={showRenameModal} transparent animationType="fade" onRequestClose={() => setShowRenameModal(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Rename Device</Text>
-              <Text style={styles.modalSubTitle}>
-                Enter a custom name for this device (e.g. HP EliteBook 830 G6, Fuad's PC).
+            <View style={[styles.modalCard, { backgroundColor: colors.surface || '#161616', borderColor: colors.border || '#2c2c2e' }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Rename Device</Text>
+              <Text style={[styles.modalSubTitle, { color: colors.textMuted || '#8a99a8' }]}>
+                Set your exact device name so it is recognized across your active sessions.
               </Text>
 
+              {/* 1-Tap Quick Suggestions */}
+              <View style={styles.suggestionsRow}>
+                {['HP EliteBook 830 G6', 'Samsung Galaxy A31', "Fuad's PC"].map((sug) => (
+                  <TouchableOpacity
+                    key={sug}
+                    style={[styles.suggestionPill, { backgroundColor: colors.surfaceLight || '#222', borderColor: colors.border || '#333' }]}
+                    activeOpacity={0.7}
+                    onPress={() => setRenameInput(sug)}
+                  >
+                    <Text style={[styles.suggestionText, { color: colors.primary }]}>{sug}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <TextInput
-                style={styles.renameTextInput}
+                style={[
+                  styles.renameTextInput,
+                  {
+                    backgroundColor: colors.background || '#000000',
+                    borderColor: colors.primary,
+                    color: colors.textPrimary || '#FFFFFF',
+                  },
+                ]}
                 value={renameInput}
                 onChangeText={setRenameInput}
-                placeholder="Device Name"
-                placeholderTextColor="#708499"
+                placeholder="Device Name (e.g. HP EliteBook 830 G6)"
+                placeholderTextColor={colors.textMuted || '#708499'}
                 autoFocus
                 selectTextOnFocus
               />
@@ -410,16 +454,16 @@ export default function SecuritySessionsScreen() {
                   activeOpacity={0.7}
                   onPress={() => setShowRenameModal(false)}
                 >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
+                  <Text style={[styles.modalCancelText, { color: colors.textMuted || '#8a99a8' }]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.modalSaveBtn}
+                  style={[styles.modalSaveBtn, { backgroundColor: colors.primary }]}
                   activeOpacity={0.8}
-                  onPress={handleSaveRename}
+                  onPress={() => handleSaveRename()}
                   disabled={savingRename}
                 >
                   {savingRename ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color="#000000" />
                   ) : (
                     <Text style={styles.modalSaveText}>Save</Text>
                   )}
@@ -432,22 +476,28 @@ export default function SecuritySessionsScreen() {
         {/* ── INACTIVITY PERIOD MODAL ── */}
         <Modal visible={showPeriodModal} transparent animationType="fade" onRequestClose={() => setShowPeriodModal(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>If Inactive For...</Text>
+            <View style={[styles.modalCard, { backgroundColor: colors.surface || '#161616', borderColor: colors.border || '#2c2c2e' }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary || '#FFFFFF' }]}>If Inactive For...</Text>
               {['1 week', '1 month', '3 months', '6 months'].map((p) => (
                 <TouchableOpacity
                   key={p}
-                  style={styles.periodOption}
+                  style={[styles.periodOption, { borderBottomColor: colors.border || '#262626' }]}
                   activeOpacity={0.7}
                   onPress={() => {
                     setInactivePeriod(p);
                     setShowPeriodModal(false);
                   }}
                 >
-                  <Text style={[styles.periodOptionText, inactivePeriod === p && { color: '#2AABEE', fontWeight: '700' }]}>
+                  <Text
+                    style={[
+                      styles.periodOptionText,
+                      { color: inactivePeriod === p ? colors.primary : colors.textPrimary || '#FFFFFF' },
+                      inactivePeriod === p && { fontWeight: '700' },
+                    ]}
+                  >
                     {p}
                   </Text>
-                  {inactivePeriod === p && <Ionicons name="checkmark" size={18} color="#2AABEE" />}
+                  {inactivePeriod === p && <Ionicons name="checkmark" size={18} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -461,14 +511,12 @@ export default function SecuritySessionsScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0e1621',
   },
   container: {
     flex: 1,
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    backgroundColor: '#0e1621',
   },
   header: {
     flexDirection: 'row',
@@ -477,31 +525,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#17212b',
   },
   headerIconBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 10,
   },
   scrollBody: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-  loadingWrap: {
-    paddingVertical: 60,
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: '#8a99a8',
-    fontSize: 14,
+  skeletonWrap: {
+    paddingVertical: 8,
   },
   sectionWrap: {
     marginBottom: 24,
@@ -513,33 +556,32 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 4,
   },
-  telegramSectionTitle: {
-    color: '#2AABEE',
+  sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   renameLink: {
-    color: '#2AABEE',
     fontSize: 14,
     fontWeight: '600',
   },
   deviceCounterPill: {
-    color: '#708499',
     fontSize: 12,
     fontWeight: '600',
   },
   deviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#17212b',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     gap: 14,
   },
   deviceCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -547,70 +589,64 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   deviceNameText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 3,
   },
   deviceAppText: {
-    color: '#8a99a8',
     fontSize: 13,
     marginBottom: 2,
   },
   deviceLocationText: {
-    color: '#708499',
     fontSize: 12,
   },
   terminateAllRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 6,
-    marginTop: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
   },
   terminateIcon: {
     marginRight: 10,
   },
   terminateAllText: {
-    color: '#FF595A',
+    color: '#EF4444',
     fontSize: 14,
     fontWeight: '600',
   },
   sectionCaption: {
-    color: '#708499',
     fontSize: 12,
     lineHeight: 17,
-    marginTop: 4,
+    marginTop: 8,
     paddingHorizontal: 6,
   },
   slotAvailableBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#17212b',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#232e3c',
     borderStyle: 'dashed',
   },
   slotAvailableTitle: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
   },
   slotAvailableDesc: {
-    color: '#708499',
     fontSize: 12,
     lineHeight: 16,
   },
   otherDeviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#17212b',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     gap: 14,
     marginBottom: 10,
   },
@@ -621,13 +657,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#17212b',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     marginTop: 8,
   },
   inactivityLabel: {
-    color: '#FFFFFF',
     fontSize: 14,
   },
   inactivityValueWrap: {
@@ -636,47 +671,55 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   inactivityValue: {
-    color: '#2AABEE',
     fontSize: 13,
     fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.82)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalCard: {
     width: '100%',
-    maxWidth: 380,
-    backgroundColor: '#17212b',
-    borderRadius: 16,
+    maxWidth: 400,
+    borderRadius: 20,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#232e3c',
+    borderWidth: 1.5,
   },
   modalTitle: {
-    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 6,
   },
   modalSubTitle: {
-    color: '#8a99a8',
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  suggestionPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  suggestionText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   renameTextInput: {
-    backgroundColor: '#0e1621',
-    borderWidth: 1,
-    borderColor: '#2AABEE',
-    borderRadius: 10,
-    color: '#FFFFFF',
+    borderWidth: 1.5,
+    borderRadius: 12,
     fontSize: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 20,
   },
   modalBtnRow: {
@@ -686,23 +729,21 @@ const styles = StyleSheet.create({
   },
   modalCancelBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   modalCancelText: {
-    color: '#8a99a8',
     fontSize: 14,
     fontWeight: '600',
   },
   modalSaveBtn: {
-    backgroundColor: '#2AABEE',
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   modalSaveText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   periodOption: {
     flexDirection: 'row',
@@ -710,10 +751,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#232e3c',
   },
   periodOptionText: {
-    color: '#FFFFFF',
     fontSize: 14,
   },
 });
