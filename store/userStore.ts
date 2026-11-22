@@ -85,6 +85,6 @@ export const useUserStore = create<UserState>((set, get) => ({
   isGuest:    () => get().user.tier === UserTier.GUEST,
   isFree:     () => get().user.tier === UserTier.FREE,
   isPremium:  () => get().user.tier === UserTier.PREMIUM,
-  isCoach:    () => get().user.role === 'coach',
+  isCoach:    () => get().user.role === 'coach' && get().user.isCoachVerified === true,
   isPaidCoach:() => get().user.role === 'coach' && get().user.isCoachVerified === true,
 }));

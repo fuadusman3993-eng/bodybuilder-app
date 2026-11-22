@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { getProfilesBatch } from '../../lib/profileService';
+import { getProfilesBatch, healUnverifiedCoachRole } from '../../lib/profileService';
 import { useUserStore, UserTier } from '../../store/userStore';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
@@ -108,6 +108,11 @@ export default function ChatScreen() {
         console.warn('Pending coach check error in chat:', coachErr);
       }
 
+      // Proactively heal unverified coach roles across Supabase & Firestore
+      if (user?.uid) {
+        healUnverifiedCoachRole(user.uid).catch(() => {});
+      }
+
       const { data } = await supabase
         .from('conversations')
         .select('*')
@@ -130,7 +135,7 @@ export default function ChatScreen() {
         const avatar = isOfficial
           ? 'fitpulse_logo'
           : (profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00E676&color=000&size=120`);
-        const isCoach = isOfficial ? false : profile?.role === 'coach';
+        const isCoach = isOfficial ? false : (profile?.role === 'coach' && profile?.is_verified === true);
 
         let unreadCount = 0;
         try {

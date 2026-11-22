@@ -28,6 +28,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { user, setUser } = useUserStore();
   const { colors } = useTheme();
+  const isCoach = user.role === 'coach' && user.isCoachVerified === true;
 
   const [name, setName] = useState(user.name || '');
   const [bio, setBio] = useState('');
@@ -77,7 +78,7 @@ export default function EditProfileScreen() {
             setBio(data.bio || '');
             setAvatar(data.avatar || null);
           }
-          if (user.role === 'coach') {
+          if (isCoach) {
             setExperience(data.experience?.toString() || '');
           } else {
             setWeight(data.weight?.toString() || '');
@@ -157,7 +158,7 @@ export default function EditProfileScreen() {
       });
 
       // 2. If coach, also update coach_profiles
-      if (user.role === 'coach') {
+      if (isCoach) {
         try {
           await supabase
             .from('coach_profiles')
@@ -177,7 +178,7 @@ export default function EditProfileScreen() {
           bio: bio.trim(),
           avatar: avatar,
         };
-        if (user.role === 'coach') {
+        if (isCoach) {
           updateData.experience = experience;
         } else {
           updateData.weight = weight;
@@ -314,7 +315,7 @@ export default function EditProfileScreen() {
           />
         </View>
 
-        {user.role === 'coach' ? (
+        {isCoach ? (
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textMuted }]}>Years of Experience</Text>
             <TextInput

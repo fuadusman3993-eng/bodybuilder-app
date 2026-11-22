@@ -364,7 +364,7 @@ export default function UserProfilePage() {
   const bio = profile?.bio || (coachData ? 'Ready to train you to the next level.' : 'Fitness enthusiast.');
   const goal = profile?.goal || '';
   const city = profile?.city || '';
-  const isCoach = profile?.role === 'coach';
+  const isCoach = (profile?.role === 'coach' || coachData?.role === 'coach') && (coachData?.is_verified === true || coachData?.verification_status === 'approved' || profile?.is_verified === true);
   const avatarUri = profile?.avatar || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${uid}.jpg`;
   const hasRealPhoto = isValidPhotoUrl(avatarUri);
   const avatarColor = (profile as any)?.avatar_color;
@@ -474,7 +474,7 @@ export default function UserProfilePage() {
               )}
             </TouchableOpacity>
 
-            {isCoach && currentUser.role !== 'coach' && (
+            {isCoach && !(currentUser.role === 'coach' && currentUser.isCoachVerified === true) && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnOutline, { borderColor: colors.primary }, requestSent && { opacity: 0.5 }]}
                 onPress={handleSendRequest}

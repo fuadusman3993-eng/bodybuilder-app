@@ -13,7 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import { getWallet } from '../../lib/walletService';
-import { getProfile } from '../../lib/profileService';
+import { getProfile, healUnverifiedCoachRole } from '../../lib/profileService';
 import Skeleton from '../../components/ui/Skeleton';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ProfileMoreModal from '../../components/profile/ProfileMoreModal';
@@ -32,7 +32,6 @@ export default function ProfileScreen() {
   const { user, setUser, authInitialized, setTier } = useUserStore();
   const { colors } = useTheme();
 
-  const isCoach = user.role === 'coach';
   const PROFILE_TABS = [
     { key: 'Posts', iconOutline: 'grid-outline', iconFilled: 'grid' },
     { key: 'Reposts', iconOutline: 'repeat-outline', iconFilled: 'repeat' },
@@ -42,6 +41,9 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'Posts' | 'Reposts' | 'Saved'>('Posts');
   const [profileData, setProfileData] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Strict coach gate: must be explicitly approved in DB and userStore
+  const isCoach = (user.role === 'coach' || profileData?.role === 'coach') && (user.isCoachVerified === true || profileData?.is_verified === true);
   const [posts, setPosts] = useState<any[]>([]);
   const [savedPosts, setSavedPosts] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
@@ -82,6 +84,9 @@ export default function ProfileScreen() {
       const uid = auth.currentUser?.uid || user.uid;
       if (!uid) return;
 
+      // Proactively heal unverified coach roles
+      healUnverifiedCoachRole(uid).catch(() => {});
+
       // Primary: read authoritative profile from Supabase
       const profile = await getProfile(uid);
       if (profile) {
@@ -93,6 +98,7 @@ export default function ProfileScreen() {
           country: profile.country,
           bio: profile.bio,
           role: profile.role,
+          is_verified: profile.is_verified,
         });
       } else {
         const docSnap = await getDoc(doc(db, 'users', uid)).catch(() => null);

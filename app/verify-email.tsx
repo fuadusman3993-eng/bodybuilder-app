@@ -79,7 +79,7 @@ export default function VerifyEmailScreen() {
       // 1. OTP is correct, NOW we register the user in Firebase
       const { registerWithEmail } = await import('../lib/authService');
       const user = await registerWithEmail(name, email, password, role);
-      setUser({ tier: UserTier.FREE, name: user.displayName || name, role, uid: user.uid });
+      setUser({ tier: UserTier.FREE, name: user.displayName || name, role: user.role || 'user', uid: user.uid, isCoachVerified: false });
 
       // 2. Mark as verified in Firestore
       if (user.uid) {

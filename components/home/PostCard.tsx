@@ -98,7 +98,7 @@ export default function PostCard({
 
 
   const isOwner = !!post.isSelf || (!!currentUser?.uid && post.uid === currentUser.uid);
-  const isModerator = currentUser?.role === 'coach' || (currentUser?.email && currentUser.email.includes('fuadusman'));
+  const isModerator = (currentUser?.role === 'coach' && currentUser?.isCoachVerified === true) || (currentUser?.email && currentUser.email.includes('fuadusman'));
   const canDelete = isOwner || isModerator;
 
   const handleDelete = () => {
@@ -186,7 +186,7 @@ export default function PostCard({
       avatar_url: currentUser.avatar || undefined,
       text,
       created_at: new Date().toISOString(),
-      isCoach: currentUser.role === 'coach',
+      isCoach: currentUser.role === 'coach' && currentUser.isCoachVerified === true,
     };
 
     setComments(prev => [...prev, newComment]);

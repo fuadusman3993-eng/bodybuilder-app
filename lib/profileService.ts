@@ -7,6 +7,9 @@
  */
 
 import { supabase } from './supabase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { useUserStore } from '../store/userStore';
 
 export interface UserProfile {
   uid: string;
@@ -15,6 +18,8 @@ export interface UserProfile {
   email?: string | null;
   avatar_url?: string | null;
   role?: 'user' | 'coach';
+  is_verified?: boolean;
+  verification_status?: 'pending_review' | 'approved' | 'rejected' | null;
   city?: string | null;
   country?: string | null;
   bio?: string | null;
@@ -152,6 +157,19 @@ export async function getProfile(uid: string, forceFresh = false): Promise<UserP
 
     if (!error && data && data.name) {
       let prof: UserProfile = data as UserProfile;
+      // Strict Coach Gate: If role is coach, must be approved in coach_profiles!
+      if (prof.role === 'coach') {
+        const { data: cData } = await supabase
+          .from('coach_profiles')
+          .select('is_verified, verification_status')
+          .eq('uid', uid)
+          .maybeSingle();
+        const isApproved = cData?.is_verified === true || cData?.verification_status === 'approved';
+        prof.role = isApproved ? 'coach' : 'user';
+        prof.is_verified = isApproved;
+        prof.verification_status = cData?.verification_status || (isApproved ? 'approved' : 'pending_review');
+      }
+
       if (isGenericName(prof.name)) {
         const healed = await autoHealProfileIdentity(uid, prof);
         if (healed) prof = healed;
@@ -168,11 +186,14 @@ export async function getProfile(uid: string, forceFresh = false): Promise<UserP
       .maybeSingle();
 
     if (cData && cData.name) {
+      const isApproved = cData.is_verified === true || cData.verification_status === 'approved';
       const prof: UserProfile = {
         uid: cData.uid,
         name: cData.name,
         avatar_url: cData.avatar_url,
-        role: 'coach',
+        role: isApproved ? 'coach' : 'user', // strictly 'user' if not approved!
+        is_verified: isApproved,
+        verification_status: cData.verification_status || 'pending_review',
         bio: cData.bio,
       };
       profileCache[uid] = { profile: prof, timestamp: Date.now() };
@@ -257,9 +278,35 @@ export async function getProfilesBatch(uids: string[]): Promise<Record<string, U
       .in('uid', toFetch);
 
     if (!error && Array.isArray(data)) {
+      // Strict Coach Gate in Batch: Find all UIDs in this batch that claim role === 'coach'
+      const coachCandidateUids = data.filter((r) => r.role === 'coach').map((r) => r.uid);
+      const approvedCoachMap: Record<string, boolean> = {};
+
+      if (coachCandidateUids.length > 0) {
+        try {
+          const { data: coachData } = await supabase
+            .from('coach_profiles')
+            .select('uid, is_verified, verification_status')
+            .in('uid', coachCandidateUids);
+
+          if (Array.isArray(coachData)) {
+            for (const cp of coachData) {
+              if (cp.is_verified === true || cp.verification_status === 'approved') {
+                approvedCoachMap[cp.uid] = true;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       for (const row of data) {
         if (row.uid) {
           const prof = row as UserProfile;
+          if (prof.role === 'coach') {
+            const isApproved = !!approvedCoachMap[prof.uid];
+            prof.role = isApproved ? 'coach' : 'user';
+            prof.is_verified = isApproved;
+          }
           if (isGenericName(prof.name)) {
             autoHealProfileIdentity(row.uid, prof).then((healed) => {
               if (healed) {
@@ -289,6 +336,93 @@ export async function getProfilesBatch(uids: string[]): Promise<Record<string, U
   }
 
   return result;
+}
+
+/**
+ * Automatically heals unverified accounts claiming to be coaches.
+ * If user has not been officially approved by the Sports Board (verification_status === 'approved' && is_verified === true),
+ * immediately demotes them to 'user' in Supabase, Firestore, in-memory cache, and userStore.
+ */
+export async function healUnverifiedCoachRole(uid: string): Promise<boolean> {
+  if (!uid) return false;
+
+  try {
+    // 1. Query coach_profiles
+    const { data: cData } = await supabase
+      .from('coach_profiles')
+      .select('is_verified, verification_status')
+      .eq('uid', uid)
+      .maybeSingle();
+
+    const isApproved = cData?.is_verified === true || cData?.verification_status === 'approved';
+
+    if (!isApproved) {
+      // Demote to 'user' in Supabase profiles
+      await supabase
+        .from('profiles')
+        .update({ role: 'user', updated_at: new Date().toISOString() })
+        .eq('uid', uid);
+
+      // Invalidate / update local cache
+      if (profileCache[uid]) {
+        profileCache[uid].profile.role = 'user';
+        profileCache[uid].profile.is_verified = false;
+        profileCache[uid].profile.verification_status = cData?.verification_status || 'pending_review';
+        profileCache[uid].timestamp = Date.now();
+      }
+
+      // Demote in Firestore if possible
+      try {
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, {
+          role: 'user',
+          isCoachVerified: false,
+        });
+      } catch (_) {}
+
+      // Update active userStore state if current user
+      try {
+        const store = useUserStore.getState();
+        if (store.user?.uid === uid && store.user.role === 'coach') {
+          store.setUser({
+            ...store.user,
+            role: 'user',
+            isCoachVerified: false,
+          });
+        }
+      } catch (_) {}
+
+      return true;
+    } else {
+      // Verified Coach: Ensure role is 'coach' and isCoachVerified: true
+      await supabase
+        .from('profiles')
+        .update({ role: 'coach', updated_at: new Date().toISOString() })
+        .eq('uid', uid);
+
+      if (profileCache[uid]) {
+        profileCache[uid].profile.role = 'coach';
+        profileCache[uid].profile.is_verified = true;
+        profileCache[uid].profile.verification_status = 'approved';
+        profileCache[uid].timestamp = Date.now();
+      }
+
+      try {
+        const store = useUserStore.getState();
+        if (store.user?.uid === uid && (!store.user.isCoachVerified || store.user.role !== 'coach')) {
+          store.setUser({
+            ...store.user,
+            role: 'coach',
+            isCoachVerified: true,
+          });
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.warn('[profileService] healUnverifiedCoachRole error:', e);
+  }
+
+  return false;
 }
 
 /**

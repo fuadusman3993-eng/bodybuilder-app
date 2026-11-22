@@ -140,7 +140,7 @@ export default function ChatRoom() {
       setOtherUser({
         name,
         avatar,
-        isCoach: profile?.role === 'coach',
+        isCoach: profile?.role === 'coach' && profile?.is_verified === true,
       });
     }
     loadOtherUser();

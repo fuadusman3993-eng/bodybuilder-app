@@ -83,7 +83,7 @@ export default function SavedPostsPage() {
           const snap = await getDoc(doc(db, 'users', p.uid));
           if (snap.exists()) {
             const d = snap.data();
-            isCoach = d.role === 'coach';
+            isCoach = d.role === 'coach' && (d.isCoachVerified === true || d.coach_status === 'approved');
             username = d.name || d.username || username;
             avatar = d.avatar || d.photoURL || avatar;
           }

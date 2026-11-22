@@ -40,12 +40,16 @@ export async function registerWithEmail(
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(credential.user, { displayName: name });
   
-  // Save role to Firestore
+  const isCoachApplicant = role === 'coach';
+  // Save role to Firestore: strictly 'user' until Sports Board approval!
   await setDoc(doc(db, 'users', credential.user.uid), {
     uid: credential.user.uid,
     email: credential.user.email,
     displayName: name,
-    role,
+    role: 'user', // strictly 'user' until approval!
+    applied_role: isCoachApplicant ? 'coach' : undefined,
+    coach_status: isCoachApplicant ? 'pending_review' : undefined,
+    isCoachVerified: false,
     createdAt: serverTimestamp(),
   });
 
@@ -54,10 +58,10 @@ export async function registerWithEmail(
     uid: credential.user.uid,
     name,
     email: credential.user.email || undefined,
-    role,
+    role: 'user', // strictly 'user'!
   }).catch(() => {});
   
-  return { ...toAuthUser(credential.user), role };
+  return { ...toAuthUser(credential.user), role: 'user' };
 }
 
 export async function resetPassword(email: string): Promise<void> {
@@ -68,13 +72,17 @@ export async function resetPassword(email: string): Promise<void> {
 
 export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
   const result = await signInWithPopup(auth, googleProvider);
+  const isCoachApplicant = role === 'coach';
   if (role) {
-    // Save role to DB right away since popup doesn't lose state
+    // Save role to DB: applicants start as 'user' until Sports Board approval!
     await setDoc(doc(db, 'users', result.user.uid), {
       uid: result.user.uid,
       email: result.user.email,
       displayName: result.user.displayName,
-      role,
+      role: 'user',
+      applied_role: isCoachApplicant ? 'coach' : undefined,
+      coach_status: isCoachApplicant ? 'pending_review' : undefined,
+      isCoachVerified: false,
       createdAt: serverTimestamp(),
     }, { merge: true });
 
@@ -83,7 +91,7 @@ export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
       name: result.user.displayName || 'User',
       email: result.user.email || undefined,
       avatar_url: result.user.photoURL || undefined,
-      role,
+      role: 'user',
     }).catch(() => {});
   } else {
     await syncUserProfile({
@@ -109,19 +117,25 @@ export async function checkGoogleRedirectResult(): Promise<AuthUser | null> {
       }
       localStorage.removeItem('pendingGoogleRole');
       
-      // Save new Google user to DB
+      const isCoachApplicant = role === 'coach';
+      // Save new Google user to DB: strictly 'user' until approval!
       await setDoc(doc(db, 'users', result.user.uid), {
         uid: result.user.uid,
         email: result.user.email,
         displayName: result.user.displayName,
-        role,
+        role: 'user',
+        applied_role: isCoachApplicant ? 'coach' : undefined,
+        coach_status: isCoachApplicant ? 'pending_review' : undefined,
+        isCoachVerified: false,
         createdAt: serverTimestamp(),
       });
       
-      return { ...toAuthUser(result.user), role };
+      return { ...toAuthUser(result.user), role: 'user' };
     }
     
-    return { ...toAuthUser(result.user), role: userDoc.data()?.role || 'user' };
+    const docData = userDoc.data();
+    const effectiveRole = (docData?.role === 'coach' && docData?.isCoachVerified === true) ? 'coach' : 'user';
+    return { ...toAuthUser(result.user), role: effectiveRole };
   }
   return null;
 }
@@ -146,7 +160,9 @@ async function toAuthUserWithRole(user: User): Promise<AuthUser> {
   const base = toAuthUser(user);
   try {
     const docSnap = await getDoc(doc(db, 'users', user.uid));
-    if (docSnap.exists() && docSnap.data().role) {
+    if (docSnap.exists() && docSnap.data().role === 'coach') {
+      base.role = docSnap.data().isCoachVerified === true ? 'coach' : 'user';
+    } else if (docSnap.exists() && docSnap.data().role) {
       base.role = docSnap.data().role;
     } else {
       base.role = 'user'; // default fallback

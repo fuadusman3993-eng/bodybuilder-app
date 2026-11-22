@@ -428,7 +428,7 @@ export default function WalletScreen() {
 
   const balance = wallet?.balance_coins ?? 0;
   const lifetimeEarnings = wallet?.lifetime_earnings_coins ?? 0;
-  const isCoach = user.role === 'coach';
+  const isCoach = user.role === 'coach' && user.isCoachVerified === true;
   const availableBundles = getCoinBundles(currency);
 
   const formatDate = (iso: string) => {

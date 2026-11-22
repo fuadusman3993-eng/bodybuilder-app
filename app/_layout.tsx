@@ -175,7 +175,8 @@ export default function RootLayout() {
           const name = !isGeneric
             ? rawProfName
             : (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Member');
-          const role = profile?.role || 'user';
+          const isCoachVerified = profile?.role === 'coach' && profile?.is_verified === true;
+          const role = isCoachVerified ? 'coach' : 'user';
           const avatar = profile?.avatar_url || firebaseUser.photoURL || `https://eweoydtpchrmnoinyute.supabase.co/storage/v1/object/public/avatars/${firebaseUser.uid}.jpg`;
           const city = profile?.city || undefined;
 
@@ -192,15 +193,16 @@ export default function RootLayout() {
             tier: userTier,
             name,
             role,
+            isCoachVerified,
             uid: firebaseUser.uid,
             email: firebaseUser.email || undefined,
             avatar,
             city,
           });
 
-          // AUTO-SYNC: Safe isolated try-catch for coach_profiles
+          // AUTO-SYNC: Safe isolated try-catch for coach_profiles (Verified coaches only)
           try {
-            if (role === 'coach') {
+            if (isCoachVerified) {
               await supabase.from('coach_profiles').upsert({
                 uid: firebaseUser.uid,
                 name: name,

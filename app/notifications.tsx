@@ -93,8 +93,9 @@ export default function NotificationsScreen() {
     if (showLoading) setLoading(true);
     try {
       // 1. Fetch coach requests and regular notifications in parallel (fast!)
+      const isApprovedCoach = user.role === 'coach' && user.isCoachVerified === true;
       const [reqsRes, notifsRes] = await Promise.all([
-        user.role === 'coach'
+        isApprovedCoach
           ? supabase
               .from('coach_requests')
               .select('*')
@@ -112,7 +113,7 @@ export default function NotificationsScreen() {
 
       const reqs = reqsRes.data || [];
       let notifs = notifsRes.data || [];
-      if (user.role === 'coach') {
+      if (isApprovedCoach) {
         notifs = notifs.filter((n: any) => n.type !== 'request');
       }
 

@@ -33,7 +33,8 @@ export default function GeneralSettingsScreen() {
   // Load authoritative profile and verified coach status
   React.useEffect(() => {
     if (user.uid) {
-      import('../lib/profileService').then(({ getProfile }) => {
+      import('../lib/profileService').then(({ getProfile, healUnverifiedCoachRole }) => {
+        healUnverifiedCoachRole(user.uid!).catch(() => {});
         getProfile(user.uid!).then((p) => {
           if (p) setProfile(p);
         });
