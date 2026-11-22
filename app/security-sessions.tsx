@@ -82,7 +82,7 @@ export default function SecuritySessionsScreen() {
 
   const handleOpenRename = () => {
     const cur = sessions.find((s) => s.isCurrent);
-    setRenameInput(cur?.deviceName || detectClientHardware().name || 'HP EliteBook 830 G6');
+    setRenameInput(cur?.deviceName || detectClientHardware().name || 'Authorized Device');
     setShowRenameModal(true);
   };
 
@@ -419,16 +419,24 @@ export default function SecuritySessionsScreen() {
 
               {/* 1-Tap Quick Suggestions */}
               <View style={styles.suggestionsRow}>
-                {['HP EliteBook 830 G6', 'Samsung Galaxy A31', "Fuad's PC"].map((sug) => (
-                  <TouchableOpacity
-                    key={sug}
-                    style={[styles.suggestionPill, { backgroundColor: colors.surfaceLight || '#222', borderColor: colors.border || '#333' }]}
-                    activeOpacity={0.7}
-                    onPress={() => setRenameInput(sug)}
-                  >
-                    <Text style={[styles.suggestionText, { color: colors.primary }]}>{sug}</Text>
-                  </TouchableOpacity>
-                ))}
+                {(() => {
+                  const cur = sessions.find((s) => s.isCurrent);
+                  const isMobile = cur?.deviceType === 'mobile' || (typeof navigator !== 'undefined' && /Mobile|Android|iPhone/i.test(navigator.userAgent));
+                  const detected = cur?.deviceName || detectClientHardware().name;
+                  const suggestions = isMobile
+                    ? [detected, 'My Phone', 'Work Phone']
+                    : [detected, 'My Laptop', 'Work PC'];
+                  return Array.from(new Set(suggestions.filter(Boolean))).map((sug) => (
+                    <TouchableOpacity
+                      key={sug}
+                      style={[styles.suggestionPill, { backgroundColor: colors.surfaceLight || '#222', borderColor: colors.border || '#333' }]}
+                      activeOpacity={0.7}
+                      onPress={() => setRenameInput(sug)}
+                    >
+                      <Text style={[styles.suggestionText, { color: colors.primary }]}>{sug}</Text>
+                    </TouchableOpacity>
+                  ));
+                })()}
               </View>
 
               <TextInput
@@ -442,7 +450,7 @@ export default function SecuritySessionsScreen() {
                 ]}
                 value={renameInput}
                 onChangeText={setRenameInput}
-                placeholder="Device Name (e.g. HP EliteBook 830 G6)"
+                placeholder="Device Name (e.g. My Phone)"
                 placeholderTextColor={colors.textMuted || '#708499'}
                 autoFocus
                 selectTextOnFocus

@@ -46,7 +46,13 @@ export function getLocalDeviceId(): string {
 export function getCustomDeviceName(): string | null {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      return window.localStorage.getItem(CUSTOM_NAME_KEY);
+      const val = window.localStorage.getItem(CUSTOM_NAME_KEY);
+      // Auto-heal: If it was polluted with the old hardcoded fake values, purge it!
+      if (val === 'Samsung Galaxy A31' || val === 'HP EliteBook 830 G6') {
+        window.localStorage.removeItem(CUSTOM_NAME_KEY);
+        return null;
+      }
+      return val;
     } catch (_) {}
   }
   return null;
@@ -80,7 +86,7 @@ export function getGPURenderer(): string {
 
 /**
  * Accurately detects client hardware, operating system, and client app version.
- * Prioritizes user's custom device name (e.g. "HP EliteBook 830 G6") if set via Rename.
+ * Prioritizes user's custom device name if set via Rename.
  */
 export function detectClientHardware(): {
   name: string;
@@ -121,32 +127,45 @@ export function detectClientHardware(): {
   }
 
   // Detect realistic default hardware name if not renamed
-  let defaultName = 'HP EliteBook 830 G6';
+  let defaultName = 'Authorized Device';
   if (type === 'desktop') {
     if (/Windows/i.test(ua)) {
-      defaultName = 'HP EliteBook 830 G6';
+      defaultName = is64 ? 'Windows PC (x64)' : 'Windows PC';
     } else if (/Macintosh|Mac OS X/i.test(ua)) {
-      defaultName = 'Apple MacBook Pro';
+      defaultName = 'Mac (macOS)';
     } else if (/Linux/i.test(ua)) {
-      defaultName = 'Linux PC';
+      defaultName = is64 ? 'Linux PC (x64)' : 'Linux PC';
+    } else {
+      defaultName = 'Desktop PC';
     }
   } else {
+    // Mobile / Tablet
     if (/iPhone/i.test(ua)) {
       defaultName = 'Apple iPhone';
     } else if (/iPad/i.test(ua)) {
       defaultName = 'Apple iPad';
-    } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
-      defaultName = 'Samsung Galaxy A31';
     } else if (/Tecno/i.test(ua)) {
       defaultName = 'Tecno Mobile';
     } else if (/Infinix/i.test(ua)) {
       defaultName = 'Infinix Phone';
+    } else if (/itel/i.test(ua)) {
+      defaultName = 'Itel Phone';
     } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
       defaultName = 'Xiaomi Phone';
+    } else if (/SM-[A-Z0-9]+|Samsung/i.test(ua)) {
+      defaultName = 'Samsung Galaxy';
     } else if (/Pixel/i.test(ua)) {
       defaultName = 'Google Pixel';
+    } else if (/Huawei|Honor/i.test(ua)) {
+      defaultName = 'Huawei Mobile';
+    } else if (/Oppo|Realme|OnePlus/i.test(ua)) {
+      defaultName = 'Oppo Mobile';
+    } else if (/Vivo/i.test(ua)) {
+      defaultName = 'Vivo Mobile';
+    } else if (/Android/i.test(ua)) {
+      defaultName = 'Android Phone';
     } else {
-      defaultName = 'Samsung Galaxy A31';
+      defaultName = 'Mobile Device';
     }
   }
 
@@ -158,8 +177,8 @@ export function detectClientHardware(): {
 }
 
 /**
- * Asynchronously resolves the exact high-entropy phone model (e.g. Samsung Galaxy A31)
- * or profiles PC GPU/hardware model.
+ * Asynchronously resolves the exact high-entropy phone model or PC hardware model.
+ * Inspects navigator.userAgentData client hints and User-Agent build tokens.
  */
 export async function resolveRealDeviceName(): Promise<{
   name: string;
@@ -174,6 +193,7 @@ export async function resolveRealDeviceName(): Promise<{
   }
 
   let detectedName = base.name;
+  const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
 
   // 1. High-Entropy Client Hints for Mobile (Android / Chrome)
   if (typeof window !== 'undefined' && (navigator as any)?.userAgentData?.getHighEntropyValues) {
@@ -182,41 +202,57 @@ export async function resolveRealDeviceName(): Promise<{
         'model',
         'platform',
         'platformVersion',
+        'architecture',
       ]);
-      if (hints?.model) {
-        const m = String(hints.model).trim();
-        if (/^SM-A31/i.test(m)) detectedName = 'Samsung Galaxy A31';
-        else if (/^SM-A51/i.test(m)) detectedName = 'Samsung Galaxy A51';
-        else if (/^SM-A52/i.test(m)) detectedName = 'Samsung Galaxy A52';
-        else if (/^SM-A53/i.test(m)) detectedName = 'Samsung Galaxy A53';
-        else if (/^SM-A54/i.test(m)) detectedName = 'Samsung Galaxy A54';
-        else if (/^SM-A12/i.test(m)) detectedName = 'Samsung Galaxy A12';
-        else if (/^SM-A13/i.test(m)) detectedName = 'Samsung Galaxy A13';
-        else if (/^SM-A14/i.test(m)) detectedName = 'Samsung Galaxy A14';
-        else if (/^SM-A15/i.test(m)) detectedName = 'Samsung Galaxy A15';
-        else if (/^SM-S90/i.test(m)) detectedName = 'Samsung Galaxy S22';
-        else if (/^SM-S91/i.test(m)) detectedName = 'Samsung Galaxy S23';
-        else if (/^SM-S92/i.test(m)) detectedName = 'Samsung Galaxy S24';
-        else if (/^SM-/i.test(m)) detectedName = `Samsung Galaxy (${m})`;
-        else if (/^TECNO/i.test(m)) detectedName = `Tecno (${m.replace('TECNO-', '')})`;
-        else if (/^Infinix/i.test(m)) detectedName = `Infinix (${m.replace('Infinix-', '')})`;
-        else if (/Pixel/i.test(m)) detectedName = `Google Pixel (${m})`;
-        else if (m) detectedName = m;
+      if (hints?.model && typeof hints.model === 'string') {
+        const m = hints.model.trim();
+        // Ignore generic or dummy models like "K" (Chrome User-Agent reduction dummy token)
+        if (m && m !== 'K' && m.toLowerCase() !== 'mobile') {
+          if (/^TECNO/i.test(m)) detectedName = m.replace(/^TECNO[\s_-]*/i, 'Tecno ');
+          else if (/^Infinix/i.test(m)) detectedName = m.replace(/^Infinix[\s_-]*/i, 'Infinix ');
+          else if (/^itel/i.test(m)) detectedName = m.replace(/^itel[\s_-]*/i, 'Itel ');
+          else if (/^SM-/i.test(m)) detectedName = `Samsung Galaxy (${m})`;
+          else if (/^Redmi/i.test(m)) detectedName = `Redmi (${m})`;
+          else if (/^POCO/i.test(m)) detectedName = `POCO (${m})`;
+          else if (/Pixel/i.test(m)) detectedName = `Google Pixel (${m})`;
+          else detectedName = m;
+        }
       }
     } catch (_) {}
   }
 
-  // 2. Desktop PC hardware identification
+  // 2. User-Agent Build token extraction (for older Android / WebViews)
+  if (base.type === 'mobile' && (detectedName === 'Android Phone' || detectedName.endsWith('Mobile') || detectedName.endsWith('Phone'))) {
+    const buildMatch = ua.match(/;\s*([^;()]+?)\s+Build\//i);
+    if (buildMatch && buildMatch[1]) {
+      const rawModel = buildMatch[1].trim();
+      if (rawModel && rawModel !== 'K' && !/Android\s*\d+/i.test(rawModel)) {
+        if (/^TECNO/i.test(rawModel)) detectedName = rawModel.replace(/^TECNO[\s_-]*/i, 'Tecno ');
+        else if (/^Infinix/i.test(rawModel)) detectedName = rawModel.replace(/^Infinix[\s_-]*/i, 'Infinix ');
+        else if (/^itel/i.test(rawModel)) detectedName = rawModel.replace(/^itel[\s_-]*/i, 'Itel ');
+        else if (/^SM-/i.test(rawModel)) detectedName = `Samsung Galaxy (${rawModel})`;
+        else detectedName = rawModel;
+      }
+    }
+  }
+
+  // 3. Desktop PC hardware identification
   if (base.type === 'desktop') {
+    const is64 = /WOW64|Win64|x86_64|x64/i.test(ua);
+    const arch = is64 ? ' (x64)' : '';
     const gpu = getGPURenderer();
-    if (gpu.includes('Intel') || gpu.includes('Iris') || gpu.includes('UHD')) {
-      detectedName = 'HP EliteBook 830 G6';
-    } else if (gpu.includes('NVIDIA')) {
-      detectedName = 'Windows PC (NVIDIA GeForce)';
+    if (gpu.includes('NVIDIA')) {
+      detectedName = `Windows PC (NVIDIA GeForce${arch})`;
     } else if (gpu.includes('AMD') || gpu.includes('Radeon')) {
-      detectedName = 'Windows PC (AMD Radeon)';
-    } else {
-      detectedName = 'HP EliteBook 830 G6';
+      detectedName = `Windows PC (AMD Radeon${arch})`;
+    } else if (gpu.includes('Intel') || gpu.includes('Iris') || gpu.includes('UHD')) {
+      detectedName = `Windows PC (Intel HD${arch})`;
+    } else if (/Windows/i.test(ua)) {
+      detectedName = `Windows PC${arch}`;
+    } else if (/Macintosh|Mac OS X/i.test(ua)) {
+      detectedName = 'Mac (macOS)';
+    } else if (/Linux/i.test(ua)) {
+      detectedName = `Linux PC${arch}`;
     }
   }
 
@@ -318,9 +354,14 @@ export async function getActiveSessions(uid: string): Promise<DeviceSession[]> {
     snap.forEach((d) => {
       const data = d.data();
       const isCurrent = d.id === currentDevId;
+      let devName = data.deviceName || 'Authorized Device';
+      // Auto-heal old fake names if stored in database
+      if (devName === 'Samsung Galaxy A31' || devName === 'HP EliteBook 830 G6') {
+        devName = isCurrent ? detectClientHardware().name : (data.deviceType === 'desktop' ? 'Windows PC' : 'Android Phone');
+      }
       sessions.push({
         deviceId: d.id,
-        deviceName: isCurrent && getCustomDeviceName() ? getCustomDeviceName()! : (data.deviceName || 'Authorized Device'),
+        deviceName: isCurrent && getCustomDeviceName() ? getCustomDeviceName()! : devName,
         deviceType: data.deviceType || 'desktop',
         clientApp: data.clientApp || (data.deviceType === 'desktop' ? 'FitPulse Web 2.5.0 x64' : 'FitPulse Android 2.5.0'),
         location: data.location || 'Awasa, Ethiopia',
