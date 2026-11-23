@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import {
   View,
   Text,
@@ -19,7 +20,7 @@ import { useTheme } from '../store/themeStore';
 import { signOut } from '../lib/authService';
 import { safeBack } from '../lib/navigation';
 
-export default function GeneralSettingsScreen() {
+function GeneralSettingsContent() {
   const router = useRouter();
   const { user, setUser } = useUserStore();
   const { colors } = useTheme();
@@ -519,6 +520,52 @@ export default function GeneralSettingsScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function GeneralSettingsFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background || '#000000' }]} edges={['top', 'bottom']}>
+      <View style={styles.appCardContainer}>
+        <View style={[styles.header, { borderBottomColor: colors.border || '#202020' }]}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            onPress={() => safeBack('/(tabs)/profile')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary || '#FFFFFF'} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Settings & Privacy</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="settings-outline" size={56} color={colors.primary} style={{ marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary || '#FFFFFF', marginBottom: 8, textAlign: 'center' }}>
+            Settings Protected
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted || '#8a99a8', textAlign: 'center', marginBottom: 24, lineHeight: 18, maxWidth: 300 }}>
+            Unable to load settings at this moment. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            activeOpacity={0.8}
+            onPress={resetErrorBoundary}
+          >
+            <Text style={{ color: '#000000', fontWeight: '700', fontSize: 14 }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default function GeneralSettingsScreen() {
+  return (
+    <ErrorBoundary FallbackComponent={GeneralSettingsFallback}>
+      <GeneralSettingsContent />
+    </ErrorBoundary>
   );
 }
 

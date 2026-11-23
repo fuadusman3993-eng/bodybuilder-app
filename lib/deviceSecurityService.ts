@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Device from 'expo-device';
+import { getNativeDeviceHardware } from './deviceHardware';
 import {
   collection,
   doc,
@@ -298,29 +298,14 @@ export async function resolveRealDeviceName(): Promise<{
   }
 
   // 1. Native Mobile APK Mode (Android / iOS):
-  // Direct native OS access to android.os.Build.MODEL and Build.MANUFACTURER (Zero browser restrictions)
-  if (Platform.OS !== 'web') {
-    try {
-      const brand = Device.manufacturer || Device.brand || '';
-      const model = Device.modelName || '';
-      if (model || brand) {
-        let nativeName = '';
-        if (brand && model) {
-          if (model.toLowerCase().includes(brand.toLowerCase())) {
-            nativeName = model;
-          } else {
-            nativeName = `${brand} ${model}`;
-          }
-        } else {
-          nativeName = model || brand;
-        }
-        return {
-          name: translateModelCode(nativeName),
-          type: Device.deviceType === Device.DeviceType.TABLET ? 'tablet' : 'mobile',
-          clientApp: `FitPulse ${Platform.OS === 'ios' ? 'iOS' : 'Android'} 2.5.0`,
-        };
-      }
-    } catch (_) {}
+  // Uses platform-isolated getNativeDeviceHardware (calls expo-device only on native; null on web)
+  const nativeHw = getNativeDeviceHardware();
+  if (nativeHw && nativeHw.name) {
+    return {
+      name: translateModelCode(nativeHw.name),
+      type: nativeHw.type,
+      clientApp: `FitPulse ${Platform.OS === 'ios' ? 'iOS' : 'Android'} 2.5.0`,
+    };
   }
 
   let detectedName = base.name;

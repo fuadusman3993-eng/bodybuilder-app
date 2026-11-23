@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import {
   View,
   Text,
@@ -31,7 +32,7 @@ import {
   DeviceSession,
 } from '../lib/deviceSecurityService';
 
-export default function SecuritySessionsScreen() {
+function SecuritySessionsContent() {
   const router = useRouter();
   const { user } = useUserStore();
   const { colors } = useTheme();
@@ -513,6 +514,52 @@ export default function SecuritySessionsScreen() {
         </Modal>
       </View>
     </SafeAreaView>
+  );
+}
+
+function SecuritySessionsFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background || '#000000' }]} edges={['top', 'bottom']}>
+      <View style={[styles.container, { backgroundColor: colors.background || '#000000' }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border || '#1f1f1f' }]}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            activeOpacity={0.7}
+            onPress={() => safeBack('/general-settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={26} color={colors.textPrimary || '#FFFFFF'} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary || '#FFFFFF' }]}>Active sessions</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="shield-checkmark-outline" size={56} color={colors.primary} style={{ marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary || '#FFFFFF', marginBottom: 8, textAlign: 'center' }}>
+            Active Sessions Protected
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted || '#8a99a8', textAlign: 'center', marginBottom: 24, lineHeight: 18, maxWidth: 300 }}>
+            Unable to connect to active sessions at this moment. Please check your internet connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            activeOpacity={0.8}
+            onPress={resetErrorBoundary}
+          >
+            <Text style={{ color: '#000000', fontWeight: '700', fontSize: 14 }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default function SecuritySessionsScreen() {
+  return (
+    <ErrorBoundary FallbackComponent={SecuritySessionsFallback}>
+      <SecuritySessionsContent />
+    </ErrorBoundary>
   );
 }
 
