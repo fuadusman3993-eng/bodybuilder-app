@@ -23,6 +23,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
 
+        {/* Unlock W3C Client Hints for Exact Mobile Hardware Detection */}
+        <meta httpEquiv="Accept-CH" content="sec-ch-ua-model, sec-ch-ua-platform, sec-ch-ua-platform-version" />
+        <meta httpEquiv="Permissions-Policy" content="ch-ua-model=*, ch-ua-platform=*, ch-ua-platform-version=*" />
+
         {/* Client-side killer: purges stale service worker & CacheStorage */}
         <script
           dangerouslySetInnerHTML={{

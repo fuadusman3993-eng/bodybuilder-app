@@ -6,7 +6,9 @@
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, max-age=0" },
         { "key": "Pragma", "value": "no-cache" },
-        { "key": "Expires", "value": "0" }
+        { "key": "Expires", "value": "0" },
+        { "key": "Accept-CH", "value": "sec-ch-ua-model, sec-ch-ua-platform, sec-ch-ua-platform-version" },
+        { "key": "Permissions-Policy", "value": "ch-ua-model=*, ch-ua-platform=*, ch-ua-platform-version=*" }
       ]
     },
     {

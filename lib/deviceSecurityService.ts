@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import {
   collection,
   doc,
@@ -177,8 +178,112 @@ export function detectClientHardware(): {
 }
 
 /**
+ * Known model dictionary mapping Transsion & popular Ethiopian smartphone hardware codes
+ * to their real commercial marketing names (e.g. CK6n -> Tecno Camon 20 Pro).
+ */
+const ANDROID_MODEL_DICTIONARY: Record<string, string> = {
+  // Tecno Camon series
+  'CK6': 'Tecno Camon 20',
+  'CK6n': 'Tecno Camon 20 Pro',
+  'CK7n': 'Tecno Camon 20 Pro 5G',
+  'CK8n': 'Tecno Camon 20 Premier',
+  'CI6': 'Tecno Camon 19',
+  'CI6n': 'Tecno Camon 19 Pro',
+  'CH6n': 'Tecno Camon 18',
+  'CH7n': 'Tecno Camon 18 Premier',
+  'CL6': 'Tecno Camon 30',
+  'CL7': 'Tecno Camon 30 Pro 5G',
+
+  // Tecno Spark series
+  'KJ5': 'Tecno Spark 20',
+  'KJ5k': 'Tecno Spark 20',
+  'KJ6': 'Tecno Spark 20 Pro',
+  'KJ7': 'Tecno Spark 20 Pro+',
+  'KG5k': 'Tecno Spark 8C',
+  'KG5j': 'Tecno Spark 8',
+  'KG6': 'Tecno Spark 8 Pro',
+  'KG7': 'Tecno Spark 8P',
+  'KG8': 'Tecno Spark 9',
+  'KH7': 'Tecno Spark 9 Pro',
+  'KI5k': 'Tecno Spark 10',
+  'KI7': 'Tecno Spark 10 Pro',
+  'BG6': 'Tecno Pop 8',
+  'BF7': 'Tecno Pop 7',
+  'BD4a': 'Tecno Pop 5',
+
+  // Tecno Pova series
+  'LG7n': 'Tecno Pova 5',
+  'LH7n': 'Tecno Pova 5 Pro 5G',
+  'LI7': 'Tecno Pova 6 Pro',
+  'LE7': 'Tecno Pova Neo 2',
+
+  // Infinix Hot & Smart series
+  'X6816': 'Infinix Hot 12',
+  'X6816D': 'Infinix Hot 12',
+  'X6817': 'Infinix Hot 12 Play',
+  'X6823': 'Infinix Smart 7',
+  'X6825': 'Infinix Smart 7 HD',
+  'X6831': 'Infinix Hot 30',
+  'X6836': 'Infinix Hot 30 Play',
+  'X6837': 'Infinix Hot 40',
+  'X6851': 'Infinix Hot 40 Pro',
+  'X6515': 'Infinix Smart 6',
+  'X6525': 'Infinix Smart 8',
+
+  // Infinix Note series
+  'X6711': 'Infinix Note 30',
+  'X6716': 'Infinix Note 30 Pro',
+  'X6850': 'Infinix Note 40',
+  'X6853': 'Infinix Note 40 Pro',
+  'X663': 'Infinix Note 11',
+  'X670': 'Infinix Note 12',
+
+  // Itel
+  'A662L': 'Itel A60',
+  'A663L': 'Itel A70',
+  'S665L': 'Itel S23',
+  'S666L': 'Itel S23+',
+  'P661N': 'Itel P40',
+  'P662L': 'Itel P40+',
+};
+
+export function translateModelCode(rawModel: string): string {
+  if (!rawModel) return '';
+  const clean = rawModel.trim().replace(/^TECNO[\s_-]*/i, '').replace(/^Infinix[\s_-]*/i, '').replace(/^itel[\s_-]*/i, '');
+  if (ANDROID_MODEL_DICTIONARY[clean]) {
+    return ANDROID_MODEL_DICTIONARY[clean];
+  }
+  if (ANDROID_MODEL_DICTIONARY[rawModel.trim()]) {
+    return ANDROID_MODEL_DICTIONARY[rawModel.trim()];
+  }
+  if (/^TECNO/i.test(rawModel)) {
+    return `Tecno ${clean}`;
+  }
+  if (/^Infinix/i.test(rawModel)) {
+    return `Infinix ${clean}`;
+  }
+  if (/^itel/i.test(rawModel)) {
+    return `Itel ${clean}`;
+  }
+  if (/^SM-/i.test(rawModel)) {
+    return `Samsung Galaxy (${rawModel})`;
+  }
+  if (/^Redmi/i.test(rawModel)) {
+    return `Redmi (${rawModel})`;
+  }
+  if (/^POCO/i.test(rawModel)) {
+    return `POCO (${rawModel})`;
+  }
+  if (/Pixel/i.test(rawModel)) {
+    return `Google Pixel (${rawModel})`;
+  }
+  return rawModel;
+}
+
+/**
  * Asynchronously resolves the exact high-entropy phone model or PC hardware model.
- * Inspects navigator.userAgentData client hints and User-Agent build tokens.
+ * In Native APK: Uses expo-device to directly query Android OS Build.MODEL with 100% precision.
+ * In Web Browser: Uses W3C Accept-CH Client Hints and User-Agent build tokens.
  */
 export async function resolveRealDeviceName(): Promise<{
   name: string;
@@ -192,10 +297,36 @@ export async function resolveRealDeviceName(): Promise<{
     return { name: custom, type: base.type, clientApp: base.clientApp };
   }
 
+  // 1. Native Mobile APK Mode (Android / iOS):
+  // Direct native OS access to android.os.Build.MODEL and Build.MANUFACTURER (Zero browser restrictions)
+  if (Platform.OS !== 'web') {
+    try {
+      const brand = Device.manufacturer || Device.brand || '';
+      const model = Device.modelName || '';
+      if (model || brand) {
+        let nativeName = '';
+        if (brand && model) {
+          if (model.toLowerCase().includes(brand.toLowerCase())) {
+            nativeName = model;
+          } else {
+            nativeName = `${brand} ${model}`;
+          }
+        } else {
+          nativeName = model || brand;
+        }
+        return {
+          name: translateModelCode(nativeName),
+          type: Device.deviceType === Device.DeviceType.TABLET ? 'tablet' : 'mobile',
+          clientApp: `FitPulse ${Platform.OS === 'ios' ? 'iOS' : 'Android'} 2.5.0`,
+        };
+      }
+    } catch (_) {}
+  }
+
   let detectedName = base.name;
   const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
 
-  // 1. High-Entropy Client Hints for Mobile (Android / Chrome)
+  // 2. High-Entropy Client Hints for Mobile (Android / Chrome)
   if (typeof window !== 'undefined' && (navigator as any)?.userAgentData?.getHighEntropyValues) {
     try {
       const hints = await (navigator as any).userAgentData.getHighEntropyValues([
@@ -208,35 +339,24 @@ export async function resolveRealDeviceName(): Promise<{
         const m = hints.model.trim();
         // Ignore generic or dummy models like "K" (Chrome User-Agent reduction dummy token)
         if (m && m !== 'K' && m.toLowerCase() !== 'mobile') {
-          if (/^TECNO/i.test(m)) detectedName = m.replace(/^TECNO[\s_-]*/i, 'Tecno ');
-          else if (/^Infinix/i.test(m)) detectedName = m.replace(/^Infinix[\s_-]*/i, 'Infinix ');
-          else if (/^itel/i.test(m)) detectedName = m.replace(/^itel[\s_-]*/i, 'Itel ');
-          else if (/^SM-/i.test(m)) detectedName = `Samsung Galaxy (${m})`;
-          else if (/^Redmi/i.test(m)) detectedName = `Redmi (${m})`;
-          else if (/^POCO/i.test(m)) detectedName = `POCO (${m})`;
-          else if (/Pixel/i.test(m)) detectedName = `Google Pixel (${m})`;
-          else detectedName = m;
+          detectedName = translateModelCode(m);
         }
       }
     } catch (_) {}
   }
 
-  // 2. User-Agent Build token extraction (for older Android / WebViews)
+  // 3. User-Agent Build token extraction (for older Android / WebViews)
   if (base.type === 'mobile' && (detectedName === 'Android Phone' || detectedName.endsWith('Mobile') || detectedName.endsWith('Phone'))) {
     const buildMatch = ua.match(/;\s*([^;()]+?)\s+Build\//i);
     if (buildMatch && buildMatch[1]) {
       const rawModel = buildMatch[1].trim();
       if (rawModel && rawModel !== 'K' && !/Android\s*\d+/i.test(rawModel)) {
-        if (/^TECNO/i.test(rawModel)) detectedName = rawModel.replace(/^TECNO[\s_-]*/i, 'Tecno ');
-        else if (/^Infinix/i.test(rawModel)) detectedName = rawModel.replace(/^Infinix[\s_-]*/i, 'Infinix ');
-        else if (/^itel/i.test(rawModel)) detectedName = rawModel.replace(/^itel[\s_-]*/i, 'Itel ');
-        else if (/^SM-/i.test(rawModel)) detectedName = `Samsung Galaxy (${rawModel})`;
-        else detectedName = rawModel;
+        detectedName = translateModelCode(rawModel);
       }
     }
   }
 
-  // 3. Desktop PC hardware identification
+  // 4. Desktop PC hardware identification
   if (base.type === 'desktop') {
     const is64 = /WOW64|Win64|x86_64|x64/i.test(ua);
     const arch = is64 ? ' (x64)' : '';
