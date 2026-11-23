@@ -48,7 +48,6 @@
       "expo-router",
       "expo-font",
       "expo-asset",
-      "expo-updates",
       [
         "expo-splash-screen",
         {
