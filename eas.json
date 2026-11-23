@@ -22,9 +22,7 @@
       }
     }
   },
-  "update": {
-    "production": {
-      "channel": "production"
-    }
+  "submit": {
+    "production": {}
   }
 }
