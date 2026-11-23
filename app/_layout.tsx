@@ -18,6 +18,7 @@ import { setupUniversalInteractionEngine, auditScreenRoute } from '../lib/univer
 import GlobalCallListener from '../components/GlobalCallListener';
 import GlobalChatListener from '../components/GlobalChatListener';
 import GlobalPresence from '../components/GlobalPresence';
+import GlobalUpdateListener from '../components/GlobalUpdateListener';
 import OfflineNotice from '../components/ui/OfflineNotice';
 import { useThemeStore } from '../store/themeStore';
 import { applyThemeToColors } from '../constants/themes';
@@ -260,6 +261,7 @@ export default function RootLayout() {
         <GlobalCallListener />
         <GlobalChatListener />
         <GlobalPresence />
+        <GlobalUpdateListener />
         <Stack
           screenOptions={{
             headerShown: false,
