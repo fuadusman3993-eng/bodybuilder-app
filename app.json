@@ -1,20 +1,21 @@
 {
   "expo": {
     "name": "FitPulse",
-    "slug": "bodybuilder-app",
+    "slug": "fitpulse",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "bodybuilder",
+    "scheme": ["fitpulse", "bodybuilder"],
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/e456c987-2a50-44ef-8a2c-6bd8c3e06e78"
     },
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -23,15 +24,20 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bodybuilder.app"
+      "bundleIdentifier": "com.fitpulse.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.bodybuilder.app",
+      "package": "com.fitpulse.app",
       "softwareKeyboardLayoutMode": "pan"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e456c987-2a50-44ef-8a2c-6bd8c3e06e78"
+      }
     },
     "web": {
       "bundler": "metro",
