@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Platform } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Colors } from '../constants/colors';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -65,6 +66,19 @@ if (Platform.OS === 'web') {
 }
 
 import { Ionicons } from '@expo/vector-icons';
+
+function RootFallback({ error }: { error: Error }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <Text style={{ color: '#00E676', fontSize: 24, fontWeight: '900', fontStyle: 'italic', marginBottom: 12 }}>
+        FitPulse
+      </Text>
+      <Text style={{ color: '#8A95A5', fontSize: 14, textAlign: 'center' }}>
+        Starting FitPulse...
+      </Text>
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(Platform.OS === 'web');
@@ -251,42 +265,44 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View
-        key={`theme_${activeTheme.id}_${themeVersion}`}
-        style={{ flex: 1, backgroundColor: activeTheme.colors.background }}
-        onLayout={onLayoutRootView}
-      >
-        <StatusBar style="light" backgroundColor={activeTheme.colors.background} />
-        <OfflineNotice />
-        <GlobalCallListener />
-        <GlobalChatListener />
-        <GlobalPresence />
-        <GlobalUpdateListener />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: activeTheme.colors.background },
-            animation: 'slide_from_right',
-          }}
+      <ErrorBoundary FallbackComponent={RootFallback}>
+        <View
+          key={`theme_${activeTheme.id}_${themeVersion}`}
+          style={{ flex: 1, backgroundColor: activeTheme.colors.background }}
+          onLayout={onLayoutRootView}
         >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="onboarding-quiz" options={{ headerShown: false, animation: 'slide_from_right' }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="challenge" options={{ headerShown: false }} />
-          <Stack.Screen name="workout/index" options={{ headerShown: false }} />
-          <Stack.Screen name="gym/index" options={{ headerShown: false }} />
-          <Stack.Screen name="story-viewer" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="add-story" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="coaches" options={{ headerShown: false }} />
-          <Stack.Screen name="coach-profile" options={{ headerShown: false }} />
-          <Stack.Screen name="coach-dashboard" options={{ headerShown: false }} />
-          <Stack.Screen name="my-coach" options={{ headerShown: false }} />
-          <Stack.Screen name="create-plan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="ceo/index" options={{ headerShown: false }} />
-          <Stack.Screen name="ceo/login" options={{ headerShown: false }} />
-        </Stack>
-      </View>
+          <StatusBar style="light" backgroundColor={activeTheme.colors.background} />
+          <OfflineNotice />
+          <GlobalCallListener />
+          <GlobalChatListener />
+          <GlobalPresence />
+          <GlobalUpdateListener />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: activeTheme.colors.background },
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="onboarding-quiz" options={{ headerShown: false, animation: 'slide_from_right' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="challenge" options={{ headerShown: false }} />
+            <Stack.Screen name="workout/index" options={{ headerShown: false }} />
+            <Stack.Screen name="gym/index" options={{ headerShown: false }} />
+            <Stack.Screen name="story-viewer" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="add-story" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="coaches" options={{ headerShown: false }} />
+            <Stack.Screen name="coach-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="coach-dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="my-coach" options={{ headerShown: false }} />
+            <Stack.Screen name="create-plan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="ceo/index" options={{ headerShown: false }} />
+            <Stack.Screen name="ceo/login" options={{ headerShown: false }} />
+          </Stack>
+        </View>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
