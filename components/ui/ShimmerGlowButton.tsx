@@ -8,7 +8,6 @@ import {
   Platform,
   ViewStyle,
   TextStyle,
-  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
@@ -25,10 +24,8 @@ interface ShimmerGlowButtonProps {
 /**
  * ShimmerGlowButton:
  * - In-place breathing radiant neon glow ("እዛው shine ያድርግ")
- * - NO moving line streaks across the button
- * - Glossy high-end glass gradient luster in place
- * - 60fps spring tactile bounce on touch
- * - Clean bold centered text (no arrow icon)
+ * - Uses separate Animated.View layers with consistent native-driver usage
+ *   so Android never mixes JS and native animation drivers on one node.
  */
 export default function ShimmerGlowButton({
   title,
@@ -38,10 +35,12 @@ export default function ShimmerGlowButton({
   textStyle,
   height = 56,
 }: ShimmerGlowButtonProps) {
-  // In-place breathing neon glow pulse
+  const useNative = Platform.OS !== 'web';
+
+  // In-place breathing neon glow pulse (animates opacity — 100% native-driver safe)
   const glowAnim = useRef(new Animated.Value(0.45)).current;
 
-  // Tactile press bounce
+  // Tactile press bounce on outer wrapper
   const pressScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -50,33 +49,32 @@ export default function ShimmerGlowButton({
       return;
     }
 
-    // Smooth breathing radiant neon glow (in-place shine)
     const breathingLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 0.95,
           duration: 1100,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
+          useNativeDriver: useNative,
         }),
         Animated.timing(glowAnim, {
           toValue: 0.45,
           duration: 1100,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
+          useNativeDriver: useNative,
         }),
       ])
     );
     breathingLoop.start();
 
     return () => breathingLoop.stop();
-  }, [disabled, glowAnim]);
+  }, [disabled, glowAnim, useNative]);
 
   const handlePressIn = () => {
     if (disabled) return;
     Animated.spring(pressScale, {
       toValue: 0.97,
-      useNativeDriver: Platform.OS !== 'web',
+      useNativeDriver: useNative,
     }).start();
   };
 
@@ -86,7 +84,7 @@ export default function ShimmerGlowButton({
       toValue: 1,
       friction: 4,
       tension: 50,
-      useNativeDriver: Platform.OS !== 'web',
+      useNativeDriver: useNative,
     }).start();
   };
 
@@ -97,8 +95,6 @@ export default function ShimmerGlowButton({
         {
           borderRadius: height / 2,
           transform: [{ scale: pressScale }],
-          shadowOpacity: disabled ? 0 : glowAnim,
-          shadowRadius: disabled ? 0 : 20,
         },
         Platform.OS === 'web' &&
           !disabled && {
@@ -107,6 +103,21 @@ export default function ShimmerGlowButton({
         style,
       ]}
     >
+      {/* Dedicated native-safe neon aura layer behind button */}
+      {!disabled && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.auraRing,
+            {
+              height: height + 10,
+              borderRadius: (height + 10) / 2,
+              opacity: glowAnim,
+            },
+          ]}
+        />
+      )}
+
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={onPress}
@@ -141,10 +152,21 @@ export default function ShimmerGlowButton({
 const styles = StyleSheet.create({
   glowOuter: {
     width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  auraRing: {
+    position: 'absolute',
+    left: -4,
+    right: -4,
+    top: -5,
+    backgroundColor: 'rgba(0, 230, 118, 0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(105, 240, 174, 0.45)',
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
   },
   btnBase: {
     backgroundColor: Colors.primary,
@@ -153,10 +175,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     position: 'relative',
+    elevation: 6,
   },
   btnDisabled: {
     backgroundColor: '#1E293B',
     opacity: 0.5,
+    elevation: 0,
   },
   btnText: {
     color: '#000000',

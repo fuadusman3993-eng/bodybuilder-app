@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BrandLogo from '../components/ui/BrandLogo';
 import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
+import AmbientGlow from '../components/ui/AmbientGlow';
 import { Colors } from '../constants/colors';
 
 export default function WelcomeScreen() {
@@ -18,7 +19,7 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Background ambient radial glow effect */}
-      <View style={styles.ambientGlow} pointerEvents="none" />
+      <AmbientGlow size={340} opacity={0.22} style={{ top: '25%', marginTop: -170 }} />
 
       <View style={styles.contentWrapper}>
         {/* Top spacer to balance layout */}
@@ -66,21 +67,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: '25%',
-    left: '50%',
-    width: 280,
-    height: 280,
-    marginLeft: -140,
-    marginTop: -140,
-    borderRadius: 140,
-    backgroundColor: Colors.primary,
-    opacity: 0.12,
-    ...(Platform.OS === 'web'
-      ? { filter: 'blur(90px)' }
-      : { shadowColor: Colors.primary, shadowOpacity: 0.8, shadowRadius: 80, elevation: 20 }),
   },
   contentWrapper: {
     flex: 1,

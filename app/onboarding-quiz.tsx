@@ -18,6 +18,7 @@ import { useUserStore, UserTier } from '../store/userStore';
 import AnimatedSelectionCard from '../components/ui/AnimatedSelectionCard';
 import AnimatedFitnessIcon, { FitnessIconType } from '../components/ui/AnimatedFitnessIcon';
 import ShimmerGlowButton from '../components/ui/ShimmerGlowButton';
+import AmbientGlow from '../components/ui/AmbientGlow';
 
 const GOAL_OPTIONS: { id: FitnessIconType; title: string }[] = [
   { id: 'muscle', title: 'Build Muscle & Strength' },
@@ -204,7 +205,7 @@ export default function OnboardingQuizScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Background ambient radial glow */}
-      <View style={styles.ambientGlow} pointerEvents="none" />
+      <AmbientGlow size={380} opacity={0.16} style={{ top: '2%' }} />
 
       {/* ── Top Bar with Liquid Progress Bar ── */}
       <View style={styles.header}>
@@ -462,20 +463,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: '5%',
-    left: '50%',
-    width: 360,
-    height: 360,
-    marginLeft: -180,
-    borderRadius: 180,
-    backgroundColor: Colors.primary,
-    opacity: 0.08,
-    ...(Platform.OS === 'web'
-      ? { filter: 'blur(110px)' }
-      : { shadowColor: Colors.primary, shadowRadius: 90, shadowOpacity: 0.5 }),
   },
   header: {
     flexDirection: 'row',

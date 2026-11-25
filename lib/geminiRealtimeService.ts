@@ -8,17 +8,21 @@
 const STORAGE_KEY = 'fitpulse_ceo_gemini_key';
 
 export function getActiveGeminiKey(): string {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && saved.trim()) return saved.trim();
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved && saved.trim()) return saved.trim();
+    } catch (_) {}
   }
   // Fallback to env var (set in .env.local, never committed)
   return process.env.EXPO_PUBLIC_GEMINI_KEY ?? '';
 }
 
 export function saveGeminiKey(key: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, key.trim());
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, key.trim());
+    } catch (_) {}
   }
 }
 

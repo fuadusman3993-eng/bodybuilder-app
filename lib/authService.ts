@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -71,6 +72,11 @@ export async function resetPassword(email: string): Promise<void> {
 // ── Google Sign-In (Web Popup) ─────────────────────────────────────────────
 
 export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
+  if (Platform.OS !== 'web') {
+    const err: any = new Error('Google Sign-In requires native configuration on mobile.');
+    err.code = 'auth/native-google-not-configured';
+    throw err;
+  }
   const result = await signInWithPopup(auth, googleProvider);
   const isCoachApplicant = role === 'coach';
   if (role) {
@@ -104,18 +110,21 @@ export async function loginWithGoogle(role?: 'user' | 'coach'): Promise<User> {
   return result.user;
 }
 export async function checkGoogleRedirectResult(): Promise<AuthUser | null> {
+  if (Platform.OS !== 'web') return null;
   const result = await getRedirectResult(auth);
   if (result?.user) {
     const userDoc = await getDoc(doc(db, 'users', result.user.uid));
     
     // Check if we saved a pending role before redirect
     let role: 'user' | 'coach' = 'user';
-    if (!userDoc.exists() && typeof window !== 'undefined') {
-      const pendingRole = localStorage.getItem('pendingGoogleRole');
-      if (pendingRole === 'coach' || pendingRole === 'user') {
-        role = pendingRole;
-      }
-      localStorage.removeItem('pendingGoogleRole');
+    if (!userDoc.exists() && typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+      try {
+        const pendingRole = window.localStorage.getItem('pendingGoogleRole');
+        if (pendingRole === 'coach' || pendingRole === 'user') {
+          role = pendingRole;
+        }
+        window.localStorage.removeItem('pendingGoogleRole');
+      } catch (_) {}
       
       const isCoachApplicant = role === 'coach';
       // Save new Google user to DB: strictly 'user' until approval!
@@ -193,6 +202,8 @@ export function firebaseErrorMessage(code: string): string {
       return 'Network error. Please check your connection.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please try again later.';
+    case 'auth/native-google-not-configured':
+      return 'Google Sign-In is currently available on Web. Please use Email & Password on Android.';
     default:
       return 'Something went wrong. Please try again.';
   }

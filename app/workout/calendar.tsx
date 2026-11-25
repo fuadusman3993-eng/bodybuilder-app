@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +37,12 @@ export default function WorkoutCalendarScreen() {
 
   const handleDayPress = (dayNumber: number, isRest: boolean) => {
     if (isRest) {
-      alert(`Day ${dayNumber} is a scheduled Rest & Recovery day! Relax and recover.`);
+      const msg = `Day ${dayNumber} is a scheduled Rest & Recovery day! Relax and recover.`;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Rest & Recovery', msg);
+      }
       return;
     }
     router.push({

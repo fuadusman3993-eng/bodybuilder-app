@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text, Platform, TouchableOpacity } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { Colors } from '../constants/colors';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -67,15 +67,28 @@ if (Platform.OS === 'web') {
 
 import { Ionicons } from '@expo/vector-icons';
 
-function RootFallback({ error }: { error: Error }) {
+function RootFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const errMsg = error instanceof Error ? error.message : String(error || '');
   return (
     <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
       <Text style={{ color: '#00E676', fontSize: 24, fontWeight: '900', fontStyle: 'italic', marginBottom: 12 }}>
         FitPulse
       </Text>
-      <Text style={{ color: '#8A95A5', fontSize: 14, textAlign: 'center' }}>
-        Starting FitPulse...
+      <Text style={{ color: '#E5E7EB', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
+        Something interrupted FitPulse.
       </Text>
+      {errMsg ? (
+        <Text style={{ color: '#8A95A5', fontSize: 12, textAlign: 'center', marginBottom: 20 }} numberOfLines={3}>
+          {errMsg}
+        </Text>
+      ) : null}
+      <TouchableOpacity
+        onPress={resetErrorBoundary}
+        activeOpacity={0.85}
+        style={{ backgroundColor: '#00E676', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
+      >
+        <Text style={{ color: '#000000', fontSize: 15, fontWeight: '800' }}>Try Again</Text>
+      </TouchableOpacity>
     </View>
   );
 }

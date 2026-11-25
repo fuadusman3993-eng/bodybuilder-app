@@ -47,7 +47,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/ionicons.ttf"
+          ]
+        }
+      ],
       "expo-asset",
       [
         "expo-splash-screen",
