@@ -19,7 +19,7 @@ export default function FootballSection() {
 
   // 2x2 Grid calculations
   const cardW = Math.floor((width - 32 - 10) / 2);
-  const bannerHeight = Math.max(Math.round((width - 32) * 0.62), 220);
+  const bannerHeight = Math.max(Math.round((width - 32) * 0.68), 248);
 
   // 4 Pillars of Football Quick Hub
   const FOOTBALL_ACTIONS = [
@@ -63,54 +63,54 @@ export default function FootballSection() {
 
   return (
     <View style={styles.container}>
-      {/* ── 1. Football Hero Banner with "Join Now →" ── */}
+      {/* ── 1. Football Hero Banner with "Join Now" ── */}
       <View style={[styles.bannerContainer, { height: bannerHeight }]}>
         <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1000&q=80' }}
+          source={require('../../assets/images/banners/football-hero.jpg')}
           style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.88)']}
+          colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0.62)', 'rgba(0,0,0,0.90)']}
           style={StyleSheet.absoluteFill}
         />
 
-        {/* Top: Tag Badge */}
-        <View style={styles.topRow}>
-          <View style={styles.tagBadge}>
-            <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
-            <Text style={styles.tagText}>SOCCER PRO</Text>
-          </View>
-        </View>
+        <View style={styles.bannerInner}>
+          {/* Top Row: Tag Badge + Top Right Motivational Quote */}
+          <View style={styles.topHeaderRow}>
+            <View style={styles.tagBadge}>
+              <View style={[styles.tagDot, { backgroundColor: colors.primary }]} />
+              <Text style={styles.tagText}>SOCCER PRO</Text>
+            </View>
 
-        {/* Top Right Motivational Quote */}
-        <View style={styles.quoteWrap}>
-          <View style={styles.quoteSignature}>
-            <Text style={[styles.quoteTextGreen, { color: colors.primary }]}>Relentless</Text>
-            <Text style={styles.quoteTextWhite}>Match</Text>
-            <View>
-              <Text style={styles.quoteTextWhite}>Pace</Text>
-              <View style={[styles.quoteUnderline, { backgroundColor: colors.primary }]} />
+            <View style={styles.quoteSignature}>
+              <Text style={[styles.quoteTextGreen, { color: colors.primary }]}>Relentless</Text>
+              <Text style={styles.quoteTextWhite}>Match</Text>
+              <View>
+                <Text style={styles.quoteTextWhite}>Pace</Text>
+                <View style={[styles.quoteUnderline, { backgroundColor: colors.primary }]} />
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Bottom Content with "Join Now →" */}
-        <View style={styles.bottomContent}>
-          <Text style={styles.title}>
-            Football{'\n'}
-            <Text style={[styles.titleAccent, { color: colors.primary }]}>Tactics & Training</Text>
-          </Text>
-          <Text style={styles.subtitle}>
-            Master pitch drills, explosive leg power & 90-minute stamina.
-          </Text>
-          <TouchableOpacity
-            style={[styles.joinBtn, { backgroundColor: colors.primary }]}
-            activeOpacity={0.85}
-            onPress={() => router.push('/football-training')}
-          >
-            <Text style={[styles.joinBtnText, { color: '#000000' }]}>Join Now  →</Text>
-          </TouchableOpacity>
+          {/* Bottom Content with "Join Now" */}
+          <View style={styles.bottomContent}>
+            <Text style={styles.title}>
+              Football{'\n'}
+              <Text style={[styles.titleAccent, { color: colors.primary }]}>Tactics & Training</Text>
+            </Text>
+            <Text style={styles.subtitle} numberOfLines={2}>
+              Master pitch drills, explosive leg power & 90-minute stamina.
+            </Text>
+            <TouchableOpacity
+              style={[styles.joinBtn, { backgroundColor: colors.primary }]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/football-training')}
+            >
+              <Text style={[styles.joinBtnText, { color: '#000000' }]}>Join Now</Text>
+              <Ionicons name="arrow-forward" size={14} color="#000000" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -182,13 +182,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 20,
     position: 'relative',
+    backgroundColor: '#0A0E17',
   },
-  topRow: {
-    padding: 14,
-    position: 'absolute',
-    top: 0,
-    left: 0,
+  bannerInner: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 16,
     zIndex: 2,
+  },
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   tagBadge: {
     flexDirection: 'row',
@@ -211,13 +216,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-  },
-  quoteWrap: {
-    position: 'absolute',
-    top: 14,
-    right: 16,
-    alignItems: 'flex-end',
-    zIndex: 2,
   },
   quoteSignature: {
     alignItems: 'flex-end',
@@ -242,11 +240,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   bottomContent: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    zIndex: 2,
+    justifyContent: 'flex-end',
   },
   title: {
     color: '#FFFFFF',
@@ -269,6 +263,9 @@ const styles = StyleSheet.create({
   },
   joinBtn: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 20,
     paddingVertical: 9,
     borderRadius: 24,

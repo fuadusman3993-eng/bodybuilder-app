@@ -145,9 +145,14 @@ export default function CoachRegisterScreen() {
                 disabled={isLoading || isGoogleLoading} activeOpacity={0.85}>
                 {isLoading
                   ? <ActivityIndicator color={Colors.primary} />
-                  : <Text style={s.primaryBtnText}>Continue as Coach →</Text>}
+                  : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={s.primaryBtnText}>Continue as Coach</Text>
+                      <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+                    </View>
+                  )}
               </TouchableOpacity>
-              <Text style={s.nextHint}>Next: Verify email → Add professional info</Text>
+              <Text style={s.nextHint}>Next: Verify email • Add professional info</Text>
             </View>
 
             <View style={s.dividerRow}>

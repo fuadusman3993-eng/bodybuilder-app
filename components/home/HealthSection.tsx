@@ -146,7 +146,10 @@ export default function HealthSection() {
             <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{bloodSugar}</Text>
             <Text style={[styles.cardUnit, { color: colors.textMuted }]}>mg/dL</Text>
           </View>
-          <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading →</Text>
+          <View style={styles.cardHintRow}>
+            <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading</Text>
+            <Ionicons name="arrow-forward" size={13} color={colors.primary} />
+          </View>
         </TouchableOpacity>
 
         {/* Card 2: Blood Pressure */}
@@ -170,7 +173,10 @@ export default function HealthSection() {
             <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{systolic}/{diastolic}</Text>
             <Text style={[styles.cardUnit, { color: colors.textMuted }]}>mmHg</Text>
           </View>
-          <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading →</Text>
+          <View style={styles.cardHintRow}>
+            <Text style={[styles.cardHint, { color: colors.primary }]}>Tap to log new reading</Text>
+            <Ionicons name="arrow-forward" size={13} color={colors.primary} />
+          </View>
         </TouchableOpacity>
 
         {/* Card 3: Diabetic & BP Nutrition */}
@@ -191,7 +197,10 @@ export default function HealthSection() {
           <Text style={[styles.cardDesc, { color: colors.textPrimary }]}>
             ጤፍ፣ ምስር፣ ሰላጣ እና የደም ግፊትን የሚቆጣጠሩ ምግቦች
           </Text>
-          <Text style={[styles.cardHint, { color: colors.primary }]}>View Healthy Foods →</Text>
+          <View style={styles.cardHintRow}>
+            <Text style={[styles.cardHint, { color: colors.primary }]}>View Healthy Foods</Text>
+            <Ionicons name="arrow-forward" size={13} color={colors.primary} />
+          </View>
         </TouchableOpacity>
 
         {/* Card 4: Medication Routine */}
@@ -516,10 +525,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 6,
   },
+  cardHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
   cardHint: {
     fontSize: 11,
     fontWeight: '600',
-    marginTop: 4,
   },
   medRow: {
     flexDirection: 'row',

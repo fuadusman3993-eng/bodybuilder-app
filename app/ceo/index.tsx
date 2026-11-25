@@ -1085,7 +1085,8 @@ export default function CeoDashboardScreen() {
                     </View>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
-                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700' }}>Review Queue →</Text>
+                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700' }}>Review Queue</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#F59E0B" />
                   </View>
                 </View>
               </TouchableOpacity>

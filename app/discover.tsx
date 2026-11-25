@@ -260,7 +260,8 @@ export default function DiscoverScreen() {
               <Text style={styles.programBannerTitle}>Stay active, stay in shape</Text>
               <Text style={styles.programBannerSub}>4 targeted moves • Daily Tone</Text>
               <View style={[styles.programBannerBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.programBannerBtnText}>View Routine →</Text>
+                <Text style={styles.programBannerBtnText}>View Routine</Text>
+                <Ionicons name="arrow-forward" size={13} color="#000000" />
               </View>
             </View>
           </ImageBackground>
@@ -548,6 +549,9 @@ const styles = StyleSheet.create({
   },
   programBannerBtn: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,

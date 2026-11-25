@@ -811,7 +811,8 @@ export default function SelectTrainingPlanScreen() {
                       activeOpacity={0.9}
                       onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
                     >
-                      <Text style={styles.startDay1Text}>Start Day 1  →</Text>
+                      <Text style={styles.startDay1Text}>Start Day 1</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#000000" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -903,7 +904,8 @@ export default function SelectTrainingPlanScreen() {
                       activeOpacity={0.9}
                       onPress={() => router.push('/exercises/gym')}
                     >
-                      <Text style={styles.startDay1Text}>Browse Gym Exercises Vault  →</Text>
+                      <Text style={styles.startDay1Text}>Browse Gym Exercises Vault</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#000000" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -969,7 +971,8 @@ export default function SelectTrainingPlanScreen() {
                       activeOpacity={0.9}
                       onPress={() => handleStartPlan(group.featured.goalId, group.featured.level, true)}
                     >
-                      <Text style={styles.startDay1Text}>Start Day 1  →</Text>
+                      <Text style={styles.startDay1Text}>Start Day 1</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#000000" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1060,7 +1063,8 @@ export default function SelectTrainingPlanScreen() {
                       activeOpacity={0.9}
                       onPress={() => router.push('/exercises/home')}
                     >
-                      <Text style={styles.startDay1Text}>Browse Home Workouts Vault  →</Text>
+                      <Text style={styles.startDay1Text}>Browse Home Workouts Vault</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#000000" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1283,6 +1287,8 @@ const styles = StyleSheet.create({
   startDay1Btn: {
     height: 46,
     borderRadius: 24,
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },

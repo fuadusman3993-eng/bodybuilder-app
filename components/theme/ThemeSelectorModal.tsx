@@ -724,7 +724,7 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                 </Text>
 
                 <TouchableOpacity
-                  style={[styles.applyBtn, { backgroundColor: '#00E676' }]}
+                  style={[styles.applyBtn, { backgroundColor: '#00E676', flexDirection: 'row', justifyContent: 'center', gap: 6 }]}
                   onPress={() => {
                     setShowProPrompt(false);
                     onClose();
@@ -732,7 +732,8 @@ export default function ThemeSelectorModal({ visible, onClose }: ThemeSelectorMo
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.applyBtnText}>Upgrade to PRO  →</Text>
+                  <Text style={styles.applyBtnText}>Upgrade to PRO</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#000000" />
                 </TouchableOpacity>
               </View>
             </View>

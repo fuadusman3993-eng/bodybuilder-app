@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 /**
  * Listens for Over-The-Air (OTA) updates on native devices (Android / iOS).
- * Automatically downloads and prepares updates in the background.
+ * Automatically downloads updates in the background and offers an instant restart.
  * On Web, gracefully does nothing.
  */
 export default function GlobalUpdateListener() {
@@ -21,8 +21,21 @@ export default function GlobalUpdateListener() {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable && isMounted) {
           await Updates.fetchUpdateAsync();
-          // The update is downloaded and ready!
-          // It will automatically activate on next launch or can be reloaded.
+          if (isMounted) {
+            Alert.alert(
+              'Update Ready',
+              'A new FitPulse update has been downloaded. Restart now to apply the latest fixes?',
+              [
+                { text: 'Later', style: 'cancel' },
+                {
+                  text: 'Restart Now',
+                  onPress: () => {
+                    Updates.reloadAsync().catch(() => {});
+                  },
+                },
+              ]
+            );
+          }
         }
       } catch (_) {
         // Silently catch network or offline errors

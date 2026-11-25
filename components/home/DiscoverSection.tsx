@@ -6,9 +6,9 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  ImageBackground,
   useWindowDimensions,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -64,8 +64,13 @@ export default function DiscoverSection() {
           <Ionicons name="compass" size={20} color={colors.primary} />
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Discover</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/discover')}>
-          <Text style={[styles.seeAll, { color: colors.primary }]}>Explore All →</Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          onPress={() => router.push('/discover')}
+        >
+          <Text style={[styles.seeAll, { color: colors.primary }]}>Explore All</Text>
+          <Ionicons name="arrow-forward" size={13} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -117,9 +122,13 @@ export default function DiscoverSection() {
               activeOpacity={0.85}
               onPress={() => router.push('/routine/abs-4-moves')}
             >
-              <Text style={styles.joinBtnText}>▶  Start Workout</Text>
+              <Ionicons name="play" size={13} color="#000000" />
+              <Text style={styles.joinBtnText}>Start Workout</Text>
             </TouchableOpacity>
-            <Text style={styles.metaText}>⏱ 12 min · No gear</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.80)" />
+              <Text style={styles.metaText}>12 min · No gear</Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -138,11 +147,18 @@ export default function DiscoverSection() {
             activeOpacity={0.85}
             onPress={() => router.push(item.route as any)}
           >
-            <ImageBackground source={{ uri: item.bgImg }} style={styles.pickImg} imageStyle={{ borderRadius: 14 }}>
+            <View style={styles.pickImg}>
+              <ExpoImage
+                source={{ uri: item.bgImg }}
+                style={StyleSheet.absoluteFillObject}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
               <View style={[styles.pickBadge, { backgroundColor: item.color }]}>
                 <Text style={styles.pickBadgeText}>{item.badge}</Text>
               </View>
-            </ImageBackground>
+            </View>
             <View style={styles.pickInfo}>
               <Text style={[styles.pickTitle, { color: colors.textPrimary }]} numberOfLines={2}>
                 {item.title}
@@ -255,6 +271,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 30,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
   metaText: {
@@ -299,6 +318,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     padding: 8,
+    backgroundColor: '#111827',
   },
   pickBadge: {
     alignSelf: 'flex-start',

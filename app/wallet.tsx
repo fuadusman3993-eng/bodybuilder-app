@@ -562,7 +562,7 @@ export default function WalletScreen() {
               <View style={[styles.trendPill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
                 <Ionicons name="arrow-up" size={11} color={colors.primary} />
                 <Text style={[styles.trendPercent, { color: colors.primary }]}>0.00%</Text>
-                <Text style={[styles.trendArrow, { color: colors.primary }]}>→</Text>
+                <Ionicons name="arrow-forward" size={11} color={colors.primary} style={styles.trendArrow} />
                 <Text style={[styles.trendLabel, { color: colors.textMuted }]}>vs last 7 days</Text>
               </View>
             </View>

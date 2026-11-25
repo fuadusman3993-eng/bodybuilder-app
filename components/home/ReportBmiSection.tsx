@@ -157,8 +157,13 @@ export default function ReportBmiSection() {
           <Ionicons name="speedometer" size={20} color={colors.primary} />
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Fitness Report</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/report')}>
-          <Text style={[styles.seeAll, { color: colors.primary }]}>Full Report →</Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          onPress={() => router.push('/report')}
+        >
+          <Text style={[styles.seeAll, { color: colors.primary }]}>Full Report</Text>
+          <Ionicons name="arrow-forward" size={13} color={colors.primary} />
         </TouchableOpacity>
       </View>
 

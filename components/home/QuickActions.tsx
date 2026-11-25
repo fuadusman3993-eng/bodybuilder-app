@@ -68,12 +68,14 @@ export default function QuickActions() {
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
+          style={styles.seeAllBtn}
           onPress={() => {
-            trackInteraction('HomePage', 'See all → Quick Actions');
+            trackInteraction('HomePage', 'See all Quick Actions');
             router.push('/discover');
           }}
         >
-          <Text style={[styles.seeAll, { color: colors.primary }]}>See all →</Text>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+          <Ionicons name="arrow-forward" size={13} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -146,6 +148,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.4,
   },
+  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   seeAll: { fontSize: 12.5, fontWeight: '700' },
   grid: {
     flexDirection: 'row',

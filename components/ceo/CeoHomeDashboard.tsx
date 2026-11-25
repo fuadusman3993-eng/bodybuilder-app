@@ -595,8 +595,10 @@ export default function CeoHomeDashboard({
             <TouchableOpacity
               onPress={() => onNavigateTab('errors')}
               activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <Text style={styles.viewAllRedText}>View All ({recentErrors.length}) →</Text>
+              <Text style={styles.viewAllRedText}>View All ({recentErrors.length})</Text>
+              <Ionicons name="arrow-forward" size={13} color="#EF4444" />
             </TouchableOpacity>
           </View>
 
@@ -685,11 +687,12 @@ export default function CeoHomeDashboard({
                 All systems are stable and ready for growth.
               </Text>
               <TouchableOpacity
-                style={styles.viewDetailsBtn}
+                style={[styles.viewDetailsBtn, { flexDirection: 'row', alignItems: 'center', gap: 5 }]}
                 onPress={() => onNavigateTab('controls')}
                 activeOpacity={0.85}
               >
-                <Text style={styles.viewDetailsBtnText}>View Details →</Text>
+                <Text style={styles.viewDetailsBtnText}>View Details</Text>
+                <Ionicons name="arrow-forward" size={13} color="#070D18" />
               </TouchableOpacity>
             </View>
           </LinearGradient>
