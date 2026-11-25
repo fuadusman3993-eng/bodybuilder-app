@@ -11,6 +11,7 @@ export default function GlobalUpdateListener() {
     if (Platform.OS === 'web') return;
 
     let isMounted = true;
+    let promptTimer: ReturnType<typeof setTimeout> | null = null;
 
     async function checkOTAUpdates() {
       try {
@@ -22,19 +23,24 @@ export default function GlobalUpdateListener() {
         if (update.isAvailable && isMounted) {
           await Updates.fetchUpdateAsync();
           if (isMounted) {
-            Alert.alert(
-              'Update Ready',
-              'A new FitPulse update has been downloaded. Restart now to apply the latest fixes?',
-              [
-                { text: 'Later', style: 'cancel' },
-                {
-                  text: 'Restart Now',
-                  onPress: () => {
-                    Updates.reloadAsync().catch(() => {});
-                  },
-                },
-              ]
-            );
+            promptTimer = setTimeout(() => {
+              if (!isMounted) return;
+              try {
+                Alert.alert(
+                  'Update Ready',
+                  'A new FitPulse update has been downloaded. Restart now to apply the latest fixes?',
+                  [
+                    { text: 'Later', style: 'cancel' },
+                    {
+                      text: 'Restart Now',
+                      onPress: () => {
+                        Updates.reloadAsync().catch(() => {});
+                      },
+                    },
+                  ]
+                );
+              } catch (_) {}
+            }, 1500);
           }
         }
       } catch (_) {
@@ -46,6 +52,7 @@ export default function GlobalUpdateListener() {
 
     return () => {
       isMounted = false;
+      if (promptTimer) clearTimeout(promptTimer);
     };
   }, []);
 

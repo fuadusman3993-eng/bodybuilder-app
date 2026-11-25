@@ -122,13 +122,10 @@ export default function RootLayout() {
     async function loadAssetsAsync() {
       try {
         await Font.loadAsync({
-          // Load Ionicons by both common key names for reliability
-          'Ionicons': require('../assets/fonts/ionicons.ttf'),
-          'ionicons': require('../assets/fonts/ionicons.ttf'),
           ...Ionicons.font,
         });
       } catch (e) {
-        console.warn('Font loading error:', e);
+        console.warn('Asset loading error:', e);
       } finally {
         setAppReady(true);
       }
