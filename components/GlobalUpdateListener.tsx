@@ -23,10 +23,21 @@ export default function GlobalUpdateListener() {
   const isCheckingRef = useRef(false);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
-
     let isMounted = true;
     let initialCheckTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // On Web: Trigger the TikTok feature update sheet after 2.5s for live preview & visual testing
+    if (Platform.OS === 'web') {
+      initialCheckTimer = setTimeout(() => {
+        if (isMounted) {
+          setUpdateAvailable(undefined, 'v1.1 Feature Update (Preview)');
+        }
+      }, 2500);
+      return () => {
+        isMounted = false;
+        if (initialCheckTimer) clearTimeout(initialCheckTimer);
+      };
+    }
 
     async function checkForUpdates() {
       if (isCheckingRef.current) return;
@@ -67,12 +78,25 @@ export default function GlobalUpdateListener() {
   }, [setUpdateAvailable]);
 
   const handleDownload = async () => {
-    if (Platform.OS === 'web') return;
+    setDownloading();
+
+    if (Platform.OS === 'web') {
+      // Smooth simulated progress for Web preview
+      let currentProgress = 20;
+      const progressInterval = setInterval(() => {
+        currentProgress += 20;
+        setProgress(Math.min(currentProgress, 100));
+        if (currentProgress >= 100) {
+          clearInterval(progressInterval);
+          setReady();
+        }
+      }, 350);
+      return;
+    }
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const Updates = require('expo-updates');
-      setDownloading();
 
       // Smooth simulated progress indicator while expo-updates downloads native bundle chunks
       let currentProgress = 15;
@@ -96,16 +120,21 @@ export default function GlobalUpdateListener() {
   };
 
   const handleRestart = async () => {
-    if (Platform.OS === 'web') return;
+    reset();
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+      return;
+    }
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const Updates = require('expo-updates');
-      reset();
       await Updates.reloadAsync();
     } catch (err: any) {
       console.warn('[OTA Reload] Error:', err);
-      reset();
     }
   };
 
