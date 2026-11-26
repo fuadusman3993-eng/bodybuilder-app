@@ -3,7 +3,7 @@
     "name": "FitPulse",
     "slug": "fitpulse-app",
     "owner": "fitpulse-apps-team",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -14,7 +14,7 @@
     },
     "updates": {
       "enabled": true,
-      "checkAutomatically": "ON_LOAD",
+      "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/e456c987-2a50-44ef-8a2c-6bd8c3eaaf4b"
     },
@@ -33,7 +33,8 @@
         "backgroundColor": "#000000"
       },
       "package": "com.fitpulse.app",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "versionCode": 2
     },
     "extra": {
       "eas": {
