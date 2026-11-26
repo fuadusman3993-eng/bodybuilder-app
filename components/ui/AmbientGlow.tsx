@@ -21,9 +21,10 @@ export default function AmbientGlow({
   opacity = 0.22,
   style,
 }: AmbientGlowProps) {
+  const safeSize = Math.max(20, size);
   const rawId = useId();
   const gradientId = `ambientGlow_${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const radius = size / 2;
+  const radius = safeSize / 2;
 
   return (
     <View
@@ -31,17 +32,24 @@ export default function AmbientGlow({
       style={[
         {
           position: 'absolute',
-          width: size,
-          height: size,
+          width: safeSize,
+          height: safeSize,
           left: '50%',
           marginLeft: -radius,
         },
         style,
       ]}
     >
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Svg width={safeSize} height={safeSize} viewBox={`0 0 ${safeSize} ${safeSize}`}>
         <Defs>
-          <RadialGradient id={gradientId} cx="50%" cy="50%" r="50%">
+          <RadialGradient
+            id={gradientId}
+            cx={radius}
+            cy={radius}
+            rx={radius}
+            ry={radius}
+            gradientUnits="userSpaceOnUse"
+          >
             <Stop offset="0%" stopColor={color} stopOpacity={opacity} />
             <Stop offset="45%" stopColor={color} stopOpacity={opacity * 0.45} />
             <Stop offset="100%" stopColor={color} stopOpacity={0} />
