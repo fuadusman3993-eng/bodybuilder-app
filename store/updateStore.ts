@@ -32,26 +32,26 @@ const DEFAULT_CHANGELOG: UpdateFeatureItem[] = [
   {
     id: '1',
     icon: 'images-outline',
-    title: 'HD Banners & Local Photos',
-    description: 'Instant zero-delay loading for workout, challenge, and coach banners.',
+    title: 'Cinematic Banners & Framing',
+    description: 'Recalibrated 16:9 ratio and softened vignette so athlete photos shine.',
   },
   {
     id: '2',
+    icon: 'server-outline',
+    title: 'Telegram-Style Smart Disk Cache',
+    description: 'Instant 0ms offline loading for Marketplace products and workout media.',
+  },
+  {
+    id: '3',
     icon: 'sparkles-outline',
     title: 'Smooth Neon Glow Buttons',
     description: 'Enhanced touch-bounce animation and seamless radiant green glow.',
   },
   {
-    id: '3',
+    id: '4',
     icon: 'arrow-forward-circle-outline',
     title: 'Clean Navigation Arrows',
     description: 'Crisp vector icon arrows across all Home & Challenge hubs.',
-  },
-  {
-    id: '4',
-    icon: 'shield-checkmark-outline',
-    title: 'Stability & Layout Polishes',
-    description: 'Guaranteed login footer visibility and Android native crash guards.',
   },
 ];
 

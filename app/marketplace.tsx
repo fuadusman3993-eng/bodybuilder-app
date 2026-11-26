@@ -284,6 +284,7 @@ export default function MarketplaceScreen() {
                     style={styles.weeklyImage}
                     contentFit="cover"
                     transition={150}
+                    cachePolicy="memory-disk"
                   />
 
                   {/* Add / Stepper Button (Corner button matching Image 2) */}
@@ -399,7 +400,13 @@ export default function MarketplaceScreen() {
               >
                 {/* Product Image & Badges */}
                 <View style={[styles.cardImageWrap, { backgroundColor: colors.surfaceLight }]}>
-                  <Image source={{ uri: product.imageUrl }} style={styles.productImage} contentFit="cover" />
+                  <Image
+                    source={{ uri: product.imageUrl }}
+                    style={styles.productImage}
+                    contentFit="cover"
+                    transition={150}
+                    cachePolicy="memory-disk"
+                  />
 
                   <View style={styles.cardTopPills}>
                     {product.badge && (
@@ -583,6 +590,8 @@ export default function MarketplaceScreen() {
                   source={{ uri: selectedProductForAi.imageUrl }}
                   style={styles.pinnedProductImg}
                   contentFit="cover"
+                  transition={150}
+                  cachePolicy="memory-disk"
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.pinnedProductTitle, { color: colors.textPrimary }]} numberOfLines={1}>

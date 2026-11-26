@@ -196,6 +196,7 @@ export default function DayWorkoutPreviewScreen() {
                     style={styles.exerciseThumb}
                     contentFit="contain"
                     autoplay={false}
+                    cachePolicy="memory-disk"
                   />
                 </View>
 

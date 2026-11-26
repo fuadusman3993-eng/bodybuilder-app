@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   useWindowDimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/themeStore';
@@ -19,7 +19,7 @@ export default function FootballSection() {
 
   // 2x2 Grid calculations
   const cardW = Math.floor((width - 32 - 10) / 2);
-  const bannerHeight = Math.max(Math.round((width - 32) * 0.68), 248);
+  const bannerHeight = Math.min(Math.max(Math.round((width - 32) * 0.58), 205), 235);
 
   // 4 Pillars of Football Quick Hub
   const FOOTBALL_ACTIONS = [
@@ -68,10 +68,13 @@ export default function FootballSection() {
         <Image
           source={require('../../assets/images/banners/football-hero.jpg')}
           style={StyleSheet.absoluteFillObject}
-          resizeMode="cover"
+          contentFit="cover"
+          contentPosition="center"
+          transition={200}
+          cachePolicy="memory-disk"
         />
         <LinearGradient
-          colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0.62)', 'rgba(0,0,0,0.90)']}
+          colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.80)']}
           style={StyleSheet.absoluteFill}
         />
 

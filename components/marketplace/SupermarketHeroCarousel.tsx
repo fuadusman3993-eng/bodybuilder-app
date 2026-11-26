@@ -308,6 +308,7 @@ export default function SupermarketHeroCarousel({ onShopNow, onProductPress }: P
                 style={styles.productImage}
                 contentFit="contain"
                 transition={150}
+                cachePolicy="memory-disk"
               />
 
               {/* Sale Price in Red Bold */}

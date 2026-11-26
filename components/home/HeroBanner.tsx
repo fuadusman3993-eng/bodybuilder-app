@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -56,8 +57,9 @@ export default function HeroBanner() {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   
-  const heroHeight = Math.max(Math.round(width * 0.68), 248);
   const bannerWidth = width - 32; // 16px padding on each side
+  // Balanced 16:9.5 cinematic ratio so photos are never vertically cropped or distorted
+  const heroHeight = Math.min(Math.max(Math.round(bannerWidth * 0.58), 205), 235);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -78,15 +80,18 @@ export default function HeroBanner() {
         >
           {BANNERS.map((current) => (
             <View key={current.id} style={{ width: bannerWidth, height: heroHeight }}>
-              {/* Background Photo (local bundled asset for 0ms instant display) */}
+              {/* Background Photo (local bundled asset with expo-image + disk caching) */}
               <Image
                 source={current.image}
                 style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
+                contentFit="cover"
+                contentPosition="center"
+                transition={200}
+                cachePolicy="memory-disk"
               />
-              {/* Dark gradient overlay */}
+              {/* Softened cinematic gradient vignette (preserves photo vibrancy while ensuring text contrast) */}
               <LinearGradient
-                colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0.62)', 'rgba(0,0,0,0.90)']}
+                colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.80)']}
                 style={StyleSheet.absoluteFill}
               />
 
@@ -235,22 +240,22 @@ const styles = StyleSheet.create({
     paddingRight: 52,
   },
   title: {
-    fontSize: 28,
+    fontSize: 23,
     fontWeight: '900',
     color: '#FFF',
-    lineHeight: 33,
-    letterSpacing: -0.5,
-    marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    lineHeight: 28,
+    letterSpacing: -0.4,
+    marginBottom: 3,
+    textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
   titleAccent: { color: Colors.primary },
   subtitle: { 
-    fontSize: 13, 
-    color: 'rgba(255,255,255,0.95)', 
-    marginBottom: 12,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    fontSize: 12, 
+    color: 'rgba(255,255,255,0.92)', 
+    marginBottom: 10,
+    textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
@@ -260,18 +265,18 @@ const styles = StyleSheet.create({
   },
   joinBtn: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
   dots: {
     position: 'absolute',
-    bottom: 22,
+    bottom: 16,
     right: 16,
     flexDirection: 'row',
     gap: 5,

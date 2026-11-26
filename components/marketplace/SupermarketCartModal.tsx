@@ -196,6 +196,7 @@ export default function SupermarketCartModal({
                       style={styles.itemImage}
                       contentFit="cover"
                       transition={150}
+                      cachePolicy="memory-disk"
                     />
 
                     {/* Details */}
