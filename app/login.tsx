@@ -13,7 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Logo from '../components/auth/Logo';
+import Svg, { Path } from 'react-native-svg';
+import BrandLogo from '../components/ui/BrandLogo';
 import AuthInput from '../components/auth/AuthInput';
 import { Colors } from '../constants/colors';
 import { useUserStore, UserTier } from '../store/userStore';
@@ -25,14 +26,13 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs
 import { db } from '../lib/firebase';
 
 // Save user profile to Firestore (merge so existing data stays)
-// Returns true if the user already has a fully setup profile (e.g. country exists)
 const saveAndCheckUser = async (uid: string, name: string, email: string) => {
   try {
     const docRef = doc(db, 'users', uid);
     const snap = await getDoc(docRef);
     let isProfileComplete = false;
     let existingProfileData: any = null;
-    
+
     if (snap.exists()) {
       isProfileComplete = !!snap.data().country; // Country is required in create-profile
     }
@@ -67,13 +67,13 @@ const saveAndCheckUser = async (uid: string, name: string, email: string) => {
     if (existingProfileData?.role) dataToSave.role = existingProfileData.role;
     if (existingProfileData?.avatar) dataToSave.avatar = existingProfileData.avatar;
     if (existingProfileData?.photoURL) dataToSave.photoURL = existingProfileData.photoURL;
-    
+
     if (!snap.exists()) {
       dataToSave.uid = uid;
-      dataToSave.role = existingProfileData?.role || 'user'; // Default to Trainee if they didn't choose Coach
+      dataToSave.role = existingProfileData?.role || 'user';
       dataToSave.createdAt = serverTimestamp();
     }
-    
+
     if (!snap.exists() || !snap.data().username) {
       if (!dataToSave.username) {
         dataToSave.username = email.split('@')[0];
@@ -81,13 +81,35 @@ const saveAndCheckUser = async (uid: string, name: string, email: string) => {
     }
 
     await setDoc(docRef, dataToSave, { merge: true });
-    
     return isProfileComplete;
   } catch (e) {
     console.warn('Firestore save failed', e);
     return true; // Fallback to tabs to avoid getting stuck
   }
 };
+
+function GoogleColorIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <Path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </Svg>
+  );
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -109,27 +131,18 @@ export default function LoginScreen() {
   const [show2FAModal, setShow2FAModal] = useState(false);
 
   useEffect(() => {
-    // Android hardware back: prevent navigating back to tabs / keep on login
+    // Respect Android hardware back button to navigate back cleanly
     const onBackPress = () => {
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      router.replace('/welcome');
       return true;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-    // Web browser back button: keep user on login
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.history.pushState(null, '', window.location.href);
-      const onPopState = () => {
-        window.history.pushState(null, '', window.location.href);
-      };
-      window.addEventListener('popstate', onPopState);
-      return () => {
-        sub.remove();
-        window.removeEventListener('popstate', onPopState);
-      };
-    }
-
     return () => sub.remove();
-  }, []);
+  }, [router]);
 
   const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
 
@@ -139,15 +152,27 @@ export default function LoginScreen() {
     setMainError('');
 
     let valid = true;
-    if (!email) { setEmailError('Email is required.'); valid = false; }
-    else if (!validateEmail(email)) { setEmailError('Please enter a valid email address.'); valid = false; }
-    if (!password) { setPasswordError('Password is required.'); valid = false; }
-    else if (password.length < 6) { setPasswordError('Password must be at least 6 characters.'); valid = false; }
+    if (!email.trim()) {
+      setEmailError('Email is required.');
+      valid = false;
+    } else if (!validateEmail(email.trim())) {
+      setEmailError('Please enter a valid email address.');
+      valid = false;
+    }
+
+    if (!password) {
+      setPasswordError('Password is required.');
+      valid = false;
+    } else if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      valid = false;
+    }
+
     if (!valid) return;
 
     setIsLoading(true);
     try {
-      const user = await loginWithEmail(email, password);
+      const user = await loginWithEmail(email.trim(), password);
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
 
@@ -157,7 +182,7 @@ export default function LoginScreen() {
       if (devResult.status === 'LIMIT_REACHED') {
         await signOut().catch(() => {});
         setMainError(
-          'Authorized device limit reached (Max 2 devices allowed). Please log out from another device or terminate it in Settings to sign in on this device.'
+          'Device limit reached (Max 2 devices). Please sign out from another device in Settings.'
         );
         return;
       }
@@ -168,7 +193,7 @@ export default function LoginScreen() {
       await saveLastAccount({
         uid: user.uid,
         name,
-        email: user.email || email,
+        email: user.email || email.trim(),
         authProvider: 'password',
       });
 
@@ -177,7 +202,7 @@ export default function LoginScreen() {
         setShow2FAModal(true);
         return;
       }
-      
+
       if (isComplete) {
         router.replace('/(tabs)');
       } else {
@@ -198,20 +223,18 @@ export default function LoginScreen() {
       const name = user.displayName || user.email?.split('@')[0] || 'User';
       const isComplete = await saveAndCheckUser(user.uid, name, user.email || '');
 
-      // Check multi-device security rules (Max 2 devices)
       const devResult = await registerOrValidateDevice(user.uid);
 
       if (devResult.status === 'LIMIT_REACHED') {
         await signOut().catch(() => {});
         setMainError(
-          'Authorized device limit reached (Max 2 devices allowed). Please log out from another device or terminate it in Settings to sign in on this device.'
+          'Device limit reached (Max 2 devices). Please sign out from another device in Settings.'
         );
         return;
       }
 
       setUser({ uid: user.uid, tier: UserTier.FREE, name });
 
-      // Save for quick One-Tap login suggestion next time
       await saveLastAccount({
         uid: user.uid,
         name,
@@ -225,8 +248,7 @@ export default function LoginScreen() {
         setShow2FAModal(true);
         return;
       }
-      
-      // On the login page, Google sign-in always takes the user straight to the app
+
       router.replace('/(tabs)');
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
@@ -255,6 +277,27 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      {/* ── 1. Top Navigation Bar (FitPulse Style: Chevron Back + Brand Logo + Secure Badge) ── */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <View style={styles.topBarBrand}>
+          <BrandLogo size="small" showText={false} />
+        </View>
+
+        <View style={styles.shieldBadge}>
+          <Ionicons name="shield-checkmark" size={14} color={Colors.primary} />
+          <Text style={styles.shieldText}>SECURE</Text>
+        </View>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -265,27 +308,31 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.contentWrapper}>
-
+            {/* ── 2. Clean Modern Header (FitPulse Style) ── */}
             <View style={styles.header}>
-              <Logo size="small" />
-            </View>
-
-            <View style={styles.titleContainer}>
               <Text style={styles.title}>
                 Welcome <Text style={styles.titleHighlight}>Back</Text>
               </Text>
-              <Text style={styles.subtitle}>Sign in to continue your fitness journey.</Text>
+              <Text style={styles.subtitle}>
+                Enter your email address and password to continue.
+              </Text>
             </View>
 
+            {/* ── 3. Ultra-Clean Inputs (Neon Focus Glow) ── */}
             <View style={styles.formContainer}>
               <AuthInput
                 icon="mail-outline"
                 placeholder="Email address"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 error={emailError}
-                onChangeText={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  if (emailError) setEmailError('');
+                  if (mainError) setMainError('');
+                }}
               />
 
               <AuthInput
@@ -294,71 +341,83 @@ export default function LoginScreen() {
                 isPassword
                 value={password}
                 error={passwordError}
-                onChangeText={(t) => { setPassword(t); if (passwordError) setPasswordError(''); }}
+                onChangeText={(t) => {
+                  setPassword(t);
+                  if (passwordError) setPasswordError('');
+                  if (mainError) setMainError('');
+                }}
               />
 
-              <View style={styles.forgotPasswordContainer}>
-                <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              {/* Forgot password aligned right */}
+              <View style={styles.forgotPassContainer}>
+                <TouchableOpacity
+                  onPress={() => router.push('/forgot-password')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.forgotPassText}>Forgot password?</Text>
                 </TouchableOpacity>
               </View>
 
-              {mainError ? <Text style={styles.mainErrorText}>{mainError}</Text> : null}
+              {/* Inline Error Banner if any */}
+              {mainError ? (
+                <View style={styles.errorBanner}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                  <Text style={styles.errorBannerText}>{mainError}</Text>
+                </View>
+              ) : null}
 
+              {/* ── 4. High-Contrast FitPulse Sign In Button ── */}
               <TouchableOpacity
-                style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
+                style={[styles.primaryBtn, (isLoading || isGoogleLoading) && styles.btnDisabled]}
                 onPress={handleSignIn}
                 disabled={isLoading || isGoogleLoading}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
-                {isLoading
-                  ? <ActivityIndicator color={Colors.primary} />
-                  : <Text style={styles.primaryBtnText}>Sign In</Text>}
+                {isLoading ? (
+                  <ActivityIndicator color="#000000" />
+                ) : (
+                  <View style={styles.btnInner}>
+                    <Text style={styles.primaryBtnText}>Sign In</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#000000" />
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 
-            <View style={styles.dividerContainer}>
+            {/* ── 5. Clean Divider ── */}
+            <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or continue with</Text>
+              <Text style={styles.dividerText}>or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <View style={styles.socialContainer}>
-              {/* Apple — placeholder until native SDK is added */}
-              <TouchableOpacity
-                style={styles.socialBtn}
-                onPress={() => setMainError('Apple Sign In is not configured yet.')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="logo-apple" size={20} color="#FFF" style={styles.socialIcon} />
-                <Text style={styles.socialBtnText}>Continue with Apple</Text>
-              </TouchableOpacity>
+            {/* ── 6. Minimalist Single Google Pill Button ── */}
+            <TouchableOpacity
+              style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={isLoading || isGoogleLoading}
+              activeOpacity={0.75}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <View style={styles.googleBtnInner}>
+                  <GoogleColorIcon size={20} />
+                  <Text style={styles.googleBtnText}>Google</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-              {/* Google — real Firebase popup */}
-              <TouchableOpacity
-                style={[styles.socialBtn, isGoogleLoading && styles.btnDisabled]}
-                onPress={handleGoogleSignIn}
-                disabled={isLoading || isGoogleLoading}
-                activeOpacity={0.7}
-              >
-                {isGoogleLoading
-                  ? <ActivityIndicator color="#FFF" />
-                  : (
-                    <>
-                      <Ionicons name="logo-google" size={20} color="#FFF" style={styles.socialIcon} />
-                      <Text style={styles.socialBtnText}>Continue with Google</Text>
-                    </>
-                  )}
-              </TouchableOpacity>
-            </View>
-
+            {/* ── 7. Footer Sign Up Link ── */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/role-selection')}>
+              <TouchableOpacity
+                onPress={() => router.push('/role-selection')}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -376,56 +435,198 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingBottom: 32 },
-  contentWrapper: {
-    flexGrow: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 14 : 24,
-    paddingBottom: 16,
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
-  },
-  header: { alignItems: 'center', marginBottom: 14 },
-  titleContainer: { alignItems: 'center', marginBottom: 18 },
-  title: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginBottom: 6 },
-  titleHighlight: { color: Colors.primary },
-  subtitle: { color: '#AAAAAA', fontSize: 14 },
-  formContainer: { marginBottom: 18 },
-  forgotPasswordContainer: { alignItems: 'flex-end', marginBottom: 14 },
-  forgotPasswordText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
-  mainErrorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginBottom: 12 },
-  primaryBtn: {
+  container: {
+    flex: 1,
     backgroundColor: '#000000',
-    height: 52,
-    borderRadius: 12,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 10 : 6,
+    paddingBottom: 10,
+  },
+  topBarBrand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shieldBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  shieldText: {
+    color: Colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+    justifyContent: 'space-between',
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  titleHighlight: {
+    color: Colors.primary,
+  },
+  subtitle: {
+    color: '#94A3B8',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '400',
+  },
+  formContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  forgotPassContainer: {
+    alignItems: 'flex-end',
+    marginTop: -4,
+    marginBottom: 20,
+  },
+  forgotPassText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: '#F87171',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    height: 54,
+    borderRadius: 27,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  btnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: Colors.primary, fontSize: 16, fontWeight: '700' },
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#333' },
-  dividerText: { color: '#888', paddingHorizontal: 16, fontSize: 12 },
-  socialContainer: { gap: 12, marginBottom: 16 },
-  socialBtn: {
+  btnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryBtnText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+  },
+  btnDisabled: {
+    opacity: 0.55,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dividerText: {
+    color: '#64748B',
+    paddingHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     height: 52,
-    borderRadius: 12,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#0A0A0A',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#0E131F',
+    paddingHorizontal: 28,
+    marginBottom: 16,
   },
-  socialIcon: { marginRight: 12 },
-  socialBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingTop: 12, paddingBottom: 8 },
-  footerText: { color: '#888', fontSize: 14 },
-  footerLink: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  googleBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  googleBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  footerText: {
+    color: '#94A3B8',
+    fontSize: 14,
+  },
+  footerLink: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
 });
